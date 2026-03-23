@@ -89,21 +89,10 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
             // Aggressive heuristic: when enabled and the call is `this.foo()`,
             // only keep the implementation of `foo` in the current declaring class,
             // or the first superclass that defines it (e.g. B.m() calling this.foo() → A.foo() when B extends A).
-            if (this.enableThisPrune && invokeExpr instanceof ArkInstanceInvokeExpr) {
-                const base = invokeExpr.getBase();
-                if (base.getName && base.getName() === THIS_NAME) {
-                    let curClass: ArkClass | null = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
-                    while (curClass) {
-                        const methodInClass = curClass.getMethodWithName(methodName);
-                        if (methodInClass && !methodInClass.isAbstract()) {
-                            const callSite = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined,
-                                this.cg.getCallGraphNodeByMethod(methodInClass.getSignature()).getID(), callerMethod);
-                            resolveResult.push(callSite);
-                            return resolveResult;
-                        }
-                        curClass = curClass.getSuperClass();
-                    }
-                }
+            const prunedCallSite = this.tryResolveAggressiveThisPruneCall(invokeStmt, methodName, callerMethod);
+            if (prunedCallSite) {
+                resolveResult.push(prunedCallSite);
+                return resolveResult;
             }
 
             const directCallSite = this.resolveConstructorClassFromNew(methodName, invokeStmt, callerMethod);
@@ -156,6 +145,40 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         }
 
         return resolveResult;
+    }
+
+    private tryResolveAggressiveThisPruneCall(
+        invokeStmt: Stmt,
+        methodName: string,
+        callerMethod: NodeID
+    ): CallSite | null {
+        const invokeExpr = invokeStmt.getInvokeExpr();
+        if (!this.enableThisPrune || !(invokeExpr instanceof ArkInstanceInvokeExpr)) {
+            return null;
+        }
+
+        const base = invokeExpr.getBase();
+        if (!base.getName || base.getName() !== THIS_NAME) {
+            return null;
+        }
+
+        // Start from the declaring class of this call site, then walk up the super chain.
+        // Pick the first non-abstract implementation of `methodName`.
+        let curClass: ArkClass | null = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
+        while (curClass) {
+            const methodInClass = curClass.getMethodWithName(methodName);
+            if (methodInClass && !methodInClass.isAbstract()) {
+                return this.cg.getCallSiteManager().newCallSite(
+                    invokeStmt,
+                    undefined,
+                    this.cg.getCallGraphNodeByMethod(methodInClass.getSignature()).getID(),
+                    callerMethod
+                );
+            }
+            curClass = curClass.getSuperClass();
+        }
+
+        return null;
     }
 
     private resolveConstructorClassFromNew(methodName: string, invokeStmt: Stmt, callerMethod: NodeID): CallSite | null {
@@ -238,7 +261,7 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
 
         for (let stmt of cfg!.getStmts()) {
             let stmtExpr: ArkNewExpr | undefined;
-            if(stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkNewExpr) {
+            if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkNewExpr) {
                 stmtExpr = stmt.getRightOp() as ArkNewExpr;
             } else {
                 continue;

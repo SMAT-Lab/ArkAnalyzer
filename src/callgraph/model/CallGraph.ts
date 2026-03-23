@@ -225,7 +225,7 @@ export class CallGraph extends BaseExplicitGraph {
             node.removeIncomingEdge(inEdge);
         }
 
-        for (const outEdge of node.getOutgoingEdges()??[]) {
+        for (const outEdge of node.getOutgoingEdges() ?? []) {
             node.removeIncomingEdge(outEdge);
         }
     }
@@ -373,7 +373,7 @@ export class CallGraph extends BaseExplicitGraph {
             travserdFuncs.add(nodeID);
 
             let node = this.getNode(nodeID)!;
-            for (let e of node.getOutgoingEdges()??[]) {
+            for (let e of node.getOutgoingEdges() ?? []) {
                 let dst = e.getDstID();
                 if (dst === dstID) {
                     return true;
