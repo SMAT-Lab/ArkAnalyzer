@@ -117,7 +117,7 @@ export class GraphPrinter<GraphType extends GraphTraits<BaseNode>> extends Print
 
             this.printer.writeLine(`\tNode${node.getID()} [shape=recode,${nodeAttr},label="${nodeLabel}"];`);
 
-            for (let edge of node.getOutgoingEdges()) {
+            for (let edge of node.getOutgoingEdges() ?? []) {
                 this.writeEdge(edge);
             }
         }

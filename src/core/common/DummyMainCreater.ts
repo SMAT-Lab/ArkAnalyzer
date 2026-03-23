@@ -527,7 +527,12 @@ class CoverageAnalysis {
         });
 
         const node = this.callGraph.getCallGraphNodeByMethod(method.getSignature());
-        for (const outEdge of node.getOutgoingEdges()) {
+        const outgoingEdges = node.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return;
+        }
+
+        for (const outEdge of outgoingEdges) {
             const calleeSig = (outEdge.getDstNode() as CallGraphNode).getMethod();
             const callee = this.scene.getMethod(calleeSig);
             if (!callee) {

@@ -26,7 +26,6 @@ import { CallSite, CallSiteID, CallSiteManager, DynCallSite, ICallSite } from '.
 
 export type Method = MethodSignature;
 export type FuncID = number;
-type StmtSet = Set<Stmt>;
 
 export { CallSite, DynCallSite, ICallSite };
 
@@ -38,38 +37,47 @@ export enum CallGraphNodeKind {
     blank, // method without body
 }
 
+const EDGE_FLAG_DIRECT = 1;
+const EDGE_FLAG_SPECIAL = 2;
+const EDGE_FLAG_INDIRECT = 4;
+
 export class CallGraphEdge extends BaseEdge {
-    private directCalls: StmtSet = new Set();
-    private specialCalls: StmtSet = new Set();
-    private indirectCalls: StmtSet = new Set();
-    // private callSiteID: CallSiteID;
+    private flags: number = 0;
 
     constructor(src: CallGraphNode, dst: CallGraphNode) {
         super(src, dst, 0);
     }
 
-    public addDirectCallSite(stmt: Stmt): void {
-        this.directCalls.add(stmt);
+    public addDirectCallSite(_stmt: Stmt): void {
+        this.flags |= EDGE_FLAG_DIRECT;
     }
 
-    public addSpecialCallSite(stmt: Stmt): void {
-        this.specialCalls.add(stmt);
+    public addSpecialCallSite(_stmt: Stmt): void {
+        this.flags |= EDGE_FLAG_SPECIAL;
     }
 
-    public addInDirectCallSite(stmt: Stmt): void {
-        this.indirectCalls.add(stmt);
+    public addInDirectCallSite(_stmt: Stmt): void {
+        this.flags |= EDGE_FLAG_INDIRECT;
+    }
+
+    public hasDirectCall(): boolean {
+        return (this.flags & EDGE_FLAG_DIRECT) !== 0;
+    }
+
+    public hasIndirectCall(): boolean {
+        return (this.flags & EDGE_FLAG_INDIRECT) !== 0;
+    }
+
+    public hasSpecialCall(): boolean {
+        return (this.flags & EDGE_FLAG_SPECIAL) !== 0;
     }
 
     public getDotAttr(): string {
-        const indirectCallNums: number = this.indirectCalls.size;
-        const directCallNums: number = this.directCalls.size;
-        const specialCallNums: number = this.specialCalls.size;
-
-        if (indirectCallNums !== 0 && directCallNums === 0) {
+        if (this.hasIndirectCall() && !this.hasDirectCall()) {
             return 'color=red';
-        } else if (specialCallNums !== 0) {
+        } else if (this.hasSpecialCall()) {
             return 'color=yellow';
-        } else if (indirectCallNums === 0 && directCallNums !== 0) {
+        } else if (this.hasDirectCall()) {
             return 'color=black';
         } else {
             return 'color=black';
@@ -122,13 +130,15 @@ export class CallGraph extends BaseExplicitGraph {
     private callPairToEdgeMap: Map<string, CallGraphEdge> = new Map();
     private methodToCallSiteMap: Map<FuncID, Set<CallSite>> = new Map();
     private entries!: NodeID[];
-    private cgStat: CGStat;
+    private cgStat?: CGStat;
     private dummyMainMethodID: FuncID | undefined;
 
-    constructor(s: Scene) {
+    constructor(s: Scene, enableStatistics: boolean = false) {
         super();
         this.scene = s;
-        this.cgStat = new CGStat();
+        if (enableStatistics) {
+            this.cgStat = new CGStat();
+        }
     }
 
     private getCallPairString(srcID: NodeID, dstID: NodeID): string {
@@ -140,6 +150,10 @@ export class CallGraph extends BaseExplicitGraph {
         return this.callPairToEdgeMap.get(key);
     }
 
+    public getCallEdges(): Iterable<CallGraphEdge> {
+        return this.callPairToEdgeMap.values();
+    }
+
     public addCallGraphNode(method: Method, kind: CallGraphNodeKind = CallGraphNodeKind.real): CallGraphNode {
         let id: NodeID = this.nodeNum;
         let cgNode = new CallGraphNode(id, method, kind);
@@ -148,7 +162,7 @@ export class CallGraph extends BaseExplicitGraph {
 
         this.addNode(cgNode);
         this.methodToCGNodeMap.set(method.toString(), cgNode.getID());
-        this.cgStat.addNodeStat(kind);
+        this.cgStat?.addNodeStat(kind);
         return cgNode;
     }
 
@@ -207,11 +221,11 @@ export class CallGraph extends BaseExplicitGraph {
     public removeCallGraphEdge(nodeID: NodeID): void {
         let node = this.getNode(nodeID) as CallGraphNode;
 
-        for (const inEdge of node.getIncomingEdge()) {
+        for (const inEdge of node.getIncomingEdge() ?? []) {
             node.removeIncomingEdge(inEdge);
         }
 
-        for (const outEdge of node.getOutgoingEdges()) {
+        for (const outEdge of node.getOutgoingEdges() ?? []) {
             node.removeIncomingEdge(outEdge);
         }
     }
@@ -253,8 +267,7 @@ export class CallGraph extends BaseExplicitGraph {
 
     public addStmtToCallSiteMap(stmt: Stmt, cs: CallSite): boolean {
         if (this.stmtToCallSitemap.has(stmt)) {
-            let callSites = this.stmtToCallSitemap.get(stmt) ?? [];
-            this.stmtToCallSitemap.set(stmt, [...callSites, cs]);
+            this.stmtToCallSitemap.get(stmt)!.push(cs);
             return false;
         }
         this.stmtToCallSitemap.set(stmt, [cs]);
@@ -360,7 +373,7 @@ export class CallGraph extends BaseExplicitGraph {
             travserdFuncs.add(nodeID);
 
             let node = this.getNode(nodeID)!;
-            for (let e of node.getOutgoingEdges()) {
+            for (let e of node.getOutgoingEdges() ?? []) {
                 let dst = e.getDstID();
                 if (dst === dstID) {
                     return true;
@@ -373,19 +386,19 @@ export class CallGraph extends BaseExplicitGraph {
     }
 
     public startStat(): void {
-        this.cgStat.startStat();
+        this.cgStat?.startStat();
     }
 
     public endStat(): void {
-        this.cgStat.endStat();
+        this.cgStat?.endStat(this);
     }
 
     public printStat(): void {
-        this.cgStat.printStat();
+        this.cgStat?.printStat();
     }
 
     public getStat(): string {
-        return this.cgStat.getStat();
+        return this.cgStat?.getStat() ?? '';
     }
 
     public setDummyMainFuncID(dummyMainMethodID: number): void {
