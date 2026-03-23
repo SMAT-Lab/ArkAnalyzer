@@ -31,7 +31,7 @@ describe('CHA test', () => {
     it('case1: inheritance test', () => {
         const makeSoundMethod = scene.getMethods().find(m => m.getName() === 'makeSound')!;
         const cgNode = cg.getCallGraphNodeByMethod(makeSoundMethod.getSignature());
-        const calleeNodes = cgNode.getOutgoingEdges();
+        const calleeNodes = cgNode.getOutgoingEdges() ?? new Set();
 
         // 定义预期的四个函数签名或名称
         const expectedCallees = [
@@ -57,7 +57,7 @@ describe('CHA test', () => {
     it('case2: super test', () => {
         const makeSoundMethod = scene.getClasses().find(c => c.getName() === 'Dog')!.getMethods().find(m => m.getName() === 'sound')!;
         const cgNode = cg.getCallGraphNodeByMethod(makeSoundMethod.getSignature());
-        const calleeNodes = cgNode.getOutgoingEdges();
+        const calleeNodes = cgNode.getOutgoingEdges() ?? new Set();
 
         // 定义预期的四个函数签名或名称
         const expectedCallees = [
