@@ -63,6 +63,7 @@ export const DUMMY_CLASS = '@dummyClass';
 export const DUMMY_METHOD = '@dummyMain';
 export const ABILITY_CREATE_METHOD = 'onCreate';
 export const ABILITY_STAGE_CREATE_METHOD = 'onWindowStageCreate';
+export const ABILITY_STAGE_WILL_DESTROY_METHOD = 'onWindowStageWillDestroy';
 export const ABILITY_STAGE_DESTROY_METHOD = 'onWindowStageDestroy';
 export const ABILITY_DESTROY_METHOD = 'onDestroy';
 export const COMPONENT_START_METHOD = 'aboutToAppear';

@@ -14,7 +14,6 @@
  */
 
 import {
-    ANONYMOUS_METHOD_PREFIX,
     ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt, BasicBlock,
     Cfg,
     COMPONENT_LIFECYCLE_METHOD_NAME, CONSTRUCTOR_NAME,
@@ -24,7 +23,7 @@ import {
     SceneConfig, STATIC_INIT_METHOD_NAME,
     Stmt,
 } from '../../src/index';
-import { assert, beforeAll, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import path from 'path';
 import { Sdk } from '../../src/Config';
 
@@ -85,17 +84,6 @@ function getInvokes(stmts: Stmt[]): string[] {
         result.push(invokeExpr.getMethodSignature().toString());
     });
     return result;
-}
-
-function getCallBackInvokeStmt(stmts: Stmt[]): Stmt[] {
-    return stmts.filter(s => {
-        const invokeExpr = s.getInvokeExpr();
-        if (!invokeExpr) {
-            return false;
-        }
-        const methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
-        return methodName.startsWith(ANONYMOUS_METHOD_PREFIX);
-    });
 }
 
 function getIfBlocks(cfg: Cfg): BasicBlock[] {
@@ -183,9 +171,9 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
     });
 
     it('case5: Whole DummyMain', () => {
-        assert.equal(cfg.getBlocks().size, 11);
+        assert.equal(cfg.getBlocks().size, 9);
         const ifBlocks = getIfBlocks(cfg);
-        assert.equal(ifBlocks.length, 5);
+        assert.equal(ifBlocks.length, 4);
     });
 });
 
@@ -348,26 +336,6 @@ describe('DummyMainTest3: UIAbility Lifecycle Call with Args', () => {
         for (let index = 0; index < args2.length; index++) {
             assert.equal((args2[index] as Local).getName(), expected2[index]);
         }
-    });
-});
-
-describe('DummyMainTest4: Callback Methods', () => {
-    let cfg: Cfg;
-
-    beforeAll(() => {
-        const scene = buildScene('tests/resources/dummyMain/entry_methods_order');
-        const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        const dummyMain = creater.getDummyMain();
-        cfg = dummyMain.getCfg()!;
-    });
-
-    it('case1: Callback Method Order', () => {
-        const callbackMethodCalls = getCallBackInvokeStmt(cfg.getStmts());
-        expect(callbackMethodCalls.length).eq(3);
-        expect(callbackMethodCalls[0].getInvokeExpr()!.getMethodSignature().getMethodSubSignature().getMethodName()).eq(`%AM0$foo`);
-        expect(callbackMethodCalls[1].getInvokeExpr()!.getMethodSignature().getMethodSubSignature().getMethodName()).eq(`%AM0$goo`);
-        expect(callbackMethodCalls[2].getInvokeExpr()!.getMethodSignature().getMethodSubSignature().getMethodName()).eq(`%AM0$build`);
     });
 });
 

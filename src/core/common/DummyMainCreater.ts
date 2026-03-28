@@ -14,7 +14,7 @@
  */
 
 import { Scene } from '../../Scene';
-import { COMPONENT_LIFECYCLE_METHOD_NAME, getCallbackMethodFromStmt, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
+import { COMPONENT_LIFECYCLE_METHOD_NAME, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
 import { Local } from '../base/Local';
@@ -36,6 +36,7 @@ import {
     ABILITY_DESTROY_METHOD,
     ABILITY_STAGE_CREATE_METHOD,
     ABILITY_STAGE_DESTROY_METHOD,
+    ABILITY_STAGE_WILL_DESTROY_METHOD,
     COMPONENT_DETACHED_METHOD,
     COMPONENT_DISAPPEAR_METHOD,
     COMPONENT_START_METHOD,
@@ -51,35 +52,36 @@ const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
 const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbility', 'UIAbility', 'BackupExtensionAbility'];
 
 /**
-收集所有的onCreate，onStart等函数，构造一个虚拟函数，具体为：
-%statInit()
+收集所有的 Ability 和 Component 类，构造一个虚拟函数进行类的实例生成、初始化、生命周期函数调用等操作，具体为：
+classA.%statInit()
+const %1 = new classA()
+%1.%instInit()
+%1.aboutToAppear()
+const %2 = new abilityA()
 ...
 count = 0
 while (true) {
     if (count === 1) {
-        temp1 = new ability
-        temp2 = new want
-        temp1.onCreate(temp2)
+        %1.onPageShow()
     }
     if (count === 2) {
-        onDestroy()
-    }
-    ...
-    if (count === *) {
-        callbackMethod1()
+        %2.onBackground()
     }
     ...
 }
+%1.aboutToDisappear()
+%1.onDetached()
+%2.onWindowStageDestroy()
+...
 return
-如果是instanceInvoke还要先实例化对象，如果是其他文件的类或者方法还要添加import信息
  */
-
 export class DummyMainCreater {
     // entryMethods includes all UIAbility and Component lifecycle methods as well as all callback methods, but exclude the start and end methods
     private entryMethods: ArkMethod[] = [];
     private entryClasses: ArkClass[] = [];
     private abilityCreateMethods: ArkMethod[] = [];
     private abilityStageCreateMethods: ArkMethod[] = [];
+    private abilityStageWillDestroyMethods: ArkMethod[] = [];
     private abilityStageDestroyMethods: ArkMethod[] = [];
     private abilityDestroyMethods: ArkMethod[] = [];
     private componentAppearMethods: ArkMethod[] = [];
@@ -91,14 +93,23 @@ export class DummyMainCreater {
     private scene: Scene;
     private tempLocalIndex: number = 0;
     private tempBlockIndex: number = 0;
+    private classScope?: ArkClass[];
+    private dummyMethodName?: string;
 
-    constructor(scene: Scene) {
+    /**
+     * Create dummy entry method and add it to the specified scene.
+     * @param scene
+     * @param dummyMethodName if not provided, using the default method name '@dummyMain'
+     * @param classScope if not provided, collect all Ability class and Component struct.
+     */
+    constructor(scene: Scene, dummyMethodName?: string, classScope?: ArkClass[]) {
         this.scene = scene;
+        this.dummyMethodName = dummyMethodName;
+        this.classScope = classScope;
         // Currently get entries from module.json5 can't visit all of abilities
         // Todo: handle ability/component jump, then get entries from module.json5
         this.getMethodsFromAllAbilities();
         this.getEntryMethodsFromComponents();
-        this.getCallbackMethods();
     }
 
     public setEntryMethods(methods: ArkMethod[]): void {
@@ -106,27 +117,31 @@ export class DummyMainCreater {
     }
 
     public createDummyMain(): void {
-        // step1: create dummy file
-        const dummyMainFile = new ArkFile(Language.ARKTS1_1);
-        dummyMainFile.setScene(this.scene);
+        // The first choice is to use the existing dummy class and add the new created dummy method into it.
+        // Then it can create more than one dummy methods with different names by using this creation api several times.
+        // step1: find out or create the dummy file
         const dummyMainFileSignature = new FileSignature(this.scene.getProjectName(), DUMMY_FILE);
-        dummyMainFile.setFileSignature(dummyMainFileSignature);
-        this.scene.setFile(dummyMainFile);
+        let dummyMainFile = this.scene.getFile(dummyMainFileSignature);
+        if (!dummyMainFile) {
+            dummyMainFile = new ArkFile(Language.ARKTS1_1);
+            dummyMainFile.setScene(this.scene);
+            dummyMainFile.setFileSignature(dummyMainFileSignature);
+            this.scene.setFile(dummyMainFile);
+        }
 
-        // step2: create dummy class
-        const dummyMainClass = new ArkClass();
-        dummyMainClass.setDeclaringArkFile(dummyMainFile);
-        const dummyMainClassSignature = new ClassSignature(
-            DUMMY_CLASS,
-            dummyMainClass.getDeclaringArkFile().getFileSignature(),
-            dummyMainClass.getDeclaringArkNamespace()?.getSignature() || null
-        );
-        dummyMainClass.setSignature(dummyMainClassSignature);
-        dummyMainFile.addArkClass(dummyMainClass);
+        // step2: find out or create dummy class
+        let dummyMainClass = dummyMainFile.getClassWithName(DUMMY_CLASS);
+        if (!dummyMainClass) {
+            dummyMainClass = new ArkClass();
+            dummyMainClass.setDeclaringArkFile(dummyMainFile);
+            const dummyMainClassSignature = new ClassSignature(DUMMY_CLASS, dummyMainFileSignature);
+            dummyMainClass.setSignature(dummyMainClassSignature);
+            dummyMainFile.addArkClass(dummyMainClass);
+        }
 
         // step3: create dummy method
         this.dummyMain.setDeclaringArkClass(dummyMainClass);
-        const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DUMMY_METHOD);
+        const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(this.dummyMethodName ?? DUMMY_METHOD);
         const methodSignature = new MethodSignature(this.dummyMain.getDeclaringArkClass().getSignature(), methodSubSignature);
         this.dummyMain.setImplementationSignature(methodSignature);
         this.dummyMain.setLineCol(0);
@@ -279,6 +294,7 @@ export class DummyMainCreater {
         // step4: create the last return block
         const returnBlock = new BasicBlock(this.tempBlockIndex++);
         this.addMethodsInvokeStmt(returnBlock, this.componentDisappearMethods);
+        this.addMethodsInvokeStmt(returnBlock, this.abilityStageWillDestroyMethods);
         this.addMethodsInvokeStmt(returnBlock, this.abilityStageDestroyMethods);
         this.addMethodsInvokeStmt(returnBlock, this.componentDetachedMethods);
         this.addMethodsInvokeStmt(returnBlock, this.abilityDestroyMethods);
@@ -329,6 +345,9 @@ export class DummyMainCreater {
         this.scene
             .getClasses()
             .filter(cls => {
+                if (this.classScope && this.classScope.length > 0 && !this.classScope.includes(cls)) {
+                    return false;
+                }
                 if (COMPONENT_BASE_CLASSES.includes(cls.getSuperClassName())) {
                     return true;
                 }
@@ -362,7 +381,12 @@ export class DummyMainCreater {
             return true;
         }
         let superClass = arkClass.getSuperClass();
+        let visitedClasses: Set<ArkClass> = new Set();
         while (superClass) {
+            if (visitedClasses.has(superClass)) {
+                break;
+            }
+            visitedClasses.add(superClass);
             if (ABILITY_BASE_CLASSES.includes(superClass.getSuperClassName())) {
                 return true;
             }
@@ -374,7 +398,12 @@ export class DummyMainCreater {
     private getMethodsFromAllAbilities(): void {
         this.scene
             .getClasses()
-            .filter(cls => this.classInheritsAbility(cls))
+            .filter(cls => {
+                if (this.classScope && this.classScope.length > 0 && !this.classScope.includes(cls)) {
+                    return false;
+                }
+                return this.classInheritsAbility(cls);
+            })
             .forEach(cls => {
                 this.entryClasses.push(cls);
                 for (const mtd of cls.getMethods()) {
@@ -385,6 +414,10 @@ export class DummyMainCreater {
                     }
                     if (name === ABILITY_STAGE_CREATE_METHOD) {
                         this.abilityStageCreateMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === ABILITY_STAGE_WILL_DESTROY_METHOD) {
+                        this.abilityStageWillDestroyMethods.push(mtd);
                         continue;
                     }
                     if (name === ABILITY_STAGE_DESTROY_METHOD) {
@@ -400,23 +433,6 @@ export class DummyMainCreater {
                     }
                 }
             });
-    }
-
-    private getCallbackMethods(): void {
-        this.scene.getMethods().forEach(method => {
-            if (!method.getCfg()) {
-                return;
-            }
-            method
-                .getCfg()!
-                .getStmts()
-                .forEach(stmt => {
-                    const cbMethod = getCallbackMethodFromStmt(stmt, this.scene);
-                    if (cbMethod && !this.entryMethods.includes(cbMethod)) {
-                        this.entryMethods.push(cbMethod);
-                    }
-                });
-        });
     }
 
     /**
