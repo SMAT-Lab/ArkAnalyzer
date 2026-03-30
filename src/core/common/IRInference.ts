@@ -505,6 +505,7 @@ export class IRInference {
             }
             return expr;
         } else if (method instanceof ArkField || method instanceof Local) {
+            expr.setRealGenericTypes(IRInference.getRealTypes(expr, declaredClass, baseType));
             return this.changePtrInvokeExpr(method, scene, expr) ?? expr;
         }
         return null;
@@ -522,6 +523,9 @@ export class IRInference {
 
     private static changePtrInvokeExpr(method: ArkField | Local, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
         let type: Type | undefined = method.getType();
+        if (expr.getRealGenericTypes() && TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType)) {
+            type = TypeInference.replaceTypeWithReal(type, expr.getRealGenericTypes());
+        }
         if (type instanceof UnionType) {
             const funType = type.getTypes().find(t => t instanceof FunctionType);
             if (funType instanceof FunctionType) {
@@ -550,10 +554,10 @@ export class IRInference {
         return null;
     }
 
-    private static getRealTypes(expr: AbstractInvokeExpr, declaredClass: ArkClass | null, baseType: ClassType, method: ArkMethod): Type[] | undefined {
+    private static getRealTypes(expr: AbstractInvokeExpr, declaredClass: ArkClass | null, baseType: ClassType, method?: ArkMethod): Type[] | undefined {
         let realTypes;
         const tmp: Type[] = [];
-        if (method.getGenericTypes()) {
+        if (method?.getGenericTypes()) {
             expr.getMethodSignature().getMethodSubSignature().getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
