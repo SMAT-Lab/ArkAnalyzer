@@ -287,7 +287,7 @@ export class PointerAnalysis extends AbstractAnalysis {
     }
 
     private handleFieldInEdges(fieldNode: PagNode, diffPts: IPtsCollection<number>): void {
-        fieldNode.getIncomingEdge().forEach(edge => {
+        fieldNode.getIncomingEdge()?.forEach(edge => {
             if (edge.getKind() !== PagEdgeKind.Write) {
                 return;
             }
@@ -317,7 +317,7 @@ export class PointerAnalysis extends AbstractAnalysis {
     }
 
     private handleFieldOutEdges(fieldNode: PagNode, diffPts: IPtsCollection<number>): void {
-        fieldNode.getOutgoingEdges().forEach(edge => {
+        fieldNode.getOutgoingEdges()?.forEach(edge => {
             if (edge.getKind() !== PagEdgeKind.Load) {
                 return;
             }

@@ -153,8 +153,9 @@ export const ArrowFunction_Expect_IR = {
         stmts1: [
             'i = parameter0: number',
             'this = this: @function/ArrowFunctionTest.ts: %dflt',
+            '%0 =i',
             'i = i + 1',
-            'return i',
+            'return %0',
         ],
         stmts: [
             {
@@ -170,13 +171,16 @@ export const ArrowFunction_Expect_IR = {
                 ],
             },
             {
+                text: '%0 = i'
+            },
+            {
                 text: 'i = i + 1',
                 operandOriginalPositions: [
                     [22, 28, 22, 29], [22, 28, 22, 31], [22, 28, 22, 29], [-1, -1, -1, -1],
                 ],
             },
             {
-                text: 'return i',
+                text: 'return %0',
                 operandOriginalPositions: [
                     [22, 28, 22, 29],
                 ],
@@ -2485,7 +2489,7 @@ export const MultipleAnonymousMethod4_Expect_IR = {
                 type: '@function/ClosureParamsTest.ts: MultipleNestedTest',
             },
         ],
-        globals:{
+        globals: {
             name: 'console',
             instanceof: GlobalRef,
             ref: null,

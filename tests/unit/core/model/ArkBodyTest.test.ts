@@ -104,7 +104,7 @@ describe('Local Test', () => {
         assert.isTrue(((stmts![2] as ArkAssignStmt).getRightOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
     });
 
-    it('assign to array with index', async() => {
+    it('assign to array with index', async () => {
         const fileName = 'Locals.ts';
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
         const stmts = arkFile?.getClassWithName('Assign2ArrayItem')?.getMethodWithName('foo')?.getBody()?.getCfg().getStmts();
@@ -113,13 +113,13 @@ describe('Local Test', () => {
         assert.isAtLeast(stmts!.length, 9);
         assert.equal(stmts![2].toString(), 'arr[a] = 2');
         assert.isTrue(((stmts![2] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
-        assert.equal(stmts![5].toString(), 'arr[b] = 4');
-        assert.isTrue(((stmts![5] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
-        assert.equal(stmts![8].toString(), 'arr[%0] = 6');
-        assert.isTrue(((stmts![8] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+        assert.equal(stmts![6].toString(), 'arr[%0] = 4');
+        assert.isTrue(((stmts![6] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+        assert.equal(stmts![9].toString(), 'arr[%1] = 6');
+        assert.isTrue(((stmts![9] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
     });
 
-    it('number constant as array index', async() => {
+    it('number constant as array index', async () => {
         const fileName = 'Locals.ts';
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
         const stmts = arkFile?.getClassWithName('IndexWithConstant')?.getMethodWithName('foo')?.getBody()?.getCfg().getStmts();

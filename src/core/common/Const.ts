@@ -56,3 +56,16 @@ export const CONSTRUCTORFUCNNAME = 'constructor';
 export const POSTMESSAGEFUNCNAME = 'postMessage';
 export const POSTMESSAGEWITHSHAREDSENDABLEFUNCNAME = 'postMessageWithSharedSendable';
 export const ONMESSAGEFUNCNAME = 'onmessage';
+
+// DummyMain const
+export const DUMMY_FILE = '@dummyFile';
+export const DUMMY_CLASS = '@dummyClass';
+export const DUMMY_METHOD = '@dummyMain';
+export const ABILITY_CREATE_METHOD = 'onCreate';
+export const ABILITY_STAGE_CREATE_METHOD = 'onWindowStageCreate';
+export const ABILITY_STAGE_WILL_DESTROY_METHOD = 'onWindowStageWillDestroy';
+export const ABILITY_STAGE_DESTROY_METHOD = 'onWindowStageDestroy';
+export const ABILITY_DESTROY_METHOD = 'onDestroy';
+export const COMPONENT_START_METHOD = 'aboutToAppear';
+export const COMPONENT_DISAPPEAR_METHOD = 'aboutToDisappear';
+export const COMPONENT_DETACHED_METHOD = 'onDetached';

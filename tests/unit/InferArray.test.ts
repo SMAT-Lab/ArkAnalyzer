@@ -39,6 +39,7 @@ import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
+import { SdkUtils } from '../../src/core/common/SdkUtils';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -210,7 +211,7 @@ describe("Infer Array Test", () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const aliasType = projectScene.getFile(fileId)?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName('TestType');
         assert.isTrue(aliasType?.getOriginalType() instanceof AliasType);
-        assert.equal((aliasType?.getOriginalType() as AliasType).getOriginalType().getTypeString(), '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>');
+        assert.equal((aliasType?.getOriginalType() as AliasType).getOriginalType().toString(), '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>');
     })
 
     it('constructor case', () => {
@@ -397,6 +398,14 @@ describe("function Test", () => {
         assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
     })
 
+    it('testMap', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('testMap')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.equal(stmts?.[11].toString(), 'instanceinvoke %3.<@built-in/lib.es2015.collection.d.ts: Map.set(K, V)>(\'e\', animatorData5)');
+    })
+
     it('testParamGenericWithConstraint', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
@@ -563,7 +572,7 @@ describe("function Test", () => {
         const stmt1 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[1];
         assert.equal(stmt1?.toString(), 'ptrinvoke this.fieldA<@inferType/inferSample.ts: ChangePtrTest.%AM0$%instInit(number)>(111)');
         const stmt2 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[2];
-        assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@inferType/inferSample.ts: ChangePtrTest.%AM1$%instInit(number)>(222)');
+        assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(222)');
         const stmt3 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[5];
         assert.equal(stmt3?.toString(), 'ptrinvoke this.fieldC<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(333)');
     })
@@ -686,14 +695,14 @@ struct GlobalFancy {
       %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.constructor()>()
       %1 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>(%0)
       %2 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyA')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %3 = instanceinvoke %2.<@inferType/ArktsExtend.ets: %dflt.globalFancy1()>()
       instanceinvoke %3.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
       %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyB')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: GlobalFancy.fancy()>()
       instanceinvoke %5.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
-      staticinvoke <@%unk/%unk: Column.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       instanceinvoke %1.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
       return
   }
@@ -759,10 +768,10 @@ struct FancyUse {
       %2 = this.<@inferType/ArktsExtend.ets: FancyUse.label>
       %3 = instanceinvoke %2.<@built-in/lib.es5.d.ts: String.toString()>()
       %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>(%3)
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: %dflt.makeMeClick(@inferType/ArktsExtend.ets: %dflt.%AM0())>(%AM0$build)
       instanceinvoke %5.<@inferType/ArktsExtend.ets: %dflt.fancy()>()
-      staticinvoke <@%unk/%unk: Row.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       return
   }
 
@@ -826,10 +835,10 @@ struct AnimatablePropertyText {
       %1 = instanceinvoke %1.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.constructor()>()
       %2 = this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth>
       %3 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('AnimatableProperty')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %4 = instanceinvoke %3.<@inferType/ArktsExtend.ets: %dflt.animatableWidth(number)>(%2)
       instanceinvoke %4.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.animation(@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam)>(%1)
-      staticinvoke <@%unk/%unk: Column.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %0.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
       instanceinvoke %5.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.padding(Padding|Length|LocalizedPadding)>(10)
       return
@@ -837,7 +846,7 @@ struct AnimatablePropertyText {
 }
 object %AC5$AnimatablePropertyText-build {
   duration: number
-  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve|@etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
+  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve
 
   constructor(): @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build {
     label0:
@@ -879,9 +888,21 @@ object %AC5$AnimatablePropertyText-build {
             const printer = new ArkIRMethodPrinter(method, '');
             const s1 = printer.dump();
             assert.equal(s1, expectMethodIR);
+            method.getCfg()?.getStmts().filter(s => s instanceof ArkInvokeStmt).forEach(s => assert.isDefined(s.getCfg()));
         } else {
             assert.fail('not found test method');
         }
+    });
+
+    it('infer method return type  case', () => {
+        const returnType = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('foo')?.getReturnType();
+        assert.isDefined(returnType);
+        assert.equal(returnType!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+        const returnType2 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('goo')?.getReturnType();
+        assert.isDefined(returnType2);
+        assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
     });
 })
 
@@ -974,5 +995,19 @@ describe("Test built in version", () => {
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
         assert.isNotNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
+    })
+
+    it('built in path case', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.getSdksObj().push({
+            moduleName: "",
+            name: SdkUtils.BUILT_IN_NAME,
+            path: path.resolve('./node_modules/ohos-typescript/lib')
+        })
+        config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest');
+        config.getOptions().enableBuiltIn = true;
+        let scene: Scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        assert.isTrue(scene.getOptions().sdkGlobalFolders?.some(x => x.includes(path.sep)));
     })
 })

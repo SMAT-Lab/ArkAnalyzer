@@ -107,9 +107,9 @@ export abstract class SourceStmt implements Dump {
         return code;
     }
 
-    protected beforeDump(): void {}
+    protected beforeDump(): void { }
 
-    protected afterDump(): void {}
+    protected afterDump(): void { }
 
     protected dumpTs(): string {
         let content: string[] = [];
@@ -624,23 +624,67 @@ export class SourceWhileStmt extends SourceStmt {
         this.setText(code);
     }
 
+    private handlePrefixIncrementAndDecrement(stmt: ArkAssignStmt, value: Local): string | null {
+        const stmtLeftOp = stmt.getLeftOp() as Local;
+        if (stmtLeftOp.getName() === value.getName()) {
+            if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Addition)) {
+                this.context.setSkipStmt(stmt);
+                return `++${value.getName()}`;
+            } else if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Subtraction)) {
+                this.context.setSkipStmt(stmt);
+                return `--${value.getName()}`;
+            }
+        }
+        return null;
+    }
+
+    private handlePostfixIncrementAndDecrement(index: number, value: Value, stmts: Stmt[]): string | null {
+        const stmt = stmts[index] as ArkAssignStmt;
+        const stmtLeftOp = stmt.getLeftOp() as Local;
+        if (index <= 0 ||
+            index >= stmts.length - 1 ||
+            !(stmts[index - 1] instanceof ArkAssignStmt) ||
+            !(stmts[stmts.length - 1] instanceof ArkIfStmt)
+        ) {
+            return null;
+        }
+        const preStmt = stmts[index - 1] as ArkAssignStmt;
+        const succesStmt = stmts[stmts.length - 1] as ArkIfStmt;
+        if (preStmt.getLeftOp() === succesStmt.getConditionExpr().getOp1() &&
+            preStmt.getRightOp() === stmtLeftOp &&
+            preStmt.getLeftOp() === value
+        ) {
+            if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Subtraction)) {
+                this.context.setSkipStmt(stmts[index - 1]);
+                this.context.setSkipStmt(stmt);
+                return `${stmtLeftOp.getName()}--`;
+            } else if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Addition)) {
+                this.context.setSkipStmt(stmts[index - 1]);
+                this.context.setSkipStmt(stmt);
+                return `${stmtLeftOp.getName()}++`;
+            }
+        }
+        return null;
+    }
+
     protected valueToString(value: Value): string {
         if (!(value instanceof Local)) {
             return this.transformer.valueToString(value);
         }
 
-        for (const stmt of this.block.getStmts()) {
-            if (!(stmt instanceof ArkAssignStmt)) {
+        const stmts = this.block.getStmts();
+        for (let i = 0; i < stmts.length; ++i) {
+            if (!(stmts[i] instanceof ArkAssignStmt)) {
                 continue;
             }
-            if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Addition) && (stmt.getLeftOp() as Local).getName() === value.getName()) {
-                this.context.setSkipStmt(stmt);
-                return `${value.getName()}++`;
+            const stmt = stmts[i] as ArkAssignStmt;
+            const prefixStr = this.handlePrefixIncrementAndDecrement(stmt, value);
+            if (prefixStr) {
+                return prefixStr;
             }
-
-            if (PrinterUtils.isDeIncrementStmt(stmt, NormalBinaryOperator.Subtraction) && (stmt.getLeftOp() as Local).getName() === value.getName()) {
-                this.context.setSkipStmt(stmt);
-                return `${value.getName()}--`;
+            const postfixStr = this.handlePostfixIncrementAndDecrement(i, value, stmts);
+            if (postfixStr) {
+                return postfixStr;
             }
         }
 
@@ -709,7 +753,7 @@ export class SourceDoWhileStmt extends SourceWhileStmt {
         this.printer.decIndent();
     }
 
-    protected afterDump(): void {}
+    protected afterDump(): void { }
 }
 
 export class SourceElseStmt extends SourceStmt {
@@ -782,7 +826,7 @@ export class SourceCompoundEndStmt extends SourceStmt {
         this.setText(text);
     }
 
-    public transfer2ts(): void {}
+    public transfer2ts(): void { }
 
     protected beforeDump(): void {
         this.printer.decIndent();

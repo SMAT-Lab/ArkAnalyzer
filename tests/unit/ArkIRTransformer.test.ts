@@ -332,7 +332,7 @@ function assertParamsEqual(actualParams: MethodParameter[], expectedParams: any)
         assert.equal(actualParams.length, expectedParams.length);
         for (let i = 0; i < expectedParams.length; i++) {
             assert.equal(actualParams[i].getName(), expectedParams[i].name);
-            assert.equal(actualParams[i].getType().getTypeString(), expectedParams[i].type);
+            assert.equal(actualParams[i].getType().toString(), expectedParams[i].type);
         }
     }
 }

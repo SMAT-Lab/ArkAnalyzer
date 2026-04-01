@@ -48,9 +48,36 @@ function runPerfTest(): void {
     performance.mark('end');
 }
 
+const RSS_SAMPLE_COUNT = 7;
+const RSS_SAMPLE_INTERVAL_MS = 50;
+
+function collectRssSamples(): number[] {
+    const samples: number[] = [];
+    for (let i = 0; i < RSS_SAMPLE_COUNT; i++) {
+        samples.push(process.memoryUsage().rss);
+        if (i < RSS_SAMPLE_COUNT - 1) {
+            const deadline = Date.now() + RSS_SAMPLE_INTERVAL_MS;
+            while (Date.now() < deadline) { /* spin wait */ }
+        }
+    }
+    return samples;
+}
+
+function median(values: number[]): number {
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 function printMemPerfInfo() {
-    const usedRss = process.memoryUsage().rss;
-    logger.info(`RSS Memory Size: ${Math.round(usedRss / 1024 / 1024 * 100) / 100} MB.`);
+    const g = typeof globalThis !== 'undefined' ? globalThis : (typeof global !== 'undefined' ? global : undefined);
+    if (g && typeof (g as { gc?: () => void }).gc === 'function') {
+        (g as { gc: () => void }).gc();
+    }
+    const samples = collectRssSamples();
+    const rssMedian = median(samples);
+    const rssMb = rssMedian / 1024 / 1024;
+    logger.info(`RSS Memory Size: ${Math.round(rssMb * 100) / 100} MB.`);
 }
 
 function printCPUPerfInfo() {

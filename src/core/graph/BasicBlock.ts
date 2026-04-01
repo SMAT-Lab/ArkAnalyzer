@@ -38,7 +38,11 @@ export class BasicBlock {
     private exceptionalSuccessorBlocks?: BasicBlock[];
     private exceptionalPredecessorBlocks?: BasicBlock[];
 
-    constructor() { }
+    constructor(id?: number) {
+        if (id !== undefined) {
+            this.id = id;
+        }
+    }
 
     public getId(): number {
         return this.id;

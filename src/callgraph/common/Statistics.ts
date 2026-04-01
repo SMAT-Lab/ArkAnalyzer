@@ -15,7 +15,7 @@
 
 import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
 import { UnknownType } from '../../core/base/Type';
-import { CallGraphNode, CallGraphNodeKind } from '../model/CallGraph';
+import { CallGraph, CallGraphNode, CallGraphNodeKind } from '../model/CallGraph';
 import { PointerAnalysis } from '../pointerAnalysis/PointerAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Local } from '../../core/base/Local';
@@ -225,13 +225,26 @@ export class CGStat extends StatTraits {
     numConstructor: number = 0;
     numBlank: number = 0;
 
+    // edge statistics
+    numTotalEdge: number = 0;
+
     public startStat(): void {
         this.startTime = new Date().getTime();
     }
 
-    public endStat(): void {
+    public endStat(cg?: CallGraph): void {
         this.endTime = new Date().getTime();
         this.TotalTime = (this.endTime - this.startTime) / 1000;
+        if (cg) {
+            this.computeEdgeStat(cg);
+        }
+    }
+
+    private computeEdgeStat(cg: CallGraph): void {
+        this.numTotalEdge = 0;
+        for (const _edge of cg.getCallEdges()) {
+            this.numTotalEdge++;
+        }
     }
 
     public addNodeStat(kind: CallGraphNodeKind): void {
@@ -265,6 +278,7 @@ ${'Intrinsic function'.padEnd(LABEL_WIDTH)}${this.numIntrinsic}
 ${'Constructor function'.padEnd(LABEL_WIDTH)}${this.numConstructor}
 ${'Virtual function'.padEnd(LABEL_WIDTH)}${this.numVirtual}
 ${'Blank function'.padEnd(LABEL_WIDTH)}${this.numBlank}
-${'Total'.padEnd(LABEL_WIDTH)}${this.numTotalNode}`;
+${'Total node'.padEnd(LABEL_WIDTH)}${this.numTotalNode}
+${'Total edge'.padEnd(LABEL_WIDTH)}${this.numTotalEdge}`;
     }
 }

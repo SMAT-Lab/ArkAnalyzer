@@ -71,8 +71,8 @@ describe('ExportNewTest', () => {
         }
 
         assert(target !== undefined);
-        let incomings = Array.from(target.getIncomingEdge());
-        let outgoings = Array.from(target.getOutgoingEdges());
+        let incomings = Array.from(target.getIncomingEdge() ?? []);
+        let outgoings = Array.from(target.getOutgoingEdges() ?? []);
         assert(incomings.length === 1 && outgoings.length === 1);
         let incoming = incomings[0] as PagEdge;
         assert(incoming.getKind() === PagEdgeKind.InterProceduralCopy);
@@ -96,8 +96,8 @@ describe('ExportNewTest', () => {
         }
 
         assert(target !== undefined);
-        let incomings = Array.from(target.getIncomingEdge());
-        let outgoings = Array.from(target.getOutgoingEdges());
+        let incomings = Array.from(target.getIncomingEdge() ?? []);
+        let outgoings = Array.from(target.getOutgoingEdges() ?? []);
         assert(incomings.length === 1 && outgoings.length === 1);
         let incoming = incomings[0] as PagEdge;
         assert(incoming.getKind() === PagEdgeKind.InterProceduralCopy);
@@ -138,8 +138,8 @@ describe('ExportNew2Test', () => {
             }
         }
         assert(target !== undefined);
-        let incomings = Array.from(target.getIncomingEdge());
-        let outgoings = Array.from(target.getOutgoingEdges());
+        let incomings = Array.from(target.getIncomingEdge() ?? []);
+        let outgoings = Array.from(target.getOutgoingEdges() ?? []);
         assert(incomings.length === 1 && outgoings.length === 1);
         let incoming = incomings[0] as PagEdge;
         assert(incoming.getKind() === PagEdgeKind.InterProceduralCopy);

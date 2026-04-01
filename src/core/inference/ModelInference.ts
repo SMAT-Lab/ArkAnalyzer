@@ -322,8 +322,11 @@ export class MethodInference extends ArkModelInference {
             });
         }
         //infers return type
-        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME ||
-            !TypeInference.isUnclearType(method.getImplementationSignature()?.getMethodSubSignature().getReturnType())) {
+        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME || method.getAsteriskToken()) {
+            return;
+        }
+        const rt = method.getImplementationSignature()?.getMethodSubSignature().getReturnType();
+        if (!TypeInference.isUnclearType(rt) || rt instanceof GenericType) {
             return;
         }
         const returnType = TypeInference.inferReturnType(method);
@@ -373,7 +376,13 @@ export class StmtInference extends ArkModelInference {
                 invokeExpr.setMethodSignature(invokeMethod.getSignature());
             }
             invokeExpr.setArgs([stmt.getRightOp()]);
-            replacedStmts.push(new ArkInvokeStmt(invokeExpr));
+            const invokeStmt = new ArkInvokeStmt(invokeExpr);
+            invokeStmt.setOriginalText(stmt.getOriginalText() ?? '');
+            invokeStmt.setOperandOriginalPositions(stmt.getOperandOriginalPositions() ?? []);
+            invokeStmt.setCfg(stmt.getCfg());
+            invokeStmt.setOriginPositionInfo(stmt.getOriginPositionInfo());
+            invokeStmt.metadata = stmt.metadata;
+            replacedStmts.push(invokeStmt);
         } else {
             impactedStmts = this.typeSpread(stmt, method);
         }

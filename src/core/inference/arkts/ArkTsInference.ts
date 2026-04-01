@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -40,6 +40,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../common/TSConst';
 import { AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkField } from '../../model/ArkField';
+import { COMPONENT_EXTEND_DECORATOR } from '../../common/EtsConst';
 
 class ArkTsImportInference extends ImportInfoInference {
     /**
@@ -105,8 +106,6 @@ export class ArkTsStmtInference extends StmtInference {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;
-            } else {
-                leftType = TypeInference.union(leftType, rightType);
             }
             if (leftOp.getType() !== leftType) {
                 return ArkTsStmtInference.updateUnionType(leftOp, leftType, method);
@@ -137,8 +136,6 @@ export class ArkTsStmtInference extends StmtInference {
             let leftType = ref.getType();
             if (TypeInference.isTypeCanBeOverride(leftType)) {
                 leftType = srcType;
-            } else {
-                leftType = TypeInference.union(leftType, srcType);
             }
             if (ref.getType() !== leftType) {
                 ref.setType(leftType);
@@ -246,7 +243,7 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
     private processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
         const annoMethod = arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ??
             arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
-        if (annoMethod) {
+        if (annoMethod && annoMethod.hasDecorator(COMPONENT_EXTEND_DECORATOR)) {
             expr.setMethodSignature(annoMethod.getSignature());
             return expr;
         }

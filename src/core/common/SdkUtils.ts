@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,21 +15,22 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMPONENT_ATTRIBUTE } from './EtsConst';
+import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { LocalSignature } from '../model/ArkSignature';
+import { LocalSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { Local } from '../base/Local';
 import { ArkMethod } from '../model/ArkMethod';
 import path from 'path';
-import { ClassType } from '../base/Type';
+import { ClassType, VoidType } from '../base/Type';
 import { AbstractFieldRef } from '../base/Ref';
 import { ArkNamespace } from '../model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Sdk } from '../../Config';
 import ts from 'ohos-typescript';
 import fs from 'fs';
+import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
 
@@ -42,7 +43,10 @@ export class SdkUtils {
 
     private static sdkImportMap: Map<string, ArkFile> = new Map<string, ArkFile>();
     public static BUILT_IN_NAME = 'built-in';
-    private static BUILT_IN_PATH = 'node_modules/ohos-typescript/lib';
+    private static BUILT_IN_PATHS = [
+        'lib/node_modules/ohos-typescript/lib',
+        'node_modules/ohos-typescript/lib',
+    ];
 
     public static setEsVersion(buildProfile: any): void {
         const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
@@ -57,10 +61,12 @@ export class SdkUtils {
         try {
             // If arkanalyzer is used as dependency by other project, the base directory should be the module path.
             const moduleRoot = path.dirname(path.dirname(require.resolve('arkanalyzer')));
-            builtInPath = path.join(moduleRoot, this.BUILT_IN_PATH);
+            const candidatePaths = this.BUILT_IN_PATHS.map(item => path.join(moduleRoot, item));
+            builtInPath = candidatePaths.find(item => fs.existsSync(item)) ?? candidatePaths[0];
             logger.debug(`arkanalyzer is used as dependency, so using builtin sdk file in ${builtInPath}.`);
         } catch {
-            builtInPath = path.resolve(this.BUILT_IN_PATH);
+            const candidatePaths = this.BUILT_IN_PATHS.map(item => path.resolve(item));
+            builtInPath = candidatePaths.find(item => fs.existsSync(item)) ?? candidatePaths[0];
             logger.debug(`use builtin sdk file in ${builtInPath}.`);
         }
         return {
@@ -268,6 +274,18 @@ export class SdkUtils {
                 .arkExport(new Local(leftOp.getFieldName(), leftOp.getType()))
                 .build();
             globalThis.addExportInfo(exportInfo);
+        }
+    }
+
+    public static extendArkUI(scene: Scene): void {
+        const cls = scene.getSdkGlobal(COMMON_METHOD);
+        if (cls instanceof ArkClass) {
+            const mtd = new ArkMethod();
+            mtd.setDeclaringArkClass(cls);
+            const methodSubSignature = new MethodSubSignature(COMPONENT_POP_FUNCTION, [], VoidType.getInstance(), false);
+            mtd.setDeclareSignatures(new MethodSignature(cls.getSignature(), methodSubSignature));
+            mtd.setIsGeneratedFlag(true);
+            cls.addMethod(mtd);
         }
     }
 }
