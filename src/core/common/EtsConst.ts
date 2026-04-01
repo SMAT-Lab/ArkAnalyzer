@@ -1023,3 +1023,5 @@ export const COMPONENT: string = 'Component';
 export const COMMON_METHOD: string = 'CommonMethod';
 export const COMPONENT_EXTEND_DECORATOR: Set<string> = new Set(['Extend', 'Styles', 'AnimatableExtend']);
 
+export const BUSINESS_ERROR = 'BusinessError';
+export const OHOS_BASE_FILE = 'api/@ohos.base.d.ts';

@@ -390,10 +390,6 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
         return 'ArkStaticInvokeExpr';
     }
 
-    public preInfer(value: ArkStaticInvokeExpr, stmt: Stmt | undefined): boolean {
-        return IRInference.needInfer(value.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature());
-    }
-
     public infer(expr: ArkStaticInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         const methodName = this.getMethodName(expr, arkMethod);
