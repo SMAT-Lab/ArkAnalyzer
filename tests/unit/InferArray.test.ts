@@ -398,6 +398,14 @@ describe("function Test", () => {
         assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
     })
 
+    it('testMap', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('testMap')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.equal(stmts?.[11].toString(), 'instanceinvoke %3.<@built-in/lib.es2015.collection.d.ts: Map.set(K, V)>(\'e\', animatorData5)');
+    })
+
     it('testParamGenericWithConstraint', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
