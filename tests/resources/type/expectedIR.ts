@@ -919,20 +919,20 @@ export const SourceKeyofWithGenericClassWithTypeOperator = `class KeyofWithGener
 `;
 
 export const SourceBigIntType = `class BigIntClass {
-  private fieldA: bigint = 1nn;
+  private fieldA: bigint = 1n;
   fieldB: number & bigint;
   static fieldC: bigint | number;
   transfer2String(num: number | bigint): string | bigint {
     if (typeof(num) === 'bigint') {
-      let a: bigint = 10nn;
-      const b: bigint = 100nn;
-      const c: bigint = this.fieldA + 100nn;
+      let a: bigint = 10n;
+      const b: bigint = 100n;
+      const c: bigint = this.fieldA + 100n;
       return ((a + b - c) * a) / b + num;
     }
     return num.toString();
   }
   testBitOperator(a: bigint, b: bigint): bigint {
-    const c: bigint = a ^ b & a | b << 1nn >> 2nn;
+    const c: bigint = a ^ b & a | b << 1n >> 2n;
     const aa: number = 123;
     const bb: number = 456;
     const cc: number = aa ^ bb & aa | bb << aa >> bb >>> aa;

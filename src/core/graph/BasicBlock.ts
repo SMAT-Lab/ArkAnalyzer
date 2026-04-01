@@ -17,6 +17,7 @@
 import { ArkIfStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { ValueAsserts } from '../../utils/ValueAsserts';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'BasicBlock');
 
 /**
@@ -140,6 +141,7 @@ export class BasicBlock {
 
     public getHead(): Stmt | null {
         const stmts = this.getStmts();
+        ValueAsserts.assertNotEmptyArray(stmts, 'stmts in this basic block should not be empty');
         if (stmts.length === 0) {
             return null;
         }
@@ -148,6 +150,7 @@ export class BasicBlock {
 
     public getTail(): Stmt | null {
         const stmts = this.getStmts();
+        ValueAsserts.assertNotEmptyArray(stmts, 'stmts in this basic block should not be empty');
         let size = stmts.length;
         if (size === 0) {
             return null;
