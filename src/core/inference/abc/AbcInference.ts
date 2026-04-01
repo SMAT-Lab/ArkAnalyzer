@@ -45,6 +45,7 @@ import { ArkField } from '../../model/ArkField';
 import { AbstractInvokeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkClass } from '../../model/ArkClass';
+import { BUSINESS_ERROR, OHOS_BASE_FILE } from '../../common/EtsConst';
 
 
 class AbcImportInference extends ImportInfoInference {
@@ -304,7 +305,7 @@ export class AbcExceptionRefInference extends ValueInference<ArkCaughtExceptionR
     public infer(value: ArkCaughtExceptionRef, stmt: Stmt): Value | undefined {
         if (!AbcExceptionRefInference.ERROR_TYPE) {
             const scene = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getScene();
-            const err = scene.getSdkArkFiles().find(e => e.getName().endsWith('api/@ohos.base.d.ts'))?.getClassWithName('BusinessError');
+            const err = scene.getSdkArkFiles().find(e => e.getName().endsWith(OHOS_BASE_FILE))?.getClassWithName(BUSINESS_ERROR);
             if (err instanceof ArkClass) {
                 AbcExceptionRefInference.ERROR_TYPE = new ClassType(err.getSignature(), err.getGenericsTypes());
                 value.setType(AbcExceptionRefInference.ERROR_TYPE);
