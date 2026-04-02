@@ -1027,7 +1027,7 @@ export const BUSINESS_ERROR = 'BusinessError';
 export const OHOS_BASE_FILE = 'api/@ohos.base.d.ts';
 
 export const DEFAULT_SDK_NUMS = 3;
-export const PATH_BE_OMITTED = '/src/main'
+export const PATH_BE_OMITTED = '/src/main';
 export const SCOPE_PREFIX = '@';
-export const ETS_PATH = 'ets'
-export const PATH_DELIMITER = '/'
+export const ETS_PATH = 'ets';
+export const PATH_DELIMITER = '/';
