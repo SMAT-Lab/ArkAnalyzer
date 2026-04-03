@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
+import { ClassType, GenericType, Type, UnknownType, VoidType } from '../../../core/base/Type';
 import { CxxBodyBuilder } from './BodyBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
@@ -137,7 +137,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
     });
-    let returnType = UnknownType.getInstance();
+    let returnType: Type = UnknownType.getInstance();
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode, sourceFile, mtd), mtd);
     }

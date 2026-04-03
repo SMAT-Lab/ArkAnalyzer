@@ -26,10 +26,14 @@ import {
     ClassType,
     FunctionType,
     LexicalEnvType,
+    NullType,
     StringType,
     TupleType,
     Type,
-    UnionType
+    UnclearReferenceType,
+    UndefinedType,
+    UnionType,
+    UnknownType,
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';

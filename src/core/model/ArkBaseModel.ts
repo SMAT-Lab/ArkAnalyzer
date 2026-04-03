@@ -57,6 +57,19 @@ export enum ModifierType {
     DECLARE = 1 << 14,
     TYPE = 1 << 15,
     LAZY = 1 << 16,
+
+    // The following are CXX specific modifiers.
+    AUTO = 1 << 20,
+    EXTERN = 1 << 21,
+    FRIEND = 1 << 22,
+    VIRTUAL = 1 << 23,
+    PURE_VIRTUAL = 1 << 24,
+    INLINE = 1 << 25,
+    MUTABLE = 1 << 26,
+    EXPLICIT = 1 << 27,
+    CONSTEXPR = 1 << 28,
+    VOLATILE = 1 << 29,
+    NOEXCEPT = 1 << 30,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;

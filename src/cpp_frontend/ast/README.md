@@ -4,6 +4,10 @@
 
 astJsonDumper是基于llvm的libtooling开发的工具，对C/C++生成抽象语法树并输出到json文件。该工具需要应用到IDE，需要考虑到工具的大小、性能、依赖环境等要求。该工具对比业界的依赖环境更简单、工具更小，生成的抽象语法树也基本能满足在IDE上的需求。
 
+## 与 Unit 测试
+
+仓库根目录执行 `npm test` 时，`tests/unit/core_cpp` 下的用例依赖可执行的 **astJsonDumper**（查找路径见 `src/cpp_frontend/ast/const.ts` 中的 `getAstJsonDumperPath()` / `isAstJsonDumperAvailable()`）。构建完成后请将可执行文件放到 `src/cpp_frontend/ast/dumper/` 或 `lib/ast/`（与 `prepack` 拷贝规则一致）。若上述路径不存在该二进制，Vitest 将跳过 `tests/unit/core_cpp/**`，并在控制台输出提示。
+
 ## 开发指南
 
 ### 多系统构建脚本

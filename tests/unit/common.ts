@@ -24,7 +24,6 @@ import {
     Stmt,
 } from '../../src';
 import { assert, expect } from 'vitest';
-import { ArkClass } from '../../src';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 import { ReachingDefProblem } from '../../src/core/dataflow/ReachingDef';
 import { MFPDataFlowSolver } from '../../src/core/dataflow/GenericDataFlow';
@@ -109,6 +108,30 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
     const StmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
     assert(stmtsLength === StmtToBlockLength);
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
+/** Like testBlocks, but selects the method by MethodSubSignature.toString() (e.g. PrintInfo(int)). */
+export function testBlocksWithSignature(
+    scene: Scene,
+    filePath: string,
+    className: string,
+    methodSubSignature: string,
+    expectBlocks: any[]
+): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkClass = className ? arkFile?.getClassWithName(className) ?? undefined : arkFile?.getDefaultClass();
+    const arkMethod = arkClass?.getMethods().find(
+        (method) => method.getSubSignature().toString() === methodSubSignature
+    );
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
+    const stmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
+    assert(stmtsLength === stmtToBlockLength);
     assertBlocksEqual(blocks, expectBlocks);
 }
 
@@ -202,6 +225,15 @@ export function assertClassBlocksEqual(method: any, expectBlocks: any[]): void {
         return;
     }
     assertBlocksEqual(blocks, expectBlocks);
+}
+
+function showCfgStmt(blocks: Set<BasicBlock>): void {
+    for (const block of blocks) {
+        console.log('block', block.getId());
+        for (const stmt of block.getStmts()) {
+            console.log(' ', stmt.toString());
+        }
+    }
 }
 
 export function showClassBlocksEqual(method: any): void {

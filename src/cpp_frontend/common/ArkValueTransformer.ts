@@ -1690,7 +1690,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             callType = callType.getBaseType();
         }
         // Handling overloaded stream operators
-        if (callType.getTypeString().includes('istream') || callType.getTypeString().includes('ostream')) {
+        const callTypeStr = callType.toString();
+        if (callTypeStr.includes('istream') || callTypeStr.includes('ostream')) {
             return this.buildInvokeValueForOverloadedStreamOp(cxxOperatorCallExpr);
         }
         if (!(callType instanceof ClassType)) {
@@ -1739,7 +1740,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (objType instanceof ReferenceType) {
                 objType = objType.getBaseType();
             }
-            if (objType.getTypeString() === args[1]!.getType().getTypeString()) {
+            if (objType.toString() === args[1]!.getType().toString()) {
                 matchMtd = mtd;
                 break;
             }
@@ -2245,14 +2246,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else if (constructors.length === 1) {
             return constructors[0].getSignature();
         }
-        const argsStr = args.map(arg => arg.getType().getTypeString());
+        const argsStr = args.map(arg => arg.getType().toString());
         for (const constructor of constructors) {
             const paramTypes = constructor.getSignature().getMethodSubSignature().getParameterTypes();
             if (paramTypes.length !== args.length) {
                 continue;
             }
             for (const [idx, paramType] of paramTypes.entries()) {
-                const paramTypeStr = paramType.getTypeString();
+                const paramTypeStr = paramType.toString();
                 if (!paramTypeStr.includes(argsStr[idx]) && !argsStr[idx].includes(paramTypeStr)) {
                     break;
                 }

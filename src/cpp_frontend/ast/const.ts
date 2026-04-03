@@ -14,6 +14,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 export function findProjectRoot(startDIr: string = __dirname): string {
@@ -50,6 +51,18 @@ function getPrintAstExePathLinux(): string {
 
 const printAstExePath = getPrintAstExePath();
 const printAstExePathLinux = getPrintAstExePathLinux();
+
+/**
+ * Resolved path to the astJsonDumper executable for the current OS (Windows: .exe under dumper/ or lib/ast/).
+ */
+export function getAstJsonDumperPath(): string {
+    return os.platform() === 'win32' ? getPrintAstExePath() : getPrintAstExePathLinux();
+}
+
+/** True when the astJsonDumper binary exists at {@link getAstJsonDumperPath}. */
+export function isAstJsonDumperAvailable(): boolean {
+    return fs.existsSync(getAstJsonDumperPath());
+}
 
 export class ClangPath {
     static WindowsPath = printAstExePath;
