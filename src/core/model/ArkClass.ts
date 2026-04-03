@@ -39,6 +39,14 @@ export enum ClassCategory {
     ENUM = 3,
     TYPE_LITERAL = 4,
     OBJECT = 5,
+    // The following are CXX specific categories.
+    UNION = 6,
+}
+
+export interface heritageClassWithInfo {
+    baseClass: ArkClass | undefined | null;
+    isVirtual: boolean;
+    access: string;
 }
 
 /**
@@ -57,7 +65,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * The superclass name is placed first; if it does not exist, an empty string `''` will occupy this position.
      * The values of the `heritageClasses` map will be replaced with `ArkClass` or `null` during type inference.
      */
-    private heritageClasses: Map<string, ArkClass | null | undefined> = new Map<string, ArkClass | null | undefined>();
+    private heritageClasses: Map<string, heritageClassWithInfo | undefined> = new Map<string, heritageClassWithInfo | undefined>();
 
     private genericsTypes?: GenericType[];
     private realTypes?: Type[];
@@ -77,6 +85,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private indexSignatureNumber: number = 0;
 
     private viewTree?: ViewTree;
+
+    // In order to record the mapping between arkTS and CPP functions
+    private ts2cxxFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    // When the declaration and definition of a class in C++ are separated, record the signature of the relevant declaration.
+    private classDeclareSignature?: ClassSignature;
 
     constructor() {
         super();
@@ -200,6 +213,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.heritageClasses.set(className, undefined);
     }
 
+    public addHeritageClassNameWithInfo(className: string, classInfo: heritageClassWithInfo): void {
+        this.heritageClasses.set(className, classInfo);
+    }
+
+
     /**
      * Returns the superclass of this class.
      * @returns The superclass of this class.
@@ -212,13 +230,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
-    private getHeritageClass(heritageClassName: string): ArkClass | null {
+    public getHeritageClass(heritageClassName: string): ArkClass | null {
         if (!heritageClassName) {
             return null;
         }
-        let superClass = this.heritageClasses.get(heritageClassName);
+        let superClassWithInfo = this.heritageClasses.get(heritageClassName);
+        let superClass = superClassWithInfo?.baseClass;
         if (superClass === undefined) {
-            let type = TypeInference.inferUnclearRefName(heritageClassName, this) ??
+            let type =
+                TypeInference.inferUnclearRefName(heritageClassName, this) ??
                 TypeInference.inferUnclearRefName(heritageClassName, this.getDeclaringArkFile().getDefaultClass());
             if (type) {
                 type = TypeInference.replaceAliasType(type);
@@ -230,9 +250,14 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                     this.realTypes = realGenericTypes;
                 }
             }
-            this.heritageClasses.set(heritageClassName, superClass || null);
+            superClassWithInfo = {
+                baseClass: superClass,
+                isVirtual: superClassWithInfo?.isVirtual ?? false,
+                access: superClassWithInfo?.access ?? 'private',
+            };
+            this.heritageClasses.set(heritageClassName, superClassWithInfo);
         }
-        return superClass || null;
+        return superClassWithInfo?.baseClass || null;
     }
 
     public getAllHeritageClasses(): ArkClass[] {
@@ -240,7 +265,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.heritageClasses.forEach((v, k) => {
             const heritage = v ?? this.getHeritageClass(k);
             if (heritage) {
-                result.push(heritage);
+                if ('baseClass' in heritage && heritage.baseClass) {
+                    result.push(heritage.baseClass);
+                } else if (heritage instanceof ArkClass) {
+                    result.push(heritage);
+                }
             }
         });
         return result;
@@ -360,19 +389,35 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
-        const methodSearched = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);
-        if (methodSearched === null) {
+        const methodsWithSameName = this.getAllMethodsWithName(methodName);
+        if (methodsWithSameName.length === 0) {
             return null;
         }
-        const implSignature = methodSearched.getImplementationSignature();
-        if (implSignature !== null && implSignature.isMatch(methodSignature)) {
-            return methodSearched;
+        for (const mtd of methodsWithSameName) {
+            let methodMatched = this.findMatchingMethod(mtd, methodSignature);
+            if (methodMatched) {
+                return methodMatched;
+            }
         }
-        const declareSignatures = methodSearched.getDeclareSignatures();
+        return null;
+    }
+
+    /**
+     * Find a method that matches the specified signature
+     * @ param mtd - Ark method object to check
+     * @ param methodSignature - the method signature to match
+     * @ returns If a matching method is found, the method object will be returned; otherwise, null will be returned
+     */
+    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature): ArkMethod | null {
+        const implSignature = mtd.getImplementationSignature();
+        if (implSignature !== null && implSignature.isMatch(methodSignature)) {
+            return mtd;
+        }
+        const declareSignatures = mtd.getDeclareSignatures();
         if (declareSignatures !== null) {
             for (let i = 0; i < declareSignatures.length; i++) {
                 if (declareSignatures[i].isMatch(methodSignature)) {
-                    return methodSearched;
+                    return mtd;
                 }
             }
         }
@@ -605,5 +650,21 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public validate(): ArkError {
         return this.validateFields(['declaringArkFile', 'category', 'classSignature']);
+    }
+
+    public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {
+        this.ts2cxxFuncMap.set(funcName, methods);
+    }
+
+    public getTs2cxxFuncMap(): Map<string, ArkMethod[]> {
+        return this.ts2cxxFuncMap;
+    }
+
+    public getDeclareSignature(): ClassSignature | undefined {
+        return this.classDeclareSignature;
+    }
+
+    public setDeclareSignature(classSig: ClassSignature): void {
+        this.classDeclareSignature = classSig;
     }
 }

@@ -24,6 +24,7 @@ import {
     Stmt,
 } from '../../src';
 import { assert, expect } from 'vitest';
+import { ArkClass } from '../../src';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 import { ReachingDefProblem } from '../../src/core/dataflow/ReachingDef';
 import { MFPDataFlowSolver } from '../../src/core/dataflow/GenericDataFlow';
@@ -194,6 +195,25 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
     }
 }
 
+export function assertClassBlocksEqual(method: any, expectBlocks: any[]): void {
+    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
+export function showClassBlocksEqual(method: any): void {
+    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    console.log('===============', method.getName(), '================');
+    showCfgStmt(blocks);
+}
+
 export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: boolean = true): void {
     expect(stmts.length).toEqual(expectStmts.length);
     for (let i = 0; i < stmts.length; i++) {
@@ -229,4 +249,38 @@ export function fullPositionArray2String(fullPositions: FullPosition[]): string 
     let positions: string[] = [];
     fullPositions.forEach(position => positions.push(fullPosition2String(position)));
     return `[${positions.join(', ')}]`;
+}
+
+export function testBlocksClass(
+    scene: Scene, filePath: string, className: string, expectBlocks: any, namespaceName?: string, isCheckOverload?: boolean
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass =
+        namespaceName ?
+        arkFile?.getNamespaceWithName(namespaceName)?.getClassWithName(className) :
+        arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
+    const classBlockMap = new Map<String, BasicBlock[]>();
+    for (const block of expectBlocks.blocks) {
+        classBlockMap.set(block.methodName, block.blocks);
+    }
+    // 1.Check class inheritance
+    const heritageClasses = new Set();
+    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
+        heritageClasses.add(heritageClass.getName());
+    });
+    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
+    // 2.Check class fields
+    const fieldOfClass = new Set();
+    arkClass?.getFields()?.forEach(field => {
+        fieldOfClass.add(field.getName());
+    });
+    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
+    // 3.Check class member functions
+    arkClass?.getMethods()?.forEach(method => {
+        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
+        const classBlock = classBlockMap.get(mapKey);
+        if (classBlock) {
+            assertClassBlocksEqual(method, classBlock);
+        }
+    });
 }

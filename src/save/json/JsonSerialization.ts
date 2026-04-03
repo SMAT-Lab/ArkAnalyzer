@@ -122,6 +122,26 @@ import {
     ValueDto,
     polymorphic,
 } from './JsonDto';
+import {
+    ArkCxxCastExpr,
+    ArkCxxDeleteArrayExpr,
+    ArkCxxFolderExpr,
+    ArkCxxInitArrayExpr,
+    ArkCxxNewArrayExpr, ArkCxxNormalBinOpExpr,
+    ArkNoExpectExpr,
+    ArkCxxUnaryExpr,
+    ArkTypeIdExpr,
+} from '../../cpp_frontend/base/Expr';
+import {
+    CxxCharType,
+    CxxDoubleType,
+    CxxFloatType,
+    CxxIntType, CxxLongDoubleType,
+    CxxLongLongType,
+    CxxLongType,
+    CxxShortType,
+    CxxSizeTType, CxxWcharType, PointerType, ReferenceType, SmartPointerType, Thread, TypeInfo,
+} from '../../cpp_frontend/base/Type';
 
 export function serializeArkScene(scene: Scene): SceneDto {
     return {
@@ -257,6 +277,67 @@ export function serializeType(type: Type): TypeDto {
         return polymorphic('TupleType', {
             types: type.getTypes().map(type => serializeType(type)),
         });
+    } else if (type instanceof CxxIntType) {
+        return polymorphic('CxxIntType', {
+            signType: type.getSignType().toString(),
+        });
+    } else if (type instanceof CxxShortType) {
+        return polymorphic('CxxShortType', {
+            signType: type.getSignType().toString(),
+        });
+    } else if (type instanceof CxxLongType) {
+        return polymorphic('CxxLongType', {
+            signType: type.getSignType().toString(),
+        });
+    } else if (type instanceof CxxLongLongType) {
+        return polymorphic('CxxLongLongType', {
+            signType: type.getSignType().toString(),
+        });
+    } else if (type instanceof CxxSizeTType) {
+        return polymorphic('CxxSizeTType', {
+            signType: type.getSignType().toString(),
+        });
+    } else if (type instanceof CxxFloatType) {
+        return polymorphic('CxxFloatType', {
+            bitWidth: type.getBitWith(),
+        });
+    } else if (type instanceof CxxDoubleType) {
+        return polymorphic('CxxDoubleType', {
+            bitWidth: type.getBitWith(),
+        });
+    } else if (type instanceof CxxLongDoubleType) {
+        return polymorphic('CxxLongDoubleType', {
+            bitWidth: type.getBitWith(),
+        });
+    } else if (type instanceof CxxCharType) {
+        return polymorphic('CxxCharType', {
+            text: type.toString(),
+        });
+    } else if (type instanceof CxxWcharType) {
+        return polymorphic('CxxWcharType', {
+            text: type.toString(),
+        });
+    } else if (type instanceof PointerType) {
+        return polymorphic('PointerType', {
+            baseType:  serializeType(type.getBaseType()),
+        });
+    } else if (type instanceof SmartPointerType) {
+        return polymorphic('SmartPointerType', {
+            baseType:  serializeType(type.getBaseType()),
+        });
+    } else if (type instanceof ReferenceType) {
+        return polymorphic('ReferenceType', {
+            baseType:  serializeType(type.getBaseType()),
+        });
+    } else if (type instanceof Thread) {
+        return polymorphic('Thread', {
+            text: type.toString(),
+        });
+    } else if (type instanceof TypeInfo) {
+        return polymorphic('TypeInfo', {
+            name: type.toString(),
+        });
+
     } else if (type instanceof BooleanType) {
         return polymorphic('BooleanType', {});
     } else if (type instanceof NumberType) {
@@ -294,7 +375,7 @@ export function serializeType(type: Type): TypeDto {
                     sub.getParameters(),
                     UnknownType.getInstance(),
                     sub.isStatic(),
-                )
+                ),
             );
             return polymorphic('FunctionType', {
                 signature: serializeMethodSignature(sig2),
@@ -590,6 +671,55 @@ export function serializeValue(value: Value): ValueDto {
     } else if (value instanceof ArkStaticFieldRef) {
         return polymorphic('StaticFieldRef', {
             field: serializeFieldSignature(value.getFieldSignature()),
+        });
+    } else if (value instanceof ArkCxxDeleteArrayExpr) {
+        return polymorphic('ArkCxxDeleteArrayExpr', {
+            field: serializeValue(value.getField()),
+            type: serializeType(value.getType()),
+        });
+    } else if (value instanceof ArkCxxNewArrayExpr) {
+        return polymorphic('ArkCxxNewArrayExpr', {
+            baseType: serializeType(value.getBaseType()),
+            size: serializeValue(value.getSize()),
+            elementsNumber: value.getElementsNumber(),
+        });
+    } else if (value instanceof ArkCxxInitArrayExpr) {
+        return polymorphic('ArkCxxInitArrayExpr', {
+            op: serializeValue(value.getOp()),
+        });
+    } else if (value instanceof ArkCxxUnaryExpr) {
+        let op = value.getOp();
+        if (op instanceof Type) {
+            return polymorphic('ArkCxxUnaryExpr', {
+                op: serializeType(op),
+            });
+        }
+        return polymorphic('ArkCxxUnaryExpr', {
+            op: serializeValue(op),
+        });
+    } else if (value instanceof ArkCxxCastExpr) {
+        return polymorphic('ArkCxxCastExpr', {
+            cxxCastType: value.getCxxCastType(),
+        });
+    } else if (value instanceof ArkTypeIdExpr) {
+        return polymorphic('ArkTypeIdExpr', {
+            op: serializeValue(value.getOp()),
+        });
+    } else if (value instanceof ArkNoExpectExpr) {
+        return polymorphic('ArkNoExpectExpr', {
+            op: serializeValue(value.getOp()),
+        });
+    } else if (value instanceof ArkCxxFolderExpr) {
+        return polymorphic('ArkCxxFolderExpr', {
+            arg: serializeValue(value.getArg()),
+            op: value.getOp(),
+        });
+    } else if (value instanceof ArkCxxNormalBinOpExpr) {
+        return polymorphic('ArkCxxNormalBinOpExpr', {
+            op1: serializeValue(value.getOp1()),
+            op2: serializeValue(value.getOp2()),
+            type: serializeType(value.getType()),
+            operator: value.getOperator(),
         });
     }
 

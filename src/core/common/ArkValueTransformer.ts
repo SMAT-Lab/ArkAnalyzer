@@ -92,15 +92,15 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransforme
 
 export class ArkValueTransformer {
     public conditionalOperatorNo: number = 0;
-    private tempLocalNo: number = 0;
-    private sourceFile: ts.SourceFile;
-    private locals: Map<string, Local> = new Map();
-    private globals?: Map<string, GlobalRef>;
-    private thisLocal: Local;
-    private declaringMethod: ArkMethod;
-    private arkIRTransformer: ArkIRTransformer;
-    private aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> = new Map();
-    private builderMethodContextFlag = false;
+    protected tempLocalNo: number = 0;
+    protected sourceFile: ts.SourceFile;
+    protected locals: Map<string, Local> = new Map();
+    protected globals?: Map<string, GlobalRef>;
+    protected thisLocal: Local;
+    protected declaringMethod: ArkMethod;
+    protected arkIRTransformer: ArkIRTransformer;
+    protected aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> = new Map();
+    protected builderMethodContextFlag = false;
 
     constructor(arkIRTransformer: ArkIRTransformer, sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
         this.arkIRTransformer = arkIRTransformer;
@@ -132,7 +132,7 @@ export class ArkValueTransformer {
         return this.globals ?? null;
     }
 
-    private addNewGlobal(name: string, ref?: Value): GlobalRef {
+    protected addNewGlobal(name: string, ref?: Value): GlobalRef {
         let globalRef = new GlobalRef(name, ref);
         this.globals = this.globals ?? new Map();
         this.globals.set(name, globalRef);
@@ -214,11 +214,7 @@ export class ArkValueTransformer {
         let { value, valueOriginalPositions, stmts } = this.tsNodeToValueAndStmts(node);
         stmts.forEach(stmt => allStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(value)) {
-            ({
-                value,
-                valueOriginalPositions,
-                stmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(value, valueOriginalPositions));
+            ({ value, valueOriginalPositions, stmts } = this.arkIRTransformer.generateAssignStmtForValue(value, valueOriginalPositions));
             stmts.forEach(stmt => allStmts.push(stmt));
         }
         return { value, valueOriginalPositions, stmts: allStmts };
@@ -1987,7 +1983,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
+    protected getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
         let local = this.locals.get(localName);
         if (local !== undefined) {
             return local;
@@ -2005,7 +2001,7 @@ export class ArkValueTransformer {
         return tempLocal;
     }
 
-    private isRelationalOperator(operator: BinaryOperator): boolean {
+    protected isRelationalOperator(operator: BinaryOperator): boolean {
         return (
             operator === RelationalBinaryOperator.LessThan ||
             operator === RelationalBinaryOperator.LessThanOrEqual ||

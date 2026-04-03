@@ -50,6 +50,7 @@ import {
     UnknownType,
     VoidType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -509,6 +510,8 @@ export class TypeInference {
         } else if (type instanceof TypeQueryExpr) {
             return this.isUnclearType(type.getType()) ||
                 !!type.getGenerateTypes()?.find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
+        } else if (type instanceof PointerType || type instanceof ReferenceType) {
+            return this.isUnclearType(type.getBaseType());
         }
         return false;
     }
@@ -713,8 +716,8 @@ export class TypeInference {
         if (!refName) {
             return null;
         }
-        //split and iterate to infer each type
-        const singleNames = refName.split('.');
+        //split and iterate to infer each type. In C++, the operators used to access members also include :: and ->
+        const singleNames = refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
             let genericName: string = EMPTY_STRING;

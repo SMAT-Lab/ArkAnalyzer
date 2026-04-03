@@ -37,7 +37,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CfgBuilder');
 
-class StatementBuilder {
+export class StatementBuilder {
     type: string;
     //节点对应源代码
     code: string;
@@ -53,7 +53,7 @@ class StatementBuilder {
     addressCode3: string[] = [];
     block: BlockBuilder | null;
     ifExitPass: boolean;
-    passTmies: number = 0;
+    passTimes: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
     hasDoWhileBody: boolean = false;
@@ -115,7 +115,7 @@ export class TryStatementBuilder extends StatementBuilder {
     }
 }
 
-class Case {
+export class Case {
     value: string;
     stmt: StatementBuilder;
     valueNode!: ts.Node;
@@ -126,7 +126,7 @@ class Case {
     }
 }
 
-class DefUseChain {
+export class DefUseChain {
     def: StatementBuilder;
     use: StatementBuilder;
 
@@ -136,7 +136,7 @@ class DefUseChain {
     }
 }
 
-class Variable {
+export class Variable {
     name: string;
     lastDef: StatementBuilder;
     defUse: DefUseChain[];
@@ -150,7 +150,7 @@ class Variable {
     }
 }
 
-class Scope {
+export class Scope {
     id: number;
 
     constructor(id: number) {
@@ -189,7 +189,7 @@ export class BlockBuilder {
     }
 }
 
-class Catch {
+export class Catch {
     errorName: string;
     from: number;
     to: number;
@@ -203,7 +203,7 @@ class Catch {
     }
 }
 
-class TextError extends Error {
+export class TextError extends Error {
     constructor(message: string) {
         // 调用父类的构造函数，并传入错误消息
         super(message);
@@ -675,8 +675,8 @@ export class CfgBuilder {
             if (((stmt.type === 'continueStatement' || stmt.next.type === 'loopStatement') && stmt.next.block) || stmt.next.type.includes('exit')) {
                 return null;
             }
-            stmt.next.passTmies++;
-            if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
+            stmt.next.passTimes++;
+            if (stmt.next.passTimes === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
                     !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement) &&
@@ -1008,7 +1008,7 @@ export class CfgBuilder {
             ts.isFunctionExpression(this.astRoot) ||
             ts.isClassStaticBlockDeclaration(this.astRoot)
         ) {
-            this.astRoot.body ? stmts = [...this.astRoot.body.statements] : this.emptyBody = true;
+            this.astRoot.body ? (stmts = [...this.astRoot.body.statements]) : (this.emptyBody = true);
         } else if (ts.isArrowFunction(this.astRoot)) {
             if (ts.isBlock(this.astRoot.body)) {
                 stmts = [...this.astRoot.body.statements];
@@ -1307,8 +1307,11 @@ export class CfgBuilder {
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet,
-            ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(
+            blockBuilderToCfgBlock,
+            basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
+        );
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>): Cfg {

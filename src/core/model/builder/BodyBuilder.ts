@@ -27,7 +27,7 @@ import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, 
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../base/Expr';
 import { FullPosition } from '../../base/Position';
 
-type NestedMethodChain = {
+export type NestedMethodChain = {
     parent: ArkMethod;
     children: NestedMethodChain[] | null;
 };
