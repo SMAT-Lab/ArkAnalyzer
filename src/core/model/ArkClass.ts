@@ -578,21 +578,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getStaticFields(classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
-        const fields: ArkField[] = [];
-        let classes: ArkClass[] = [];
-        if (this.declaringArkNamespace) {
-            classes = classMap.get(this.declaringArkNamespace.getNamespaceSignature())!;
-        } else {
-            classes = classMap.get(this.declaringArkFile.getFileSignature())!;
-        }
-        for (const arkClass of classes) {
-            for (const field of arkClass.getFields()) {
-                if (field.isStatic()) {
-                    fields.push(field);
-                }
-            }
-        }
-        return fields;
+        return Array.from(this.staticFields.values());
     }
 
     public getGlobalVariable(globalMap: Map<FileSignature | NamespaceSignature, Local[]>): Local[] {

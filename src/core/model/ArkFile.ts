@@ -217,8 +217,36 @@ export class ArkFile {
         return this.getClassWithName(className);
     }
 
-    public getClassWithName(Class: string): ArkClass | null {
-        return this.classes.get(Class) || null;
+    public getClassWithName(className: string): ArkClass | null {
+        // First, search for the top-level class
+        let cls: ArkClass | null | undefined = this.classes.get(className);
+        if (cls) {
+            return cls;
+        }
+
+        // Recursively search for classes within namespaces
+        for (const ns of this.namespaces.values()) {
+            cls = this.findClassInNamespace(ns, className);
+            if (cls) {
+                return cls;
+            }
+        }
+        return null;
+    }
+
+    private findClassInNamespace(namespace: ArkNamespace, className: string): ArkClass | null {
+        const cls = namespace.getClassWithName(className);
+        if (cls) {
+            return cls;
+        }
+
+        for (const ns of namespace.getNamespaces()) {
+            const found = this.findClassInNamespace(ns, className);
+            if (found) {
+                return found;
+            }
+        }
+        return null;
     }
 
     public getClasses(): ArkClass[] {

@@ -373,7 +373,8 @@ export class MethodSignature {
     }
 
     public toString(ptrName?: string, visited?: Set<Type>): string {
-        return this.declaringClassSignature.toString() + '.' + this.methodSubSignature.toString(ptrName, visited);
+        return this.declaringClassSignature.toString() + '.' +
+            this.methodSubSignature.toString(ptrName, visited);
     }
 
     public toMapKey(): string {
@@ -455,7 +456,8 @@ export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig:
     if (
         leftSig.getMethodName() === rightSig.getMethodName() &&
         arrayCompare(leftSig.getParameterTypes(), rightSig.getParameterTypes()) &&
-        leftSig.getReturnType() === rightSig.getReturnType()
+        leftSig.getReturnType() === rightSig.getReturnType() &&
+        leftSig.isStatic() === rightSig.isStatic()
     ) {
         return true;
     }
