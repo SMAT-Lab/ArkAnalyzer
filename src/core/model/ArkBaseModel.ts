@@ -281,7 +281,7 @@ export abstract class ArkBaseModel {
         }
         logger.error(`class fields: ${errs.join(',')} is undefined.`);
         return {
-            errCode: ArkErrorCode.CLASS_INSTANCE_FIELD_UNDEFINDED,
+            errCode: ArkErrorCode.CLASS_INSTANCE_FIELD_UNDEFINED,
             errMsg: `${errs.join(',')} is undefined.`,
         };
     }

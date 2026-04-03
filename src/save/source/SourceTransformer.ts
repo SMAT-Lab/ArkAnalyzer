@@ -69,7 +69,7 @@ import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { ArkField } from '../../core/model/ArkField';
 import { ExportInfo } from '../../core/model/ArkExport';
 import { ImportInfo } from '../../core/model/ArkImport';
-import { BIGINT_KEYWORD, CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
+import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SourceTransformer');
 
@@ -231,8 +231,6 @@ export class SourceTransformer {
     public static constToString(value: Constant): string {
         if (value.getType().toString() === 'string') {
             return `'${PrinterUtils.escape(value.getValue())}'`;
-        } else if (value.getType().toString() === BIGINT_KEYWORD) {
-            return `${value.getValue()}n`;
         } else {
             return value.getValue();
         }

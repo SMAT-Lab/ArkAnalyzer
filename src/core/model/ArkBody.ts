@@ -41,9 +41,7 @@ export class ArkBody {
     }
 
     public setLocals(locals: Set<Local>): void {
-        if (!this.locals) {
-            this.locals = new Map<string, Local>();
-        }
+        this.locals.clear();
         locals.forEach(local => this.locals.set(local.getName(), local));
     }
 
