@@ -66,8 +66,8 @@ export abstract class BaseEdge {
 export abstract class BaseNode {
     private id: NodeID;
     protected kind: Kind;
-    private inEdges: Set<BaseEdge> = new Set();
-    private outEdges: Set<BaseEdge> = new Set();
+    private inEdges?: Set<BaseEdge>;
+    private outEdges?: Set<BaseEdge>;
 
     constructor(id: NodeID, k: Kind) {
         this.id = id;
@@ -87,42 +87,48 @@ export abstract class BaseNode {
     }
 
     public hasIncomingEdges(): boolean {
-        return this.inEdges.size !== 0;
+        return this.inEdges ? this.inEdges.size !== 0 : false;
     }
 
     public hasOutgoingEdges(): boolean {
-        return this.outEdges.size === 0;
+        return this.outEdges ? this.outEdges.size === 0 : false;
     }
 
     public hasIncomingEdge(e: BaseEdge): boolean {
-        return this.inEdges.has(e);
+        return this.inEdges ? this.inEdges.has(e) : false;
     }
 
     public hasOutgoingEdge(e: BaseEdge): boolean {
-        return this.outEdges.has(e);
+        return this.outEdges ? this.outEdges.has(e) : false;
     }
 
     public addIncomingEdge(e: BaseEdge): void {
+        if (!this.inEdges) {
+            this.inEdges = new Set();
+        }
         this.inEdges.add(e);
     }
 
     public addOutgoingEdge(e: BaseEdge): void {
+        if (!this.outEdges) {
+            this.outEdges = new Set();
+        }
         this.outEdges.add(e);
     }
 
     public removeIncomingEdge(e: BaseEdge): boolean {
-        return this.inEdges.delete(e);
+        return this.inEdges ? this.inEdges.delete(e) : false;
     }
 
     public removeOutgoingEdge(e: BaseEdge): boolean {
-        return this.outEdges.delete(e);
+        return this.outEdges ? this.outEdges.delete(e) : false;
     }
 
-    public getIncomingEdge(): Set<BaseEdge> {
+    public getIncomingEdge(): Set<BaseEdge> | undefined {
         return this.inEdges;
     }
 
-    public getOutgoingEdges(): Set<BaseEdge> {
+    public getOutgoingEdges(): Set<BaseEdge> | undefined {
         return this.outEdges;
     }
 
@@ -182,7 +188,11 @@ export abstract class BaseExplicitGraph implements GraphTraits<BaseNode> {
     }
 
     public hasEdge(src: BaseNode, dst: BaseNode): boolean {
-        for (let e of src.getOutgoingEdges()) {
+        if (!src.getOutgoingEdges()) {
+            return false;
+        }
+
+        for (let e of src.getOutgoingEdges()!) {
             if (e.getDstNode() === dst) {
                 return true;
             }

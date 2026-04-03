@@ -340,8 +340,8 @@ export const SWITCH_EXPECT_CASE6 = {
                 'this = this: @switch/SwitchSample.ts: %dflt',
                 'a = 0',
                 'b = 1',
+                '%0 = a',
                 'a = a + 1',
-
             ],
             preds: [],
             succes: [1],

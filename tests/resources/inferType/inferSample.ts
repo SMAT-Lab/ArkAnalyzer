@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -134,4 +134,161 @@ function testArrayInstacnceOf(): void {
     if (a instanceof Array) {
         console.info(a);
     }
+}
+
+class IConfig {
+    id: string;
+}
+
+class Config2 extends IConfig {
+    id: string;
+
+    ffff(): void {
+        console.log('xx');
+    }
+}
+
+interface CCContext {
+    queryConfig<T extends IConfig = Config2>(id: string): T
+}
+
+function test2(c: CCContext): void {
+    let a = c.queryConfig('aa');
+    a.ffff();
+}
+
+enum Week {
+    MON = 0,
+    TUE = '1'
+}
+
+class BaseChangeInfer {
+    string2String(): void {
+        const str = 'string';
+        str.length;
+        str.toUpperCase();
+    }
+
+    number2Number(): void {
+        const str = 13;
+        str.toPrecision(2);
+    }
+
+    boolean2Boolean(): void {
+        const str = true;
+        str.valueOf();
+    }
+
+    bigint2Wrapper(str: bigint): void {
+        str.toLocaleString();
+        str[Symbol.toStringTag];
+    }
+
+    literal2Wrapper(a: '1', b: false, c: 3): void {
+        a.length;
+        a.charAt(0);
+        b.valueOf();
+        c.toExponential();
+    }
+
+    function2Wrapper(callback: () => void, d: Function): void {
+        callback.name;
+        callback();
+        d.length;
+        d().toString();
+    }
+
+    enum2Wrapper(v: Week): void {
+        Week.MON.valueOf();
+        let t: Week = Week.MON;
+        t.valueOf();
+        Week.TUE.valueOf();
+        t = Week.TUE;
+    }
+
+}
+
+class NameSpaceLocalTest {
+    foo(): void {
+        let a = new Intl.NumberFormat('123');
+    }
+}
+
+class ArrayCatTest {
+    foo(): void {
+        const arr1 = [1, 2, 3];
+        const arr2 = [4, 5];
+        const arr3 = [...arr1, ...arr2];
+    }
+
+    goo(): void {
+        const arr11 = callSomeMethod1();
+        const arr22 = callSomeMethod2();
+        const arr33 = [...arr11, ...arr22];
+    }
+}
+
+class ChangePtrTest {
+    fieldA = (data: number): void => {
+        console.log(data);
+    };
+
+    fieldB: Function = (data: number): void => {
+        console.log(data);
+    };
+
+    fieldC: Function | undefined;
+
+    callField(): void {
+        // 正确表示为ArkPtrInvokeExpr，funcPtr指向this.fieldA
+        this.fieldA(111);
+        // 错误表示为ArkInstanceInvokeExpr，methodSignature为A.fieldB方法，但是calss A没有fieldB方法，所以methodSignature中的param为空，return type为Unknown
+        this.fieldB(222);
+        // 错误表示为ArkInstanceInvokeExpr，methodSignature为A.fieldC方法，但是calss A没有fieldC方法，所以methodSignature中的param为空，return type为Unknown
+        if (this.fieldC) {
+            this.fieldC(333);
+        }
+    }
+}
+
+class AA {
+    static x = 'x';
+
+    static get Str(): string {
+        return 'a';
+    }
+
+    static set Str(str: string) {
+        AA.x = str;
+    }
+
+    private _count: number;
+    get count(): number {
+        return this._count;
+    }
+
+    set count(value: number) {
+        this._count = value;
+    }
+
+    test(): void {
+        let str = AA.Str;
+        AA.Str = str;
+        let aa = new AA();
+        let n = aa.count;
+        aa.count = n;
+    }
+}
+
+class A {
+}
+
+function testMap(): void {
+    let map = new Map<string, A>();
+
+    const animatorData4 = new A();
+    const animatorData5 = new A();
+
+    map.set('d', animatorData4)
+        .set('e', animatorData5);
 }

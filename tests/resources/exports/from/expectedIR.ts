@@ -18,13 +18,13 @@ import { ArkClass, DEFAULT_ARK_CLASS_NAME } from '../../../../src';
 
 export const ExportAllFromThisFile_Expect_IR = {
     _default: false,
-    exportClauseName: '*',
+    exportClauseName: 'MathUtils',
     exportClauseType: ExportType.CLASS,
-    modifiers: [],
+    modifiers: ['EXPORT'],
     arkExport: {
         type: ArkClass,
-        classSignature: `@exports/from/exportAllFromThisFile.ts: ${DEFAULT_ARK_CLASS_NAME}`,
-        modifiers: []
+        classSignature: `@exports/from/exportAllFromThisFile.ts: MathUtils`,
+        modifiers: ['EXPORT']
     }
 };
 

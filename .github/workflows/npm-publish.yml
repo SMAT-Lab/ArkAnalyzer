@@ -1,0 +1,53 @@
+name: npm pack & publish
+
+on:
+  push:
+    branches: [mirror]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: npm pack
+        run: npm pack
+
+      - name: Upload pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arkanalyzer-tarball
+          path: 'arkanalyzer-*.tgz'
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - name: Download pack artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: arkanalyzer-tarball
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm
+        run: npm publish ./arkanalyzer-*.tgz --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -153,7 +153,7 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
         this.setVisited(v);
 
         let node = this.getNode(v);
-        node.getOutgoingEdges().forEach(e => {
+        node.getOutgoingEdges()?.forEach(e => {
             let w: NodeID = e.getDstID();
             if (!this.isVisited(w)) {
                 this.visit(w);
@@ -244,7 +244,11 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
         }
         // self-cycle: a call a
         let repNode = this._G.getNode(rep)!;
-        for (const e of repNode?.getOutgoingEdges()) {
+        const outgoingEdges = repNode?.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return false;
+        }
+        for (const e of outgoingEdges) {
             if (e.getDstID() === rep) {
                 return true;
             }

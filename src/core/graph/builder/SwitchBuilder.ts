@@ -16,7 +16,7 @@
 import { BasicBlock } from '../BasicBlock';
 import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { Stmt } from '../../base/Stmt';
-import { BlockBuilder, SwitchStatementBuilder } from './CfgBuilder';
+import { BlockBuilder, CfgBuilder, SwitchStatementBuilder } from './CfgBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SwitchBuilder');
@@ -145,22 +145,12 @@ export class SwitchBuilder {
         }
         expectedSuccessorsOfCaseIfBlock.reverse();
 
-        blockContainSwitch.getSuccessors().forEach(successor => {
-            successor.getPredecessors().splice(0, 1);
-        });
-        blockContainSwitch.getSuccessors().splice(0);
+        CfgBuilder.unlinkSuccessorsOfBasicBlock(blockContainSwitch);
         for (let j = 0; j < caseCnt; j++) {
+            const trueBranchBlock = expectedSuccessorsOfCaseIfBlock[j];
+            const falseBranchBlock = j === caseCnt - 1 ? expectedSuccessorsOfCaseIfBlock[j + 1] : caseIfBlocks[j + 1];
             const caseIfBlock = caseIfBlocks[j];
-            caseIfBlock.addSuccessorBlock(expectedSuccessorsOfCaseIfBlock[j]);
-            expectedSuccessorsOfCaseIfBlock[j].addPredecessorBlock(caseIfBlock);
-            if (j === caseCnt - 1) {
-                // the false branch of last case should be default or block after switch statement
-                caseIfBlock.addSuccessorBlock(expectedSuccessorsOfCaseIfBlock[j + 1]);
-                expectedSuccessorsOfCaseIfBlock[j + 1].addPredecessorBlock(caseIfBlock);
-            } else {
-                caseIfBlock.addSuccessorBlock(caseIfBlocks[j + 1]);
-                caseIfBlocks[j + 1].addPredecessorBlock(caseIfBlock);
-            }
+            CfgBuilder.linkSuccessorOfIfBasicBlock(caseIfBlock, trueBranchBlock, falseBranchBlock);
         }
         return true;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -828,7 +828,7 @@ export const PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR = `returnFunc1(): @expr
   label0:
     this = this: @expression/CallExpressionTest.ts: %dflt
     nestedReturnFunc = %AM4$returnFunc1
-    ptrinvoke <@expression/CallExpressionTest.ts: %dflt.nestedReturnFunc()>()
+    ptrinvoke nestedReturnFunc<@expression/CallExpressionTest.ts: %dflt.%AM4$returnFunc1()>()
     return nestedReturnFunc
 }
 `;
@@ -837,8 +837,8 @@ export const PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR = `callFuncReturne
   label0:
     this = this: @expression/CallExpressionTest.ts: %dflt
     %0 = staticinvoke <@expression/CallExpressionTest.ts: %dflt.returnFunc2()>()
-    %1 = ptrinvoke <@expression/CallExpressionTest.ts: %dflt.%0()>()
-    ptrinvoke <@expression/CallExpressionTest.ts: %dflt.%1()>()
+    %1 = ptrinvoke %0<@expression/CallExpressionTest.ts: %dflt.%AM1()>()
+    ptrinvoke %1<@expression/CallExpressionTest.ts: %dflt.%AM2()>()
     return
 }
 `;
@@ -847,7 +847,7 @@ export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall
   label0:
     resolve = parameter0: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)
     this = this: @expression/CallExpressionTest.ts: %dflt
-    ptrinvoke <@built-in/lib.es2015.promise.d.ts: PromiseConstructor.resolve(T|@built-in/lib.es5.d.ts: PromiseLike<T>)>(42)
+    ptrinvoke resolve<@built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)>(42)
     return
 }
 `;
@@ -1125,16 +1125,16 @@ export const INCREMENT_EXPECT_IR = `incrementExpression(): void {
     %0[0] = 10
     arr = %0
     arr[0] = arr[0] + 5
-    %1 = new @expression/IncrementExpressionTest.ts: %AC0$%dflt.incrementExpression
-    %1 = instanceinvoke %1.<@expression/IncrementExpressionTest.ts: %AC0$%dflt.incrementExpression.constructor()>()
+    %1 = new @expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression
+    %1 = instanceinvoke %1.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.constructor()>()
     obj = %1
-    %2 = obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt.incrementExpression.x>
-    obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt.incrementExpression.x> = %2 + 5
-    %3 = new @expression/IncrementExpressionTest.ts: %AC1$%dflt.incrementExpression
-    %3 = instanceinvoke %3.<@expression/IncrementExpressionTest.ts: %AC1$%dflt.incrementExpression.constructor()>()
+    %2 = obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.x>
+    obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.x> = %2 + 5
+    %3 = new @expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression
+    %3 = instanceinvoke %3.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.constructor()>()
     obj1 = %3
-    %4 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt.incrementExpression.x>
-    %5 = %4.<@expression/IncrementExpressionTest.ts: %AC2$%AC1$%dflt.incrementExpression.%instInit.y>
+    %4 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x>
+    %5 = %4.<@expression/IncrementExpressionTest.ts: %AC2$%AC1$%dflt-incrementExpression-%instInit.y>
     %6 = %5[0]
     %5[0] = %6 + 5
     return

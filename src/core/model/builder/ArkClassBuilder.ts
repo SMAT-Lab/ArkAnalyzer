@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,9 +20,21 @@ import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import ts, { ClassElement, EnumMember, ParameterDeclaration, TypeElement } from 'ohos-typescript';
 import { ArkClass, ClassCategory } from '../ArkClass';
-import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod, checkAndUpdateMethod } from './ArkMethodBuilder';
-import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type } from './builderUtils';
-import { buildGetAccessor2ArkField, buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
+import {
+    buildArkMethodFromArkClass,
+    buildDefaultArkMethodFromArkClass,
+    buildInitMethod,
+    checkAndUpdateMethod
+} from './ArkMethodBuilder';
+import {
+    buildDecorators,
+    buildGenericType,
+    buildHeritageClauses,
+    buildModifiers,
+    buildTypeParameters,
+    tsNode2Type
+} from './builderUtils';
+import { buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
 import { ArkInstanceFieldRef } from '../../base/Ref';
@@ -30,7 +42,7 @@ import {
     ANONYMOUS_CLASS_DELIMITER,
     ANONYMOUS_CLASS_PREFIX,
     DEFAULT_ARK_CLASS_NAME,
-    INSTANCE_INIT_METHOD_NAME,
+    INSTANCE_INIT_METHOD_NAME, NESTED_CLASS_METHOD_DELIMITER,
     STATIC_BLOCK_METHOD_NAME_PREFIX,
     STATIC_INIT_METHOD_NAME,
 } from '../../common/Const';
@@ -356,7 +368,7 @@ function genClassName(declaringName: string, cls: ArkClass, declaringMethod?: Ar
         const num = declaringArkNamespace ? declaringArkNamespace.getAnonymousClassNumber() : cls.getDeclaringArkFile().getAnonymousClassNumber();
         declaringName = ANONYMOUS_CLASS_PREFIX + num;
     }
-    const suffix = declaringMethod ? ANONYMOUS_CLASS_DELIMITER + declaringMethod.getDeclaringArkClass().getName() + '.' + declaringMethod.getName() : '';
+    const suffix = declaringMethod ? `${ANONYMOUS_CLASS_DELIMITER}${declaringMethod.getDeclaringArkClass().getName()}${NESTED_CLASS_METHOD_DELIMITER}${declaringMethod.getName()}` : '';
     return declaringName + suffix;
 }
 
@@ -449,9 +461,7 @@ function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, s
         ) {
             let mthd: ArkMethod = new ArkMethod();
             buildArkMethodFromArkClass(member, cls, mthd, sourceFile);
-            if (ts.isGetAccessor(member)) {
-                buildGetAccessor2ArkField(member, mthd, sourceFile);
-            } else if (ts.isConstructorDeclaration(member)) {
+            if (ts.isConstructorDeclaration(member)) {
                 buildParameterProperty2ArkField(member.parameters, cls, sourceFile);
             }
         }

@@ -37,6 +37,7 @@ import {
     CONDITIONAL_OPERATOR_EXPECT_CASE5,
     CONDITIONAL_OPERATOR_EXPECT_CASE6,
     CONDITIONAL_OPERATOR_EXPECT_CASE7,
+    CONDITIONAL_OPERATOR_EXPECT_CASE8,
 } from '../../../resources/cfg/conditionalOperator/ConditionalOperatorExpect';
 import {
     SWITCH_EXPECT_CASE1,
@@ -54,7 +55,20 @@ import {
     SWITCH_EXPECT_CASE8,
     SWITCH_EXPECT_CASE9,
 } from '../../../resources/cfg/switch/SwitchExpect';
-import { LOOP_EXPECT_CASE1, LOOP_EXPECT_CASE2 } from '../../../resources/cfg/loop/LoopExpect';
+import { LOOP_EXPECT_CASE1, LOOP_EXPECT_CASE2, LOOP_EXPECT_CASE3 } from '../../../resources/cfg/loop/LoopExpect';
+import {
+    INCREMENT_EXPECT_CASE1,
+    INCREMENT_EXPECT_CASE2,
+    INCREMENT_EXPECT_CASE3,
+    INCREMENT_EXPECT_CASE4,
+    INCREMENT_EXPECT_CASE5,
+    INCREMENT_EXPECT_CASE6,
+    INCREMENT_EXPECT_CASE7,
+    INCREMENT_EXPECT_CASE8,
+    INCREMENT_EXPECT_CASE9,
+    INCREMENT_EXPECT_CASE10,
+    INCREMENT_EXPECT_CASE11,
+} from '../../../resources/cfg/increment/IncrementExpect';
 import { testBlocks } from '../../common';
 import {
     MIX_OF_STATEMENTS_EXPECT_CASE1,
@@ -62,11 +76,12 @@ import {
     MIX_OF_STATEMENTS_EXPECT_CASE3,
     MIX_OF_STATEMENTS_EXPECT_CASE4,
 } from '../../../resources/cfg/mixOfStatements/MixOfStatementsExpect';
+import { TRY_CATCH_EXPECT_CASE1, TRY_CATCH_EXPECT_CASE2 } from '../../../resources/cfg/tryCatch/TryCatchExpect';
 import {
-    TRY_CATCH_EXPECT_CASE1,
-    TRY_CATCH_EXPECT_CASE2
-} from '../../../resources/cfg/tryCatch/TryCatchExpect';
-import { CLOSURE_EXPECT_CASE1, CLOSURE_EXPECT_CASE2, CLOSURE_EXPECT_CASE3 } from '../../../resources/cfg/closure/ClosureExpect';
+    CLOSURE_EXPECT_CASE1,
+    CLOSURE_EXPECT_CASE2,
+    CLOSURE_EXPECT_CASE3,
+} from '../../../resources/cfg/closure/ClosureExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -148,6 +163,7 @@ describe('CfgTest', () => {
         testBlocks(scene, fileName, 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, fileName, 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
         testBlocks(scene, fileName, 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, fileName, 'case8', CONDITIONAL_OPERATOR_EXPECT_CASE8.blocks);
 
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
         const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();
@@ -179,6 +195,7 @@ describe('CfgTest', () => {
         const scene = buildScene('loop');
         testBlocks(scene, 'LoopSample.ts', 'case1', LOOP_EXPECT_CASE1.blocks);
         testBlocks(scene, 'LoopSample.ts', 'case2', LOOP_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'LoopSample.ts', 'case3', LOOP_EXPECT_CASE3.blocks);
     },
     );
 
@@ -201,6 +218,21 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ClosureSample.ts', 'case1', CLOSURE_EXPECT_CASE3.blocks);
         testBlocks(scene, 'ClosureSample.ts', 'callClosure', CLOSURE_EXPECT_CASE1.blocks);
         testBlocks(scene, 'ClosureSample.ts', '%AM1$case1', CLOSURE_EXPECT_CASE2.blocks);
+    });
+
+    it('case8: increment statement', () => {
+        const scene = buildScene('increment');
+        testBlocks(scene, 'IncrementSample.ts', 'case1', INCREMENT_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case2', INCREMENT_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case3', INCREMENT_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case4', INCREMENT_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case5', INCREMENT_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case6', INCREMENT_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case7', INCREMENT_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case8', INCREMENT_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case9', INCREMENT_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case10', INCREMENT_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'IncrementSample.ts', 'case11', INCREMENT_EXPECT_CASE11.blocks);
     });
 });
 

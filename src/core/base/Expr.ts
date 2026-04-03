@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -335,7 +335,7 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
 
     public toString(): string {
         let strs: string[] = [];
-        strs.push('ptrinvoke <');
+        strs.push('ptrinvoke ');
         let ptrName: string = '';
         if (this.funPtr instanceof Local) {
             ptrName = this.funPtr.getName();
@@ -344,7 +344,9 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         } else if (this.funPtr instanceof ArkStaticFieldRef) {
             ptrName = this.funPtr.getFieldName();
         }
-        strs.push(this.getMethodSignature().toString(ptrName));
+        strs.push(ptrName);
+        strs.push('<');
+        strs.push(this.getMethodSignature().toString());
         strs.push('>');
         strs.push(super.argsToString());
         return strs.join('');
@@ -736,7 +738,7 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
     public setType(): void {
         let op1Type = this.parseType(this.op1.getType());
         let op2Type = this.parseType(this.op2.getType());
-        let type = UnknownType.getInstance();
+        let type: Type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
                 if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
@@ -1270,7 +1272,7 @@ export class AliasTypeExpr extends AbstractExpr {
             return `${typeOf}${typeObject.getSignature().toString()}<${this.getRealGenericTypes()!.join(',')}>`;
         }
         if (typeObject instanceof Type) {
-            return `${typeOf}${typeObject.getTypeString()}`;
+            return `${typeOf}${typeObject.toString()}`;
         }
         if (typeObject instanceof ImportInfo) {
             let res = `${typeOf}import('${typeObject.getFrom()}')`;

@@ -59,6 +59,19 @@ function checkAllMethodsStmtsCfg(arkClass: ArkClass): void {
     }
 }
 
+function checkAllMethodsLocalDef(arkClass: ArkClass): void {
+    for (const method of arkClass.getMethods(true)) {
+        const locals = method.getBody()?.getLocals().values();
+        if (locals === undefined) {
+            continue;
+        }
+        for (const local of locals) {
+            assert.isDefined(local.getDeclaringStmt());
+            assert.isNotNull(local.getDeclaringStmt());
+        }
+    }
+}
+
 describe('ArkClass Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
 
@@ -133,6 +146,7 @@ describe('ArkClass Test', () => {
         assert.isDefined(arkClass);
         assert.isNotNull(arkClass);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 });
 
@@ -150,6 +164,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         assert.isTrue(arkClass?.getMethodWithName('test')?.isPublic());
 
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('class with field and constructor', async () => {
@@ -161,6 +176,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         assert.equal(ir, ClassWithFieldAndConstructor);
         assert.isTrue(arkClass?.getFieldWithName('a')?.isPublic());
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('class with static field and constructor has params', async () => {
@@ -172,6 +188,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         assert.equal(ir, ClassWithFieldAndParamConstructor);
         assert.isTrue(arkClass?.getStaticFieldWithName('a')?.isPublic());
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('class with super constructor', async () => {
@@ -183,6 +200,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         assert.equal(ir, ClassWithSuperConstructor);
         assert.isTrue(arkClass?.getFieldWithName('c')?.isPublic());
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('class with param property', async () => {
@@ -193,6 +211,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ClassWithParamProperty);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 });
 
@@ -208,6 +227,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, InterfaceClass);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('enum class', async () => {
@@ -218,6 +238,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, EnumClass);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('enum class 2', async () => {
@@ -228,6 +249,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, EnumClass2);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('enum class 3', async () => {
@@ -238,6 +260,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, EnumClass3);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('enum class 4', async () => {
@@ -248,6 +271,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, EnumClass4);
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('type literal class', async () => {
@@ -264,6 +288,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, TypeLiteralClass);
         checkAllMethodsStmtsCfg(literalClass!);
+        checkAllMethodsLocalDef(literalClass!!);
 
         const subLiteralClassType = literalClass?.getFieldWithName('b')?.getType();
         assert.isDefined(subLiteralClassType);
@@ -276,6 +301,7 @@ describe('ArkClass with Other Category Test', () => {
         let subIr = subClassPrinter.dump();
         assert.equal(subIr, SubTypeLiteralClass);
         checkAllMethodsStmtsCfg(subLiteralClass!);
+        checkAllMethodsLocalDef(subLiteralClass!);
     });
 
     it('object class', async () => {
@@ -291,6 +317,7 @@ describe('ArkClass with Other Category Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ObjClass);
         checkAllMethodsStmtsCfg(objClass!);
+        checkAllMethodsLocalDef(objClass!);
 
         const subObjClassType = objClass?.getFieldWithName('b')?.getType();
         assert.isDefined(subObjClassType);
@@ -303,6 +330,7 @@ describe('ArkClass with Other Category Test', () => {
         let subIr = subClassPrinter.dump();
         assert.equal(subIr, SubObjClass);
         checkAllMethodsStmtsCfg(subObjClass!);
+        checkAllMethodsLocalDef(subObjClass!);
     });
 });
 
@@ -318,6 +346,7 @@ describe('ArkClass with Heritage Class Test', () => {
         assert.isDefined(extendedClass);
         assert.equal(extendedClass!.getSignature().toString(), '@class/ClassWithHeritage.ts: B');
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('extended class with constructor', async () => {
@@ -328,6 +357,7 @@ describe('ArkClass with Heritage Class Test', () => {
         assert.isDefined(extendedClass);
         assert.equal(extendedClass!.getSignature().toString(), '@class/ClassWithHeritage.ts: Q');
         checkAllMethodsStmtsCfg(arkClass!);
+        checkAllMethodsLocalDef(arkClass!);
     });
 
     it('parent class and child class both generated constructor', async () => {
@@ -442,7 +472,7 @@ describe('ArkClass with Heritage Class Test', () => {
 
         const thisLocal = method?.getBody()?.getLocals().get(THIS_NAME);
         assert.isDefined(thisLocal);
-        assert.equal(thisLocal!.getType().getTypeString(), '@class/ClassWithHeritage.ts: G');
+        assert.equal(thisLocal!.getType().toString(), '@class/ClassWithHeritage.ts: G');
         const thisLocalStmts = thisLocal!.getUsedStmts();
         assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');

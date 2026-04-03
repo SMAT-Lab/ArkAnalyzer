@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@ export const DEFAULT_NAME = 'dflt';
 export const DEFAULT_ARK_CLASS_NAME = NAME_PREFIX + DEFAULT_NAME;
 export const ANONYMOUS_CLASS_PREFIX = NAME_PREFIX + 'AC';
 export const ANONYMOUS_CLASS_DELIMITER = NAME_DELIMITER;
+export const NESTED_CLASS_METHOD_DELIMITER = '-';
 
 // ArkMethod const
 export const DEFAULT_ARK_METHOD_NAME = NAME_PREFIX + DEFAULT_NAME;
@@ -31,6 +32,8 @@ export const STATIC_INIT_METHOD_NAME = NAME_PREFIX + 'statInit';
 export const STATIC_BLOCK_METHOD_NAME_PREFIX = NAME_PREFIX + 'statBlock';
 export const ANONYMOUS_METHOD_PREFIX = NAME_PREFIX + 'AM';
 export const CALL_SIGNATURE_NAME = 'create';
+export const GETTER_PREFIX = 'Get-';
+export const SETTER_PREFIX = 'Set-';
 
 // ArkSignature const
 export const UNKNOWN_PROJECT_NAME = NAME_PREFIX + UNKNOWN_NAME;
@@ -54,5 +57,15 @@ export const POSTMESSAGEFUNCNAME = 'postMessage';
 export const POSTMESSAGEWITHSHAREDSENDABLEFUNCNAME = 'postMessageWithSharedSendable';
 export const ONMESSAGEFUNCNAME = 'onmessage';
 
-// ArkNamespace const
-export const ANONYMOUS_NAMESPACE_PREFIX = NAME_PREFIX + 'AN';
+// DummyMain const
+export const DUMMY_FILE = '@dummyFile';
+export const DUMMY_CLASS = '@dummyClass';
+export const DUMMY_METHOD = '@dummyMain';
+export const ABILITY_CREATE_METHOD = 'onCreate';
+export const ABILITY_STAGE_CREATE_METHOD = 'onWindowStageCreate';
+export const ABILITY_STAGE_WILL_DESTROY_METHOD = 'onWindowStageWillDestroy';
+export const ABILITY_STAGE_DESTROY_METHOD = 'onWindowStageDestroy';
+export const ABILITY_DESTROY_METHOD = 'onDestroy';
+export const COMPONENT_START_METHOD = 'aboutToAppear';
+export const COMPONENT_DISAPPEAR_METHOD = 'aboutToDisappear';
+export const COMPONENT_DETACHED_METHOD = 'onDetached';

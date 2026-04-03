@@ -17,6 +17,7 @@ import { SCBTransitionManager } from './test1';
 import { Events } from './test1';
 import { media } from '@kit.MediaKit';
 import { collections } from '@kit.ArkTS';
+import { Callback } from '@ohos.base';
 
 export class SCBSceneSessionManager {
   private property1:collections.Array<number> = new collections.Array();
@@ -64,4 +65,17 @@ function matchOverride(){
     media.createAVPlayer((error:BusinessError, player) =>{
         player.on(Events.STATE_CHANGE,(state: media.AVPlayerState) => console.error('AVPlayer STATE_CHANGE' + state));
     })
+}
+
+
+class TestCallback {
+    private myCallback: Callback<string> | undefined = undefined;
+
+    constructor(callback: Callback<string>) {
+        this.myCallback = callback;
+    }
+
+    foo(): void {
+        this.myCallback('abc');  // ArkInstanceInvokeExpr, method 为Test.myCallback, 无param，但是arg为'abc'，导致数据流构建失败
+    }
 }

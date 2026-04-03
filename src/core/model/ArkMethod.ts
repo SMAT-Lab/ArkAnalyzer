@@ -14,7 +14,7 @@
  */
 
 import { ArkParameterRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { FunctionType, GenericType, Type } from '../base/Type';
 import { Value } from '../base/Value';
 import { Cfg } from '../graph/Cfg';
@@ -528,7 +528,19 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getReturnStmt(): Stmt[] {
-        return this.getCfg()?.getStmts().filter(stmt => stmt instanceof ArkReturnStmt) ?? [];
+        return (
+            this.getCfg()
+                ?.getStmts()
+                .filter(stmt => stmt instanceof ArkReturnStmt) ?? []
+        );
+    }
+
+    public getReturnVoidStmt(): ArkReturnVoidStmt[] {
+        return (
+            this.getCfg()
+                ?.getStmts()
+                .filter(stmt => stmt instanceof ArkReturnVoidStmt) ?? []
+        );
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -654,7 +666,6 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             this.getSignature()
         );
     }
-
 
     public getOuterMethod(): ArkMethod | undefined {
         return this.outerMethod;

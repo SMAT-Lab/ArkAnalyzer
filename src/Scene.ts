@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -227,7 +227,7 @@ export class Scene {
         }
         sceneConfig.getSdksObj()?.forEach(sdk => {
             if (!sdk.moduleName) {
-                this.buildSdk(sdk.name, sdk.path);
+                this.buildSdk(sdk.name, path.normalize(sdk.path));
                 this.projectSdkMap.set(sdk.name, sdk);
             } else {
                 let moduleSdks = this.moduleSdkMap.get(sdk.moduleName);
@@ -253,6 +253,7 @@ export class Scene {
             this.buildStage = SceneBuildStage.SDK_INFERRED;
         }
         this.fileLanguages = sceneConfig.getFileLanguages();
+        SdkUtils.extendArkUI(this);
     }
 
     private parseBuildProfile(): void {
@@ -688,7 +689,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFile(file, path.normalize(sdkPath), arkFile, sdkName);
+                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
                 ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
                     cls.getDefaultArkMethod()?.buildBody();
                     cls.getDefaultArkMethod()?.freeBodyBuilder();

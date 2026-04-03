@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,7 +39,16 @@ import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import {
+    ANONYMOUS_METHOD_PREFIX,
+    CALL_SIGNATURE_NAME,
+    DEFAULT_ARK_CLASS_NAME,
+    DEFAULT_ARK_METHOD_NAME,
+    GETTER_PREFIX,
+    NAME_DELIMITER,
+    NAME_PREFIX,
+    SETTER_PREFIX
+} from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
@@ -81,7 +90,11 @@ export function buildArkMethodFromArkClass(
     declaringMethod?: ArkMethod
 ): void {
     mtd.setDeclaringArkClass(declaringClass);
-    declaringMethod !== undefined && mtd.setOuterMethod(declaringMethod);
+    if (declaringMethod !== undefined && !declaringMethod.isGenerated() && !declaringMethod.isDefaultArkMethod()) {
+        // If declaringMethod is %dflt, %instInit, %statInit, then the method should be taken as nested method of them.
+        // Otherwise, it will fail to handle global vars of this method or failed to do the free of bodyBuilder.
+        mtd.setOuterMethod(declaringMethod);
+    }
 
     ts.isFunctionDeclaration(methodNode) && mtd.setAsteriskToken(methodNode.asteriskToken !== undefined);
 
@@ -104,7 +117,7 @@ export function buildArkMethodFromArkClass(
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
     });
-    let returnType = UnknownType.getInstance();
+    let returnType: Type = UnknownType.getInstance();
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode.type, sourceFile, mtd), mtd);
     }
@@ -163,9 +176,9 @@ function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceF
     } else if (ts.isCallSignatureDeclaration(node)) {
         name = CALL_SIGNATURE_NAME;
     } else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Get-' + node.name.text;
+        name = GETTER_PREFIX + node.name.text;
     } else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Set-' + node.name.text;
+        name = SETTER_PREFIX + node.name.text;
     } else if (ts.isArrowFunction(node)) {
         name = buildAnonymousMethodName(node, declaringClass);
     }
@@ -332,22 +345,29 @@ export function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     );
 }
 
-function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
+function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): void {
+    if (visited.has(arkClass)) {
+        return;
+    }
+    visited.add(arkClass);
     let superClass: ArkClass | null = arkClass.getSuperClass();
     while (superClass !== null) {
+        if (visited.has(superClass)) {
+            break;
+        }
         if (superClass.getMethodWithName(CONSTRUCTOR_NAME) === null) {
-            buildDefaultConstructor(superClass);
+            buildDefaultConstructor(superClass, visited);
         }
         superClass = superClass.getSuperClass();
     }
 }
 
-export function buildDefaultConstructor(arkClass: ArkClass): boolean {
+export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): boolean {
     if (!needDefaultConstructorInClass(arkClass)) {
         return false;
     }
 
-    recursivelyCheckAndBuildSuperConstructor(arkClass);
+    recursivelyCheckAndBuildSuperConstructor(arkClass, visited);
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
@@ -356,6 +376,8 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     defaultConstructor.setLineCol(0);
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
+    const thisDefStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature())));
+    thisLocal.setDeclaringStmt(thisDefStmt);
     const locals: Set<Local> = new Set([thisLocal]);
     const basicBlock = new BasicBlock();
     basicBlock.setId(0);
@@ -372,11 +394,10 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
             locals.add(parameterLocal);
             parameterArgs.push(parameterLocal);
             basicBlock.addStmt(new ArkAssignStmt(parameterLocal, parameterRef));
-            index++;
         }
     }
 
-    basicBlock.addStmt(new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature()))));
+    basicBlock.addStmt(thisDefStmt);
 
     if (superConstructor) {
         const superInvokeExpr = new ArkInstanceInvokeExpr(thisLocal, superConstructor.getSignature(), parameterArgs);

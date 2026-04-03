@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -373,7 +373,9 @@ export function buildGenericType(type: Type, arkInstance: ArkMethod | ArkField |
 }
 
 export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile, method: ArkMethod): Type {
-    if (node) {
+    if (node.kind === ts.SyntaxKind.ThisType) {
+        return new ClassType(method.getDeclaringArkClass().getSignature(), method.getDeclaringArkClass().getGenericsTypes());
+    } else if (node) {
         return tsNode2Type(node, sourceFile, method);
     } else {
         return UnknownType.getInstance();

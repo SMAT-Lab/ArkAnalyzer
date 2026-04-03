@@ -73,11 +73,11 @@ export const LOOP_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @loop/LoopSample.ts: %dflt',
-                '%0 = new @loop/LoopSample.ts: %AC0$%dflt.case2',
-                '%0 = instanceinvoke %0.<@loop/LoopSample.ts: %AC0$%dflt.case2.constructor()>()',
-                '%1 = new @loop/LoopSample.ts: %AC1$%dflt.case2',
-                '%1 = instanceinvoke %1.<@loop/LoopSample.ts: %AC1$%dflt.case2.constructor()>()',
-                '%2 = newarray (@loop/LoopSample.ts: %AC0$%dflt.case2|@loop/LoopSample.ts: %AC1$%dflt.case2)[2]',
+                '%0 = new @loop/LoopSample.ts: %AC0$%dflt-case2',
+                '%0 = instanceinvoke %0.<@loop/LoopSample.ts: %AC0$%dflt-case2.constructor()>()',
+                '%1 = new @loop/LoopSample.ts: %AC1$%dflt-case2',
+                '%1 = instanceinvoke %1.<@loop/LoopSample.ts: %AC1$%dflt-case2.constructor()>()',
+                '%2 = newarray (@loop/LoopSample.ts: %AC0$%dflt-case2|@loop/LoopSample.ts: %AC1$%dflt-case2)[2]',
                 '%2[0] = %0',
                 '%2[1] = %1',
                 'arr = %2',
@@ -115,6 +115,63 @@ export const LOOP_EXPECT_CASE2 = {
             ],
             preds: [1],
             succes: [],
+        },
+    ],
+};
+
+export const LOOP_EXPECT_CASE3 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @loop/LoopSample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [
+            ],
+            succes: [
+                1,
+            ],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i > 1',
+            ],
+            preds: [
+                0,
+                1,
+            ],
+            succes: [
+                1,
+                2,
+            ],
+        },
+        {
+            id: 2,
+            stmts: [
+                'i = i + 1',
+                'if i > 100',
+            ],
+            preds: [
+                1,
+                2,
+            ],
+            succes: [
+                2,
+                3,
+            ],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return',
+            ],
+            preds: [
+                2,
+            ],
+            succes: [
+            ],
         },
     ],
 };

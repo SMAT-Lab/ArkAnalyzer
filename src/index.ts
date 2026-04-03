@@ -119,6 +119,9 @@ export * from './utils/pathTransfer';
 export * from './utils/AstTreeUtils';
 export { LOG_LEVEL, LOG_MODULE_TYPE } from './utils/logger';
 export { default as Logger } from './utils/logger';
+export { IntMap } from './utils/IntMap';
+export { IntWorkList } from './utils/IntWorkList';
+export { PackedSparseMap } from './utils/PackedSparseMap';
 
 //ohos-typescript
 import ts from 'ohos-typescript';

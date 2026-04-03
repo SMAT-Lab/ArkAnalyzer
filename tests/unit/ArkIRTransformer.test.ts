@@ -332,7 +332,7 @@ function assertParamsEqual(actualParams: MethodParameter[], expectedParams: any)
         assert.equal(actualParams.length, expectedParams.length);
         for (let i = 0; i < expectedParams.length; i++) {
             assert.equal(actualParams[i].getName(), expectedParams[i].name);
-            assert.equal(actualParams[i].getType().getTypeString(), expectedParams[i].type);
+            assert.equal(actualParams[i].getType().toString(), expectedParams[i].type);
         }
     }
 }
@@ -754,7 +754,7 @@ describe('closure in anonymous class Test', () => {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
 
     it('create anonymous class in anonymous function', async () => {
-        const method = arkFile?.getClassWithName('%AC1$ClosureInClass.%AM0$%statInit')?.getInstanceInitMethod();
+        const method = arkFile?.getClassWithName('%AC1$ClosureInClass-%AM0$%statInit')?.getInstanceInitMethod();
         assert.isDefined(method);
         const stmt = method?.getCfg()?.getStmts()[1];
         assert.isDefined(stmt);
@@ -762,7 +762,7 @@ describe('closure in anonymous class Test', () => {
     });
 
     it('create anonymous class in class method', async () => {
-        const method = arkFile?.getClassWithName('%AC0$ClosureInClass.goo')?.getInstanceInitMethod();
+        const method = arkFile?.getClassWithName('%AC0$ClosureInClass-goo')?.getInstanceInitMethod();
         assert.isDefined(method);
         const stmt = method?.getCfg()?.getStmts()[1];
         assert.isDefined(stmt);

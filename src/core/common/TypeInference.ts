@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -651,18 +651,20 @@ export class TypeInference {
                 typeMap.set(type.toString(), type);
             }
         }
+        let returnType;
         if (typeMap.size > 0) {
             const types: Type[] = Array.from(typeMap.values());
-            let returnType = types.length === 1 ? types[0] : new UnionType(types);
-            if (arkMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
-                if (promise instanceof ArkClass) {
-                    returnType = new ClassType(promise.getSignature(), [returnType]);
-                }
-            }
-            return returnType;
+            returnType = types.length === 1 ? types[0] : new UnionType(types);
+        } else {
+            returnType = VoidType.getInstance();
         }
-        return null;
+        if (arkMethod.containsModifier(ModifierType.ASYNC)) {
+            const promise = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
+            if (promise instanceof ArkClass) {
+                return new ClassType(promise.getSignature(), [returnType]);
+            }
+        }
+        return returnType;
     }
 
     public static inferGenericType(types: GenericType[] | undefined, arkClass: ArkClass): void {

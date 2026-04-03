@@ -55,18 +55,8 @@ export enum ModifierType {
     OUT = 1 << 12,
     OVERRIDE = 1 << 13,
     DECLARE = 1 << 14,
-    // The following are CXX specific modifiers.
-    AUTO = 1 << 20,
-    EXTERN = 1 << 21,
-    FRIEND = 1 << 22,
-    VIRTUAL = 1 << 23,
-    PURE_VIRTUAL = 1 << 24,
-    INLINE = 1 << 25,
-    MUTABLE = 1 << 26,
-    EXPLICIT = 1 << 27,
-    CONSTEXPR = 1 << 28,
-    VOLATILE = 1 << 29,
-    NOEXCEPT = 1 << 30,
+    TYPE = 1 << 15,
+    LAZY = 1 << 16,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -145,6 +135,8 @@ const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
     [ts.SyntaxKind.OutKeyword, ModifierType.OUT],
     [ts.SyntaxKind.OverrideKeyword, ModifierType.OVERRIDE],
     [ts.SyntaxKind.StaticKeyword, ModifierType.STATIC],
+    [ts.SyntaxKind.TypeKeyword, ModifierType.TYPE],
+    [ts.SyntaxKind.LazyKeyword, ModifierType.LAZY],
 ]);
 
 export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {

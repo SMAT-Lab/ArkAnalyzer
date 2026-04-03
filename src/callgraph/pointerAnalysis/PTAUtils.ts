@@ -24,6 +24,9 @@ export function IsCollectionClass(classSignature: ClassSignature): boolean {
 }
 
 export enum BuiltApiType {
+    SetConstructor,
+    MapConstructor,
+    ArrayConstructor,
     SetAdd,
     MapSet,
     MapGet,
@@ -53,7 +56,14 @@ export const MAP_FIELD_SIGNATURE = new FieldSignature(
     new UnclearReferenceType('')
 );
 
+/**
+ * register container built-in API patterns, these APIs will not be recognized as SDK APIs
+ */
 const BUILTIN_API_PATTERNS = new Map<string, BuiltApiType>([
+    // constructor
+    ['lib.es2015.collection.d.ts: SetConstructor.construct-signature()', BuiltApiType.SetConstructor],
+    ['lib.es2015.collection.d.ts: MapConstructor.construct-signature()', BuiltApiType.MapConstructor],
+    ['lib.es5.d.ts: ArrayConstructor.construct-signature()', BuiltApiType.ArrayConstructor],
     // set
     ['lib.es2015.collection.d.ts: Set.add(T)', BuiltApiType.SetAdd],
     ['lib.es2015.collection.d.ts: Set.forEach(', BuiltApiType.Foreach],

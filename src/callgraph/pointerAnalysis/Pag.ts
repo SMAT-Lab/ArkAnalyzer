@@ -31,6 +31,7 @@ import { ExportInfo } from '../../core/model/ArkExport';
 import { ARRAY_FIELD_SIGNATURE, BuiltApiType, getBuiltInApiType, IsCollectionClass, MAP_FIELD_SIGNATURE, SET_FIELD_SIGNATURE } from './PTAUtils';
 import { IPtsCollection } from './PtsDS';
 import { PointerAnalysisConfig } from './PointerAnalysisConfig';
+import { CONTAINER_ELEMENT_CID } from './context/Context';
 import { ContextID } from './context/Context';
 import { StorageType } from './plugins/StoragePlugin';
 
@@ -353,11 +354,24 @@ export class PagNode extends BaseNode {
         }
 
         if (this.getKind() === PagNodeKind.ThisRef) {
-            label = label + `\n${(this.value as ArkThisRef).toString()}`;
+            const thisRef = this.value as ArkThisRef;
+            label = label + `\n${thisRef.toString()}`;
+
+            const funcName = this.getFunctionNameFromThisRefNode();
+            if (funcName) {
+                label = label + `\n${funcName}()`;
+            }
         }
 
         if (this.getKind() === PagNodeKind.Function) {
-            label = label + ` thisPt:{${(this as unknown as PagFuncNode).getThisPt()}}`;
+            const funcNode = this as unknown as PagFuncNode;
+            label = label + ` thisPt:{${funcNode.getThisPt()}}`;
+
+            const methodSig = funcNode.getMethod();
+            if (methodSig) {
+                const funcName = methodSig.getMethodSubSignature().getMethodName();
+                label = label + `\nFunc: ${funcName}()`;
+            }
         }
 
         if (this.stmt) {
@@ -372,6 +386,34 @@ export class PagNode extends BaseNode {
         }
 
         return label;
+    }
+
+    public getFunctionNameFromThisRefNode(): string | undefined {
+        const outgoingEdges = this.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return undefined;
+        }
+
+        for (const edge of outgoingEdges) {
+            const dstNode = edge.getDstNode() as PagNode;
+            if (!dstNode) { continue; }
+
+            const value = dstNode.getValue();
+            if (!(value instanceof Local)) { continue; }
+
+            const local = value as Local;
+            if (local.getName() !== 'this') { continue; }
+
+            const declaringStmt = local.getDeclaringStmt();
+            if (!declaringStmt) { continue; }
+
+            const method = declaringStmt.getCfg()?.getDeclaringMethod();
+            if (!method) { continue; }
+
+            return method.getName();
+        }
+
+        return undefined;
     }
 }
 
@@ -696,9 +738,89 @@ export class Pag extends BaseExplicitGraph {
             baseNode.addFieldNode(src.getValue() as ArkInstanceFieldRef, fieldNode.getID());
             fieldNode.setBasePt(basePt);
             return fieldNode;
+        } else if (baseNode instanceof PagNewContainerExprNode) {
+            return this.handleContainerFieldAccess(baseNode, src, basePt);
         } else {
-            logger.error(`Error clone field node ${src.getValue()}`);
+            logger.error(`Error clone field node ${src.getValue()}, baseNode type: ${baseNode?.constructor.name}`);
             return undefined;
+        }
+    }
+
+    /**
+     * Handle field access on container types (Array, Set, Map)
+     * Distinguishes between element access and property access based on container type and field name
+     * @param baseNode The container node (PagNewContainerExprNode)
+     * @param src The abstract field node representing the access
+     * @param basePt The pointer ID of the base container
+     * @returns PagInstanceFieldNode for the access, or undefined if error
+     */
+    private handleContainerFieldAccess(
+        baseNode: PagNewContainerExprNode,
+        src: PagInstanceFieldNode,
+        basePt: NodeID
+    ): PagInstanceFieldNode | undefined {
+        // Container types (Array, Set, Map) have two kinds of access:
+        // 1. Element access (arr[0]) - should create element node via getOrClonePagContainerFieldNode
+        // 2. Property access (arr.length) - should create field node as regular object fields
+
+        const fieldRef = src.getValue() as ArkInstanceFieldRef;
+        const fieldName = fieldRef.getFieldSignature().getFieldName();
+        const base = fieldRef.getBase();
+
+        // Get container type from the node's value
+        // PagNewContainerExprNode can contain either ArkNewExpr or ArkNewArrayExpr
+        const containerValue = baseNode.getValue();
+        let containerClassSig = '';
+
+        if (containerValue instanceof ArkNewExpr) {
+            // Regular container object: new Map(), new Set()
+            containerClassSig = containerValue.getClassType().getClassSignature().toString();
+        } else if (containerValue instanceof ArkNewArrayExpr) {
+            // Array created via array literal: [1, 2, 3]
+            containerClassSig = 'lib.es5.d.ts: Array';
+        } else {
+            // Fallback: check base type
+            const baseType = base.getType();
+            containerClassSig = baseType.toString();
+        }
+
+        // Determine if this is element access or property access based on container type
+        let isElementAccess = false;
+        let containerType = '';
+
+        if (containerClassSig.includes('lib.es5.d.ts: Array') || containerClassSig.includes('ArrayType')) {
+            containerType = 'Array';
+            // Array: exclude known properties (length, push, pop, etc.)
+            // Everything else should be treated as element access
+            const arrayProperties = ['length', 'push', 'pop', 'shift', 'unshift', 'splice',
+                'slice', 'concat', 'join', 'reverse', 'sort', 'indexOf',
+                'lastIndexOf', 'forEach', 'map', 'filter', 'reduce',
+                'reduceRight', 'every', 'some', 'find', 'findIndex'];
+            isElementAccess = !arrayProperties.includes(fieldName);
+        } else if (containerClassSig.includes('lib.es2015.collection.d.ts: Map')) {
+            containerType = 'Map';
+            // Map: 'field' is the virtual field name for element access
+            isElementAccess = (fieldName === 'field');
+        } else if (containerClassSig.includes('lib.es2015.collection.d.ts: Set')) {
+            containerType = 'Set';
+            // Set: 'field' is the virtual field name for element access
+            isElementAccess = (fieldName === 'field');
+        }
+
+        if (isElementAccess && containerType) {
+            // This is element access (e.g., arr[i], map.get(key), set elements)
+            // IMPORTANT: In some cases, the type of arr.i may be unknow,
+            //            so this is actually ArrayRef rather than InstanceFieldRef
+            // Redirect to container element node handling
+            logger.debug(`[PTA]: Detected element access on ${containerType}: ${fieldRef}, redirecting to container element node`);
+            return this.getOrClonePagContainerFieldNode(basePt, base, containerType);
+        } else {
+            // This is property access (e.g., arr.length)
+            // Create field node without caching in baseNode.fieldNodes
+            logger.debug(`[PTA]: Detected property access on ${containerType || 'container'}: ${fieldName}, treating as regular field`);
+            let fieldNode = this.getOrClonePagNode(src, basePt);
+            fieldNode.setBasePt(basePt);
+            return fieldNode;
         }
     }
 
@@ -728,7 +850,12 @@ export class Pag extends BaseExplicitGraph {
                     return undefined;
             }
 
-            fieldNode = this.addPagNode(0, fieldRef);
+            // Use special container element context ID (CONTAINER_ELEMENT_CID = -2)
+            // This allows:
+            // 1. Same container object's elements to be shared across all contexts (via basePt)
+            // 2. Different container objects NOT to share elements (via different basePt)
+            // 3. Avoid global abstract containers (cid=0) from polluting concrete containers
+            fieldNode = this.addPagNode(CONTAINER_ELEMENT_CID, fieldRef);
 
             baseNode.addElementNode(fieldNode.getID());
             fieldNode.setBasePt(basePt);

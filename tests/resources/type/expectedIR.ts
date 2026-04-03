@@ -196,7 +196,7 @@ export const AliasTypeOfObjectA = {
         name: 'ObjectAType',
         signature: `@type/test.ts: ${DEFAULT_ARK_CLASS_NAME}.aliasTypeWithImport()#ObjectAType`,
         modifiers: 0,
-        originalType: '@type/exportExample.ts: %AC0$%dflt.%dflt'
+        originalType: '@type/exportExample.ts: %AC0$%dflt-%dflt'
     },
     stmt: {
         instanceof: ArkAliasTypeDefineStmt,
@@ -205,7 +205,7 @@ export const AliasTypeOfObjectA = {
                 instanceof: ImportInfo,
                 lazyExportInfo: {
                     arkExport: {
-                        signature: '@type/exportExample.ts: %AC0$%dflt.%dflt'
+                        signature: '@type/exportExample.ts: %AC0$%dflt-%dflt'
                     }
                 },
             },
@@ -249,14 +249,14 @@ export const AliasTypeOfSingleTypeQuery = {
         name: 'SingleTypeQuery',
         signature: `@type/test.ts: ${DEFAULT_ARK_CLASS_NAME}.aliasTypeWithTypeQuery()#SingleTypeQuery`,
         modifiers: 0,
-        originalType: '@type/exportExample.ts: %AC0$%dflt.%dflt'
+        originalType: '@type/exportExample.ts: %AC0$%dflt-%dflt'
     },
     stmt: {
         instanceof: ArkAliasTypeDefineStmt,
         typeAliasExpr: {
             originalObject: {
                 instanceof: Local,
-                typeString: '@type/exportExample.ts: %AC0$%dflt.%dflt',
+                typeString: '@type/exportExample.ts: %AC0$%dflt-%dflt',
                 declaringStmt: 'objectA = %0'
             },
             transferWithTypeOf: true,
@@ -282,7 +282,7 @@ export const AliasTypeOfMultiTypeQuery = {
         typeAliasExpr: {
             originalObject: {
                 instanceof: ArkField,
-                signature: '@type/exportExample.ts: %AC2$%AC1$%AC0$%dflt.%dflt.%instInit.%instInit.c'
+                signature: '@type/exportExample.ts: %AC2$%AC1$%AC0$%dflt-%dflt.%instInit.%instInit.c'
             },
             transferWithTypeOf: true,
             toString: 'typeof c'
@@ -1064,8 +1064,8 @@ class ClassA {
   %instInit(): void {
     label0:
       this = this: @type/objectType.ts: ClassA
-      %0 = new @type/objectType.ts: %AC0$ClassA.%instInit
-      %0 = instanceinvoke %0.<@type/objectType.ts: %AC0$ClassA.%instInit.constructor()>()
+      %0 = new @type/objectType.ts: %AC0$ClassA-%instInit
+      %0 = instanceinvoke %0.<@type/objectType.ts: %AC0$ClassA-%instInit.constructor()>()
       this.<@type/objectType.ts: ClassA.fieldA> = %0
       return
   }
@@ -1086,20 +1086,20 @@ class ClassA {
       return
   }
 }
-object %AC0$ClassA.%instInit {
+object %AC0$ClassA-%instInit {
   a: number
 
-  constructor(): @type/objectType.ts: %AC0$ClassA.%instInit {
+  constructor(): @type/objectType.ts: %AC0$ClassA-%instInit {
     label0:
-      this = this: @type/objectType.ts: %AC0$ClassA.%instInit
-      instanceinvoke this.<@type/objectType.ts: %AC0$ClassA.%instInit.%instInit()>()
+      this = this: @type/objectType.ts: %AC0$ClassA-%instInit
+      instanceinvoke this.<@type/objectType.ts: %AC0$ClassA-%instInit.%instInit()>()
       return this
   }
 
   %instInit(): void {
     label0:
-      this = this: @type/objectType.ts: %AC0$ClassA.%instInit
-      this.<@type/objectType.ts: %AC0$ClassA.%instInit.a> = 1
+      this = this: @type/objectType.ts: %AC0$ClassA-%instInit
+      this.<@type/objectType.ts: %AC0$ClassA-%instInit.a> = 1
       return
   }
 }

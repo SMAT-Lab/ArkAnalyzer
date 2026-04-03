@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -125,7 +125,7 @@ export const ArrowFunction_Expect_IR = {
         name: '%AM2',
         stmts1: [
             'this = this: @function/ArrowFunctionTest.ts: %dflt',
-            '%0 = ptrinvoke <@function/ArrowFunctionTest.ts: %dflt.func2()>()',
+            '%0 = ptrinvoke func2<@function/ArrowFunctionTest.ts: %dflt.%AM1()>()',
             'return %0',
         ],
         stmts: [
@@ -136,7 +136,7 @@ export const ArrowFunction_Expect_IR = {
                 ],
             },
             {
-                text: '%0 = ptrinvoke <@function/ArrowFunctionTest.ts: %dflt.func2()>()',
+                text: '%0 = ptrinvoke func2<@function/ArrowFunctionTest.ts: %dflt.%AM1()>()',
                 operandOriginalPositions: [
                     [21, 19, 21, 26], [21, 19, 21, 26], [-1, -1, -1, -1]
                 ],
@@ -153,8 +153,9 @@ export const ArrowFunction_Expect_IR = {
         stmts1: [
             'i = parameter0: number',
             'this = this: @function/ArrowFunctionTest.ts: %dflt',
+            '%0 =i',
             'i = i + 1',
-            'return i',
+            'return %0',
         ],
         stmts: [
             {
@@ -170,13 +171,16 @@ export const ArrowFunction_Expect_IR = {
                 ],
             },
             {
+                text: '%0 = i'
+            },
+            {
                 text: 'i = i + 1',
                 operandOriginalPositions: [
                     [22, 28, 22, 29], [22, 28, 22, 31], [22, 28, 22, 29], [-1, -1, -1, -1],
                 ],
             },
             {
-                text: 'return i',
+                text: 'return %0',
                 operandOriginalPositions: [
                     [22, 28, 22, 29],
                 ],
@@ -732,7 +736,7 @@ export const BasicOuterMethod3_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: BasicTest.basicNestedMethod3([output])>(%closures0)'
+                        text: 'ptrinvoke basicNestedMethod3<@function/ClosureParamsTest.ts: BasicTest.%AM1$basicOuterMethod3([output])>(%closures0)'
                     }
                 ]
             },
@@ -762,7 +766,7 @@ export const BasicOuterMethod3_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: BasicTest.basicNestedMethod3([output])>(%closures0)'
+                        text: 'ptrinvoke basicNestedMethod3<@function/ClosureParamsTest.ts: BasicTest.%AM1$basicOuterMethod3([output])>(%closures0)'
                     }
                 ]
             }
@@ -778,7 +782,7 @@ export const BasicOuterMethod3_Expect_IR = {
                 text: 'basicNestedMethod3 = %AM1$basicOuterMethod3',
             },
             {
-                text: 'ptrinvoke <@function/ClosureParamsTest.ts: BasicTest.basicNestedMethod3([output])>(%closures0)',
+                text: 'ptrinvoke basicNestedMethod3<@function/ClosureParamsTest.ts: BasicTest.%AM1$basicOuterMethod3([output])>(%closures0)',
             },
             {
                 text: 'return',
@@ -906,7 +910,7 @@ export const CallMethod4_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: %dflt.callMethod([base], number)>(3)'
+                        text: 'ptrinvoke callMethod<@function/ClosureParamsTest.ts: %dflt.%basicNestedMethod4$basicOuterMethod4([base], number)>(3)'
                     }
                 ]
             }
@@ -931,7 +935,7 @@ export const CallMethod4_Expect_IR = {
                 text: 'callMethod = staticinvoke <@function/ClosureParamsTest.ts: %dflt.basicOuterMethod4()>()',
             },
             {
-                text: 'ptrinvoke <@function/ClosureParamsTest.ts: %dflt.callMethod([base], number)>(3)',
+                text: 'ptrinvoke callMethod<@function/ClosureParamsTest.ts: %dflt.%basicNestedMethod4$basicOuterMethod4([base], number)>(3)',
             },
             {
                 text: 'return',
@@ -975,7 +979,7 @@ export const UnClosureFunction_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: `ptrinvoke <@function/ClosureParamsTest.ts: ${DEFAULT_ARK_CLASS_NAME}.innerFunction2([outerInput])>(${LEXICAL_ENV_NAME_PREFIX}1)`
+                        text: `ptrinvoke innerFunction2<@function/ClosureParamsTest.ts: ${DEFAULT_ARK_CLASS_NAME}.%AM1$outerFunction1([outerInput])>(${LEXICAL_ENV_NAME_PREFIX}1)`
                     }
                 ]
             },
@@ -993,7 +997,7 @@ export const UnClosureFunction_Expect_IR = {
                 type: `[outerInput]`,
                 usedStmts: [
                     {
-                        text: `ptrinvoke <@function/ClosureParamsTest.ts: ${DEFAULT_ARK_CLASS_NAME}.innerFunction2([outerInput])>(${LEXICAL_ENV_NAME_PREFIX}1)`
+                        text: `ptrinvoke innerFunction2<@function/ClosureParamsTest.ts: ${DEFAULT_ARK_CLASS_NAME}.%AM1$outerFunction1([outerInput])>(${LEXICAL_ENV_NAME_PREFIX}1)`
                     }
                 ]
             }
@@ -2291,7 +2295,7 @@ export const MultipleOuterMethod3_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.nestedMethod3([a])>(%closures0)'
+                        text: 'ptrinvoke nestedMethod3<@function/ClosureParamsTest.ts: MultipleNestedTest.%AM3$outerMethod3([a])>(%closures0)'
                     }
                 ]
             },
@@ -2313,7 +2317,7 @@ export const MultipleOuterMethod3_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.nestedMethod3([a])>(%closures0)'
+                        text: 'ptrinvoke nestedMethod3<@function/ClosureParamsTest.ts: MultipleNestedTest.%AM3$outerMethod3([a])>(%closures0)'
                     }
                 ]
             }
@@ -2330,7 +2334,7 @@ export const MultipleOuterMethod3_Expect_IR = {
                 text: 'nestedMethod3 = %AM3$outerMethod3',
             },
             {
-                text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.nestedMethod3([a])>(%closures0)',
+                text: 'ptrinvoke nestedMethod3<@function/ClosureParamsTest.ts: MultipleNestedTest.%AM3$outerMethod3([a])>(%closures0)',
             },
             {
                 text: 'return',
@@ -2401,7 +2405,7 @@ export const MultipleAnonymousMethod3_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: `ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.nestedInNestedMethod3([a, b])>(%closures1)`
+                        text: `ptrinvoke nestedInNestedMethod3<@function/ClosureParamsTest.ts: MultipleNestedTest.%AM4$%AM3$outerMethod3([a, b])>(%closures1)`
                     }
                 ]
             },
@@ -2413,7 +2417,7 @@ export const MultipleAnonymousMethod3_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.nestedInNestedMethod3([a, b])>(%closures1)'
+                        text: 'ptrinvoke nestedInNestedMethod3<@function/ClosureParamsTest.ts: MultipleNestedTest.%AM4$%AM3$outerMethod3([a, b])>(%closures1)'
                     }
                 ]
             }
@@ -2485,7 +2489,7 @@ export const MultipleAnonymousMethod4_Expect_IR = {
                 type: '@function/ClosureParamsTest.ts: MultipleNestedTest',
             },
         ],
-        globals:{
+        globals: {
             name: 'console',
             instanceof: GlobalRef,
             ref: null,
@@ -2696,7 +2700,7 @@ export const MultipleCallMethod4_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.callMethod([b], number)>(3)'
+                        text: 'ptrinvoke callMethod<@function/ClosureParamsTest.ts: MultipleNestedTest.%nestedMethod4$outerMethod4([b], number)>(3)'
                     }
                 ]
             }
@@ -2710,7 +2714,7 @@ export const MultipleCallMethod4_Expect_IR = {
                 text: 'callMethod = instanceinvoke this.<@function/ClosureParamsTest.ts: MultipleNestedTest.outerMethod4()>()'
             },
             {
-                text: 'ptrinvoke <@function/ClosureParamsTest.ts: MultipleNestedTest.callMethod([b], number)>(3)'
+                text: 'ptrinvoke callMethod<@function/ClosureParamsTest.ts: MultipleNestedTest.%nestedMethod4$outerMethod4([b], number)>(3)'
             },
             {
                 text: 'return',

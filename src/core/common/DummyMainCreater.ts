@@ -14,11 +14,11 @@
  */
 
 import { Scene } from '../../Scene';
-import { COMPONENT_LIFECYCLE_METHOD_NAME, getCallbackMethodFromStmt, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
+import { COMPONENT_LIFECYCLE_METHOD_NAME, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { ClassType, NumberType, Type } from '../base/Type';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -28,48 +28,88 @@ import { ArkFile, Language } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, FileSignature, MethodSignature } from '../model/ArkSignature';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { CONSTRUCTOR_NAME } from './TSConst';
+import { CONSTRUCTOR_NAME, THIS_NAME } from './TSConst';
 import { checkAndUpdateMethod } from '../model/builder/ArkMethodBuilder';
 import { ValueUtil } from './ValueUtil';
+import {
+    ABILITY_CREATE_METHOD,
+    ABILITY_DESTROY_METHOD,
+    ABILITY_STAGE_CREATE_METHOD,
+    ABILITY_STAGE_DESTROY_METHOD,
+    ABILITY_STAGE_WILL_DESTROY_METHOD,
+    COMPONENT_DETACHED_METHOD,
+    COMPONENT_DISAPPEAR_METHOD,
+    COMPONENT_START_METHOD,
+    DUMMY_CLASS,
+    DUMMY_FILE,
+    DUMMY_METHOD,
+} from './Const';
+import { ArkThisRef } from '../base/Ref';
+import { COMPONENT } from './EtsConst';
+import { CallGraph, CallGraphNode } from '../../callgraph/model/CallGraph';
+
+const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
+const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbility', 'UIAbility', 'BackupExtensionAbility'];
 
 /**
-收集所有的onCreate，onStart等函数，构造一个虚拟函数，具体为：
-%statInit()
+收集所有的 Ability 和 Component 类，构造一个虚拟函数进行类的实例生成、初始化、生命周期函数调用等操作，具体为：
+classA.%statInit()
+const %1 = new classA()
+%1.%instInit()
+%1.aboutToAppear()
+const %2 = new abilityA()
 ...
 count = 0
 while (true) {
     if (count === 1) {
-        temp1 = new ability
-        temp2 = new want
-        temp1.onCreate(temp2)
+        %1.onPageShow()
     }
     if (count === 2) {
-        onDestroy()
-    }
-    ...
-    if (count === *) {
-        callbackMethod1()
+        %2.onBackground()
     }
     ...
 }
+%1.aboutToDisappear()
+%1.onDetached()
+%2.onWindowStageDestroy()
+...
 return
-如果是instanceInvoke还要先实例化对象，如果是其他文件的类或者方法还要添加import信息
  */
-
 export class DummyMainCreater {
+    // entryMethods includes all UIAbility and Component lifecycle methods as well as all callback methods, but exclude the start and end methods
     private entryMethods: ArkMethod[] = [];
-    private classLocalMap: Map<ArkMethod, Local | null> = new Map();
+    private entryClasses: ArkClass[] = [];
+    private abilityCreateMethods: ArkMethod[] = [];
+    private abilityStageCreateMethods: ArkMethod[] = [];
+    private abilityStageWillDestroyMethods: ArkMethod[] = [];
+    private abilityStageDestroyMethods: ArkMethod[] = [];
+    private abilityDestroyMethods: ArkMethod[] = [];
+    private componentAppearMethods: ArkMethod[] = [];
+    private componentDisappearMethods: ArkMethod[] = [];
+    private componentDetachedMethods: ArkMethod[] = [];
+    // every declaring class of method in entryMethods have its instance local which is used to be the base of instance invoke expr
+    private classLocalMap: Map<ArkClass, Local> = new Map();
     private dummyMain: ArkMethod = new ArkMethod();
     private scene: Scene;
     private tempLocalIndex: number = 0;
+    private tempBlockIndex: number = 0;
+    private classScope?: ArkClass[];
+    private dummyMethodName?: string;
 
-    constructor(scene: Scene) {
+    /**
+     * Create dummy entry method and add it to the specified scene.
+     * @param scene
+     * @param dummyMethodName if not provided, using the default method name '@dummyMain'
+     * @param classScope if not provided, collect all Ability class and Component struct.
+     */
+    constructor(scene: Scene, dummyMethodName?: string, classScope?: ArkClass[]) {
         this.scene = scene;
+        this.dummyMethodName = dummyMethodName;
+        this.classScope = classScope;
         // Currently get entries from module.json5 can't visit all of abilities
-        // Todo: handle ablity/component jump, then get entries from module.json5
-        this.entryMethods = this.getMethodsFromAllAbilities();
-        this.entryMethods.push(...this.getEntryMethodsFromComponents());
-        this.entryMethods.push(...this.getCallbackMethods());
+        // Todo: handle ability/component jump, then get entries from module.json5
+        this.getMethodsFromAllAbilities();
+        this.getEntryMethodsFromComponents();
     }
 
     public setEntryMethods(methods: ArkMethod[]): void {
@@ -77,88 +117,78 @@ export class DummyMainCreater {
     }
 
     public createDummyMain(): void {
-        const dummyMainFile = new ArkFile(Language.JAVASCRIPT);
-        dummyMainFile.setScene(this.scene);
-        const dummyMainFileSignature = new FileSignature(this.scene.getProjectName(), '@dummyFile');
-        dummyMainFile.setFileSignature(dummyMainFileSignature);
-        this.scene.setFile(dummyMainFile);
-        const dummyMainClass = new ArkClass();
-        dummyMainClass.setDeclaringArkFile(dummyMainFile);
-        const dummyMainClassSignature = new ClassSignature(
-            '@dummyClass',
-            dummyMainClass.getDeclaringArkFile().getFileSignature(),
-            dummyMainClass.getDeclaringArkNamespace()?.getSignature() || null
-        );
-        dummyMainClass.setSignature(dummyMainClassSignature);
-        dummyMainFile.addArkClass(dummyMainClass);
+        // The first choice is to use the existing dummy class and add the new created dummy method into it.
+        // Then it can create more than one dummy methods with different names by using this creation api several times.
+        // step1: find out or create the dummy file
+        const dummyMainFileSignature = new FileSignature(this.scene.getProjectName(), DUMMY_FILE);
+        let dummyMainFile = this.scene.getFile(dummyMainFileSignature);
+        if (!dummyMainFile) {
+            dummyMainFile = new ArkFile(Language.ARKTS1_1);
+            dummyMainFile.setScene(this.scene);
+            dummyMainFile.setFileSignature(dummyMainFileSignature);
+            this.scene.setFile(dummyMainFile);
+        }
 
-        this.dummyMain = new ArkMethod();
+        // step2: find out or create dummy class
+        let dummyMainClass = dummyMainFile.getClassWithName(DUMMY_CLASS);
+        if (!dummyMainClass) {
+            dummyMainClass = new ArkClass();
+            dummyMainClass.setDeclaringArkFile(dummyMainFile);
+            const dummyMainClassSignature = new ClassSignature(DUMMY_CLASS, dummyMainFileSignature);
+            dummyMainClass.setSignature(dummyMainClassSignature);
+            dummyMainFile.addArkClass(dummyMainClass);
+        }
+
+        // step3: create dummy method
         this.dummyMain.setDeclaringArkClass(dummyMainClass);
-        const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName('@dummyMain');
+        const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(this.dummyMethodName ?? DUMMY_METHOD);
         const methodSignature = new MethodSignature(this.dummyMain.getDeclaringArkClass().getSignature(), methodSubSignature);
         this.dummyMain.setImplementationSignature(methodSignature);
         this.dummyMain.setLineCol(0);
+        this.dummyMain.setIsGeneratedFlag(true);
         checkAndUpdateMethod(this.dummyMain, dummyMainClass);
         dummyMainClass.addMethod(this.dummyMain);
+        this.scene.addToMethodsMap(this.dummyMain);
 
-        let defaultMethods: ArkMethod[] = [];
-        for (const method of this.entryMethods) {
-            if (method.getDeclaringArkClass().isDefaultArkClass() || method.isStatic()) {
-                defaultMethods.push(method);
+        // step4: create instance local for each class
+        for (const cls of this.entryClasses) {
+            if (cls.isDefaultArkClass()) {
                 continue;
             }
-            const declaringArkClass = method.getDeclaringArkClass();
-            let newLocal: Local | null = null;
-            for (const local of this.classLocalMap.values()) {
-                if ((local?.getType() as ClassType).getClassSignature() === declaringArkClass.getSignature()) {
-                    newLocal = local;
-                    break;
-                }
-            }
+
+            let newLocal = this.classLocalMap.get(cls);
             if (!newLocal) {
-                newLocal = new Local('%' + this.tempLocalIndex, new ClassType(declaringArkClass.getSignature()));
-                this.tempLocalIndex++;
+                newLocal = new Local('%' + this.tempLocalIndex++, new ClassType(cls.getSignature()));
+                this.classLocalMap.set(cls, newLocal);
             }
-            this.classLocalMap.set(method, newLocal);
         }
-        for (const defaultMethod of defaultMethods) {
-            this.classLocalMap.set(defaultMethod, null);
-        }
-        const localSet = new Set(Array.from(this.classLocalMap.values()).filter((value): value is Local => value !== null));
-        const dummyBody = new ArkBody(localSet, this.createDummyMainCfg());
-        this.dummyMain.setBody(dummyBody);
+
+        // step5: create dummy method body
+        const localSet = new Set(this.classLocalMap.values());
+        const dummyCfg = new Cfg();
+        this.dummyMain.setBody(new ArkBody(localSet, dummyCfg));
+        dummyCfg.setDeclaringMethod(this.dummyMain);
+        this.createDummyMainCfg();
         this.addCfg2Stmt();
-        this.scene.addToMethodsMap(this.dummyMain);
     }
 
-    private addStaticInit(dummyCfg: Cfg, firstBlock: BasicBlock): void {
-        let isStartingStmt = true;
+    private addStaticInit(firstBlock: BasicBlock): void {
         for (const method of this.scene.getStaticInitMethods()) {
             const staticInvokeExpr = new ArkStaticInvokeExpr(method.getSignature(), []);
             const invokeStmt = new ArkInvokeStmt(staticInvokeExpr);
-            if (isStartingStmt) {
-                dummyCfg.setStartingStmt(invokeStmt);
-                isStartingStmt = false;
-            }
             firstBlock.addStmt(invokeStmt);
         }
     }
 
     private addClassInit(firstBlock: BasicBlock): void {
-        const locals = Array.from(new Set(this.classLocalMap.values()));
-        for (const local of locals) {
-            if (!local) {
-                continue;
-            }
-            let clsType = local.getType() as ClassType;
-            let cls = this.scene.getClass(clsType.getClassSignature())!;
-            const assStmt = new ArkAssignStmt(local!, new ArkNewExpr(clsType));
+        for (const [cls, local] of this.classLocalMap) {
+            const assStmt = new ArkAssignStmt(local, new ArkNewExpr(cls.getSignature().getType()));
             firstBlock.addStmt(assStmt);
             local.setDeclaringStmt(assStmt);
             let consMtd = cls.getMethodWithName(CONSTRUCTOR_NAME);
             if (consMtd) {
                 let ivkExpr = new ArkInstanceInvokeExpr(local, consMtd.getSignature(), []);
-                let ivkStmt = new ArkInvokeStmt(ivkExpr);
+                let ivkStmt = new ArkAssignStmt(local, ivkExpr);
                 firstBlock.addStmt(ivkStmt);
             }
         }
@@ -197,17 +227,88 @@ export class DummyMainCreater {
             count++;
             const condition = new ArkConditionExpr(countLocal, new Constant(count.toString(), NumberType.getInstance()), RelationalBinaryOperator.Equality);
             const ifStmt = new ArkIfStmt(condition);
-            const ifBlock = new BasicBlock();
+            const ifBlock = new BasicBlock(this.tempBlockIndex++);
             ifBlock.addStmt(ifStmt);
             dummyCfg.addBlock(ifBlock);
+
             for (const block of lastBlocks) {
-                ifBlock.addPredecessorBlock(block);
-                block.addSuccessorBlock(ifBlock);
+                this.linkBlocks(block, ifBlock);
             }
-            const invokeBlock = new BasicBlock();
+
+            const invokeBlock = new BasicBlock(this.tempBlockIndex++);
+            this.addMethodsInvokeStmt(invokeBlock, [method]);
+            dummyCfg.addBlock(invokeBlock);
+            this.linkBlocks(ifBlock, invokeBlock);
+
+            lastBlocks = [ifBlock, invokeBlock];
+        }
+        for (const block of lastBlocks) {
+            this.linkBlocks(block, whileBlock);
+        }
+    }
+
+    private createDummyMainCfg(): void {
+        const dummyCfg = this.dummyMain.getCfg()!;
+
+        // step1: create the first block which includes:
+        // 1. all static invoke of static init methods
+        // 2. all class new expr
+        // 3. all instance invoke of instance init methods
+        // 4. all start lifecycle methods in sequence
+        const firstBlock = new BasicBlock(this.tempBlockIndex++);
+        const dummyClassType = new ClassType(this.dummyMain.getDeclaringArkClass().getSignature());
+        const startingStmt = new ArkAssignStmt(new Local(THIS_NAME, dummyClassType), new ArkThisRef(dummyClassType));
+        firstBlock.addStmt(startingStmt);
+        dummyCfg.setStartingStmt(startingStmt);
+
+        this.addStaticInit(firstBlock);
+
+        this.addClassInit(firstBlock);
+
+        this.addMethodsInvokeStmt(firstBlock, this.abilityCreateMethods);
+        this.addMethodsInvokeStmt(firstBlock, this.abilityStageCreateMethods);
+        this.addMethodsInvokeStmt(firstBlock, this.componentAppearMethods);
+
+        const countLocal = new Local('count', NumberType.getInstance());
+        this.dummyMain.getBody()!.addLocal(countLocal.getName(), countLocal);
+
+        const zero = ValueUtil.getOrCreateNumberConst(0);
+        const countAssignStmt = new ArkAssignStmt(countLocal, zero);
+        firstBlock.addStmt(countAssignStmt);
+        dummyCfg.addBlock(firstBlock);
+
+        // step2: create the while condition block
+        const whileBlock = new BasicBlock(this.tempBlockIndex++);
+        const conditionTrue = new ArkConditionExpr(
+            ValueUtil.getBooleanConstant(true),
+            ValueUtil.getBooleanConstant(false),
+            RelationalBinaryOperator.InEquality);
+        const whileStmt = new ArkIfStmt(conditionTrue);
+        whileBlock.addStmt(whileStmt);
+        dummyCfg.addBlock(whileBlock);
+        this.linkBlocks(firstBlock, whileBlock);
+
+        // step3: create the following cfgs
+        this.addBranches(whileBlock, countLocal, dummyCfg);
+
+        // step4: create the last return block
+        const returnBlock = new BasicBlock(this.tempBlockIndex++);
+        this.addMethodsInvokeStmt(returnBlock, this.componentDisappearMethods);
+        this.addMethodsInvokeStmt(returnBlock, this.abilityStageWillDestroyMethods);
+        this.addMethodsInvokeStmt(returnBlock, this.abilityStageDestroyMethods);
+        this.addMethodsInvokeStmt(returnBlock, this.componentDetachedMethods);
+        this.addMethodsInvokeStmt(returnBlock, this.abilityDestroyMethods);
+        const returnStmt = new ArkReturnVoidStmt();
+        returnBlock.addStmt(returnStmt);
+        dummyCfg.addBlock(returnBlock);
+        this.linkBlocks(whileBlock, returnBlock);
+    }
+
+    private addMethodsInvokeStmt(block: BasicBlock, methods: ArkMethod[]): void {
+        for (const method of methods) {
             const paramLocals: Local[] = [];
-            this.addParamInit(method, paramLocals, invokeBlock);
-            const local = this.classLocalMap.get(method);
+            this.addParamInit(method, paramLocals, block);
+            const local = this.classLocalMap.get(method.getDeclaringArkClass());
             let invokeExpr: AbstractInvokeExpr;
             if (local) {
                 invokeExpr = new ArkInstanceInvokeExpr(local, method.getSignature(), paramLocals);
@@ -215,46 +316,13 @@ export class DummyMainCreater {
                 invokeExpr = new ArkStaticInvokeExpr(method.getSignature(), paramLocals);
             }
             const invokeStmt = new ArkInvokeStmt(invokeExpr);
-            invokeBlock.addStmt(invokeStmt);
-            dummyCfg.addBlock(invokeBlock);
-            ifBlock.addSuccessorBlock(invokeBlock);
-            invokeBlock.addPredecessorBlock(ifBlock);
-            lastBlocks = [ifBlock, invokeBlock];
-        }
-        for (const block of lastBlocks) {
-            block.addSuccessorBlock(whileBlock);
-            whileBlock.addPredecessorBlock(block);
+            block.addStmt(invokeStmt);
         }
     }
 
-    private createDummyMainCfg(): Cfg {
-        const dummyCfg = new Cfg();
-        dummyCfg.setDeclaringMethod(this.dummyMain);
-        const firstBlock = new BasicBlock();
-        this.addStaticInit(dummyCfg, firstBlock);
-        this.addClassInit(firstBlock);
-        const countLocal = new Local('count', NumberType.getInstance());
-        const zero = ValueUtil.getOrCreateNumberConst(0);
-        const countAssignStmt = new ArkAssignStmt(countLocal, zero);
-        const truE = ValueUtil.getBooleanConstant(true);
-        const conditionTrue = new ArkConditionExpr(truE, zero, RelationalBinaryOperator.Equality);
-        const whileStmt = new ArkIfStmt(conditionTrue);
-        firstBlock.addStmt(countAssignStmt);
-        dummyCfg.addBlock(firstBlock);
-        dummyCfg.setStartingStmt(firstBlock.getHead()!);
-        const whileBlock = new BasicBlock();
-        whileBlock.addStmt(whileStmt);
-        dummyCfg.addBlock(whileBlock);
-        firstBlock.addSuccessorBlock(whileBlock);
-        whileBlock.addPredecessorBlock(firstBlock);
-        this.addBranches(whileBlock, countLocal, dummyCfg);
-        const returnStmt = new ArkReturnVoidStmt();
-        const returnBlock = new BasicBlock();
-        returnBlock.addStmt(returnStmt);
-        dummyCfg.addBlock(returnBlock);
-        whileBlock.addSuccessorBlock(returnBlock);
-        returnBlock.addPredecessorBlock(whileBlock);
-        return dummyCfg;
+    private linkBlocks(firstBlock: BasicBlock, nextBlock: BasicBlock): void {
+        firstBlock.addSuccessorBlock(nextBlock);
+        nextBlock.addPredecessorBlock(firstBlock);
     }
 
     private addCfg2Stmt(): void {
@@ -273,33 +341,52 @@ export class DummyMainCreater {
         return this.dummyMain;
     }
 
-    private getEntryMethodsFromComponents(): ArkMethod[] {
-        const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
-        let methods: ArkMethod[] = [];
+    private getEntryMethodsFromComponents(): void {
         this.scene
             .getClasses()
             .filter(cls => {
+                if (this.classScope && this.classScope.length > 0 && !this.classScope.includes(cls)) {
+                    return false;
+                }
                 if (COMPONENT_BASE_CLASSES.includes(cls.getSuperClassName())) {
                     return true;
                 }
-                if (cls.hasDecorator('Component')) {
-                    return true;
-                }
-                return false;
+                return cls.hasDecorator(COMPONENT);
             })
             .forEach(cls => {
-                methods.push(...cls.getMethods().filter(mtd => COMPONENT_LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
+                this.entryClasses.push(cls);
+                for (const mtd of cls.getMethods()) {
+                    const name = mtd.getName();
+                    if (name === COMPONENT_START_METHOD) {
+                        this.componentAppearMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === COMPONENT_DISAPPEAR_METHOD) {
+                        this.componentDisappearMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === COMPONENT_DETACHED_METHOD) {
+                        this.componentDetachedMethods.push(mtd);
+                        continue;
+                    }
+                    if (COMPONENT_LIFECYCLE_METHOD_NAME.includes(name)) {
+                        this.entryMethods.push(mtd);
+                    }
+                }
             });
-        return methods;
     }
 
     private classInheritsAbility(arkClass: ArkClass): boolean {
-        const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbility', 'UIAbility', 'BackupExtensionAbility'];
         if (ABILITY_BASE_CLASSES.includes(arkClass.getSuperClassName())) {
             return true;
         }
         let superClass = arkClass.getSuperClass();
+        let visitedClasses: Set<ArkClass> = new Set();
         while (superClass) {
+            if (visitedClasses.has(superClass)) {
+                break;
+            }
+            visitedClasses.add(superClass);
             if (ABILITY_BASE_CLASSES.includes(superClass.getSuperClassName())) {
                 return true;
             }
@@ -308,33 +395,166 @@ export class DummyMainCreater {
         return false;
     }
 
-    public getMethodsFromAllAbilities(): ArkMethod[] {
-        let methods: ArkMethod[] = [];
+    private getMethodsFromAllAbilities(): void {
         this.scene
             .getClasses()
-            .filter(cls => this.classInheritsAbility(cls))
+            .filter(cls => {
+                if (this.classScope && this.classScope.length > 0 && !this.classScope.includes(cls)) {
+                    return false;
+                }
+                return this.classInheritsAbility(cls);
+            })
             .forEach(cls => {
-                methods.push(...cls.getMethods().filter(mtd => LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
+                this.entryClasses.push(cls);
+                for (const mtd of cls.getMethods()) {
+                    const name = mtd.getName();
+                    if (name === ABILITY_CREATE_METHOD) {
+                        this.abilityCreateMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === ABILITY_STAGE_CREATE_METHOD) {
+                        this.abilityStageCreateMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === ABILITY_STAGE_WILL_DESTROY_METHOD) {
+                        this.abilityStageWillDestroyMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === ABILITY_STAGE_DESTROY_METHOD) {
+                        this.abilityStageDestroyMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === ABILITY_DESTROY_METHOD) {
+                        this.abilityDestroyMethods.push(mtd);
+                        continue;
+                    }
+                    if (LIFECYCLE_METHOD_NAME.includes(name)) {
+                        this.entryMethods.push(mtd);
+                    }
+                }
             });
-        return methods;
     }
 
-    public getCallbackMethods(): ArkMethod[] {
-        const callbackMethods: ArkMethod[] = [];
-        this.scene.getMethods().forEach(method => {
-            if (!method.getCfg()) {
-                return;
-            }
-            method
-                .getCfg()!
-                .getStmts()
-                .forEach(stmt => {
-                    const cbMethod = getCallbackMethodFromStmt(stmt, this.scene);
-                    if (cbMethod && !callbackMethods.includes(cbMethod)) {
-                        callbackMethods.push(cbMethod);
-                    }
+    /**
+     * Analysis the coverage of files, methods, stmts when starting from the dummy main method according to the given call graph.
+     * @param callGraph - the call graph create within ArkAnalyzer
+     * @param generated - whether to include the generated methods
+     */
+    public analysisCoverage(callGraph: CallGraph, generated: boolean = true): Coverage {
+        const analysis: CoverageAnalysis = new CoverageAnalysis(this.scene, this.dummyMain, callGraph, generated);
+        return analysis.calculateCoverage();
+    }
+}
+
+interface Coverage {
+    filesCoverage: number;
+    methodsCoverage: number;
+    stmtsCoverage: number;
+    totalFiles: number;
+    totalMethods: number;
+    totalStmts: number;
+    visitedFiles: number;
+    visitedMethods: number;
+    visitedStmts: number;
+}
+
+class CoverageAnalysis {
+    private visitedFiles: Set<ArkFile> = new Set();
+    private visitedMethods: Set<ArkMethod> = new Set();
+    private visitedStmts: Set<Stmt> = new Set();
+    private totalFiles: Set<ArkFile>;
+    private totalMethods: Set<ArkMethod>;
+    private totalStmts: Set<Stmt>;
+    private scene: Scene;
+    private entry: ArkMethod;
+    private callGraph: CallGraph;
+
+    constructor(scene: Scene, entry: ArkMethod, callGraph: CallGraph, generated: boolean = true) {
+        this.scene = scene;
+        this.callGraph = callGraph;
+        this.entry = entry;
+        this.totalFiles = new Set(scene.getFiles());
+        this.totalMethods = new Set();
+        this.totalFiles.forEach(file => {
+            file.getClasses().forEach(cls => {
+                cls.getMethods(generated).forEach(method => {
+                    this.totalMethods.add(method);
                 });
+            });
         });
-        return callbackMethods;
+        // if entry method is dummy main, then it is also generated, but still need to include it
+        this.totalMethods.add(entry);
+
+        this.totalStmts = new Set();
+        this.totalMethods.forEach(method => {
+            method.getCfg()?.getStmts().forEach(stmt => {
+                this.totalStmts.add(stmt);
+            });
+        });
+    }
+
+    public addVisitedFile(file: ArkFile): void {
+        this.visitedFiles.add(file);
+    }
+
+    public addVisitedMethod(method: ArkMethod): void {
+        this.visitedMethods.add(method);
+    }
+
+    public addVisitedStmt(stmt: Stmt): void {
+        this.visitedStmts.add(stmt);
+    }
+
+    public calculateCoverage(): Coverage {
+        this.goThroughMethod(this.entry);
+
+        return {
+            filesCoverage: this.visitedFiles.size / this.totalFiles.size,
+            methodsCoverage: this.visitedMethods.size / this.totalMethods.size,
+            stmtsCoverage: this.visitedStmts.size / this.totalStmts.size,
+            totalFiles: this.totalFiles.size,
+            totalMethods: this.totalMethods.size,
+            totalStmts: this.totalStmts.size,
+            visitedFiles: this.visitedFiles.size,
+            visitedMethods: this.visitedMethods.size,
+            visitedStmts: this.visitedStmts.size,
+        };
+    }
+
+    /**
+     * Scan all invoke stmts of the given method, and go through all callee methods of this given method recursively.
+     * @param method
+     * @private
+     */
+    private goThroughMethod(method: ArkMethod): void {
+        const file = method.getDeclaringArkFile();
+        if (!this.totalFiles.has(file) || !this.totalMethods.has(method) || this.visitedMethods.has(method)) {
+            return;
+        }
+        this.addVisitedMethod(method);
+        this.addVisitedFile(file);
+        const stmts = method.getCfg()?.getStmts();
+        if (!stmts) {
+            return;
+        }
+
+        stmts.forEach(stmt => {
+            this.addVisitedStmt(stmt);
+        });
+
+        const node = this.callGraph.getCallGraphNodeByMethod(method.getSignature());
+        const outgoingEdges = node.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return;
+        }
+
+        for (const outEdge of outgoingEdges) {
+            const calleeSig = (outEdge.getDstNode() as CallGraphNode).getMethod();
+            const callee = this.scene.getMethod(calleeSig);
+            if (!callee) {
+                continue;
+            }
+            this.goThroughMethod(callee);
+        }
     }
 }

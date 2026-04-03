@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import {
     ClassType,
     FileSignature,
     GlobalRef,
+    JsonPrinter,
     Local,
     Scene,
     SceneConfig,
@@ -46,6 +47,7 @@ import {
     ExportAllWithAsNameFromThisFile_Expect_IR,
 } from '../resources/exports/from/expectedIR';
 import { DefaultExportObjectLiteral_Expect_IR } from '../resources/exports/objectLiteral/expectedIR';
+import fs from 'fs';
 
 function buildScene(): Scene {
     let config: SceneConfig = new SceneConfig();
@@ -252,18 +254,18 @@ describe("export Test", () => {
             ?.getMethodWithName('testArrayMap')?.getCfg()?.getStmts()[5];
         assert.isDefined(stmt);
         const arrayType = stmt?.getInvokeExpr()?.getType();
-        assert.equal(arrayType?.getTypeString(), 'string[]');
+        assert.equal(arrayType?.toString(), 'string[]');
     });
 
     it('this case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Lottie_Report.ets');
-        const type = projectScene.getFile(fileId)?.getClassWithName('%AC4$MyComponent.build')
+        const type = projectScene.getFile(fileId)?.getClassWithName('%AC4$MyComponent-build')
             ?.getMethodWithName('%instInit')?.getBody()?.getUsedGlobals()?.get(THIS_NAME)?.getType();
-        assert.equal(type?.getTypeString(), '@exports/Lottie_Report.ets: MyComponent');
+        assert.equal(type?.toString(), '@exports/Lottie_Report.ets: MyComponent');
 
         const type2 = projectScene.getFile(fileId)?.getClassWithName('MyComponent')
             ?.getMethodWithName('%AM0$func1')?.getBody()?.getLocals().get(THIS_NAME)?.getType();
-        assert.equal(type2?.getTypeString(), '@exports/Lottie_Report.ets: MyComponent');
+        assert.equal(type2?.toString(), '@exports/Lottie_Report.ets: MyComponent');
     });
 
     it('setTimeout case', () => {
@@ -271,7 +273,7 @@ describe("export Test", () => {
         const stmts = projectScene.getFile(fileId)?.getClassWithName('Foo')?.getMethodWithName('func')?.getCfg()?.getStmts();
         const stmt = stmts?.[stmts?.length - 2];
         assert.isDefined(stmt);
-        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().getTypeString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo.%instInit.%instInit.%AM0$%instInit()');
+        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().toString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo-%instInit-%instInit.%AM0$%instInit()');
     });
 
     it('export local case', () => {
@@ -287,14 +289,14 @@ describe("export Test", () => {
             .getDefaultArkMethod()?.getBody()?.getLocals();
         assert.isNotEmpty(locals);
         if (locals) {
-            assert.equal(locals.get('a1')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<string>');
-            assert.equal(locals.get('a2')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Map<string,string>')
-            assert.equal(locals.get('a3')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<string[]>')
-            assert.equal(locals.get('a4')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<string>>>')
-            assert.equal(locals.get('%1')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<any>');
-            assert.equal(locals.get('%2')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Map<any,string>')
-            assert.equal(locals.get('%3')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<any[]>')
-            assert.equal(locals.get('%4')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<any>>>')
+            assert.equal(locals.get('a1')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<string>');
+            assert.equal(locals.get('a2')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Map<string,string>')
+            assert.equal(locals.get('a3')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<string[]>')
+            assert.equal(locals.get('a4')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<string>>>')
+            assert.equal(locals.get('%1')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<any>');
+            assert.equal(locals.get('%2')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Map<any,string>')
+            assert.equal(locals.get('%3')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<any[]>')
+            assert.equal(locals.get('%4')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<any>>>')
 
         }
     })
@@ -392,7 +394,7 @@ describe("export ObjectLiteral Test", () => {
         const exportInfo = file?.getExportInfoBy(DefaultExportObjectLiteral_Expect_IR.exportClauseName);
         compareExportInfo(exportInfo, DefaultExportObjectLiteral_Expect_IR);
 
-        const anonymousClass = file?.getClassWithName('%AC0$%dflt.%dflt');
+        const anonymousClass = file?.getClassWithName('%AC0$%dflt-%dflt');
         assert.isDefined(anonymousClass);
         assert.isNotNull(anonymousClass);
         assert.isTrue((anonymousClass as ArkClass).getFields().some(field => field.getName() === 'data'));
@@ -437,5 +439,31 @@ describe("export From Test", () => {
         assert.isTrue(some instanceof ArkMethod);
         const mathUtils = file?.getImportInfoBy('MathUtils')?.getExportInfo()?.getArkExport();
         assert.isTrue(mathUtils instanceof ArkClass);
+    });
+})
+
+describe("import & export modifier test", () => {
+    it('export', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'exportType.ts');
+        const file = projectScene.getFile(fileId);
+        if (file) {
+            const ir = JSON.parse(new JsonPrinter(file).dump());
+            let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/exports/exportTypeSample.json'), 'utf8'));
+            expect(ir.exportInfos).toEqual(expected.exportInfos);
+        } else {
+            assert.fail('file not found: ' + fileId.toString());
+        }
+    });
+    it('import', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'importModifier.ets');
+        const file = projectScene.getFile(fileId);
+        if (file) {
+            const result = new JsonPrinter(file).dump();
+            const ir = JSON.parse(result);
+            let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/exports/importModifierSample.json'), 'utf8'));
+            expect(ir.importInfos).toEqual(expected.importInfos);
+        } else {
+            assert.fail('file not found: ' + fileId.toString());
+        }
     });
 })

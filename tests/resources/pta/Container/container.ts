@@ -24,7 +24,7 @@ namespace Container {
     }
 
     class ArrayTest {
-        array: Element[][];
+        array: Element[][] = [];
         public test() {
             let ele = new Element();
             let ele2 = new Element();

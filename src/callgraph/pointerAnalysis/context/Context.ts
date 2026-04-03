@@ -18,6 +18,10 @@ import { CallSiteContextItem, ContextItemManager, FuncContextItem } from './Cont
 
 export type ContextID = number;
 export const DUMMY_CID = 0;
+// Special context ID for container element/field nodes
+// These nodes should be shared across all contexts for the same container object (identified by basePt)
+// but should NOT be shared between different container objects (even with same cid=0)
+export const CONTAINER_ELEMENT_CID = -2;
 
 /**
  * An abstract base class representing a context in pointer analysis.
