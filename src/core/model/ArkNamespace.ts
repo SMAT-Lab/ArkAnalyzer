@@ -49,6 +49,8 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     private anonymousClassNumber: number = 0;
 
+    private anonymousNamespaceNumber: number = 0;
+
     constructor() {
         super();
     }
@@ -269,6 +271,10 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousNamespaceNumber(): number {
+        return this.anonymousNamespaceNumber++;
     }
 
     getExportType(): ExportType {

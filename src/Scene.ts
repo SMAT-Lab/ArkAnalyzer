@@ -37,9 +37,12 @@ import {
     buildDefaultConstructor,
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
+import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
+import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
+import { IRInference as CxxIRInference } from './cpp_frontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
@@ -48,6 +51,7 @@ import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalys
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
+import { findCompileCommands } from './cpp_frontend/ast/astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -69,6 +73,9 @@ export class Scene {
     private projectName: string = '';
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
+    private ccjsonPath: string = '';
+    private cppAstPath: string = '';
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -192,6 +199,9 @@ export class Scene {
         this.projectName = sceneConfig.getTargetProjectName();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
         this.projectFiles = sceneConfig.getProjectFiles();
+        this.includeDirs = sceneConfig.getIncludeDirs();
+        this.ccjsonPath = sceneConfig.getCcjsonPath();
+        this.cppAstPath = sceneConfig.getCppAstPath();
 
         this.parseBuildProfile();
 
@@ -230,6 +240,10 @@ export class Scene {
         });
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
+                // CXXTodo: C++ does not handle SDK files.
+                if (file.getLanguage() === Language.CXX) {
+                    return;
+                }
                 InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
                 SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
             });
@@ -314,15 +328,30 @@ export class Scene {
         }
     }
 
+    /**
+     * Update or add default constructors for all classes in the scene.
+     *
+     * This function iterates through all files and classes in the scene,
+     * builds default constructors for each class, and processes existing constructors
+     * by replacing super constructor calls and adding initialization logic.
+     *
+     * @returns {void}
+     */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
+            // CXXTodo: Select the appropriate initialization function based on file type
+            const initInConstructorFn = file.getLanguage() === Language.CXX ? addCxxInitInConstructor : addInitInConstructor;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
-                const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
-                if (constructor !== null && !cls.isDefaultArkClass()) {
-                    replaceSuper2Constructor(constructor);
-                    addInitInConstructor(constructor);
+                // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
+                const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
+                if (cls.isDefaultArkClass()) {
+                    continue;
                 }
+                constructors.forEach(constructor => {
+                    replaceSuper2Constructor(constructor);
+                    initInConstructorFn(constructor);
+                });
             }
         }
     }
@@ -351,12 +380,28 @@ export class Scene {
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                method.freeBodyBuilder();
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
+                if (isCxxFile) {
+                    method.freeCxxBodyBuilder();
+                } else {
+                    method.freeBodyBuilder();
+                }
             }
         }
 
         ModelUtils.dispose();
         this.buildStage = SceneBuildStage.METHOD_DONE;
+    }
+
+    private findCCJsonPath(file: string, ccjsonPath: string): string {
+        const ext = path.extname(file).toLowerCase();
+        const isHeader = ext === '.h' || ext === '.hpp';
+        let currentCcjsonPath = '';
+        if (!isHeader) {
+            currentCcjsonPath = findCompileCommands(file);
+        }
+        return currentCcjsonPath === '' ? ccjsonPath : currentCcjsonPath;
     }
 
     private genArkFiles(): void {
@@ -365,7 +410,13 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
+                // CXXTodo: Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
+                if (arkFile.getLanguage() === Language.CXX) {
+                    this.ccjsonPath = this.findCCJsonPath(file, this.ccjsonPath);
+                    buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+                } else {
+                    buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
+                }
                 this.setFile(arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);
@@ -398,7 +449,12 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
+            // CXXTodo: Distinguish between C++ and TS/ArkTS.
+            if (arkFile.getLanguage() === Language.CXX) {
+                buildArkCxxFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
+            } else {
+                buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
+            }
             for (const [modulePath, moduleName] of this.modulePath2NameMap) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
                     this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);
@@ -1065,6 +1121,19 @@ export class Scene {
         return callGraph;
     }
 
+    /** Obtain the header file directories of the input C++ project dependencies. */
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
+    }
+
+    public getCppAstPath(): string {
+        return this.cppAstPath;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1096,9 +1165,12 @@ export class Scene {
      * Scheduled for removal: one month from deprecation date.
      */
     public inferTypesOld(): void {
+        // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
+        CxxIRInference.mapCxxDeclAndImpl(this);
         this.filesMap.forEach(file => {
             try {
-                IRInference.inferFile(file);
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }

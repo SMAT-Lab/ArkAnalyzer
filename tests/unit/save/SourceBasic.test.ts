@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { DEFAULT_ARK_METHOD_NAME, Scene, SceneConfig, SourceClassPrinter, SourceMethodPrinter } from '../../../src/index';
+import { DEFAULT_ARK_METHOD_NAME, Scene, SceneConfig, SourceClassPrinter, SourceMethodPrinter } from '../../../src';
 import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 

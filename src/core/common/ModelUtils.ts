@@ -64,6 +64,7 @@ import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
 import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
+import { CxxSceneUtils } from '../../utils/CxxSceneUtils';
 import { TypeInference } from './TypeInference';
 import { MethodParameter } from '../model/builder/ArkMethodBuilder';
 import { Value } from '../base/Value';
@@ -626,7 +627,7 @@ export class ModelUtils {
         return ModelUtils.matchType(paramType, argType, arg, scene);
     }
 
-    private static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
+    public static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
         if (paramType instanceof LiteralType) {
             const argStr = arg instanceof Constant ? arg.getValue() : argType.toString();
             return argStr.replace(/[\"|\']/g, '') ===
@@ -956,6 +957,10 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | undefined {
     //find file in module path Index.ts
     if (!file && FileUtils.isDirectory(modulePath.path)) {
         file = findFileInModule(fromInfo, modulePath, FileUtils.getIndexFileName(modulePath.path));
+        // process lazy import project.
+        if (from.endsWith('.so') && file) {
+            CxxSceneUtils.puncture(modulePath.path, file);
+        }
     }
     //find file in module path/src/main/ets/TsIndex.ts
     if (!file) {

@@ -238,8 +238,10 @@ export class IRInference {
 
         const baseType: Type = TypeInference.replaceAliasType(expr.getBase().getType());
         let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (methodName === CONSTRUCTOR_NAME &&
-            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME) {
+        if (
+            methodName === CONSTRUCTOR_NAME &&
+            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME
+        ) {
             return expr;
         }
         if (methodName.startsWith(NAME_PREFIX)) {

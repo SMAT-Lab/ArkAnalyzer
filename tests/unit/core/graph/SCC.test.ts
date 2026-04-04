@@ -13,13 +13,7 @@
  * limitations under the License.
  */
 
-import {
-    SCCDetection,
-    SceneConfig,
-    Scene,
-    CallGraph,
-    CallGraphBuilder
-} from '../../../../src/index';
+import { SCCDetection, SceneConfig, Scene, CallGraph, CallGraphBuilder } from '../../../../src';
 import { describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {
@@ -39,11 +33,7 @@ describe('SCCTest', () => {
     console.log(topo);
     it('case1: patching interface', () => {
         expect(topo.length).eq(4);
-        expect(
-            topo.reverse().toString()
-        ).eq('5,2,1,0');//b,e,g,%dflt
-        expect(
-            Array.from(scc.getMySCCNodes(2)).toString()
-        ).eq('2,3,4,7');//e,d,c,f
+        expect(topo.reverse().toString()).eq('5,2,1,0'); //b,e,g,%dflt
+        expect(Array.from(scc.getMySCCNodes(2)).toString()).eq('2,3,4,7'); //e,d,c,f
     });
 });

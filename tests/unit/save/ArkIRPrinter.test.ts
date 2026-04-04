@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Printer, Scene, SceneConfig } from '../../../src/index';
+import { Printer, Scene, SceneConfig } from '../../../src';
 import { describe, expect, it } from 'vitest';
 import path from 'path';
 import { ArkIRFilePrinter } from '../../../src/save/arkir/ArkIRFilePrinter';

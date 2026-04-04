@@ -4,7 +4,11 @@
     ".ts",
     ".js",
     ".d.ets",
-    ".d.ts"
+    ".d.ts",
+    ".cpp",
+    ".c",
+    ".h",
+    ".hpp"
   ],
   "enableLeadingComments": false,
   "enableBuiltIn": true,
@@ -14,7 +18,12 @@
     "build-tools",
     "hvigorfile.ts",
     "hvigorfile.js",
-    "hvigor-wrapper.js"
+    "hvigor-wrapper.js",
+    "build-tools",
+    "build",
+    ".cxx",
+    ".test",
+    ".preview"
   ],
   "sdkGlobalFolders": [
     "component",

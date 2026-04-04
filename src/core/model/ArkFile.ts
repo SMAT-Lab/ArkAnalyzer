@@ -57,7 +57,6 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
-
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
@@ -80,6 +79,8 @@ export class ArkFile {
     private ohPackageJson5Path: string[] = [];
 
     private anonymousClassNumber: number = 0;
+
+    private anonymousNamespaceNumber: number = 0;
 
     private ast: ts.SourceFile | null = null;
 
@@ -403,6 +404,10 @@ export class ArkFile {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousNamespaceNumber(): number {
+        return this.anonymousNamespaceNumber++;
     }
 
     public getAST(): ts.SourceFile | null {

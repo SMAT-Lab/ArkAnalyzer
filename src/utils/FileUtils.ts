@@ -97,6 +97,11 @@ export class FileUtils {
                 return Language.ARKTS1_1;
             case '.js':
                 return Language.JAVASCRIPT;
+            case '.c':
+            case '.cpp':
+            case '.h':
+            case '.hpp':
+                return Language.CXX;
             default:
                 return Language.UNKNOWN;
         }
@@ -140,4 +145,26 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
         return res;
     });
     return res;
+}
+
+/**
+ * Try to combine each source path in the array with the relative path, returning the first absolute path that exists.
+ * @param srcPathList Source path array (absolute or relative paths)
+ * @param relativePath The relative path to concatenate
+ * @returns The first concatenated absolute path that exists; otherwise returns an empty string
+ */
+export function getFileAbsPath(srcPathList: string[], relativePath: string): string {
+    if (!srcPathList || srcPathList.length === 0 || !relativePath) {
+        return '';
+    }
+
+    for (const srcPath of srcPathList) {
+        const srcDir = path.dirname(path.resolve(srcPath));
+        const absPath = path.resolve(srcDir, relativePath);
+        if (fs.existsSync(absPath)) {
+            return absPath;
+        }
+    }
+
+    return '';
 }

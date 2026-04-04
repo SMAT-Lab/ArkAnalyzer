@@ -14,10 +14,19 @@
  */
 
 import { defineConfig } from 'vitest/config';
+import { isAstJsonDumperAvailable } from './src/cpp_frontend/ast/const';
+
+const skipCoreCppTests = !isAstJsonDumperAvailable();
+if (skipCoreCppTests) {
+    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/core_cpp (build src/cpp_frontend/ast per README).');
+}
 
 export default defineConfig({
     test: {
         include: ['tests/unit/**/*.test.ts'],
+        exclude: skipCoreCppTests
+            ? ['**/node_modules/**', '**/dist/**', 'tests/unit/core_cpp/**']
+            : ['**/node_modules/**', '**/dist/**'],
         coverage: {
             include: ['src/**'],
         },
