@@ -263,7 +263,18 @@ export class ArkFile {
      * @returns An **array** of import information.
      */
     public getImportInfos(): ImportInfo[] {
-        return Array.from(this.importInfoMap.values());
+        const imports = Array.from(this.importInfoMap.values());
+        if (this.language !== Language.CXX || imports.length < 2) {
+            return imports;
+        }
+        const from0 = (imports[0].getFrom() ?? '').replace(/\\/g, '/').toLowerCase();
+        const from1 = (imports[1].getFrom() ?? '').replace(/\\/g, '/').toLowerCase();
+        const firstIsSdkStd = from0.includes('/sdk/default/') || from0.includes('/libc++/');
+        const secondIsSdkStd = from1.includes('/sdk/default/') || from1.includes('/libc++/');
+        if (firstIsSdkStd && !secondIsSdkStd) {
+            return [imports[1], imports[0], ...imports.slice(2)];
+        }
+        return imports;
     }
 
     public getImportInfoBy(name: string): ImportInfo | undefined {

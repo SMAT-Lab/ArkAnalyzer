@@ -336,6 +336,32 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     public toString(): string {
         let strs: string[] = [];
         strs.push('ptrinvoke ');
+        let sig = this.getMethodSignature();
+        const sigFileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName();
+        if (sigFileName === UNKNOWN_FILE_NAME) {
+            let ptrType = this.funPtr.getType();
+            if (ptrType instanceof PointerType) {
+                ptrType = ptrType.getBaseType();
+            }
+            if (ptrType instanceof FunctionType) {
+                const ptrSig = ptrType.getMethodSignature();
+                const ptrFileName = ptrSig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
+                const isCxxPtrSig = ptrFileName.endsWith('.cpp') || ptrFileName.endsWith('.cc') || ptrFileName.endsWith('.cxx') ||
+                    ptrFileName.endsWith('.h') || ptrFileName.endsWith('.hpp') || ptrFileName.endsWith('.hh');
+                if (isCxxPtrSig) {
+                    sig = ptrSig;
+                }
+            }
+        }
+        const fileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
+        const isCxxFile = fileName.endsWith('.cpp') || fileName.endsWith('.cc') || fileName.endsWith('.cxx') ||
+            fileName.endsWith('.h') || fileName.endsWith('.hpp') || fileName.endsWith('.hh');
+        const ptrDeclFileName = this.funPtr instanceof Local ?
+            this.funPtr.getDeclaringStmt()?.getCfg()?.getDeclaringMethod()?.getDeclaringArkFile().getName().toLowerCase() ?? '' :
+            '';
+        const isCxxPtrDecl = ptrDeclFileName.endsWith('.cpp') || ptrDeclFileName.endsWith('.cc') || ptrDeclFileName.endsWith('.cxx') ||
+            ptrDeclFileName.endsWith('.h') || ptrDeclFileName.endsWith('.hpp') || ptrDeclFileName.endsWith('.hh');
+        const isUnknownCxxLike = sigFileName === UNKNOWN_FILE_NAME && isCxxPtrDecl;
         let ptrName: string = '';
         if (this.funPtr instanceof Local) {
             ptrName = this.funPtr.getName();
@@ -344,9 +370,15 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         } else if (this.funPtr instanceof ArkStaticFieldRef) {
             ptrName = this.funPtr.getFieldName();
         }
-        strs.push(ptrName);
+        if (!isCxxFile && !isUnknownCxxLike) {
+            strs.push(ptrName);
+        }
         strs.push('<');
-        strs.push(this.getMethodSignature().toString());
+        if ((isCxxFile || isUnknownCxxLike) && ptrName) {
+            strs.push(sig.toString().replace(/\.([^.()]+)\(/, `.${ptrName}(`));
+        } else {
+            strs.push(sig.toString());
+        }
         strs.push('>');
         strs.push(super.argsToString());
         return strs.join('');
