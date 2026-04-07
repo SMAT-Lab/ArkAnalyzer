@@ -41,8 +41,40 @@ import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../resources_cpp/exp
 
 const BASE_DIR = 'tests/resources_cpp/exports';
 const is_system_win32 = process.platform === 'win32';
-const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
-const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+const devecoPaths = resolveDevecoPaths();
+const deveco_c = devecoPaths.devecoC;
+const deveco_include = devecoPaths.devecoInclude;
+
+function resolveDevecoPaths(): { devecoC: string; devecoInclude: string } {
+    const sdkHome = process.env.OHOS_SDK_HOME;
+    if (!sdkHome || sdkHome.length === 0) {
+        return {
+            devecoC: '',
+            devecoInclude: '',
+        };
+    }
+
+    const sdkRoot = path.join(sdkHome, 'sdk', 'default', 'openharmony');
+    const devecoC = path.join(sdkRoot, 'native', 'llvm', 'include', 'libcxx-ohos', 'include', 'c++', 'v1');
+    const devecoInclude = process.platform === 'darwin'
+        ? path.join(
+            process.env.OHOS_XCODE_HOME ?? '/Applications/Xcode.app',
+            'Contents',
+            'Developer',
+            'Platforms',
+            'MacOSX.platform',
+            'Developer',
+            'SDKs',
+            'MacOSX.sdk',
+            'usr',
+            'include'
+        )
+        : path.join(sdkRoot, 'native', 'llvm', 'lib', 'clang', '15.0.4', 'include');
+    return {
+        devecoC,
+        devecoInclude,
+    };
+}
 
 function buildScene(folderName: string, includeDirs: string[]): Scene {
     let config: SceneConfig = new SceneConfig();
