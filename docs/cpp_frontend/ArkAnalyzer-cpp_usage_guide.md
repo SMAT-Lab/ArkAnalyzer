@@ -191,16 +191,23 @@ libclang.so（可从llvm预编译版本的LLVM-19.1.7-Linux-X64/lib目录下获�
 
 ![img_14.png](img_14.png)
 
-4、设置c++头文件到环境变量，当没有编译数据库时作为头文件搜索路径
+4、设置C++头文件环境变量（当没有编译数据库时作为头文件搜索路径）
 
-* windows平台设置DevEco studio目录下的c++头文件
-  ![img_8.png](img_8.png)
+* windows/linux 平台：配置 `OHOS_SDK_HOME`，代码会自动组装头文件路径
+  * 示例：
+    * Windows：`OHOS_SDK_HOME=D:\Huawei\DevEco Studio`
+    * Linux：`OHOS_SDK_HOME=/huawei/command-line-tools`
+  * `DEVECO_C`: `{OHOS_SDK_HOME}/sdk/default/openharmony/native/llvm/include/libcxx-ohos/include/c++/v1`
+  * `DEVECO_INCLUDE`: `{OHOS_SDK_HOME}/sdk/default/openharmony/native/llvm/lib/clang/15.0.4/include`
+  * `DEVECO_SYSROOT_INCLUDE`: `{OHOS_SDK_HOME}/sdk/default/openharmony/native/sysroot/usr/include`
 
-* linux平台设置commomd-line-tools目录下的c++头文件
-![img_16.png](img_16.png)
-
-* mac平台设置DevEco studio和MacOSX.sdk目录下的c++头文件
-![img_19.png](img_19.png)
+* mac 平台：配置 `OHOS_SDK_HOME`，并可选配置 `OHOS_XCODE_HOME`（默认 `/Applications/Xcode.app`）
+  * 示例：
+    * `OHOS_SDK_HOME=/Applications/DevEco studio.app`
+    * `OHOS_XCODE_HOME=/Applications/Xcode.app`
+  * `DEVECO_C`: `{OHOS_SDK_HOME}/sdk/default/openharmony/native/llvm/include/libcxx-ohos/include/c++/v1`
+  * `DEVECO_INCLUDE`: `{OHOS_XCODE_HOME}/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include`
+  * `DEVECO_SYSROOT_INCLUDE`: `{OHOS_SDK_HOME}/sdk/default/openharmony/native/sysroot/usr/include`
 
 5、执行接口，SceneConfig作为参数传给buildSceneFromFiles方法生成Scene结构的ArkIR，路径：arkanalyzer\src\Scene.ts
 
