@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 {
-  "name": "@log4js",
+  "name": "model2",
   "version": "1.0.0",
   "description": "Please describe the basic information.",
-  "main": "src/main/ets/log4jsability/log4jsability.ets",
+  "main": "index.ets",
   "author": "",
   "license": "",
-  "dependencies": {
-
-  }
+  "dependencies": {}
 }
 

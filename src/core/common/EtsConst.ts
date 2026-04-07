@@ -1026,6 +1026,10 @@ export const COMPONENT_EXTEND_DECORATOR: Set<string> = new Set(['Extend', 'Style
 export const BUSINESS_ERROR = 'BusinessError';
 export const OHOS_BASE_FILE = 'api/@ohos.base.d.ts';
 
+export const OHPM: string = '.ohpm';
+export const OH_MODULES: string = 'oh_modules';
+export const MODULE_PREFIX = '@module:';
+
 export const DEFAULT_SDK_NUMS = 3;
 export const PATH_BE_OMITTED = '/src/main';
 export const SCOPE_PREFIX = '@';

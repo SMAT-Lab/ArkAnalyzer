@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
-import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
+import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
@@ -46,13 +46,14 @@ import { buildArkFileFromFile as buildArkCxxFileFromFile } from './frontend/cppF
 import { IRInference as CxxIRInference } from './frontend/cppFrontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
-import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
+import { BUILD_PROFILE_JSON5, OH_MODULES, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
 import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
 import { findCompileCommands } from './frontend/cppFrontend/ast/astUtils';
+import { ModuleUtils } from './utils/ModuleUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 const CXX_HEADER_EXTENSION_SET = getCxxHeaderFileExtensionSet();
@@ -225,7 +226,7 @@ export class Scene {
             logger.warn('This project has no tsconfig.json!');
         }
         this.buildOhPkgContentMap();
-        initModulePathMap(this.ohPkgContentMap);
+        ModuleUtils.generateModuleMap(this.ohPkgContentMap);
 
         // handle sdks
         if (this.options.enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
@@ -366,6 +367,13 @@ export class Scene {
         this.buildStage = SceneBuildStage.CLASS_DONE;
         const methods: ArkMethod[] = [];
         for (const file of this.getFiles()) {
+            if (!this.options.enableOhModulesBody && file.getName().includes(OH_MODULES)) {
+                const defaultArkMethod = file.getDefaultClass().getDefaultArkMethod();
+                if (defaultArkMethod) {
+                    methods.push(defaultArkMethod);
+                }
+                continue;
+            }
             for (const cls of file.getClasses()) {
                 for (const method of cls.getMethods(true)) {
                     methods.push(method);
@@ -373,6 +381,13 @@ export class Scene {
             }
         }
         for (const namespace of this.getNamespacesMap().values()) {
+            if (!this.options.enableOhModulesBody && namespace.getDeclaringArkFile().getName().includes(OH_MODULES)) {
+                const defaultArkMethod = namespace.getDefaultClass().getDefaultArkMethod();
+                if (defaultArkMethod) {
+                    methods.push(defaultArkMethod);
+                }
+                continue;
+            }
             for (const cls of namespace.getClasses()) {
                 for (const method of cls.getMethods(true)) {
                     methods.push(method);
@@ -1175,7 +1190,7 @@ export class Scene {
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
-        FileUtils.dispose();
+        ModuleUtils.dispose();
     }
 
     /**
