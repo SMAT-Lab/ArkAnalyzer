@@ -55,7 +55,7 @@ import { findCompileCommands } from './cpp_frontend/ast/astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
-enum SceneBuildStage {
+export enum SceneBuildStage {
     BUILD_INIT,
     SDK_INFERRED,
     CLASS_DONE,
@@ -126,6 +126,10 @@ export class Scene {
 
     public getOptions(): SceneOptions {
         return this.options;
+    }
+
+    public getBuildStage(): SceneBuildStage {
+        return this.buildStage;
     }
 
     public getOverRides(): Map<string, string> {
@@ -1156,6 +1160,7 @@ export class Scene {
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
+        FileUtils.dispose();
     }
 
     /**

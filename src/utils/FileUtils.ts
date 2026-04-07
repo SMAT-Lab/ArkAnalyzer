@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
-import { OH_PACKAGE_JSON5 } from '../core/common/EtsConst';
+import { OH_PACKAGE_JSON5, SCOPE_PREFIX } from '../core/common/EtsConst';
 import { Language } from '../core/model/ArkFile';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FileUtils');
@@ -27,6 +27,13 @@ export class FileUtils {
         ignores: ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'],
         include: /(?<!\.d)\.(ets|ts|json5)$/,
     };
+
+    private static readonly FILE_EXT = new Map<string, number>([['.ets', 0], ['.ts', 1], ['.d.ets', 2], ['.d.ts', 3], ['.js', 4]]);
+    private static REAL_PATH = new Map<string, string>();
+
+    public static dispose(): void {
+        this.REAL_PATH.clear();
+    }
 
     public static getIndexFileName(srcPath: string): string {
         for (const fileInDir of fs.readdirSync(srcPath, { withFileTypes: true })) {
@@ -51,11 +58,74 @@ export class FileUtils {
         return /^(\/|\\|[A-Z]:\\)/.test(path);
     }
 
+    /**
+     * Get the real file path for a given source path, resolving file extensions and checking existence.
+     * Results are cached for performance.
+     * @param srcPath - The source path to resolve.
+     * @returns The resolved real file path, or empty string if not found.
+     */
+    public static getFileRealPath(srcPath: string): string {
+        let result = this.REAL_PATH.get(srcPath);
+        if (result !== undefined) {
+            return result;
+        }
+        if (srcPath.endsWith(OH_PACKAGE_JSON5)) {
+            result = fs.realpathSync(srcPath);
+            this.REAL_PATH.set(srcPath, result);
+            return result;
+        }
+        try {
+            const stats = fs.statSync(srcPath, { throwIfNoEntry: false });
+            const dir = stats?.isDirectory() ? srcPath : path.dirname(srcPath);
+            const baseName = stats?.isDirectory() ? 'index' : path.basename(srcPath);
+            const files = fs.readdirSync(dir, { withFileTypes: true });
+            let bestOrder = Number.POSITIVE_INFINITY;
+            let bestName = '';
+            const length = baseName.length;
+            for (const file of files) {
+                const name = file.name;
+                const regex = new RegExp(`^${baseName}`, 'i');
+                if (!regex.test(name)) {
+                    continue;
+                }
+                const suffix = name.slice(length);
+                if (suffix.length === 0) {
+                    bestName = name;
+                    break;
+                }
+                const order = this.FILE_EXT.get(suffix);
+                if (order === undefined) {
+                    continue;
+                }
+                if (order < bestOrder) {
+                    bestOrder = order;
+                    bestName = name;
+                }
+                if (order <= 1) {
+                    break;
+                }
+            }
+            if (bestName) {
+                result = fs.realpathSync(path.join(dir, bestName));
+            }
+        } catch (e) {
+            logger.warn(srcPath + ' not found.');
+        }
+        result = result ?? '';
+        this.REAL_PATH.set(srcPath, result);
+        return result;
+    }
+
+    /**
+     * Generate a module map from oh-package.json5 content.
+     * @param ohPkgContentMap - A map of oh-package.json5 file paths to their parsed content.
+     * @returns A map of module names to their module paths.
+     */
     public static generateModuleMap(ohPkgContentMap: Map<string, { [k: string]: unknown }>): Map<string, ModulePath> {
         const moduleMap: Map<string, ModulePath> = new Map();
         ohPkgContentMap.forEach((content, filePath) => {
             const moduleName = content.name as string;
-            if (moduleName && moduleName.startsWith('@')) {
+            if (moduleName && moduleName.startsWith(SCOPE_PREFIX)) {
                 const modulePath = path.dirname(filePath);
                 moduleMap.set(moduleName, new ModulePath(modulePath, content.main ? path.resolve(modulePath, content.main as string) : ''));
             }

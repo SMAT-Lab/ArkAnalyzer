@@ -15,7 +15,7 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
+import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION, SCOPE_PREFIX } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -106,8 +106,10 @@ export class SdkUtils {
 
     public static buildSdkImportMap(file: ArkFile): void {
         const fileName = path.basename(file.getName());
-        if (fileName.startsWith('@')) {
+        if (fileName.startsWith(SCOPE_PREFIX)) {
             this.sdkImportMap.set(fileName.replace(/\.d\.e?ts$/, ''), file);
+        } else if (file.getName().startsWith('api')) {
+            this.sdkImportMap.set(file.getName().replace('api', '').replace(/\.d\.e?ts$/, ''), file);
         }
     }
 

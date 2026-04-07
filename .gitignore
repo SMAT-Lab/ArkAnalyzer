@@ -10,6 +10,7 @@ out/
 .idea
 tests/resources/output
 tests/resources/callgraph/projectTest/*
+tests/third_party/
 coverage
 doc/
 exportRollup.config.mjs
