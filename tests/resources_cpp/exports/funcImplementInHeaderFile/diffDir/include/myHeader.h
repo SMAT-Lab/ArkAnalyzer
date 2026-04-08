@@ -16,6 +16,7 @@
 #ifndef MY_HEADER_H
 #define MY_HEADER_H
 
+// Fixture note: this header belongs to the "diffDir" case where declaration and usage are in different folders.
 int FuncDoSomething(int i, int j)
 {
     if (i > 0) {

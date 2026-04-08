@@ -25,7 +25,7 @@ int main()
     cout << "result is : " << res << endl;
 
     Point p = {1.0, TWO};
-    Circle c(p, FIVE, Color::GREEN);
+    Circle c(p, FIVE, Color::Green);
     double area = c.CalculateArea();
     cout << "Area of circle is : " << area << endl;
     c.PrintInfo();

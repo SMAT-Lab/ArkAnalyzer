@@ -22,10 +22,10 @@
 extern const int K_VERSION;
 
 enum class Color {
-    RED,
-    GREEN,
-    BLUE,
-    YELLOW
+    Red,
+    Green,
+    Blue,
+    Yellow
 };
 
 struct Point {
@@ -43,7 +43,7 @@ private:
 
 public:
     // Constructor
-    Circle(const Point& c, double r, Color clr = Color::RED)
+    Circle(const Point& c, double r, Color clr = Color::Red)
         : center(c), radius(r), color(clr) {}
 
     // Getter methods
