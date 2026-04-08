@@ -19,7 +19,6 @@ import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
 import { FileUtils } from './utils/FileUtils';
-import { getCxxSourceFileExtensions } from './cpp_frontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
