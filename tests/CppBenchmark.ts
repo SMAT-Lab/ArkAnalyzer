@@ -16,7 +16,7 @@
 import { spawn } from 'node:child_process';
 import { access, copyFile, cp, mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { Scene, SceneConfig } from '../src';
+import { Scene, SceneConfig, getCxxSourceFileExtensions } from '../src';
 
 // Optional overrides. Keep empty to use defaults.
 const CUSTOM_NINJA_PATH = process.env.CPP_BENCHMARK_NINJA_PATH ?? '';
@@ -265,7 +265,7 @@ async function buildAndDeployDumperExe(): Promise<void> {
 
 function buildSceneForOpenCv(): void {
     const config = new SceneConfig();
-    config.setSupportFileExts(['.c', '.cc', '.cpp', '.cxx', '.h', '.hh', '.hpp']);
+    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
     config.setCcjsonPath(getOpenCvCompileCommandsPath(activeOpenCvDir));
     config.buildFromProjectDir(activeOpenCvDir);
 

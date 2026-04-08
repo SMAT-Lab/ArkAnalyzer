@@ -21,6 +21,7 @@ import {
     ArkNamespace,
     LEXICAL_ENV_NAME_PREFIX,
     LexicalEnvType,
+    getCxxSourceFileExtensions,
 } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
 import { assert, describe, expect, it, vi } from 'vitest';
@@ -634,7 +635,7 @@ function buildScene(folderName: string): Scene {
     vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
     vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
     let config: SceneConfig = new SceneConfig();
-    config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
+    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
     includeDirs.push(deveco_c);

@@ -5,9 +5,12 @@
     ".js",
     ".d.ets",
     ".d.ts",
-    ".cpp",
     ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
     ".h",
+    ".hh",
     ".hpp"
   ],
   "enableLeadingComments": false,

@@ -94,6 +94,14 @@ export * from './core/model/builder/ArkSignatureBuilder';
 export { SceneConfig } from './Config';
 export { Scene } from './Scene';
 
+// cpp_frontend
+export {
+    getCxxImplementationFileExtensionSet,
+    getCxxImplementationFileExtensions,
+    getCxxSourceFileExtensionSet,
+    getCxxSourceFileExtensions,
+} from './cpp_frontend/ast/const';
+
 // save
 export { Printer } from './save/Printer';
 export { PrinterBuilder } from './save/PrinterBuilder';

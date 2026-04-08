@@ -28,6 +28,7 @@
 #define ONE 1
 #define TWO 2
 #define THREE 3
+#define AST_MEMCPY(dst, src, len) std::memcpy((dst), (src), (len))
 
 
 namespace ast_dumper {
@@ -86,8 +87,8 @@ private:
             const size_t take = (size < (kPatLen - 1)) ? size : (kPatLen - 1);
             const size_t total = tailLen + take;
 
-            memcpy(buf, tail, tailLen);
-            memcpy(buf + tailLen, ptr, take);
+            AST_MEMCPY(buf, tail, tailLen);
+            AST_MEMCPY(buf + tailLen, ptr, take);
 
             if (!hasName && FindPatternFixed6(buf, total, kName)) {
                 hasName = true;
@@ -107,27 +108,27 @@ private:
 
         // update tail
         if (size >= kTailMax) {
-            memcpy(tail, ptr + (size - kTailMax), kTailMax);
+            AST_MEMCPY(tail, ptr + (size - kTailMax), kTailMax);
             tailLen = kTailMax;
         } else {
             char tmp[kTailMax + kTailMax];
             size_t tmpLen = 0;
 
             if (tailLen > 0) {
-                memcpy(tmp, tail, tailLen);
+                AST_MEMCPY(tmp, tail, tailLen);
                 tmpLen += tailLen;
             }
             if (size > 0) {
-                memcpy(tmp + tmpLen, ptr, size);
+                AST_MEMCPY(tmp + tmpLen, ptr, size);
                 tmpLen += size;
             }
 
             if (tmpLen > kTailMax) {
                 const size_t start = tmpLen - kTailMax;
-                memcpy(tail, tmp + start, kTailMax);
+                AST_MEMCPY(tail, tmp + start, kTailMax);
                 tailLen = kTailMax;
             } else {
-                memcpy(tail, tmp, tmpLen);
+                AST_MEMCPY(tail, tmp, tmpLen);
                 tailLen = tmpLen;
             }
         }

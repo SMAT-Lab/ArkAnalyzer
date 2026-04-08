@@ -14,12 +14,12 @@
  */
 
 import { assert, describe, expect, it } from 'vitest';
-import { Scene, SceneConfig, ClassType } from '../../../../src';
+import { Scene, SceneConfig, ClassType, getCxxSourceFileExtensions } from '../../../../src';
 import path from 'path';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
+    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
     config.buildFromProjectDir(folderName);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);

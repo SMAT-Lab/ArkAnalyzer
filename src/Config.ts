@@ -19,6 +19,7 @@ import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
 import { FileUtils } from './utils/FileUtils';
+import { getCxxSourceFileExtensions } from './cpp_frontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -72,7 +73,8 @@ export class SceneConfig {
     private options: SceneOptions;
 
     constructor(options?: SceneOptions) {
-        this.options = { supportFileExts: ['.ets', '.ts', '.cpp', '.c', '.h', '.hpp'] };
+        // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
+        this.options = { supportFileExts: ['.ets', '.ts', ...getCxxSourceFileExtensions()] };
         this.loadDefaultConfig(options);
     }
 

@@ -17,6 +17,44 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+/** C/C++ implementation file extensions (translation units). */
+const CXX_IMPLEMENTATION_EXTENSIONS: readonly string[] = ['.c', '.cc', '.cpp', '.cxx'];
+
+/** C/C++ header extensions. */
+const CXX_HEADER_EXTENSIONS: readonly string[] = ['.h', '.hh', '.hpp'];
+
+const CXX_IMPLEMENTATION_EXTENSION_SET: ReadonlySet<string> = new Set(CXX_IMPLEMENTATION_EXTENSIONS);
+const CXX_SOURCE_EXTENSION_SET: ReadonlySet<string> = new Set([
+    ...CXX_IMPLEMENTATION_EXTENSIONS,
+    ...CXX_HEADER_EXTENSIONS,
+]);
+
+/**
+ * Returns extensions for C/C++ implementation and header files used across the C++ frontend
+ * (scanning, SceneConfig defaults, language detection).
+ */
+export function getCxxSourceFileExtensions(): readonly string[] {
+    return [...CXX_IMPLEMENTATION_EXTENSIONS, ...CXX_HEADER_EXTENSIONS];
+}
+
+/** Returns a read-only set for fast C/C++ source/header extension checks. */
+export function getCxxSourceFileExtensionSet(): ReadonlySet<string> {
+    return CXX_SOURCE_EXTENSION_SET;
+}
+
+/**
+ * Returns extensions for C/C++ translation units only (no headers), e.g. for IR passes that
+ * walk implementation files.
+ */
+export function getCxxImplementationFileExtensions(): readonly string[] {
+    return [...CXX_IMPLEMENTATION_EXTENSIONS];
+}
+
+/** Returns a read-only set for fast C/C++ implementation-file checks. */
+export function getCxxImplementationFileExtensionSet(): ReadonlySet<string> {
+    return CXX_IMPLEMENTATION_EXTENSION_SET;
+}
+
 export function findProjectRoot(startDIr: string = __dirname): string {
     let dir = path.resolve(startDIr);
     while (true) {

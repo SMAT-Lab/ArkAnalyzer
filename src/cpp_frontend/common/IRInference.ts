@@ -15,6 +15,7 @@
 import fs from 'fs';
 import path, { normalize } from 'path';
 
+import { getCxxImplementationFileExtensions } from '../ast/const';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import {
     AliasType,
@@ -990,7 +991,7 @@ export class IRInference {
      */
     private static getCxxHeaderFileRefMap(files: ArkFile[], includeDirs: string[]): Map<string, ArkFile[]> {
         const headerFileRefMap = new Map<string, ArkFile[]>();
-        const cxxSuffixes = ['.cpp', '.c'];
+        const cxxSuffixes = getCxxImplementationFileExtensions();
         files.forEach(file => {
             const filePath = normalize(file.getFilePath());
             const extension = path.extname(filePath).toLowerCase();

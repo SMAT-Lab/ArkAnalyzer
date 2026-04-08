@@ -19,8 +19,11 @@ import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
 import { OH_PACKAGE_JSON5, SCOPE_PREFIX } from '../core/common/EtsConst';
 import { Language } from '../core/model/ArkFile';
+import { getCxxSourceFileExtensionSet } from '../cpp_frontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FileUtils');
+
+const CXX_EXTENSION_SET = getCxxSourceFileExtensionSet();
 
 export class FileUtils {
     public static readonly FILE_FILTER = {
@@ -167,12 +170,10 @@ export class FileUtils {
                 return Language.ARKTS1_1;
             case '.js':
                 return Language.JAVASCRIPT;
-            case '.c':
-            case '.cpp':
-            case '.h':
-            case '.hpp':
-                return Language.CXX;
             default:
+                if (CXX_EXTENSION_SET.has(extension)) {
+                    return Language.CXX;
+                }
                 return Language.UNKNOWN;
         }
     }
