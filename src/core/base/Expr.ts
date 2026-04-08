@@ -374,6 +374,9 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
             strs.push(ptrName);
         }
         strs.push('<');
+        // C++ function-pointer calls should render the dynamic callee variable/member name (ptrName),
+        // because the static method signature name is often generic or unknown at this point.
+        // TS/ArkTS keeps the declared signature name directly and does not need this pointer-name rewrite.
         if ((isCxxFile || isUnknownCxxLike) && ptrName) {
             strs.push(sig.toString().replace(/\.([^.()]+)\(/, `.${ptrName}(`));
         } else {
