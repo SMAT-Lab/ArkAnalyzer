@@ -116,7 +116,15 @@ export class SceneConfig {
      */
     public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
-        this.includeDirs = Array.from(new Set([...includeDirs]));
+        // Callers should prefer passing de-duplicated includeDirs to avoid redundant work in hot paths.
+        // Keep this defensive, order-preserving de-duplication as a fallback and reuse the target array.
+        // Intentionally avoid Set allocation here.
+        this.includeDirs.length = 0;
+        for (const includeDir of includeDirs) {
+            if (!this.includeDirs.includes(includeDir)) {
+                this.includeDirs.push(includeDir);
+            }
+        }
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }
@@ -231,11 +239,14 @@ export class SceneConfig {
         this.ccjsonPath = ccjsonPath;
     }
 
-    // If the project config does not actively configure ccjson,
-    // it will be null when executed for the first time.
-    // Before generating the syntax tree,
-    // an automated search will be attempted in the file directory in astUtils (applicable to DevEco projects that load compiled databases).
-    // But it won't be backfilled in config anymore, it will be used directly in the scene
+    /**
+     * Returns compile_commands.json path configured by the project.
+     *
+     * If ccjson is not configured, this value is empty initially. Before AST generation,
+     * astUtils may auto-discover a compile database near source files (for DevEco projects
+     * that load compilation databases). The discovered path is used directly by Scene and is
+     * not backfilled into this config field.
+     */
     public getCcjsonPath(): string {
         return this.ccjsonPath;
     }
