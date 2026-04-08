@@ -265,6 +265,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.heritageClasses.forEach((v, k) => {
             const heritage = v ?? this.getHeritageClass(k);
             if (heritage) {
+                // C++ feature: inheritance may carry extra metadata (e.g., virtual inheritance/access),
+                // so we may get `heritageClassWithInfo` and must extract `baseClass`.
                 if ('baseClass' in heritage && heritage.baseClass) {
                     result.push(heritage.baseClass);
                 } else if (heritage instanceof ArkClass) {
