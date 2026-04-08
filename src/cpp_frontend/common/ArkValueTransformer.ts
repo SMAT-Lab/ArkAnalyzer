@@ -994,7 +994,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param innerAsNodes An AST node array containing call information and parameters. The first element is the call node, and the rest are parameter nodes
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
-    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): [{}, CxxAstNode[]] {
+    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): [CxxAstNode | undefined, CxxAstNode[]] {
         const [callNode, ...argumentNodes] = innerAsNodes;
         return [callNode, argumentNodes];
     }
@@ -1498,7 +1498,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param streamExpr - AST node of stream expression
      *@ param currValueAndStmts - current value and statement collection object, used to store processing results
      */
-    private buildValueAndStmtsForStdStreamOrLambdaCall(streamNode: CxxAstNode, nonOverloadedArgs: [] | any,
+    private buildValueAndStmtsForStdStreamOrLambdaCall(streamNode: CxxAstNode, nonOverloadedArgs: CxxAstNode[],
                                            streamExpr: CxxAstNode, currValueAndStmts: ValueAndStmts): void {
         const stmts: Stmt[] = [];
         const argus = this.cxxParseArgumentsOfCallExpression(stmts, nonOverloadedArgs);
@@ -1819,16 +1819,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns a ValueAndStmts object that contains the call value, value location information, and related statements.
      */
     private cxxGenerateInvokeValueAndStmts(
-        functionNameNode: any,
+        functionNameNode: CxxAstNode | undefined,
         argus: {
             realGenericTypes: Type[] | undefined;
             args: Value[];
             argPositions: FullPosition[];
         },
         currStmts: Stmt[],
-        callExpression: any,
+        callExpression: CxxAstNode,
         returnType?: Type,
     ): ValueAndStmts {
+        functionNameNode = functionNameNode ?? callExpression;
         const stmts: Stmt[] = [...currStmts];
         let {
             value: callerValue,
@@ -1847,7 +1848,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(callerName);
             let cls = ModelUtils.getClass(this.declaringMethod, classSignature);
             const callExprs: string[] = [astKind.CallExpr, astKind.CXXOperatorCallExpr];
-            if (cls?.hasComponentDecorator() && callExprs.includes(callExpression)) {
+            if (cls?.hasComponentDecorator() && callExprs.includes(callExpression.kind)) {
                 return this.cxxGenerateCustomViewStmt(callerName, args, argPositions, callExpression, stmts);
             } else if (callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) {
                 // foreach/lazyforeach will be parsed as ts.callExpression
