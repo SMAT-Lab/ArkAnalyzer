@@ -4,14 +4,7 @@
     ".ts",
     ".js",
     ".d.ets",
-    ".d.ts",
-    ".c",
-    ".cc",
-    ".cpp",
-    ".cxx",
-    ".h",
-    ".hh",
-    ".hpp"
+    ".d.ts"
   ],
   "enableLeadingComments": false,
   "enableBuiltIn": true,

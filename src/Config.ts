@@ -74,7 +74,7 @@ export class SceneConfig {
 
     constructor(options?: SceneOptions) {
         // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
-        this.options = { supportFileExts: ['.ets', '.ts', ...getCxxSourceFileExtensions()] };
+        this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
     }
 
