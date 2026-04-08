@@ -65,9 +65,6 @@ import { ClassSignature } from '../model/ArkSignature';
 import { Builtin } from '../common/Builtin';
 import { Language } from '../model/ArkFile';
 import { IRInference as CxxIRInference } from '../../cpp_frontend/common/IRInference';
-import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
-import { CxxModelUtils } from '../../cpp_frontend/common/ModelUtils';
-import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -304,27 +301,6 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
     }
 }
 
-@Bind(InferLanguage.CXX)
-export class CxxFieldRefInference extends FieldRefInference {
-    public getValueName(): string {
-        return 'ArkCxxInstanceFieldRef';
-    }
-
-    public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
-        const baseType = CxxTypeInference.replaceAliasType(value.getBase().getType());
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-        const newFieldSignature = CxxIRInference.generateNewFieldSignature(value, arkMethod.getDeclaringArkClass(), baseType);
-        if (newFieldSignature) {
-            value.setFieldSignature(newFieldSignature);
-            if (newFieldSignature.isStatic()) {
-                return new ArkStaticFieldRef(newFieldSignature);
-            }
-        }
-        return undefined;
-    }
-}
-
-
 @Bind()
 export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvokeExpr> {
 
@@ -494,80 +470,6 @@ export class ArkPtrInvokeExprInference extends StaticInvokeExprInference {
     }
 }
 
-@Bind(InferLanguage.CXX)
-export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference {
-    public preInfer(value: ArkInstanceInvokeExpr, stmt?: Stmt): boolean {
-        const needBySignature =
-            value.getArgs().length !== value.getMethodSignature().getParamLength() ||
-            value.getMethodSignature().getMethodSubSignature().getParameterTypes().some(t => TypeInference.isUnclearType(t));
-        return needBySignature || super.preInfer(value, stmt);
-    }
-
-    public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-        let baseType = value.getBase().getType();
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            baseType = baseType.getBaseType();
-        }
-        const methodName = this.getMethodName(value, arkMethod);
-        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod) ??
-            CxxTypeInference.inferMethodFromImportNamespace(baseType, value, arkMethod, methodName);
-
-        if (!result && baseType instanceof AnnotationNamespaceType) {
-            const namespace = arkMethod.getDeclaringArkFile().getScene().getNamespace(baseType.getNamespaceSignature());
-            if (namespace) {
-                const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, namespace);
-                if (foundMethod instanceof ArkMethod) {
-                    const signature = foundMethod.matchMethodSignature(value.getArgs());
-                    CxxTypeInference.inferSignatureReturnType(signature, foundMethod);
-                    value.setMethodSignature(signature);
-                    return new ArkStaticInvokeExpr(signature, value.getArgs(), value.getRealGenericTypes());
-                }
-            }
-        }
-        return !result || result === value ? undefined : result;
-    }
-}
-
-@Bind(InferLanguage.CXX)
-export class CxxArkNewExprInference extends ValueInference<ArkNewExpr> {
-    public getValueName(): string {
-        return 'ArkNewExpr';
-    }
-
-    public preInfer(value: ArkNewExpr): boolean {
-        return IRInference.needInfer(value.getClassType().getClassSignature().getDeclaringFileSignature());
-    }
-
-    public infer(value: ArkNewExpr, stmt: Stmt): Value | undefined {
-        const className = value.getClassType().getClassSignature().getClassName();
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-        let type: Type | undefined | null = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
-        if (TypeInference.isUnclearType(type)) {
-            type = CxxTypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
-        }
-        if (type instanceof AliasType) {
-            const originType = TypeInference.replaceAliasType(type);
-            if (originType instanceof FunctionType) {
-                type = originType.getMethodSignature().getMethodSubSignature().getReturnType();
-            } else if (originType instanceof PointerType) {
-                const baseType = originType.getBaseType();
-                if (baseType instanceof FunctionType) {
-                    type = baseType.getMethodSignature().getMethodSubSignature().getReturnType();
-                } else {
-                    type = originType;
-                }
-            } else {
-                type = originType;
-            }
-        }
-        if (type && type instanceof ClassType) {
-            value.getClassType().setClassSignature(type.getClassSignature());
-            TypeInference.inferRealGenericTypes(value.getClassType().getRealGenericTypes(), arkMethod.getDeclaringArkClass());
-        }
-        return undefined;
-    }
-}
 
 
 @Bind()
@@ -715,6 +617,7 @@ export class ArkConditionExprInference extends ArkNormalBinOpExprInference {
         return findClassType;
     }
 }
+
 
 
 @Bind()

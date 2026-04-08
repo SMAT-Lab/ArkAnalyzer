@@ -13,121 +13,17 @@
  * limitations under the License.
  */
 
-import { ClassInference, FileInference, ImportInfoInference, MethodInference, StmtInference } from '../../core/inference/ModelInference';
-import { ArkFile } from '../../core/model/ArkFile';
-import { IRInference } from '../common/IRInference';
-import { ImportInfo } from '../../core/model/ArkImport';
-import { findExportInfo, getArkFile } from '../common/ModelUtils';
-import { ArkClass } from '../../core/model/ArkClass';
-import { TypeInference as CxxTypeInference } from '../common/TypeInference';
-import { ArkMethod } from '../../core/model/ArkMethod';
-import { MethodSignature } from '../../core/model/ArkSignature';
 import { InferenceBuilder } from '../../core/inference/InferenceBuilder';
-import { ExportInfo } from '../../core/model/ArkExport';
-import { ValueInference, InferLanguage } from '../../core/inference/ValueInference';
-import { Value } from '../../core/base/Value';
-import { ArkAliasTypeDefineStmt, Stmt } from '../../core/base/Stmt';
-
-class CxxFileInference extends FileInference {
-    private preprocessedProjectName: string = '';
-
-    /**
-     * Build Cxx Function
-     * @param file
-     */
-    public preInfer(file: ArkFile): void {
-        const scene = file.getScene();
-        if (this.preprocessedProjectName !== scene.getProjectName()) {
-            IRInference.mapCxxDeclAndImpl(scene);
-            this.preprocessedProjectName = scene.getProjectName();
-        }
-        file.getImportInfos().filter(i => i.getExportInfo() === undefined)
-            .forEach(info => this.importInfoInference.doInfer(info));
-    }
-
-    public postInfer(file: ArkFile): void {
-        super.postInfer(file);
-    }
-}
-
-class CxxImportInference extends ImportInfoInference {
-    /**
-     * get arkFile and assign to from file
-     * @param fromInfo
-     */
-    public preInfer(fromInfo: ImportInfo): void {
-        this.fromFile = getArkFile(fromInfo) || null;
-    }
-
-    /**
-     * do cxx inference
-     * @param fromInfo
-     */
-    public infer(fromInfo: ImportInfo): ExportInfo | null {
-        return findExportInfo(fromInfo, this.fromFile);
-    }
-}
-
-class CxxClassInference extends ClassInference {
-    /**
-     * infer generic types in class and heritage classes
-     * @param arkClass
-     */
-    public preInfer(arkClass: ArkClass): void {
-        super.preInfer(arkClass);
-        CxxTypeInference.inferGenericType(arkClass.getGenericsTypes(), arkClass);
-        arkClass.getFields()
-            .filter(p => CxxTypeInference.isUnclearType(p.getType()))
-            .forEach(f => {
-                const newType = CxxTypeInference.inferUnclearedType(f.getType(), arkClass);
-                if (newType) {
-                    f.getSignature().setType(newType);
-                }
-            });
-    }
-}
-
-class CxxMethodInference extends MethodInference {
-    /**
-     * infer method signatures
-     * @param arkMethod
-     */
-    public preInfer(arkMethod: ArkMethod): void {
-        CxxTypeInference.inferGenericType(arkMethod.getGenericTypes(), arkMethod.getDeclaringArkClass());
-        const signatures: MethodSignature[] = [];
-        arkMethod.getDeclareSignatures()?.forEach(m => signatures.push(m));
-        const impl = arkMethod.getImplementationSignature();
-        if (impl) {
-            signatures.push(impl);
-        }
-        signatures.forEach(s => {
-            s.getMethodSubSignature()
-                .getParameters()
-                .forEach(p => {
-                    CxxTypeInference.inferParameterType(p, arkMethod);
-                });
-            CxxTypeInference.inferSignatureReturnType(s, arkMethod);
-        });
-    }
-}
-
-export class CxxStmtInference extends StmtInference {
-
-    constructor(valueInferences: ValueInference<Value>[]) {
-        super(valueInferences);
-    }
-
-    public typeSpread(stmt: Stmt, method: ArkMethod): Set<Stmt> {
-        if (stmt instanceof ArkAliasTypeDefineStmt && CxxTypeInference.isUnclearType(stmt.getAliasType().getOriginalType())) {
-            const originalType = stmt.getAliasTypeExpr().getOriginalType();
-            if (originalType) {
-                stmt.getAliasType().setOriginalType(originalType);
-            }
-        }
-        return super.typeSpread(stmt, method);
-    }
-
-}
+import { ClassInference, FileInference, ImportInfoInference, MethodInference, StmtInference } from '../../core/inference/ModelInference';
+import { InferLanguage } from '../../core/inference/ValueInference';
+import { getCxxValueInferences } from './CxxValueInference';
+import {
+    CxxClassInference,
+    CxxFileInference,
+    CxxImportInference,
+    CxxMethodInference,
+    CxxStmtInference,
+} from './CxxModelInference';
 
 export class CxxInferenceBuilder extends InferenceBuilder {
 
@@ -149,7 +45,7 @@ export class CxxInferenceBuilder extends InferenceBuilder {
 
     public buildStmtInference(): StmtInference {
         const valueInferences = this.getValueInferences(InferLanguage.COMMON);
-        this.getValueInferences(InferLanguage.CXX).forEach(e => valueInferences.push(e));
+        getCxxValueInferences().forEach(e => valueInferences.push(e));
         return new CxxStmtInference(valueInferences);
     }
 }
