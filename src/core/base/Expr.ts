@@ -46,7 +46,20 @@ import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
 import { PointerType } from '../../cpp_frontend/base/Type';
+import { getCxxSourceFileExtensionSet } from '../../cpp_frontend/ast/const';
 import { ArkAssignStmt } from './Stmt';
+
+const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();
+
+function isCxxLikeFileName(fileName: string): boolean {
+    const normalized = fileName.toLowerCase();
+    for (const extension of CXX_SOURCE_EXTENSION_SET) {
+        if (normalized.endsWith(extension)) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * @category core/base/expr
@@ -194,14 +207,6 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
     private base: Local;
 
-    /**
-     *Constructor, used to create method call instances
-     *@ param base - local object, representing the basic object of method call
-     *@ param methodSignature - method signature, which defines the structure information of the method to be called
-     *@ param args - parameter array, containing the actual parameter value passed to the method
-     *@ param realGenericTypes - optional array of real generic types, used for type inference of generic methods
-     *@ param spreadFlags - optional expansion flag array, used to identify which parameters need to be expanded
-     */
     constructor(base: Local, methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.base = base;
@@ -293,14 +298,6 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     private funPtr: Local | AbstractFieldRef;
 
 
-    /**
-     *Constructor, used to create a method call instance
-     *@ param methodSignature method signature, which defines the parameter type and return value type of the method
-     *@ param ptr Pointer to a function, which can be a local function reference or an abstract field reference
-     *The actual parameter array passed in when the @ param args method is called
-     *@ param realGenericTypes Optional parameter, actual generic type array
-     *@ param spreadFlags Optional parameter, used to identify whether the parameter uses the Boolean array of expansion syntax
-     */
     constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.funPtr = ptr;
@@ -321,7 +318,7 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
      */
     public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
         this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
-        // CXXTodo: If it is a Cxx function pointer, it is necessary to obtain its baseType to get method signature.
+        // CXX: If it is a Cxx function pointer, it is necessary to obtain its baseType to get method signature.
         let typeWithoutPtr = this.funPtr.getType();
         if (typeWithoutPtr instanceof PointerType) {
             typeWithoutPtr = typeWithoutPtr.getBaseType();
@@ -346,21 +343,18 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
             if (ptrType instanceof FunctionType) {
                 const ptrSig = ptrType.getMethodSignature();
                 const ptrFileName = ptrSig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
-                const isCxxPtrSig = ptrFileName.endsWith('.cpp') || ptrFileName.endsWith('.cc') || ptrFileName.endsWith('.cxx') ||
-                    ptrFileName.endsWith('.h') || ptrFileName.endsWith('.hpp') || ptrFileName.endsWith('.hh');
+                const isCxxPtrSig = isCxxLikeFileName(ptrFileName);
                 if (isCxxPtrSig) {
                     sig = ptrSig;
                 }
             }
         }
         const fileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
-        const isCxxFile = fileName.endsWith('.cpp') || fileName.endsWith('.cc') || fileName.endsWith('.cxx') ||
-            fileName.endsWith('.h') || fileName.endsWith('.hpp') || fileName.endsWith('.hh');
+        const isCxxFile = isCxxLikeFileName(fileName);
         const ptrDeclFileName = this.funPtr instanceof Local ?
             this.funPtr.getDeclaringStmt()?.getCfg()?.getDeclaringMethod()?.getDeclaringArkFile().getName().toLowerCase() ?? '' :
             '';
-        const isCxxPtrDecl = ptrDeclFileName.endsWith('.cpp') || ptrDeclFileName.endsWith('.cc') || ptrDeclFileName.endsWith('.cxx') ||
-            ptrDeclFileName.endsWith('.h') || ptrDeclFileName.endsWith('.hpp') || ptrDeclFileName.endsWith('.hh');
+        const isCxxPtrDecl = isCxxLikeFileName(ptrDeclFileName);
         const isUnknownCxxLike = sigFileName === UNKNOWN_FILE_NAME && isCxxPtrDecl;
         let ptrName: string = '';
         if (this.funPtr instanceof Local) {
