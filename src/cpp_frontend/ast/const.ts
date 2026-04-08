@@ -24,6 +24,7 @@ const CXX_IMPLEMENTATION_EXTENSIONS: readonly string[] = ['.c', '.cc', '.cpp', '
 const CXX_HEADER_EXTENSIONS: readonly string[] = ['.h', '.hh', '.hpp'];
 
 const CXX_IMPLEMENTATION_EXTENSION_SET: ReadonlySet<string> = new Set(CXX_IMPLEMENTATION_EXTENSIONS);
+const CXX_HEADER_EXTENSION_SET: ReadonlySet<string> = new Set(CXX_HEADER_EXTENSIONS);
 const CXX_SOURCE_EXTENSION_SET: ReadonlySet<string> = new Set([
     ...CXX_IMPLEMENTATION_EXTENSIONS,
     ...CXX_HEADER_EXTENSIONS,
@@ -40,6 +41,11 @@ export function getCxxSourceFileExtensions(): readonly string[] {
 /** Returns a read-only set for fast C/C++ source/header extension checks. */
 export function getCxxSourceFileExtensionSet(): ReadonlySet<string> {
     return CXX_SOURCE_EXTENSION_SET;
+}
+
+/** Returns a read-only set for fast C/C++ header extension checks. */
+export function getCxxHeaderFileExtensionSet(): ReadonlySet<string> {
+    return CXX_HEADER_EXTENSION_SET;
 }
 
 /**

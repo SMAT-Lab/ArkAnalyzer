@@ -38,6 +38,7 @@ import {
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
+import { getCxxHeaderFileExtensionSet } from './cpp_frontend/ast/const';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
@@ -54,6 +55,7 @@ import { IRInference } from './core/common/IRInference';
 import { findCompileCommands } from './cpp_frontend/ast/astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
+const CXX_HEADER_EXTENSION_SET = getCxxHeaderFileExtensionSet();
 
 export enum SceneBuildStage {
     BUILD_INIT,
@@ -400,7 +402,7 @@ export class Scene {
 
     private findCCJsonPath(file: string, ccjsonPath: string): string {
         const ext = path.extname(file).toLowerCase();
-        const isHeader = ext === '.h' || ext === '.hpp';
+        const isHeader = CXX_HEADER_EXTENSION_SET.has(ext);
         let currentCcjsonPath = '';
         if (!isHeader) {
             currentCcjsonPath = findCompileCommands(file);
