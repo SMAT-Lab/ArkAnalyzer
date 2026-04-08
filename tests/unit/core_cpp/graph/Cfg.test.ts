@@ -634,8 +634,7 @@ const BASE_DIR = 'tests/resources_cpp/cfg';
 function buildScene(folderName: string): Scene {
     vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
     vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
-    let config: SceneConfig = new SceneConfig();
-    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
+    let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     let includeDirs: string[] = [];
     // header file configuration for DevEco
     includeDirs.push(deveco_c);

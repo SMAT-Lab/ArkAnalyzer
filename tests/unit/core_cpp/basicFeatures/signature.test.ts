@@ -18,8 +18,7 @@ import { Scene, SceneConfig, ClassType, getCxxSourceFileExtensions } from '../..
 import path from 'path';
 
 function buildScene(folderName: string): Scene {
-    let config: SceneConfig = new SceneConfig();
-    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
+    let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     config.buildFromProjectDir(folderName);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);

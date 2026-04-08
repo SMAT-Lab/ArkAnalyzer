@@ -264,8 +264,7 @@ async function buildAndDeployDumperExe(): Promise<void> {
 }
 
 function buildSceneForOpenCv(): void {
-    const config = new SceneConfig();
-    config.setSupportFileExts([...getCxxSourceFileExtensions()]);
+    const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     config.setCcjsonPath(getOpenCvCompileCommandsPath(activeOpenCvDir));
     config.buildFromProjectDir(activeOpenCvDir);
 

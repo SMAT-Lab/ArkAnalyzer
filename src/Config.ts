@@ -83,14 +83,6 @@ export class SceneConfig {
     }
 
     /**
-     * Set the support file Extensions.
-     * @param supportFileExts - the support file Extensions.
-     */
-    public setSupportFileExts(supportFileExts: string[]): void {
-        this.options.supportFileExts = supportFileExts;
-    }
-
-    /**
      * Set the scene's config,
      * such as  the target project's name, the used sdks and the full path.
      * @param targetProjectName - the target project's name.
