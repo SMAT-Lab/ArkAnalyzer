@@ -1547,7 +1547,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param layer - Boolean value, which controls whether to process the final output layer. The default value is true
      *@ returns a list of converted values and statements, which may include special operator processing results or array reference expressions
      */
-    private cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode, layer: boolean = true): any {
+    private cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts | null;
+    private cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode, layer: true): ValueAndStmts | null;
+    private cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode, layer: false): ValueAndStmts[];
+    private cxxOperatorExpressionToValueAndStmts(
+        callExpression: CxxAstNode,
+        layer: boolean = true
+    ): ValueAndStmts | ValueAndStmts[] | null {
         // First handle overloaded operators or other special cases
         const specialResult = this.handleSpecialOperators(callExpression);
         if (specialResult) {
@@ -1899,9 +1905,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private buildValueAndStmtsForMemberCall(
         stmts: Stmt[],
-        callerNode: any,
-        argNodes: any[],
-        callExpression: any,
+        callerNode: CxxAstNode,
+        argNodes: CxxAstNode[],
+        callExpression: CxxAstNode,
         realGenericTypes: Type[] | undefined,
         cxxMemberCallExprType?: Type,
     ): ValueAndStmts {

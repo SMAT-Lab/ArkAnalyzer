@@ -102,7 +102,7 @@ class ConditionStatementBuilder extends StatementBuilder {
     condition: string;
     doStatement: StatementBuilder | null = null;
 
-    constructor(type: string, code: string, astNode: any, scopeID: number) {
+    constructor(type: string, code: string, astNode: CxxAstNode, scopeID: number) {
         super(type, code, astNode, scopeID);
         this.nextT = null;
         this.nextF = null;
@@ -117,7 +117,7 @@ export class SwitchStatementBuilder extends StatementBuilder {
     default: StatementBuilder | null = null;
     afterSwitch: StatementBuilder | null = null;
 
-    constructor(type: string, code: string, astNode: any, scopeID: number) {
+    constructor(type: string, code: string, astNode: CxxAstNode, scopeID: number) {
         super(type, code, astNode, scopeID);
         this.nexts = [];
     }
@@ -131,7 +131,7 @@ export class TryStatementBuilder extends StatementBuilder {
     finallyStatement: StatementBuilder | null = null;
     afterFinal: StatementBuilder | null = null;
 
-    constructor(type: string, code: string, astNode: any, scopeID: number) {
+    constructor(type: string, code: string, astNode: CxxAstNode, scopeID: number) {
         super(type, code, astNode, scopeID);
     }
 }

@@ -28,7 +28,11 @@
 #define ONE 1
 #define TWO 2
 #define THREE 3
-#define AST_MEMCPY(dst, src, len) std::memcpy((dst), (src), (len))
+#ifdef _WIN32
+#define AST_MEMCPY(dst, src, len) (void)memcpy_s((dst), (len), (src), (len))
+#else
+#define AST_MEMCPY(dst, src, len) (void)std::memcpy((dst), (src), (len))
+#endif
 
 
 namespace ast_dumper {

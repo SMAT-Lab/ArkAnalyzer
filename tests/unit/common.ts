@@ -14,6 +14,7 @@
  */
 
 import {
+    ArkMethod,
     BasicBlock,
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
@@ -218,32 +219,13 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
     }
 }
 
-export function assertClassBlocksEqual(method: any, expectBlocks: any[]): void {
-    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
+export function assertClassBlocksEqual(method: ArkMethod | undefined, expectBlocks: any[]): void {
+    const blocks: Set<BasicBlock> | undefined = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
         return;
     }
     assertBlocksEqual(blocks, expectBlocks);
-}
-
-function showCfgStmt(blocks: Set<BasicBlock>): void {
-    for (const block of blocks) {
-        console.log('block', block.getId());
-        for (const stmt of block.getStmts()) {
-            console.log(' ', stmt.toString());
-        }
-    }
-}
-
-export function showClassBlocksEqual(method: any): void {
-    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
-    if (!blocks) {
-        assert.isDefined(blocks);
-        return;
-    }
-    console.log('===============', method.getName(), '================');
-    showCfgStmt(blocks);
 }
 
 export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: boolean = true): void {
