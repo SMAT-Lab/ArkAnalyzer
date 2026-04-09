@@ -903,6 +903,10 @@ object %AC5$AnimatablePropertyText-build {
             .getMethodWithName('goo')?.getReturnType();
         assert.isDefined(returnType2);
         assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+        const returnType3 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('zoo')?.getReturnType();
+        assert.isDefined(returnType3);
+        assert.equal(returnType3!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
     });
 })
 
