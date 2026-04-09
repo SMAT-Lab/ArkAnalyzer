@@ -38,6 +38,43 @@ export interface TsConfig {
     };
 }
 
+function collectSdksFromOhosSdkHome(explicitHome?: string): Sdk[] {
+    const sdkHome = explicitHome || process.env.OHOS_SDK_HOME;
+    if (!sdkHome) {
+        return [];
+    }
+    const candidates = [
+        { name: 'etsSdk', path: path.join(sdkHome, 'openharmony', 'ets') },
+        { name: 'hmsSdk', path: path.join(sdkHome, 'hms', 'ets') },
+    ];
+    const sdks: Sdk[] = [];
+    for (const c of candidates) {
+        if (fs.existsSync(c.path)) {
+            sdks.push({ moduleName: '', name: c.name, path: c.path });
+        }
+    }
+    return sdks;
+}
+
+/**
+ * Build a SceneConfig from a project directory and optional OHOS SDK home.
+ *
+ * SDK resolution order:
+ * 1) explicit `ohosSdkHome` (must contain at least one valid SDK directory:
+ *    `<ohosSdkHome>/openharmony/ets` or `<ohosSdkHome>/hms/ets`)
+ * 2) environment variable `OHOS_SDK_HOME`
+ *
+ * @param project Project root directory path.
+ * @param ohosSdkHome Optional OHOS SDK home path.
+ * @returns SceneConfig initialized with project files and discovered SDKs.
+ */
+export function buildSceneConfigFromProject(project: string, ohosSdkHome?: string): SceneConfig {
+    const config = new SceneConfig();
+    const sdks = collectSdksFromOhosSdkHome(ohosSdkHome);
+    config.buildConfig(path.basename(project), project, sdks);
+    return config;
+}
+
 export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | null | undefined;
 export interface SceneOptions {
     supportFileExts?: string[];

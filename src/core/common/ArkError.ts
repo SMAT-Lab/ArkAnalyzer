@@ -22,9 +22,69 @@ export enum ArkErrorCode {
     CFG_HAS_UNREACHABLE_BLOCK = -5,
     METHOD_SIGNATURE_UNDEFINED = -6,
     METHOD_SIGNATURE_LINE_UNMATCHED = -7,
+    /** CLI: invalid flag value or unsupported option */
+    CLI_INVALID_OPTION = -8,
+    /** CLI: method reference matches more than one method */
+    CLI_AMBIGUOUS_METHOD_REF = -9,
+    /** CLI: entry method could not be resolved */
+    CLI_ENTRY_METHOD_NOT_FOUND = -10,
 }
 
 export interface ArkError {
     errCode: ArkErrorCode;
     errMsg?: string;
+}
+
+/**
+ * Error thrown by ArkAnalyzer when reporting a structured {@link ArkError}.
+ * Static helpers produce unified console text for operators.
+ */
+export class ArkAnalyzerError extends Error {
+    public readonly arkError: ArkError;
+
+    constructor(arkError: ArkError) {
+        super(arkError.errMsg ?? `ArkErrorCode(${arkError.errCode})`);
+        this.name = 'ArkAnalyzerError';
+        this.arkError = arkError;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+
+    getErrCode(): number {
+        return this.arkError.errCode;
+    }
+
+    override toString(): string {
+        return ArkAnalyzerError.formatArkErrorConsole(this.arkError);
+    }
+
+    /** Resolve numeric {@link ArkErrorCode} to its enum member name for display. */
+    private static getArkErrorCodeName(errCode: ArkErrorCode): string {
+        const name = ArkErrorCode[errCode];
+        return typeof name === 'string' ? name : `UNKNOWN_${errCode}`;
+    }
+
+    /**
+     * Human-readable stderr format for operators:
+     * `arkanalyzer: error: [<code>] (<errCode>) <message>`
+     * Multi-line `errMsg` is printed on following lines, each prefixed with `arkanalyzer: error: | `.
+     */
+    private static formatArkErrorConsole(arkError: ArkError): string {
+        const code = ArkAnalyzerError.getArkErrorCodeName(arkError.errCode);
+        const errCode = arkError.errCode;
+        const message = arkError.errMsg ?? '';
+        const head = `arkanalyzer: error: [${code}] (${errCode})`;
+        if (!message) {
+            return head;
+        }
+        if (!message.includes('\n')) {
+            return `${head} ${message}`;
+        }
+        const body = message
+            .split('\n')
+            .map((line) => `arkanalyzer: error: | ${line}`)
+            .join('\n');
+        return `${head}\n${body}`;
+    }
+
+    
 }
