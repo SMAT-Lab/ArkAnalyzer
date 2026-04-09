@@ -695,10 +695,18 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
+                if (arkFile.getLanguage() === Language.CXX) {
+                    buildArkCxxFileFromFile(file, sdkPath, arkFile, sdkName, this.includeDirs);
+                } else {
+                    buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
+                }
                 ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
                     cls.getDefaultArkMethod()?.buildBody();
-                    cls.getDefaultArkMethod()?.freeBodyBuilder();
+                    if (arkFile.getLanguage() === Language.CXX) {
+                        cls.getDefaultArkMethod()?.freeCxxBodyBuilder();
+                    } else {
+                        cls.getDefaultArkMethod()?.freeBodyBuilder();
+                    }
                 });
                 const fileSig = arkFile.getFileSignature().toMapKey();
                 this.sdkArkFilesMap.set(fileSig, arkFile);
@@ -1608,7 +1616,17 @@ export class ModuleScene {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.projectScene.getFileLanguages()));
                 arkFile.setScene(this.projectScene);
                 arkFile.setModuleScene(this);
-                buildArkFileFromFile(file, this.projectScene.getRealProjectDir(), arkFile, this.projectScene.getProjectName());
+                if (arkFile.getLanguage() === Language.CXX) {
+                    buildArkCxxFileFromFile(
+                        file,
+                        this.projectScene.getRealProjectDir(),
+                        arkFile,
+                        this.projectScene.getProjectName(),
+                        this.projectScene.getIncludeDirs()
+                    );
+                } else {
+                    buildArkFileFromFile(file, this.projectScene.getRealProjectDir(), arkFile, this.projectScene.getProjectName());
+                }
                 this.projectScene.setFile(arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);

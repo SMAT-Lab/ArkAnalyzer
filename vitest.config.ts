@@ -16,9 +16,14 @@
 import { defineConfig } from 'vitest/config';
 import { isAstJsonDumperAvailable } from './src/cpp_frontend/ast/const';
 
-const skipCoreCppTests = !isAstJsonDumperAvailable();
-if (skipCoreCppTests) {
-    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/core_cpp (build src/cpp_frontend/ast per README).');
+const astJsonDumperAvailable = isAstJsonDumperAvailable();
+const sdkHome = process.env.OHOS_SDK_HOME?.trim();
+
+const skipCoreCppTests = !astJsonDumperAvailable || !sdkHome;
+if (!astJsonDumperAvailable) {
+    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/core_cpp (build src/frontend/cpp_frontend/ast per README).');
+} else if (!sdkHome) {
+    console.warn('[vitest] OHOS_SDK_HOME is not set — skipping tests/unit/core_cpp (set OHOS SDK path in environment).');
 }
 
 export default defineConfig({
