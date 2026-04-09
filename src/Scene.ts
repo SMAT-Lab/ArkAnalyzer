@@ -681,43 +681,47 @@ export class Scene {
     }
 
     private buildSdk(sdkName: string, sdkPath: string): void {
-        let allFiles;
+        const allFiles = this.collectSdkFiles(sdkName, sdkPath);
+        allFiles.forEach(file => this.parseAndRegisterSdkFile(file, sdkPath, sdkName));
+    }
+
+    private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
         if (sdkName === SdkUtils.BUILT_IN_NAME) {
-            allFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
-            if (allFiles.length > 0) {
+            const builtInFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
+            if (builtInFiles.length > 0) {
                 this.getOptions().sdkGlobalFolders?.push(sdkPath);
             }
-        } else {
-            allFiles = getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
+            return builtInFiles;
         }
-        allFiles.forEach(file => {
-            logger.trace('=== parse sdk file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                if (arkFile.getLanguage() === Language.CXX) {
-                    buildArkCxxFileFromFile(file, sdkPath, arkFile, sdkName, this.includeDirs);
-                } else {
-                    buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
-                }
-                ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
-                    cls.getDefaultArkMethod()?.buildBody();
-                    if (arkFile.getLanguage() === Language.CXX) {
-                        cls.getDefaultArkMethod()?.freeCxxBodyBuilder();
-                    } else {
-                        cls.getDefaultArkMethod()?.freeBodyBuilder();
-                    }
-                });
-                const fileSig = arkFile.getFileSignature().toMapKey();
-                this.sdkArkFilesMap.set(fileSig, arkFile);
-                SdkUtils.buildSdkImportMap(arkFile);
-                SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledSdkFilePaths.push(file);
-                return;
+        return getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
+    }
+
+    private parseAndRegisterSdkFile(file: string, sdkPath: string, sdkName: string): void {
+        logger.trace('=== parse sdk file:', file);
+        try {
+            const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
+            arkFile.setScene(this);
+            if (arkFile.getLanguage() === Language.CXX) {
+                buildArkCxxFileFromFile(file, sdkPath, arkFile, sdkName, this.includeDirs);
+            } else {
+                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
             }
-        });
+            ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
+                cls.getDefaultArkMethod()?.buildBody();
+                if (arkFile.getLanguage() === Language.CXX) {
+                    cls.getDefaultArkMethod()?.freeCxxBodyBuilder();
+                } else {
+                    cls.getDefaultArkMethod()?.freeBodyBuilder();
+                }
+            });
+            const fileSig = arkFile.getFileSignature().toMapKey();
+            this.sdkArkFilesMap.set(fileSig, arkFile);
+            SdkUtils.buildSdkImportMap(arkFile);
+            SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
+        } catch (error) {
+            logger.error('Error parsing file:', file, error);
+            this.unhandledSdkFilePaths.push(file);
+        }
     }
 
     /**
