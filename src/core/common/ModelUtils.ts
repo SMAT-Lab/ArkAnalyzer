@@ -68,7 +68,15 @@ import { MethodParameter } from '../model/builder/ArkMethodBuilder';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import { Builtin } from './Builtin';
-import { CALL_BACK, DEFAULT_SDK_NUMS, ETS_PATH, PATH_BE_OMITTED, PATH_DELIMITER, SCOPE_PREFIX } from './EtsConst';
+import {
+    CALL_BACK,
+    DEFAULT_SDK_NUMS,
+    ETS_CODE_PATH,
+    ETS_PATH,
+    PATH_BE_OMITTED,
+    PATH_DELIMITER,
+    SCOPE_PREFIX
+} from './EtsConst';
 import { ModuleUtils } from '../../utils/ModuleUtils';
 
 export class ModelUtils {
@@ -718,7 +726,7 @@ export function getArkFile(im: FromInfo): ArkFile | null {
     if (/^\.\.?\/|^\.$/.test(from)) {
         //relative path
         return getArkFileFromScene(im, path.resolve(path.dirname(im.getDeclaringArkFile().getFilePath()), from));
-    } else if (from.startsWith(ETS_PATH + PATH_DELIMITER)) {
+    } else if (from.startsWith(ETS_CODE_PATH)) {
         //relative path
         const curPath = im.getDeclaringArkFile().getFilePath();
         return getArkFileFromScene(im, path.resolve(curPath.substring(0, curPath.lastIndexOf(path.sep + ETS_PATH + path.sep)), from));
@@ -921,8 +929,8 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     if (!modulePath) {
         return null;
     }
-    const suffix = from.substring(candidate.length).trim();
-    const middle = suffix.startsWith(`${PATH_DELIMITER}${ETS_PATH}${PATH_DELIMITER}`) ? PATH_BE_OMITTED : '';
+    const suffix = from.substring(candidate.length + 1).trim();
+    const middle = suffix.startsWith(ETS_CODE_PATH) ? PATH_BE_OMITTED : '';
     const filePath = suffix.length > 1 ? path.join(modulePath.path, middle, suffix) : modulePath.main;
     return getArkFileFromScene(fromInfo, filePath);
 }

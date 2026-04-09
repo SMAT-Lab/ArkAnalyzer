@@ -83,7 +83,7 @@ describe('generateModuleMap Test', () => {
         const result = ModuleUtils.generateModuleMap(emptyMap);
 
         // When the map is empty, it should not initialize MODULES
-        assert.isTrue(!result || result.size === 0)
+        assert.isTrue(!result || result.size === 0);
     });
 
     it('should handle module with dependencies', () => {

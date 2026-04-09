@@ -1035,3 +1035,4 @@ export const PATH_BE_OMITTED = '/src/main';
 export const SCOPE_PREFIX = '@';
 export const ETS_PATH = 'ets';
 export const PATH_DELIMITER = '/';
+export const ETS_CODE_PATH = 'ets/';
