@@ -32,19 +32,23 @@ const defaultKeyGenerator: KeyGenerator = (...args: any[]) => args.join();
  */
 export function LRUCache(maxSize: number = 4096, keyGenerator?: KeyGenerator) {
     const resolveKey = keyGenerator ?? defaultKeyGenerator;
+    const cache = new Map<string, any>();
     return function (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
-        const cache = new Map<string, any>();
-
         descriptor.value = function (this: any, ...args: any[]) {
             const key = resolveKey(...args);
             if (cache.has(key)) {
-                return cache.get(key);
+                const value = cache.get(key);
+                cache.delete(key);
+                cache.set(key, value);
+                return value;
             }
             const result = originalMethod.apply(this, args);
             if (cache.size >= maxSize) {
                 const firstKey = cache.keys().next().value;
-                cache.delete(firstKey);
+                if (firstKey) {
+                    cache.delete(firstKey);
+                }
             }
             cache.set(key, result);
             return result;
