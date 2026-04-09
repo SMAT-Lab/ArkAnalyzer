@@ -10,6 +10,7 @@ out/
 .idea
 tests/resources/output
 tests/resources/callgraph/projectTest/*
+tests/third_party/
 coverage
 doc/
 exportRollup.config.mjs
@@ -19,3 +20,8 @@ output
 builtIn/
 arktools/
 lib/
+
+# Keep only selected folders under src/cpp_frontend/ast.
+src/cpp_frontend/ast/*/
+!src/cpp_frontend/ast/cmake/
+!src/cpp_frontend/ast/utils/

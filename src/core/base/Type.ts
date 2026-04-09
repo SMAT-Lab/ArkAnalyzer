@@ -197,7 +197,7 @@ export class BooleanType extends PrimitiveType {
 export class NumberType extends PrimitiveType {
     private static readonly INSTANCE = new NumberType();
 
-    private constructor() {
+    protected constructor() {
         super(NUMBER_KEYWORD);
     }
 
@@ -222,10 +222,14 @@ export class BigIntType extends PrimitiveType {
     }
 }
 
+/**
+ * StringType type
+ * @category core/base/type
+ */
 export class StringType extends PrimitiveType {
     private static readonly INSTANCE = new StringType();
 
-    private constructor() {
+    protected constructor() {
         super(STRING_KEYWORD);
     }
 
@@ -235,7 +239,7 @@ export class StringType extends PrimitiveType {
 }
 
 /**
- * null type
+ * Null type in TS/ArkTS, and it also refers to nullptr in Cxx.
  * @category core/base/type
  */
 export class NullType extends PrimitiveType {
@@ -399,6 +403,10 @@ export class VoidType extends Type {
     }
 }
 
+/**
+ * NeverType type
+ * @category core/base/type
+ */
 export class NeverType extends Type {
     private static readonly INSTANCE = new NeverType();
 
@@ -474,7 +482,7 @@ export class ClosureType extends FunctionType {
 }
 
 /**
- * type of an object
+ * type of object
  * @category core/base/type
  */
 export class ClassType extends Type {

@@ -45,6 +45,21 @@ import { ImportInfo } from '../model/ArkImport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
+import { PointerType } from '../../cpp_frontend/base/Type';
+import { getCxxSourceFileExtensionSet } from '../../cpp_frontend/ast/const';
+import { ArkAssignStmt } from './Stmt';
+
+const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();
+
+function isCxxLikeFileName(fileName: string): boolean {
+    const normalized = fileName.toLowerCase();
+    for (const extension of CXX_SOURCE_EXTENSION_SET) {
+        if (normalized.endsWith(extension)) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * @category core/base/expr
@@ -138,8 +153,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     public getType(): Type {
         const type = this.methodSignature.getType();
-        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) &&
-            this.realGenericTypes) {
+        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realGenericTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realGenericTypes);
         }
         return type;
@@ -168,6 +182,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         return uses;
     }
 
+    /**
+     *Convert parameter list to string representation
+     *@ returns the formatted parameter string, including parentheses and parameter list
+     */
     protected argsToString(): string {
         const strs: string[] = [];
         strs.push('(');
@@ -208,7 +226,7 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
 
     /**
      * Returns an **array** of values used in this invoke expression,
-     * including all arguments and values each arguments used.
+     * including all arguments and values each argument used.
      * For {@link ArkInstanceInvokeExpr}, the return also contains the caller base and uses of base.
      * @returns An **array** of arguments used in the invoke expression.
      */
@@ -279,6 +297,7 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     private funPtr: Local | AbstractFieldRef;
 
+
     constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.funPtr = ptr;
@@ -292,11 +311,20 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         return this.funPtr;
     }
 
+    /**
+     *Infer the type of function call expression
+     *@ param arkMethod - Ark method object currently analyzed
+     *@ returns The abstract calling expression after inference
+     */
     public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
         this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
-        const ptrType = this.funPtr.getType();
-        if (ptrType instanceof FunctionType) {
-            this.setMethodSignature(ptrType.getMethodSignature());
+        // CXX: If it is a Cxx function pointer, it is necessary to obtain its baseType to get method signature.
+        let typeWithoutPtr = this.funPtr.getType();
+        if (typeWithoutPtr instanceof PointerType) {
+            typeWithoutPtr = typeWithoutPtr.getBaseType();
+        }
+        if (typeWithoutPtr instanceof FunctionType) {
+            this.setMethodSignature(typeWithoutPtr.getMethodSignature());
         }
         IRInference.inferArgs(this, arkMethod);
         return IRInference.inferStaticInvokeExpr(this, arkMethod);
@@ -305,6 +333,29 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     public toString(): string {
         let strs: string[] = [];
         strs.push('ptrinvoke ');
+        let sig = this.getMethodSignature();
+        const sigFileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName();
+        if (sigFileName === UNKNOWN_FILE_NAME) {
+            let ptrType = this.funPtr.getType();
+            if (ptrType instanceof PointerType) {
+                ptrType = ptrType.getBaseType();
+            }
+            if (ptrType instanceof FunctionType) {
+                const ptrSig = ptrType.getMethodSignature();
+                const ptrFileName = ptrSig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
+                const isCxxPtrSig = isCxxLikeFileName(ptrFileName);
+                if (isCxxPtrSig) {
+                    sig = ptrSig;
+                }
+            }
+        }
+        const fileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
+        const isCxxFile = isCxxLikeFileName(fileName);
+        const ptrDeclFileName = this.funPtr instanceof Local ?
+            this.funPtr.getDeclaringStmt()?.getCfg()?.getDeclaringMethod()?.getDeclaringArkFile().getName().toLowerCase() ?? '' :
+            '';
+        const isCxxPtrDecl = isCxxLikeFileName(ptrDeclFileName);
+        const isUnknownCxxLike = sigFileName === UNKNOWN_FILE_NAME && isCxxPtrDecl;
         let ptrName: string = '';
         if (this.funPtr instanceof Local) {
             ptrName = this.funPtr.getName();
@@ -313,9 +364,18 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         } else if (this.funPtr instanceof ArkStaticFieldRef) {
             ptrName = this.funPtr.getFieldName();
         }
-        strs.push(ptrName);
+        if (!isCxxFile && !isUnknownCxxLike) {
+            strs.push(ptrName);
+        }
         strs.push('<');
-        strs.push(this.getMethodSignature().toString());
+        // C++ function-pointer calls should render the dynamic callee variable/member name (ptrName),
+        // because the static method signature name is often generic or unknown at this point.
+        // TS/ArkTS keeps the declared signature name directly and does not need this pointer-name rewrite.
+        if ((isCxxFile || isUnknownCxxLike) && ptrName) {
+            strs.push(sig.toString().replace(/\.([^.()]+)\(/, `.${ptrName}(`));
+        } else {
+            strs.push(sig.toString());
+        }
         strs.push('>');
         strs.push(super.argsToString());
         return strs.join('');
@@ -356,6 +416,11 @@ export class ArkNewExpr extends AbstractExpr {
         return 'new ' + this.classType;
     }
 
+    /**
+     *Inference type method
+     *@ param arkMethod - Ark method object, the context used for type inference
+     *@ returns the ArkNewExpr instance of the current object
+     */
     public inferType(arkMethod: ArkMethod): ArkNewExpr {
         const classSignature = this.classType.getClassSignature();
         if (classSignature.getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
@@ -364,6 +429,7 @@ export class ArkNewExpr extends AbstractExpr {
             if (TypeInference.isUnclearType(type)) {
                 type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
             }
+            // If the type is an alias type, replace with the original type
             if (type instanceof AliasType) {
                 const originalType = TypeInference.replaceAliasType(type);
                 if (originalType instanceof FunctionType) {
@@ -450,19 +516,24 @@ export class ArkNewArrayExpr extends AbstractExpr {
     }
 }
 
+/**
+ * delete expression in TS/ArkTS/C++
+ *  1. TS/ArkTS: delete a.b
+ *  2. c++: delete a / delete a.b / delete a->b
+ */
 export class ArkDeleteExpr extends AbstractExpr {
-    private field: AbstractFieldRef;
+    private field: AbstractFieldRef | Value;
 
-    constructor(field: AbstractFieldRef) {
+    constructor(field: AbstractFieldRef | Value) {
         super();
         this.field = field;
     }
 
-    public getField(): AbstractFieldRef {
+    public getField(): AbstractFieldRef | Value {
         return this.field;
     }
 
-    public setField(newField: AbstractFieldRef): void {
+    public setField(newField: AbstractFieldRef | Value): void {
         this.field = newField;
     }
 
@@ -600,7 +671,7 @@ export enum RelationalBinaryOperator {
 
 export type BinaryOperator = NormalBinaryOperator | RelationalBinaryOperator;
 
-// 二元运算表达式
+// Binary operation expression
 export abstract class AbstractBinopExpr extends AbstractExpr {
     protected op1: Value;
     protected op2: Value;
@@ -762,6 +833,10 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         this.type = type;
     }
 
+    public setOperator(operator: BinaryOperator): void {
+        this.operator = operator;
+    }
+
     public inferType(arkMethod: ArkMethod): AbstractBinopExpr {
         this.inferOpType(this.op1, arkMethod);
         this.inferOpType(this.op2, arkMethod);
@@ -778,23 +853,71 @@ export class ArkConditionExpr extends AbstractBinopExpr {
     public inferType(arkMethod: ArkMethod): ArkConditionExpr {
         this.inferOpType(this.op1, arkMethod);
         const op1Type = this.op1.getType();
-        if (this.operator === RelationalBinaryOperator.InEquality && this.op2 === ValueUtil.getOrCreateNumberConst(0)) {
-            if (op1Type instanceof StringType) {
-                this.op2 = ValueUtil.createStringConst(EMPTY_STRING);
-            } else if (op1Type instanceof BooleanType) {
-                this.op2 = ValueUtil.getBooleanConstant(false);
-            } else if (op1Type instanceof ClassType) {
+        this.type = BooleanType.getInstance();
+        if (this.operator !== RelationalBinaryOperator.InEquality || this.op2 !== ValueUtil.getOrCreateNumberConst(0)) {
+            this.inferOpType(this.getOp2(), arkMethod);
+            return this;
+        }
+        if (op1Type instanceof StringType) {
+            this.op2 = ValueUtil.createStringConst(EMPTY_STRING);
+        } else if (op1Type instanceof BooleanType) {
+            this.op2 = ValueUtil.getBooleanConstant(false);
+        } else if (op1Type instanceof ClassType || op1Type instanceof UnknownType || op1Type instanceof UnclearReferenceType) {
+            const newOp1 = this.isValueAssignWithLogicalNotExpr(this.op1);
+            if (newOp1) {
+                this.op1 = newOp1;
+                this.operator = RelationalBinaryOperator.Equality;
+            }
+            this.op2 = ValueUtil.getUndefinedConst();
+        } else if (op1Type instanceof UnionType) {
+            if (this.isClassTypeUnionNullUndefined(op1Type)) {
+                const newOp1 = this.isValueAssignWithLogicalNotExpr(this.op1);
+                if (newOp1) {
+                    this.op1 = newOp1;
+                    this.operator = RelationalBinaryOperator.Equality;
+                }
                 this.op2 = ValueUtil.getUndefinedConst();
             }
-        } else {
-            this.inferOpType(this.getOp2(), arkMethod);
         }
-        this.type = BooleanType.getInstance();
         return this;
     }
 
     public fillType(): void {
         this.type = BooleanType.getInstance();
+    }
+
+    private isValueAssignWithLogicalNotExpr(op: Value): Value | null {
+        if (!(op instanceof Local)) {
+            return null;
+        }
+        const declaringStmt = op.getDeclaringStmt();
+        if (!declaringStmt || !(declaringStmt instanceof ArkAssignStmt)) {
+            return null;
+        }
+        const rightOp = declaringStmt.getRightOp();
+        if (rightOp instanceof ArkUnopExpr && rightOp.getOperator() === UnaryOperator.LogicalNot) {
+            return rightOp.getOp();
+        }
+        return null;
+    }
+
+    private isClassTypeUnionNullUndefined(unionType: UnionType): boolean {
+        const types = unionType.getTypes();
+        let findClassType = false;
+        for (const t of types) {
+            if (t instanceof NullType || t instanceof UndefinedType) {
+                continue;
+            }
+            if (t instanceof ClassType) {
+                if (findClassType) {
+                    return false;
+                }
+                findClassType = true;
+                continue;
+            }
+            return false;
+        }
+        return findClassType;
     }
 }
 
@@ -896,7 +1019,7 @@ export class ArkInstanceOfExpr extends AbstractExpr {
     }
 }
 
-// 类型转换
+// Type conversion
 export class ArkCastExpr extends AbstractExpr {
     private op: Value;
     private type: Type;
@@ -1001,6 +1124,9 @@ export enum UnaryOperator {
     Neg = '-',
     BitwiseNot = '~',
     LogicalNot = '!',
+    // The following are C++ specific unary operator.
+    Addr = '&', // address-of operator
+    Deref = '*', // dereference operator
 }
 
 // unary operation expression

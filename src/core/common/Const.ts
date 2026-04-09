@@ -22,6 +22,8 @@ export const DEFAULT_NAME = 'dflt';
 // ArkClass const
 export const DEFAULT_ARK_CLASS_NAME = NAME_PREFIX + DEFAULT_NAME;
 export const ANONYMOUS_CLASS_PREFIX = NAME_PREFIX + 'AC';
+/** Prefix for anonymous namespace names (e.g. C++ unnamed namespace). */
+export const ANONYMOUS_NAMESPACE_PREFIX = NAME_PREFIX + 'AN';
 export const ANONYMOUS_CLASS_DELIMITER = NAME_DELIMITER;
 export const NESTED_CLASS_METHOD_DELIMITER = '-';
 

@@ -64,11 +64,15 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     private projectFiles: string[] = [];
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
+    private ccjsonPath: string = '';
+    private cppAstPath: string = '';
 
     private options: SceneOptions;
 
     constructor(options?: SceneOptions) {
+        // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
         this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
     }
@@ -100,6 +104,7 @@ export class SceneConfig {
      * targetProjectDirectory property of the sceneConfig object.
      * @param targetProjectDirectory - the target project directory, such as xxx/xxx/xxx, started from project
      *     directory.
+     * @param includeDirs - Header file directories that the CXX project depends on.
      * @example
      * 1. build a sceneConfig object.
     ```typescript
@@ -108,8 +113,17 @@ export class SceneConfig {
     sceneConfig.buildFromProjectDir(projectDir);
     ```
      */
-    public buildFromProjectDir(targetProjectDirectory: string): void {
+    public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
+        // Callers should prefer passing de-duplicated includeDirs to avoid redundant work in hot paths.
+        // Keep this defensive, order-preserving de-duplication as a fallback and reuse the target array.
+        // Intentionally avoid Set allocation here.
+        this.includeDirs.length = 0;
+        for (const includeDir of includeDirs) {
+            if (!this.includeDirs.includes(includeDir)) {
+                this.includeDirs.push(includeDir);
+            }
+        }
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }
@@ -213,6 +227,35 @@ export class SceneConfig {
 
     public getProjectFiles(): string[] {
         return this.projectFiles;
+    }
+
+    /** Obtain the header file directories of the input C++ project dependencies. */
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
+    public setCcjsonPath(ccjsonPath: string): void {
+        this.ccjsonPath = ccjsonPath;
+    }
+
+    /**
+     * Returns compile_commands.json path configured by the project.
+     *
+     * If ccjson is not configured, this value is empty initially. Before AST generation,
+     * astUtils may auto-discover a compile database near source files (for DevEco projects
+     * that load compilation databases). The discovered path is used directly by Scene and is
+     * not backfilled into this config field.
+     */
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
+    }
+
+    public setCppAstPath(cppAstPath: string): void {
+        this.cppAstPath = cppAstPath;
+    }
+
+    public getCppAstPath(): string {
+        return this.cppAstPath;
     }
 
     public getFileLanguages(): Map<string, Language> {

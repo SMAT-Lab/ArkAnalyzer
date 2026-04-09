@@ -57,6 +57,19 @@ export enum ModifierType {
     DECLARE = 1 << 14,
     TYPE = 1 << 15,
     LAZY = 1 << 16,
+
+    // The following are CXX specific modifiers.
+    AUTO = 1 << 20,
+    EXTERN = 1 << 21,
+    FRIEND = 1 << 22,
+    VIRTUAL = 1 << 23,
+    PURE_VIRTUAL = 1 << 24,
+    INLINE = 1 << 25,
+    MUTABLE = 1 << 26,
+    EXPLICIT = 1 << 27,
+    CONSTEXPR = 1 << 28,
+    VOLATILE = 1 << 29,
+    NOEXCEPT = 1 << 30,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -78,6 +91,46 @@ const MODIFIER_TYPE_STRINGS = [
     'override',
     'declare',
 ];
+
+/**
+ *Map the C++modifier keyword to the corresponding modifier type enumeration value
+ *
+ *This constant defines a Map object, which is used to map the modifier keyword string in C++language to
+ *The corresponding ModifierType enumeration value is convenient for type identification and processing during code analysis and conversion.
+ *
+ *Included modifier mapping relationship:
+ *- virtual ->ModifierType.VIRTUAL: virtual function modifier
+ *- const ->ModifierType.CONST: constant modifier
+ *- private ->ModifierType.PRIVATE: private access modifier
+ *- protected ->ModifierType.PROTECTED: protect access modifier
+ *- public ->ModifierType.PUBLIC: public access modifier
+ *- extern ->ModifierType.EXTERN: external link modifier
+ *- friend ->ModifierType.FRIEND: Friend modifier
+ *- override ->ModifierType.OVERRIDE: override modifier
+ *- static ->ModifierType.STATIC: static modifier
+ *- pure virtual ->ModifierType.PURE_VIRTUAL: pure virtual function modifier
+ *- abstract ->ModifierType.ABSTRACT: abstract class modifier (implemented through pure virtual function in C++)
+ */
+const MODIFIER_KIND_2_ENUM_CXX = new Map<string, ModifierType>([
+    ['virtual', ModifierType.VIRTUAL],
+    ['const', ModifierType.CONST],
+    ['private', ModifierType.PRIVATE],
+    ['protected', ModifierType.PROTECTED],
+    ['public', ModifierType.PUBLIC],
+    ['extern', ModifierType.EXTERN],
+    ['friend', ModifierType.FRIEND],
+    ['override', ModifierType.OVERRIDE],
+    ['static', ModifierType.STATIC],
+    ['pure virtual', ModifierType.PURE_VIRTUAL],
+    // In C++, a class with pure virtual functions is an abstract class. This sets a modifier to correspond to the abstract class in TypeScript.
+    ['abstract', ModifierType.ABSTRACT],
+    ['inline', ModifierType.INLINE],
+    ['mutable', ModifierType.MUTABLE],
+    ['explicit', ModifierType.EXPLICIT],
+    ['constexpr', ModifierType.CONSTEXPR],
+    ['volatile', ModifierType.VOLATILE],
+    ['noexcept', ModifierType.NOEXCEPT],
+]);
 
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
     [ts.SyntaxKind.AbstractKeyword, ModifierType.ABSTRACT],
@@ -101,6 +154,10 @@ const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
 
 export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {
     return MODIFIER_KIND_2_ENUM.get(kind)!;
+}
+
+export function modifierKind2CxxEnum(kind: string): ModifierType {
+    return MODIFIER_KIND_2_ENUM_CXX.get(kind)!;
 }
 
 export function modifiers2stringArray(modifiers: number): string[] {
@@ -184,6 +241,11 @@ export abstract class ArkBaseModel {
 
     public isDefault(): boolean {
         return this.containsModifier(ModifierType.DEFAULT);
+    }
+
+    /* Determine whether a method is a pure virtual method in C++. */
+    public isPureVirtual(): boolean {
+        return this.containsModifier(ModifierType.PURE_VIRTUAL);
     }
 
     /** @deprecated Use {@link isExport} instead. */

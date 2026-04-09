@@ -14,7 +14,12 @@
     "build-tools",
     "hvigorfile.ts",
     "hvigorfile.js",
-    "hvigor-wrapper.js"
+    "hvigor-wrapper.js",
+    "build-tools",
+    "build",
+    ".cxx",
+    ".test",
+    ".preview"
   ],
   "sdkGlobalFolders": [
     "component",

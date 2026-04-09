@@ -19,8 +19,11 @@ import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
 import { OH_PACKAGE_JSON5, SCOPE_PREFIX } from '../core/common/EtsConst';
 import { Language } from '../core/model/ArkFile';
+import { getCxxSourceFileExtensionSet } from '../cpp_frontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FileUtils');
+
+const CXX_EXTENSION_SET = getCxxSourceFileExtensionSet();
 
 export class FileUtils {
     public static readonly FILE_FILTER = {
@@ -168,6 +171,9 @@ export class FileUtils {
             case '.js':
                 return Language.JAVASCRIPT;
             default:
+                if (CXX_EXTENSION_SET.has(extension)) {
+                    return Language.CXX;
+                }
                 return Language.UNKNOWN;
         }
     }
@@ -210,4 +216,26 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
         return res;
     });
     return res;
+}
+
+/**
+ * Try to combine each source path in the array with the relative path, returning the first absolute path that exists.
+ * @param srcPathList Source path array (absolute or relative paths)
+ * @param relativePath The relative path to concatenate
+ * @returns The first concatenated absolute path that exists; otherwise returns an empty string
+ */
+export function getFileAbsPath(srcPathList: string[], relativePath: string): string {
+    if (!srcPathList || srcPathList.length === 0 || !relativePath) {
+        return '';
+    }
+
+    for (const srcPath of srcPathList) {
+        const srcDir = path.dirname(path.resolve(srcPath));
+        const absPath = path.resolve(srcDir, relativePath);
+        if (fs.existsSync(absPath)) {
+            return absPath;
+        }
+    }
+
+    return '';
 }

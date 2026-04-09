@@ -39,8 +39,8 @@ export abstract class AbstractRef implements Value {
 }
 
 export class ArkArrayRef extends AbstractRef {
-    private base: Local; // 数组变量
-    private index: Value; // 索引
+    private base: Local; // Array variable
+    private index: Value; // Index
 
     constructor(base: Local, index: Value) {
         super();

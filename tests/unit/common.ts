@@ -14,6 +14,7 @@
  */
 
 import {
+    ArkMethod,
     BasicBlock,
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
@@ -111,6 +112,30 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     assertBlocksEqual(blocks, expectBlocks);
 }
 
+/** Like testBlocks, but selects the method by MethodSubSignature.toString() (e.g. PrintInfo(int)). */
+export function testBlocksWithSignature(
+    scene: Scene,
+    filePath: string,
+    className: string,
+    methodSubSignature: string,
+    expectBlocks: any[]
+): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkClass = className ? arkFile?.getClassWithName(className) ?? undefined : arkFile?.getDefaultClass();
+    const arkMethod = arkClass?.getMethods().find(
+        (method) => method.getSubSignature().toString() === methodSubSignature
+    );
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
+    const stmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
+    assert(stmtsLength === stmtToBlockLength);
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
 export function testReachingDef(scene: Scene, filePath: string, methodName: string, expectSolution: ReachingDefExpectSolution): void {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkMethod = arkFile?.getDefaultClass().getMethods()
@@ -194,6 +219,15 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
     }
 }
 
+export function assertClassBlocksEqual(method: ArkMethod | undefined, expectBlocks: any[]): void {
+    const blocks: Set<BasicBlock> | undefined = method?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
 export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: boolean = true): void {
     expect(stmts.length).toEqual(expectStmts.length);
     for (let i = 0; i < stmts.length; i++) {
@@ -229,4 +263,38 @@ export function fullPositionArray2String(fullPositions: FullPosition[]): string 
     let positions: string[] = [];
     fullPositions.forEach(position => positions.push(fullPosition2String(position)));
     return `[${positions.join(', ')}]`;
+}
+
+export function testBlocksClass(
+    scene: Scene, filePath: string, className: string, expectBlocks: any, namespaceName?: string, isCheckOverload?: boolean
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass =
+        namespaceName ?
+        arkFile?.getNamespaceWithName(namespaceName)?.getClassWithName(className) :
+        arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
+    const classBlockMap = new Map<String, BasicBlock[]>();
+    for (const block of expectBlocks.blocks) {
+        classBlockMap.set(block.methodName, block.blocks);
+    }
+    // 1.Check class inheritance
+    const heritageClasses = new Set();
+    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
+        heritageClasses.add(heritageClass.getName());
+    });
+    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
+    // 2.Check class fields
+    const fieldOfClass = new Set();
+    arkClass?.getFields()?.forEach(field => {
+        fieldOfClass.add(field.getName());
+    });
+    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
+    // 3.Check class member functions
+    arkClass?.getMethods()?.forEach(method => {
+        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
+        const classBlock = classBlockMap.get(mapKey);
+        if (classBlock) {
+            assertClassBlocksEqual(method, classBlock);
+        }
+    });
 }
