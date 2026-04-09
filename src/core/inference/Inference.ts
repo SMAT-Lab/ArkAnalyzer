@@ -22,7 +22,7 @@ import { ArkTs2InferenceBuilder, ArkTsInferenceBuilder, JsInferenceBuilder } fro
 
 import { AbcInferenceBuilder } from './abc/AbcInference';
 import { InferLanguage } from './ValueInference';
-import { CxxInferenceBuilder } from '../../cpp_frontend/inference/CxxInference';
+import { CxxInferenceBuilder } from '../../frontend/cppFrontend/inference/CxxInference';
 
 
 

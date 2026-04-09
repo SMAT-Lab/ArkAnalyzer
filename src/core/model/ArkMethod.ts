@@ -32,8 +32,8 @@ import { Local } from '../base/Local';
 import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
-import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
-import { PointerType } from '../../cpp_frontend/base/Type';
+import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
+import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
 
 export const arkMethodNodeKind = [
