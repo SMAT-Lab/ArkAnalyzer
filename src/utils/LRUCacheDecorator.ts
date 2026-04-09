@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const LRU_CACHE_SYMBOL = Symbol('LRUCache');
+
+/**
+ * A function that generates a cache key from method arguments.
+ */
+export type KeyGenerator = (...args: any[]) => string;
+
+const defaultKeyGenerator: KeyGenerator = (...args: any[]) => args.join();
+
+/**
+ * LRU (Least Recently Used) cache decorator for methods.
+ * Caches return values based on method arguments, evicting the oldest entry
+ * when the cache reaches maxSize.
+ *
+ * @param maxSize - Maximum number of entries to keep in the cache.
+ * @param keyGenerator - Optional custom function to generate cache keys from method arguments.
+ */
+export function LRUCache(maxSize: number = 4096, keyGenerator?: KeyGenerator) {
+    const resolveKey = keyGenerator ?? defaultKeyGenerator;
+    return function (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
+        const originalMethod = descriptor.value;
+        const cache = new Map<string, any>();
+
+        descriptor.value = function (this: any, ...args: any[]) {
+            const key = resolveKey(...args);
+            if (cache.has(key)) {
+                return cache.get(key);
+            }
+            const result = originalMethod.apply(this, args);
+            if (cache.size >= maxSize) {
+                const firstKey = cache.keys().next().value;
+                cache.delete(firstKey);
+            }
+            cache.set(key, result);
+            return result;
+        };
+
+        (descriptor.value as any)[LRU_CACHE_SYMBOL] = cache;
+    };
+}
+
+/**
+ * Clear the LRU cache associated with a decorated method.
+ * @param target - The class (for static methods) or instance (for instance methods).
+ * @param propertyKey - The method name.
+ */
+export function clearLRUCache(target: any, propertyKey: string): void {
+    const cache = target[propertyKey]?.[LRU_CACHE_SYMBOL] as Map<string, any> | undefined;
+    cache?.clear();
+}

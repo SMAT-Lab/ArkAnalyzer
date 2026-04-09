@@ -20,6 +20,7 @@ import { FileUtils } from './FileUtils';
 import { transfer2UnixPath } from './pathTransfer';
 import fs from 'fs';
 import Logger, { LOG_MODULE_TYPE } from './logger';
+import { LRUCache, clearLRUCache } from './LRUCacheDecorator';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleUtils');
 const jsExt = '.js';
@@ -43,10 +44,6 @@ export class ModulePath {
 export class ModuleUtils {
     private static readonly FILE_EXT = new Map<string, number>([['.ets', 0], ['.ts', 1], ['.d.ets', 2], ['.d.ts', 3], ['.js', 4]]);
     private static readonly OH_PACKAGE_DEPENDENCY_KEYS = ['dependencies', 'devDependencies', 'dynamicDependencies'];
-    /**
-     * key is absolute path without file extension, value is real path
-     */
-    private static REAL_PATH = new Map<string, string>();
     public static MODULES: Map<string, ModulePath> = new Map();
 
     /*
@@ -54,26 +51,22 @@ export class ModuleUtils {
      * Class SdkUtils is only internally used by ArkAnalyzer type inference, the dispose method should be called at the end of type inference.
      */
     public static dispose(): void {
-        this.REAL_PATH.clear();
+        clearLRUCache(ModuleUtils, 'getFileRealPath');
         this.MODULES.clear();
     }
 
     /**
      * Get the real file path for a given source path, resolving file extensions and checking existence.
-     * Results are cached for performance.
+     * Results are cached via LRU for performance.
      * @param srcPath - The source path to resolve, e.g.: /projectA/src/foo
      * @returns The resolved real file path, or empty string if not found.
      */
+    @LRUCache()
     public static getFileRealPath(srcPath: string): string {
-        let result = this.REAL_PATH.get(srcPath);
-        if (result !== undefined) {
-            return result;
-        }
         if (srcPath.endsWith(OH_PACKAGE_JSON5)) {
-            result = fs.realpathSync(srcPath);
-            this.REAL_PATH.set(srcPath, result);
-            return result;
+            return fs.realpathSync(srcPath);
         }
+        let result = '';
         try {
             const stats = fs.statSync(srcPath, { throwIfNoEntry: false });
             const dir = stats?.isDirectory() ? srcPath : path.dirname(srcPath);
@@ -111,8 +104,6 @@ export class ModuleUtils {
         } catch (e) {
             logger.warn(srcPath + ' not found.');
         }
-        result = result ?? '';
-        this.REAL_PATH.set(srcPath, result);
         return result;
     }
 
