@@ -27,7 +27,7 @@ function buildScene(folderName: string): Scene {
 }
 
 describe('Signature Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources_cpp/basicFeatures/signature'));
+    const scene = buildScene(path.join(__dirname, '../../../cppResources/basicFeatures/signature'));
 
     it('case1: file signature test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));

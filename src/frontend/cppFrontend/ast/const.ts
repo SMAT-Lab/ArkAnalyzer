@@ -78,7 +78,7 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 const projectRoot = findProjectRoot(__dirname);
 
 function getPrintAstExePath(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cpp_frontend', 'ast', 'dumper', 'astJsonDumper.exe');
+    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper.exe');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.exe');
     }
@@ -86,7 +86,7 @@ function getPrintAstExePath(): string {
 }
 
 function getPrintAstExePathLinux(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cpp_frontend', 'ast', 'dumper', 'astJsonDumper');
+    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper');
     }

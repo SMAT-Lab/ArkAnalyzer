@@ -344,7 +344,7 @@ export class AstUtils {
         if (cppAstPath !== '') {
             return path.join(cppAstPath, fileName);
         }
-        return path.join(ClangPath.protectRoot, 'src', 'frontend', 'cpp_frontend', 'ast', 'out', fileName);
+        return path.join(ClangPath.protectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'out', fileName);
     }
 
     private static ensureOutputDir(dir: string): void {

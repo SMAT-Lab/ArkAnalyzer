@@ -667,7 +667,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // If the kind of firstNode is CXXConstructExpr and firstNode does not correspond to a parent class initialization call,
         // it is equivalent to directly assigning a value to the class member.
-        // For example, the constructor of class Circle in file 'tests/resources_cpp/exports/crossFileCase/include/myHeader.h'.
+        // For example, the constructor of class Circle in file 'tests/cppResources/exports/crossFileCase/include/myHeader.h'.
         const assignRight =
             (firstInnerNode.kind === astKind.CXXConstructExpr && firstInnerNode.inner.length > 0) ? firstInnerNode.inner[0] : firstInnerNode;
         const CtorInit2ThisMemberExpr = {

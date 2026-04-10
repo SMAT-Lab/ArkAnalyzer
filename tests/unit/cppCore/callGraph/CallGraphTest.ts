@@ -22,7 +22,7 @@ import { Scene } from '../../../../src';
 import { MethodSignature } from '../../../../src';
 
 let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir('../../../resources_cpp/call_graph/');
+config.buildFromProjectDir('../../../cppResources/call_graph/');
 
 function runScene(config: SceneConfig, fileName: string): void {
     let projectScene: Scene = new Scene();

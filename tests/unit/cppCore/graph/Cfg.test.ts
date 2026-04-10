@@ -629,7 +629,7 @@ describe('supplementary', () => {
     });
 });
 
-const BASE_DIR = 'tests/resources_cpp/cfg';
+const BASE_DIR = 'tests/cppResources/cfg';
 
 function buildScene(folderName: string): Scene {
     vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);

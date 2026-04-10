@@ -16,7 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const BASE_DIR = path.resolve(__dirname, '../../../resources_cpp/cfg');
+const BASE_DIR = path.resolve(__dirname, '../../../cppResources/cfg');
 
 function generateIndexFile(folderPath: string): void {
     const files = fs.readdirSync(folderPath).filter(f => {
