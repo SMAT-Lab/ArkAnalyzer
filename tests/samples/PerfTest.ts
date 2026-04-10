@@ -15,9 +15,14 @@
 import path from 'path';
 import { SceneConfig } from '../../src';
 import { Scene } from '../../src';
+import { getCxxSourceFileExtensions } from '../../src';
 import { Logger, LOG_LEVEL, LOG_MODULE_TYPE } from '../../src';
 import { Sdk } from '../../src/Config'
 import * as perf_hooks from 'perf_hooks';
+import {
+    getCompileCommandsPathForCppProjectRoot,
+    isProjectRootPreparedCppTree,
+} from './cpp/CppBenchmark';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'PerfTest');
 Logger.configure('', LOG_LEVEL.ERROR, LOG_LEVEL.INFO, false);
@@ -26,26 +31,116 @@ let PROJECT_NAME: string | undefined;
 let Sdks: Sdk[] = [];
 const performance = perf_hooks.performance;
 
+/**
+ * Same five marks for Harmony and Cpp so timing uses one capture/measures layout.
+ * Cleared after each pipeline capture so the next run can reuse the names.
+ */
+const PERF_PIPELINE_MARK = {
+    START: 'perfPipelineStart',
+    AFTER_BASIC_INFO: 'buildBasicInfo',
+    AFTER_BUILD_SCENE: 'buildScene4Project',
+    AFTER_INFER_TYPES: 'inferTypes',
+    END: 'perfPipelineEnd',
+} as const;
+
+type PipelinePhaseSeconds = {
+    pipelineSeconds: number;
+    startToBasicInfoSeconds: number;
+    basicInfoToSceneSeconds: number;
+    sceneToInferTypesSeconds: number;
+    inferTypesToEndSeconds: number;
+};
+
+function emptyPipelinePhaseSeconds(): PipelinePhaseSeconds {
+    return {
+        pipelineSeconds: 0,
+        startToBasicInfoSeconds: 0,
+        basicInfoToSceneSeconds: 0,
+        sceneToInferTypesSeconds: 0,
+        inferTypesToEndSeconds: 0,
+    };
+}
+
+let lastHarmonyPhaseSeconds: PipelinePhaseSeconds;
+let lastCppPhaseSeconds: PipelinePhaseSeconds = emptyPipelinePhaseSeconds();
+/** Set only after Harmony pipeline finishes all phases (marks + capture). */
+let harmonyPerfFinished = false;
+/** Set only after C++ / OpenCV pipeline finishes all phases (including RSS sample path). */
+let cppPerfFinished = false;
+
+function capturePipelinePhases(measureNamePrefix: string): PipelinePhaseSeconds {
+    const m = (suffix: string): string => `${measureNamePrefix}-${suffix}`;
+    const out: PipelinePhaseSeconds = {
+        pipelineSeconds: measureSeconds(m('total'), PERF_PIPELINE_MARK.START, PERF_PIPELINE_MARK.END),
+        startToBasicInfoSeconds: measureSeconds(m('s0'), PERF_PIPELINE_MARK.START, PERF_PIPELINE_MARK.AFTER_BASIC_INFO),
+        basicInfoToSceneSeconds: measureSeconds(m('s1'), PERF_PIPELINE_MARK.AFTER_BASIC_INFO, PERF_PIPELINE_MARK.AFTER_BUILD_SCENE),
+        sceneToInferTypesSeconds: measureSeconds(m('s2'), PERF_PIPELINE_MARK.AFTER_BUILD_SCENE, PERF_PIPELINE_MARK.AFTER_INFER_TYPES),
+        inferTypesToEndSeconds: measureSeconds(m('s3'), PERF_PIPELINE_MARK.AFTER_INFER_TYPES, PERF_PIPELINE_MARK.END),
+    };
+    for (const name of Object.values(PERF_PIPELINE_MARK)) {
+        performance.clearMarks(name);
+    }
+    return out;
+}
+
 function testAppProject(): void {
     if (!PROJECT_NAME || !PROJECT_ROOT) {
-        return;
+        throw new Error('PROJECT_ROOT / PROJECT_NAME must be set before Harmony perf run.');
     }
+    performance.mark(PERF_PIPELINE_MARK.START);
     let config: SceneConfig = new SceneConfig();
     config.buildConfig(PROJECT_NAME, PROJECT_ROOT, Sdks);
     let scene: Scene = new Scene();
     scene.buildBasicInfo(config);
-    performance.mark('buildBasicInfo');
+    performance.mark(PERF_PIPELINE_MARK.AFTER_BASIC_INFO);
     scene.buildScene4HarmonyProject();
-    performance.mark('buildScene4HarmonyProject');
+    performance.mark(PERF_PIPELINE_MARK.AFTER_BUILD_SCENE);
     scene.inferTypes();
-    performance.mark('inferTypes');
-    printMemPerfInfo();
+    performance.mark(PERF_PIPELINE_MARK.AFTER_INFER_TYPES);
+    performance.mark(PERF_PIPELINE_MARK.END);
+    lastHarmonyPhaseSeconds = capturePipelinePhases('harmony');
+    harmonyPerfFinished = true;
 }
 
+/**
+ * C++: compile_commands.json + Scene from ccdb.
+ * Runs only when {@code PROJECT_ROOT}’s basename ends with {@code _cpp}; otherwise skips all C++ perf (no clone/ccdb/toolchain).
+ * Not Harmony: no buildConfig / buildScene4HarmonyProject.
+ */
+function testCppProject(): void {
+    if (!PROJECT_ROOT) {
+        throw new Error('PROJECT_ROOT must be set before C++ perf run.');
+    }
+    const resolvedRoot = path.resolve(PROJECT_ROOT);
+    if (!isProjectRootPreparedCppTree(resolvedRoot)) {
+        logger.info('[PerfTest] PROJECT_ROOT basename does not end with _cpp; skipping C++ perf.');
+        return;
+    }
+    const cppRoot = resolvedRoot;
+    const ccdbPath = getCompileCommandsPathForCppProjectRoot(cppRoot);
+
+    performance.mark(PERF_PIPELINE_MARK.START);
+    const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+    config.setCcjsonPath(ccdbPath);
+    config.buildFromProjectDir(cppRoot);
+    performance.mark(PERF_PIPELINE_MARK.AFTER_BASIC_INFO);
+
+    const scene = new Scene();
+    scene.buildSceneFromFiles(config);
+    performance.mark(PERF_PIPELINE_MARK.AFTER_BUILD_SCENE);
+    scene.inferTypes();
+    performance.mark(PERF_PIPELINE_MARK.AFTER_INFER_TYPES);
+    performance.mark(PERF_PIPELINE_MARK.END);
+    lastCppPhaseSeconds = capturePipelinePhases('cpp');
+    cppPerfFinished = true;
+}
+
+/** Harmony then Cpp scene perf; C++ runs only when {@code PROJECT_ROOT} basename ends with {@code _cpp}. */
 function runPerfTest(): void {
-    performance.mark('start');
+    harmonyPerfFinished = false;
+    cppPerfFinished = false;
     testAppProject();
-    performance.mark('end');
+    testCppProject();
 }
 
 const RSS_SAMPLE_COUNT = 7;
@@ -69,7 +164,23 @@ function median(values: number[]): number {
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function printMemPerfInfo() {
+/** One segment in seconds (creates a named measure; name must be unique per run). */
+function measureSeconds(measureName: string, startMark: string, endMark: string): number {
+    performance.measure(measureName, startMark, endMark);
+    return performance.getEntriesByName(measureName)[0].duration / 1000;
+}
+
+/** Same five milestones as Harmony log line: start → buildBasicInfo → buildScene4HarmonyProject → inferTypes → end (four gaps s0–s3). */
+function formatUnifiedPhaseDetail(s0: number, s1: number, s2: number, s3: number): string {
+    return `start <-${s0.toFixed(3)}s -> buildBasicInfo <-${s1.toFixed(3)}s -> buildScene4Project <-${s2.toFixed(3)}s -> inferTypes <-${s3.toFixed(3)}s -> end`;
+}
+
+function printCPUPerfBlock(prefix: string, totalSeconds: number, detailText: string): void {
+    logger.info(`${prefix}Take total time: `, totalSeconds.toFixed(3), 's');
+    logger.info(`${prefix}Detail: ` + detailText);
+}
+
+function printMemPerfInfo(prefix = '') {
     const g = typeof globalThis !== 'undefined' ? globalThis : (typeof global !== 'undefined' ? global : undefined);
     if (g && typeof (g as { gc?: () => void }).gc === 'function') {
         (g as { gc: () => void }).gc();
@@ -77,28 +188,38 @@ function printMemPerfInfo() {
     const samples = collectRssSamples();
     const rssMedian = median(samples);
     const rssMb = rssMedian / 1024 / 1024;
-    logger.info(`RSS Memory Size: ${Math.round(rssMb * 100) / 100} MB.`);
+    logger.info(`${prefix}RSS Memory Size: ${Math.round(rssMb * 100) / 100} MB.`);
 }
 
-function printCPUPerfInfo() {
-    performance.measure('start-to-end', 'start', 'end');
-    performance.measure('start-to-buildBasicInfo', 'start', 'buildBasicInfo');
-    performance.measure('buildBasicInfo-to-buildScene4HarmonyProject', 'buildBasicInfo', 'buildScene4HarmonyProject');
-    performance.measure('buildScene4HarmonyProject-to-inferTypes', 'buildScene4HarmonyProject', 'inferTypes');
-    performance.measure('inferTypes-to-end', 'inferTypes', 'end');
-
-    let start_to_end = performance.getEntriesByName('start-to-end')[0].duration / 1000;
-    let start_to_buildBasicInfo = performance.getEntriesByName('start-to-buildBasicInfo')[0].duration / 1000;
-    let buildBasicInfo_to_buildScene4HarmonyProject = performance.getEntriesByName('buildBasicInfo-to-buildScene4HarmonyProject')[0].duration / 1000;
-    let buildScene4HarmonyProject_to_inferTypes = performance.getEntriesByName('buildScene4HarmonyProject-to-inferTypes')[0].duration / 1000;
-    let inferTypes_to_end = performance.getEntriesByName('inferTypes-to-end')[0].duration / 1000;
-
-    logger.info('Take total time: ', start_to_end.toFixed(3), 's');
-    logger.info('Detail: start <-', start_to_buildBasicInfo.toFixed(3),
-        's -> buildBasicInfo <-', buildBasicInfo_to_buildScene4HarmonyProject.toFixed(3),
-        's -> buildScene4HarmonyProject <-', buildScene4HarmonyProject_to_inferTypes.toFixed(3),
-        's -> inferTypes <-', inferTypes_to_end.toFixed(3),
-        's -> end');
+function printCPUPerfInfo(): void {
+    if (harmonyPerfFinished) {
+        const h = lastHarmonyPhaseSeconds;
+        printCPUPerfBlock(
+            '[Harmony] ',
+            h.pipelineSeconds,
+            formatUnifiedPhaseDetail(
+                h.startToBasicInfoSeconds,
+                h.basicInfoToSceneSeconds,
+                h.sceneToInferTypesSeconds,
+                h.inferTypesToEndSeconds,
+            ),
+        );
+        printMemPerfInfo('[Harmony] ');
+    }
+    if (cppPerfFinished) {
+        const o = lastCppPhaseSeconds;
+        printCPUPerfBlock(
+            '[Cpp] ',
+            o.pipelineSeconds,
+            formatUnifiedPhaseDetail(
+                o.startToBasicInfoSeconds,
+                o.basicInfoToSceneSeconds,
+                o.sceneToInferTypesSeconds,
+                o.inferTypesToEndSeconds,
+            ),
+        );
+        printMemPerfInfo('[Cpp] ');
+    }
 }
 
 function basicSetup() {
@@ -123,6 +244,7 @@ function basicSetup() {
         });
     }
 }
+
 
 basicSetup();
 runPerfTest();
