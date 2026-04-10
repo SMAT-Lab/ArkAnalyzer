@@ -252,197 +252,6 @@ export function serializeLineColPosition(position: LineColPosition): LineColPosi
     };
 }
 
-export function serializeType(type: Type): TypeDto {
-    if (type === undefined) {
-        throw new Error('Type is undefined');
-    }
-
-    if (type instanceof AnyType) {
-        return polymorphic('AnyType', {});
-    } else if (type instanceof UnknownType) {
-        return polymorphic('UnknownType', {});
-    } else if (type instanceof VoidType) {
-        return polymorphic('VoidType', {});
-    } else if (type instanceof NeverType) {
-        return polymorphic('NeverType', {});
-    } else if (type instanceof UnionType) {
-        return polymorphic('UnionType', {
-            types: type.getTypes().map(type => serializeType(type)),
-        });
-    } else if (type instanceof IntersectionType) {
-        return polymorphic('IntersectionType', {
-            types: type.getTypes().map(type => serializeType(type)),
-        });
-    } else if (type instanceof TupleType) {
-        return polymorphic('TupleType', {
-            types: type.getTypes().map(type => serializeType(type)),
-        });
-    } else if (type instanceof CxxIntType) {
-        return polymorphic('CxxIntType', {
-            signType: type.getSignType().toString(),
-        });
-    } else if (type instanceof CxxShortType) {
-        return polymorphic('CxxShortType', {
-            signType: type.getSignType().toString(),
-        });
-    } else if (type instanceof CxxLongType) {
-        return polymorphic('CxxLongType', {
-            signType: type.getSignType().toString(),
-        });
-    } else if (type instanceof CxxLongLongType) {
-        return polymorphic('CxxLongLongType', {
-            signType: type.getSignType().toString(),
-        });
-    } else if (type instanceof CxxSizeTType) {
-        return polymorphic('CxxSizeTType', {
-            signType: type.getSignType().toString(),
-        });
-    } else if (type instanceof CxxFloatType) {
-        return polymorphic('CxxFloatType', {
-            bitWidth: type.getBitWith(),
-        });
-    } else if (type instanceof CxxDoubleType) {
-        return polymorphic('CxxDoubleType', {
-            bitWidth: type.getBitWith(),
-        });
-    } else if (type instanceof CxxLongDoubleType) {
-        return polymorphic('CxxLongDoubleType', {
-            bitWidth: type.getBitWith(),
-        });
-    } else if (type instanceof CxxCharType) {
-        return polymorphic('CxxCharType', {
-            text: type.toString(),
-        });
-    } else if (type instanceof CxxWcharType) {
-        return polymorphic('CxxWcharType', {
-            text: type.toString(),
-        });
-    } else if (type instanceof PointerType) {
-        return polymorphic('PointerType', {
-            baseType:  serializeType(type.getBaseType()),
-        });
-    } else if (type instanceof SmartPointerType) {
-        return polymorphic('SmartPointerType', {
-            baseType:  serializeType(type.getBaseType()),
-        });
-    } else if (type instanceof ReferenceType) {
-        return polymorphic('ReferenceType', {
-            baseType:  serializeType(type.getBaseType()),
-        });
-    } else if (type instanceof Thread) {
-        return polymorphic('Thread', {
-            text: type.toString(),
-        });
-    } else if (type instanceof TypeInfo) {
-        return polymorphic('TypeInfo', {
-            name: type.toString(),
-        });
-
-    } else if (type instanceof BooleanType) {
-        return polymorphic('BooleanType', {});
-    } else if (type instanceof NumberType) {
-        return polymorphic('NumberType', {});
-    } else if (type instanceof BigIntType) {
-        return polymorphic('BigIntType', {});
-    } else if (type instanceof StringType) {
-        return polymorphic('StringType', {});
-    } else if (type instanceof NullType) {
-        return polymorphic('NullType', {});
-    } else if (type instanceof UndefinedType) {
-        return polymorphic('UndefinedType', {});
-    } else if (type instanceof LiteralType) {
-        return polymorphic('LiteralType', {
-            literal: type.getLiteralName(),
-        });
-    } else if (type instanceof ClassType) {
-        return polymorphic('ClassType', {
-            signature: serializeClassSignature(type.getClassSignature()),
-            typeParameters: type.getRealGenericTypes()?.map(type => serializeType(type)),
-        });
-    } else if (type instanceof FunctionType) {
-        if (type.getMethodSignature().getMethodSubSignature().getReturnType() === type) {
-            // Handle recursive function types.
-            // This is a workaround for the issue where the function type refers to itself,
-            // which can cause infinite recursion during serialization.
-            // In this case, we return a simple FunctionType without a signature.
-            console.warn('Detected recursive function type, replacing return type with UnknownType');
-            const sig = type.getMethodSignature();
-            const sub = sig.getMethodSubSignature();
-            const sig2 = new MethodSignature(
-                sig.getDeclaringClassSignature(),
-                new MethodSubSignature(
-                    sub.getMethodName(),
-                    sub.getParameters(),
-                    UnknownType.getInstance(),
-                    sub.isStatic(),
-                ),
-            );
-            return polymorphic('FunctionType', {
-                signature: serializeMethodSignature(sig2),
-                typeParameters: type.getRealGenericTypes()?.map(type => serializeType(type)),
-            });
-        }
-        return polymorphic('FunctionType', {
-            signature: serializeMethodSignature(type.getMethodSignature()),
-            typeParameters: type.getRealGenericTypes()?.map(type => serializeType(type)),
-        });
-    } else if (type instanceof ArrayType) {
-        return polymorphic('ArrayType', {
-            elementType: serializeType(type.getBaseType()),
-            dimensions: type.getDimension(),
-        });
-    } else if (type instanceof UnclearReferenceType) {
-        return polymorphic('UnclearReferenceType', {
-            name: type.getName(),
-            typeParameters: type.getGenericTypes().map(type => serializeType(type)),
-        });
-    } else if (type instanceof AliasType) {
-        return polymorphic('AliasType', {
-            name: type.getName(),
-            originalType: serializeType(type.getOriginalType()),
-            signature: serializeAliasTypeSignature(type.getSignature()),
-        });
-    } else if (type instanceof GenericType) {
-        const constraint = type.getConstraint();
-        const defaultType = type.getDefaultType();
-        return polymorphic('GenericType', {
-            name: type.getName(),
-            constraint: constraint && serializeType(constraint),
-            defaultType: defaultType && serializeType(defaultType),
-        });
-    } else if (type instanceof AnnotationNamespaceType) {
-        return polymorphic('AnnotationNamespaceType', {
-            originType: type.getOriginType(),
-            namespaceSignature: serializeNamespaceSignature(type.getNamespaceSignature()),
-        });
-    } else if (type instanceof AnnotationTypeQueryType) {
-        return polymorphic('AnnotationTypeQueryType', {
-            originType: type.getOriginType(),
-        });
-    } else if (type instanceof LexicalEnvType) {
-        const m = type.getNestedMethod();
-        const s = m.getMethodSubSignature();
-        const sig = new MethodSignature(m.getDeclaringClassSignature(), new MethodSubSignature(s.getMethodName(), [], UnknownType.getInstance()));
-        return polymorphic('LexicalEnvType', {
-            // method: serializeMethodSignature(type.getNestedMethod()),
-            method: serializeMethodSignature(sig),
-            closures: type.getClosures().map(closure => serializeLocal(closure)),
-        });
-    } else if (type instanceof EnumValueType) {
-        return polymorphic('EnumValueType', {
-            signature: serializeClassSignature(type.getFieldSignature().getDeclaringSignature() as ClassSignature),
-            name: type.getFieldSignature().getFieldName(),
-        });
-    }
-
-    // Fallback for unhandled type cases
-    console.info(`Unhandled Type: ${type.constructor.name} (${type.toString()})`);
-    return {
-        kind: type.constructor.name,
-        text: type.toString(),
-    };
-}
-
 export function serializeFileSignature(file: FileSignature): FileSignatureDto {
     return {
         projectName: file.getProjectName(),
@@ -531,6 +340,205 @@ export function serializeLocal(local: Local): LocalDto {
     return {
         name: local.getName(),
         type: serializeType(local.getType()),
+    };
+}
+
+/** Dispatch entry: return a DTO when this handler matches `type`, otherwise `undefined` (try next). */
+type TypeSerializerFn = (type: Type, active: WeakSet<object>) => TypeDto | undefined;
+
+function trySerializeCxxSignType(type: Type): TypeDto | undefined {
+    if (type instanceof CxxIntType) {
+        return polymorphic('CxxIntType', { signType: type.getSignType().toString() });
+    }
+    if (type instanceof CxxShortType) {
+        return polymorphic('CxxShortType', { signType: type.getSignType().toString() });
+    }
+    if (type instanceof CxxLongType) {
+        return polymorphic('CxxLongType', { signType: type.getSignType().toString() });
+    }
+    if (type instanceof CxxLongLongType) {
+        return polymorphic('CxxLongLongType', { signType: type.getSignType().toString() });
+    }
+    if (type instanceof CxxSizeTType) {
+        return polymorphic('CxxSizeTType', { signType: type.getSignType().toString() });
+    }
+    return undefined;
+}
+
+function trySerializeCxxBitWidthType(type: Type): TypeDto | undefined {
+    if (type instanceof CxxFloatType) {
+        return polymorphic('CxxFloatType', { bitWidth: type.getBitWith() });
+    }
+    if (type instanceof CxxDoubleType) {
+        return polymorphic('CxxDoubleType', { bitWidth: type.getBitWith() });
+    }
+    if (type instanceof CxxLongDoubleType) {
+        return polymorphic('CxxLongDoubleType', { bitWidth: type.getBitWith() });
+    }
+    return undefined;
+}
+
+function serializeFunctionTypeDto(type: FunctionType, active: WeakSet<object>): TypeDto {
+    if (type.getMethodSignature().getMethodSubSignature().getReturnType() === type) {
+        // Recursive function type: avoid infinite recursion by stubbing return type.
+        console.warn('Detected recursive function type, replacing return type with UnknownType');
+        const sig = type.getMethodSignature();
+        const sub = sig.getMethodSubSignature();
+        const sig2 = new MethodSignature(
+            sig.getDeclaringClassSignature(),
+            new MethodSubSignature(sub.getMethodName(), sub.getParameters(), UnknownType.getInstance(), sub.isStatic()),
+        );
+        return polymorphic('FunctionType', {
+            signature: serializeMethodSignature(sig2),
+            typeParameters: type.getRealGenericTypes()?.map(t => serializeType(t, active)),
+        });
+    }
+    return polymorphic('FunctionType', {
+        signature: serializeMethodSignature(type.getMethodSignature()),
+        typeParameters: type.getRealGenericTypes()?.map(t => serializeType(t, active)),
+    });
+}
+
+const TYPE_SERIALIZERS: TypeSerializerFn[] = [
+    (type, active) => (type instanceof AnyType ? polymorphic('AnyType', {}) : undefined),
+    (type, active) => (type instanceof UnknownType ? polymorphic('UnknownType', {}) : undefined),
+    (type, active) => (type instanceof VoidType ? polymorphic('VoidType', {}) : undefined),
+    (type, active) => (type instanceof NeverType ? polymorphic('NeverType', {}) : undefined),
+    (type, active) =>
+        type instanceof UnionType
+            ? polymorphic('UnionType', { types: type.getTypes().map(t => serializeType(t, active)) })
+            : undefined,
+    (type, active) =>
+        type instanceof IntersectionType
+            ? polymorphic('IntersectionType', { types: type.getTypes().map(t => serializeType(t, active)) })
+            : undefined,
+    (type, active) =>
+        type instanceof TupleType
+            ? polymorphic('TupleType', { types: type.getTypes().map(t => serializeType(t, active)) })
+            : undefined,
+    (type, active) => trySerializeCxxSignType(type),
+    (type, active) => trySerializeCxxBitWidthType(type),
+    (type, active) => (type instanceof CxxCharType ? polymorphic('CxxCharType', { text: type.toString() }) : undefined),
+    (type, active) => (type instanceof CxxWcharType ? polymorphic('CxxWcharType', { text: type.toString() }) : undefined),
+    (type, active) =>
+        type instanceof PointerType
+            ? polymorphic('PointerType', { baseType: serializeType(type.getBaseType(), active) })
+            : undefined,
+    (type, active) =>
+        type instanceof SmartPointerType
+            ? polymorphic('SmartPointerType', { baseType: serializeType(type.getBaseType(), active) })
+            : undefined,
+    (type, active) =>
+        type instanceof ReferenceType
+            ? polymorphic('ReferenceType', { baseType: serializeType(type.getBaseType(), active) })
+            : undefined,
+    (type, active) => (type instanceof Thread ? polymorphic('Thread', { text: type.toString() }) : undefined),
+    (type, active) => (type instanceof TypeInfo ? polymorphic('TypeInfo', { name: type.toString() }) : undefined),
+    (type, active) => (type instanceof BooleanType ? polymorphic('BooleanType', {}) : undefined),
+    (type, active) => (type instanceof NumberType ? polymorphic('NumberType', {}) : undefined),
+    (type, active) => (type instanceof BigIntType ? polymorphic('BigIntType', {}) : undefined),
+    (type, active) => (type instanceof StringType ? polymorphic('StringType', {}) : undefined),
+    (type, active) => (type instanceof NullType ? polymorphic('NullType', {}) : undefined),
+    (type, active) => (type instanceof UndefinedType ? polymorphic('UndefinedType', {}) : undefined),
+    (type, active) =>
+        type instanceof LiteralType ? polymorphic('LiteralType', { literal: type.getLiteralName() }) : undefined,
+    (type, active) =>
+        type instanceof ClassType
+            ? polymorphic('ClassType', {
+                  signature: serializeClassSignature(type.getClassSignature()),
+                  typeParameters: type.getRealGenericTypes()?.map(t => serializeType(t, active)),
+              })
+            : undefined,
+    (type, active) => (type instanceof FunctionType ? serializeFunctionTypeDto(type, active) : undefined),
+    (type, active) =>
+        type instanceof ArrayType
+            ? polymorphic('ArrayType', {
+                  elementType: serializeType(type.getBaseType(), active),
+                  dimensions: type.getDimension(),
+              })
+            : undefined,
+    (type, active) =>
+        type instanceof UnclearReferenceType
+            ? polymorphic('UnclearReferenceType', {
+                  name: type.getName(),
+                  typeParameters: type.getGenericTypes().map(t => serializeType(t, active)),
+              })
+            : undefined,
+    (type, active) =>
+        type instanceof AliasType
+            ? polymorphic('AliasType', {
+                  name: type.getName(),
+                  originalType: serializeType(type.getOriginalType(), active),
+                  signature: serializeAliasTypeSignature(type.getSignature()),
+              })
+            : undefined,
+    (type, active) => {
+        if (!(type instanceof GenericType)) {
+            return undefined;
+        }
+        const constraint = type.getConstraint();
+        const defaultType = type.getDefaultType();
+        return polymorphic('GenericType', {
+            name: type.getName(),
+            constraint: constraint && serializeType(constraint, active),
+            defaultType: defaultType && serializeType(defaultType, active),
+        });
+    },
+    (type, active) =>
+        type instanceof AnnotationNamespaceType
+            ? polymorphic('AnnotationNamespaceType', {
+                  originType: type.getOriginType(),
+                  namespaceSignature: serializeNamespaceSignature(type.getNamespaceSignature()),
+              })
+            : undefined,
+    (type, active) =>
+        type instanceof AnnotationTypeQueryType
+            ? polymorphic('AnnotationTypeQueryType', { originType: type.getOriginType() })
+            : undefined,
+    (type, active) => {
+        if (!(type instanceof LexicalEnvType)) {
+            return undefined;
+        }
+        const m = type.getNestedMethod();
+        const s = m.getMethodSubSignature();
+        const sig = new MethodSignature(
+            m.getDeclaringClassSignature(),
+            new MethodSubSignature(s.getMethodName(), [], UnknownType.getInstance()),
+        );
+        return polymorphic('LexicalEnvType', {
+            method: serializeMethodSignature(sig),
+            closures: type.getClosures().map(closure => serializeLocal(closure)),
+        });
+    },
+    (type, active) =>
+        type instanceof EnumValueType
+            ? polymorphic('EnumValueType', {
+                  signature: serializeClassSignature(type.getFieldSignature().getDeclaringSignature() as ClassSignature),
+                  name: type.getFieldSignature().getFieldName(),
+              })
+            : undefined,
+];
+
+export function serializeType(type: Type, activeTypeSerialization = new WeakSet<object>()): TypeDto {
+    if (type === undefined) {
+        throw new Error('Type is undefined');
+    }
+    if (activeTypeSerialization.has(type)) {
+        return polymorphic('UnknownType', {});
+    }
+    activeTypeSerialization.add(type);
+
+    for (const serialize of TYPE_SERIALIZERS) {
+        const dto = serialize(type, activeTypeSerialization);
+        if (dto !== undefined) {
+            return dto;
+        }
+    }
+
+    console.info(`Unhandled Type: ${type.constructor.name} (${type.toString()})`);
+    return {
+        kind: type.constructor.name,
+        text: type.toString(),
     };
 }
 

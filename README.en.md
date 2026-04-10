@@ -1,96 +1,100 @@
-# sig_programanalysis
-
-English | [简体中文](./README.md)
-
-## SIG Group Work Objectives and Scope
-
-### Work Objectives
-
-* Sig_programanalysis aims to carry out program analysis technology exploration, key technology identification, and competitiveness building for OpenHarmony systems and apps, striving to become the gathering place for OpenHarmony system and app analysis capabilities and an incubation place for related engineering tools.
-
-* Sig_programanalysis will build a basic program analysis framework for OpenHarmony apps, and subsequently based on it to provide application developers with out-of-the-box defect scanning and analysis tools, making it possible to automatically vet code for scenarios such as IDE, CI/CD pipelines, etc.
-
-### Work Scope
-
-* Responsible for building and maintaining the key technology map of program analysis, as well as the decomposition of functional modules in the field, interface definition, and maintenance management.
-
-* Responsible for the architecture design, open source development, and project maintenance of projects related to program analysis.
-
-
-### Projects
-
-Sig_programanalysis currently incubates the following projects. Everyone is welcome to participate (you can apply to participate in the co-construction of existing projects, or you can apply to create a new program analysis project).
-
-
-* ArkAnalyzer:
-The Static Analysis Framework for ArkTS-based OpenHarmony Apps.
-
-* ArkCheck:
-Checking OpenHarmony Apps for Potential Code-level Defects
-
-
-## SIG Members
-
-
-### Leader
-
-- [lilicoding](https://gitee.com/lilicoding)
-
-
-### Committers
-- [kubigao](https://gitee.com/kubigao)
-- [yifei-xue](https://gitee.com/yifei_xue)
-- [kubrick-hjh](https://gitee.com/kubrick-hjh)
-- [speed9](https://gitee.com/speeds)
-- [bbsun](https://gitee.com/bbsun)
-- [chn](https://gitee.com/chn)
-- [Elouan](https://gitee.com/Elouan)
-- [Rnine](https://gitee.com/Rnine)
-- [workspace_cb](https://gitee.com/workspace_cb)
-- [longyuC](https://gitee.com/longyuC)
-- [xyji95](https://gitee.com/xyji95)
-- [xulingyun-red](https://gitee.com/xulingyun-red)
-
-
-### Meetings
- - Meeting Time: Bi-weekly meeting, Thursday 19:30 Beijing time
- - Meeting Application：[Link](https://shimo.im/forms/B1Awd60W7bU51g3m/fill)
- - Meeting Link: Welink or Others
- - Meeting Notification: [Subscribe to](https://lists.openatom.io/postorius/lists/dev.openharmony.io) mailing list dev@openharmony.io for the meeting link
- - Meeting Summary: [Archive link address](https://gitee.com/openharmony-sig/sig-content)
-
-### Contact
-
-- Mailing list: [dev@openharmony.io](https://lists.openatom.io/postorius/lists/dev@openharmony.io/)
-
-*** 
 # ArkAnalyzer: Static Program Analysis Framework for the ArkTS Language
-## Develope environment setup
-1. [Download Visual Studio Code](https://code.visualstudio.com/download) or other IDEA;
-2. [Download Node.js](https://nodejs.org/en/download/current) and install it. Node.js is a runtime environment for JavaScript, which comes with its own package manager, npm. 
-3. Install Typescript via npm: 
+
+[简体中文](./README.md) 
+
+## Development environment setup
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/download) or another IDE.
+2. Install [Node.js](https://nodejs.org/en/download/current) (includes npm).
+3. Install dependencies:
 ```shell
-npm install -g typescript
-```
-4. Install dependency libraries
-```shell
-cd arkanalyzer
 npm install
 ```
-5. [Optional] Generate the latest API documentation, which will be created at docs/api_docs.
+4. [Optional] Generate the latest API documentation under `docs/api_docs`:
 ```shell
 npm run gendoc
 ```
 
-## Docmentations
+## Command-line interface (CLI)
 
-1. ArkAnalyzer API docmentations，refer to the [link](docs/api_docs/globals.md).
+The executable is `arkanalyzer` (see the `bin` field in `package.json`). **Build before using the CLI locally** so that `lib/` is generated:
 
-## Commit codes
-Follow the code repository standards of Openharmony-Sig, refer to the [link](docs/HowToCreatePR.md#english)
+```shell
+npm run build
+```
 
-## Debug
-Modify the `args` parameter array in the debug configuration file `.vscode/launch.json` to the path of the test file you want to debug, and then start the debugging process.
+Show help:
 
-## Add test cases
-Place all new test codes in the `tests` directory. Corresponding sample code and other resource files should be placed in the ``tests\resources` directory, and create different folders for each testing scenario.
+```shell
+npx arkanalyzer --help
+npx arkanalyzer cg --help
+npx arkanalyzer ir --help
+```
+
+`<input>` is the **project root** of an ArkTS/TypeScript project.
+
+### `cg`: call graph and reachability
+
+Usage: `arkanalyzer cg <input> [options]`
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-a, --algorithm <name>` | Graph algorithm: `cha` \| `rta` | `rta` |
+| `-o, --output <file>` | Output file path | `stdout` |
+| `-f, --format <type>` | Output format: `json` \| `text` \| `dot` \| `csv` | `json` |
+| `-e, --entry <method>` | Entry method (repeatable); `@dummyMain` means default entries | auto |
+| `-r, --reachable-from <method>` | Reachability roots (repeatable) | — |
+| `--direction <dir>` | `forward` (callees) \| `backward` (callers toward roots) | `forward` |
+| `--edges <type>` | Edge filter: `call` \| `virtual` \| `interface` \| `all` | `all` |
+| `--ohos-sdk-home <path>` | OpenHarmony SDK root; falls back to `OHOS_SDK_HOME` | — |
+
+Examples:
+
+```shell
+npx arkanalyzer cg ./myapp -a rta -f json
+npx arkanalyzer cg ./myapp -e "@dummyMain" -r MyClass.myMethod --direction backward -f text
+```
+
+### `ir`: export IR artifacts
+
+Usage: `arkanalyzer ir <input> [options]`
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-o, --output <dir>` | Output directory for artifacts | `out` |
+| `-f, --format <type>` | `json` \| `text` \| `dot` | `text` |
+| `--ohos-sdk-home <path>` | Same as `cg` | — |
+| `--no-infer-types` | Skip `Scene.inferTypes()` for speed | inference on by default |
+
+The command prints one line of JSON summary to **stdout** (fields such as `input`, `format`, `outputDir`, `fileCount`).
+
+Examples:
+
+```shell
+npx arkanalyzer ir ./myapp -f text -o ./out
+npx arkanalyzer ir ./myapp -f json -o ./out
+```
+
+For detailed option semantics and examples, see [skills/arkanalyzer/skills/cg.md](skills/arkanalyzer/skills/cg.md) and [skills/arkanalyzer/skills/ir.md](skills/arkanalyzer/skills/ir.md).
+
+## Documentation
+
+1. Quick start: [QuickStart.md](docs/QuickStart.md).
+2. API reference: [globals.md](docs/api_docs/globals.md).
+3. Program Analysis SIG: [English](docs/sig_programanalysis.en.md).
+
+## Contributing
+
+Follow the OpenHarmony-SIG contribution workflow: [HowToCreatePR.md (English)](docs/HowToCreatePR.md#english).
+
+## Debugging
+
+Set the `args` array in `.vscode/launch.json` to the file path you want to debug, then start debugging.
+
+## Adding test cases
+
+Place new tests under `tests/`. Sample code and other resources go under `tests/resources/`, organized in folders per scenario.
+
+## Issues
+
+See [HowToHandleIssues.md](docs/HowToHandleIssues.md) to file issues.

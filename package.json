@@ -1,12 +1,15 @@
 {
   "name": "arkanalyzer",
-  "version": "1.0.86",
+  "version": "1.0.87",
   "files": [
     "docs",
     "lib",
     "config"
   ],
   "main": "lib/index.js",
+  "bin": {
+    "arkanalyzer": "lib/cli/cli.js"
+  },
   "scripts": {
     "prebuild": "node script/npmInstall.js",
     "build": "tsc",
