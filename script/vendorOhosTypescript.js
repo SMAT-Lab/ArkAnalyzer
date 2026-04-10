@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,7 +27,7 @@ if (!fs.existsSync(sourceDir)) {
     process.exit(1);
 }
 
-if (!fs.existsSync(markerPath)) {
+if (!process.env.CLOUD_BUILD_ENV && !fs.existsSync(markerPath)) {
     console.error('[vendorOhosTypescript] marker missing in source:', markerPath);
     process.exit(1);
 }
