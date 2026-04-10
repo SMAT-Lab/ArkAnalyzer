@@ -680,36 +680,49 @@ export class Scene {
         this.getDependencyFilesDeeply(filePath);
     }
 
+    /**
+     * Loads SDK sources into the scene. C++ SDK files are intentionally skipped: they are not parsed or registered
+     * here (only non-C++ SDK sources are processed).
+     */
     private buildSdk(sdkName: string, sdkPath: string): void {
-        let allFiles;
-        if (sdkName === SdkUtils.BUILT_IN_NAME) {
-            allFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
-            if (allFiles.length > 0) {
-                this.getOptions().sdkGlobalFolders?.push(sdkPath);
-            }
-        } else {
-            allFiles = getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
-        }
-        allFiles.forEach(file => {
-            logger.trace('=== parse sdk file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
-                ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
-                    cls.getDefaultArkMethod()?.buildBody();
-                    cls.getDefaultArkMethod()?.freeBodyBuilder();
-                });
-                const fileSig = arkFile.getFileSignature().toMapKey();
-                this.sdkArkFilesMap.set(fileSig, arkFile);
-                SdkUtils.buildSdkImportMap(arkFile);
-                SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledSdkFilePaths.push(file);
+        const allFiles = this.collectSdkFiles(sdkName, sdkPath);
+        allFiles.forEach((file) => {
+            if (FileUtils.getFileLanguage(file, this.fileLanguages) === Language.CXX) {
                 return;
             }
+            this.parseAndRegisterSdkFile(file, sdkPath, sdkName);
         });
+    }
+
+    private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
+        if (sdkName === SdkUtils.BUILT_IN_NAME) {
+            const builtInFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
+            if (builtInFiles.length > 0) {
+                this.getOptions().sdkGlobalFolders?.push(sdkPath);
+            }
+            return builtInFiles;
+        }
+        return getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
+    }
+
+    private parseAndRegisterSdkFile(file: string, sdkPath: string, sdkName: string): void {
+        logger.trace('=== parse sdk file:', file);
+        try {
+            const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
+            arkFile.setScene(this);
+            buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
+            ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
+                cls.getDefaultArkMethod()?.buildBody();
+                cls.getDefaultArkMethod()?.freeBodyBuilder();
+            });
+            const fileSig = arkFile.getFileSignature().toMapKey();
+            this.sdkArkFilesMap.set(fileSig, arkFile);
+            SdkUtils.buildSdkImportMap(arkFile);
+            SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
+        } catch (error) {
+            logger.error('Error parsing file:', file, error);
+            this.unhandledSdkFilePaths.push(file);
+        }
     }
 
     /**
@@ -1608,7 +1621,17 @@ export class ModuleScene {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.projectScene.getFileLanguages()));
                 arkFile.setScene(this.projectScene);
                 arkFile.setModuleScene(this);
-                buildArkFileFromFile(file, this.projectScene.getRealProjectDir(), arkFile, this.projectScene.getProjectName());
+                if (arkFile.getLanguage() === Language.CXX) {
+                    buildArkCxxFileFromFile(
+                        file,
+                        this.projectScene.getRealProjectDir(),
+                        arkFile,
+                        this.projectScene.getProjectName(),
+                        this.projectScene.getIncludeDirs()
+                    );
+                } else {
+                    buildArkFileFromFile(file, this.projectScene.getRealProjectDir(), arkFile, this.projectScene.getProjectName());
+                }
                 this.projectScene.setFile(arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);

@@ -54,7 +54,7 @@ function resolveDevecoPaths(): { devecoC: string; devecoInclude: string } {
         };
     }
 
-    const sdkRoot = path.join(sdkHome, 'sdk', 'default', 'openharmony');
+    const sdkRoot = path.join(sdkHome, 'openharmony');
     const devecoC = path.join(sdkRoot, 'native', 'llvm', 'include', 'libcxx-ohos', 'include', 'c++', 'v1');
     const devecoInclude = process.platform === 'darwin'
         ? path.join(

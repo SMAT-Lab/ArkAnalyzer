@@ -16,17 +16,33 @@
 import { defineConfig } from 'vitest/config';
 import { isAstJsonDumperAvailable } from './src/cpp_frontend/ast/const';
 
-const skipCoreCppTests = !isAstJsonDumperAvailable();
-if (skipCoreCppTests) {
+const astJsonDumperAvailable = isAstJsonDumperAvailable();
+const sdkHome = process.env.OHOS_SDK_HOME?.trim();
+
+const skipCoreCppTests = !astJsonDumperAvailable;
+// These two suites resolve OHOS SDK include paths via OHOS_SDK_HOME; exclude only them when unset.
+const skipOhosSdkHomeDependentTests = astJsonDumperAvailable && !sdkHome;
+
+if (!astJsonDumperAvailable) {
     console.warn('[vitest] astJsonDumper not found — skipping tests/unit/core_cpp (build src/cpp_frontend/ast per README).');
+} else if (!sdkHome) {
+    console.warn('[vitest] OHOS_SDK_HOME is not set — skipping Cfg.test.ts and ExportInfo.test.ts only.');
 }
+
+const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
+    'tests/unit/core_cpp/graph/Cfg.test.ts',
+    'tests/unit/core_cpp/export/ExportInfo.test.ts',
+] as const;
 
 export default defineConfig({
     test: {
         include: ['tests/unit/**/*.test.ts'],
-        exclude: skipCoreCppTests
-            ? ['**/node_modules/**', '**/dist/**', 'tests/unit/core_cpp/**']
-            : ['**/node_modules/**', '**/dist/**'],
+        exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            ...(skipCoreCppTests ? ['tests/unit/core_cpp/**'] : []),
+            ...(skipOhosSdkHomeDependentTests ? [...OHOS_SDK_HOME_DEPENDENT_TEST_FILES] : []),
+        ],
         coverage: {
             include: ['src/**'],
         },
