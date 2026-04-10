@@ -680,9 +680,18 @@ export class Scene {
         this.getDependencyFilesDeeply(filePath);
     }
 
+    /**
+     * Loads SDK sources into the scene. C++ SDK files are intentionally skipped: they are not parsed or registered
+     * here (only non-C++ SDK sources are processed).
+     */
     private buildSdk(sdkName: string, sdkPath: string): void {
         const allFiles = this.collectSdkFiles(sdkName, sdkPath);
-        allFiles.forEach(file => this.parseAndRegisterSdkFile(file, sdkPath, sdkName));
+        allFiles.forEach((file) => {
+            if (FileUtils.getFileLanguage(file, this.fileLanguages) === Language.CXX) {
+                return;
+            }
+            this.parseAndRegisterSdkFile(file, sdkPath, sdkName);
+        });
     }
 
     private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
@@ -701,18 +710,10 @@ export class Scene {
         try {
             const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
             arkFile.setScene(this);
-            if (arkFile.getLanguage() === Language.CXX) {
-                buildArkCxxFileFromFile(file, sdkPath, arkFile, sdkName, this.includeDirs);
-            } else {
-                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
-            }
+            buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
             ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
                 cls.getDefaultArkMethod()?.buildBody();
-                if (arkFile.getLanguage() === Language.CXX) {
-                    cls.getDefaultArkMethod()?.freeCxxBodyBuilder();
-                } else {
-                    cls.getDefaultArkMethod()?.freeBodyBuilder();
-                }
+                cls.getDefaultArkMethod()?.freeBodyBuilder();
             });
             const fileSig = arkFile.getFileSignature().toMapKey();
             this.sdkArkFilesMap.set(fileSig, arkFile);
