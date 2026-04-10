@@ -13,6 +13,31 @@
  * limitations under the License.
  */
 
+/**
+ * LRU Cache Decorator — method-level caching with Least Recently Used eviction.
+ *
+ * Usage:
+ *   import { LRUCache, clearLRUCache } from './LRUCacheDecorator';
+ *
+ *   class Foo {
+ *       // Basic: cache up to 4096 entries (default)
+ *       @LRUCache()
+ *       static resolve(path: string): string { ... }
+ *
+ *       // Custom capacity
+ *       @LRUCache(1024)
+ *       static lookup(id: number): string { ... }
+ *
+ *       // Custom key generator — useful when you want case-insensitive keys,
+ *       // partial-argument keys, or any custom serialization.
+ *       @LRUCache(4096, (srcPath) => srcPath.toLowerCase())
+ *       static getFileRealPath(srcPath: string): string { ... }
+ *   }
+ *
+ *   // Clear the cache of a decorated method (e.g. on dispose)
+ *   clearLRUCache(Foo, 'resolve');
+ */
+
 const LRU_CACHE_SYMBOL = Symbol('LRUCache');
 
 /**
