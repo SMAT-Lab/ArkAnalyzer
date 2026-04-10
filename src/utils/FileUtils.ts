@@ -19,7 +19,7 @@ import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
 import { OH_PACKAGE_JSON5, SCOPE_PREFIX } from '../core/common/EtsConst';
 import { Language } from '../core/model/ArkFile';
-import { getCxxSourceFileExtensionSet } from '../cpp_frontend/ast/const';
+import { getCxxSourceFileExtensionSet } from '../frontend/cppFrontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FileUtils');
 

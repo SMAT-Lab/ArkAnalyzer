@@ -27,7 +27,7 @@ import { ArkArrayRef } from '../core/base/Ref';
 import { ArkField } from '../core/model/ArkField';
 import { FunctionType } from '../core/base/Type';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
-import type { ArkAggregateExpr } from '../cpp_frontend/base/Expr';
+import type { ArkAggregateExpr } from '../frontend/cppFrontend/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 

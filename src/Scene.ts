@@ -37,13 +37,13 @@ import {
     buildDefaultConstructor,
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
-import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
-import { getCxxHeaderFileExtensionSet } from './cpp_frontend/ast/const';
+import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
+import { getCxxHeaderFileExtensionSet } from './frontend/cppFrontend/ast/const';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
-import { IRInference as CxxIRInference } from './cpp_frontend/common/IRInference';
+import { buildArkFileFromFile as buildArkCxxFileFromFile } from './frontend/cppFrontend/model/builder/ArkFileBuilder';
+import { IRInference as CxxIRInference } from './frontend/cppFrontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
@@ -52,7 +52,7 @@ import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalys
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
-import { findCompileCommands } from './cpp_frontend/ast/astUtils';
+import { findCompileCommands } from './frontend/cppFrontend/ast/astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 const CXX_HEADER_EXTENSION_SET = getCxxHeaderFileExtensionSet();

@@ -21,7 +21,7 @@ builtIn/
 arktools/
 lib/
 
-# Keep only selected folders under src/cpp_frontend/ast.
-src/cpp_frontend/ast/*/
-!src/cpp_frontend/ast/cmake/
-!src/cpp_frontend/ast/utils/
+# Keep only selected folders under src/frontend/cppFrontend/ast.
+src/frontend/cppFrontend/ast/*/
+!src/frontend/cppFrontend/ast/cmake/
+!src/frontend/cppFrontend/ast/utils/

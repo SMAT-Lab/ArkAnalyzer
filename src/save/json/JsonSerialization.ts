@@ -131,7 +131,7 @@ import {
     ArkNoExpectExpr,
     ArkCxxUnaryExpr,
     ArkTypeIdExpr,
-} from '../../cpp_frontend/base/Expr';
+} from '../../frontend/cppFrontend/base/Expr';
 import {
     CxxCharType,
     CxxDoubleType,
@@ -141,7 +141,7 @@ import {
     CxxLongType,
     CxxShortType,
     CxxSizeTType, CxxWcharType, PointerType, ReferenceType, SmartPointerType, Thread, TypeInfo,
-} from '../../cpp_frontend/base/Type';
+} from '../../frontend/cppFrontend/base/Type';
 
 export function serializeArkScene(scene: Scene): SceneDto {
     return {

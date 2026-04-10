@@ -15,7 +15,7 @@
 
 import { ClassCategory } from '../../core/model/ArkClass';
 import { ExportType } from '../../core/model/ArkExport';
-import { CxxTypeBitWidth } from '../../cpp_frontend/base/Type';
+import { CxxTypeBitWidth } from '../../frontend/cppFrontend/base/Type';
 
 // Polymorphic wrapper type for discriminated unions
 type Polymorphic<K, T> = T & { _: K; };

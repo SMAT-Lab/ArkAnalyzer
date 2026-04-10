@@ -100,7 +100,7 @@ export {
     getCxxImplementationFileExtensions,
     getCxxSourceFileExtensionSet,
     getCxxSourceFileExtensions,
-} from './cpp_frontend/ast/const';
+} from './frontend/cppFrontend/ast/const';
 
 // save
 export { Printer } from './save/Printer';

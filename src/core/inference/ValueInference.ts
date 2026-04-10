@@ -64,7 +64,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassSignature } from '../model/ArkSignature';
 import { Builtin } from '../common/Builtin';
 import { Language } from '../model/ArkFile';
-import { IRInference as CxxIRInference } from '../../cpp_frontend/common/IRInference';
+import { IRInference as CxxIRInference } from '../../frontend/cppFrontend/common/IRInference';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
