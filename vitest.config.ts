@@ -25,14 +25,14 @@ const skipCoreCppTests = !astJsonDumperAvailable;
 const skipOhosSdkHomeDependentTests = astJsonDumperAvailable && !sdkHome;
 
 if (!astJsonDumperAvailable) {
-    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/core_cpp (build src/cppFrontend/ast per README).');
+    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/cppCore (build src/cppFrontend/ast per README).');
 } else if (!sdkHome) {
     console.warn('[vitest] OHOS_SDK_HOME is not set — skipping Cfg.test.ts and ExportInfo.test.ts only.');
 }
 
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
-    'tests/unit/core_cpp/graph/Cfg.test.ts',
-    'tests/unit/core_cpp/export/ExportInfo.test.ts',
+    'tests/unit/cppCore/graph/Cfg.test.ts',
+    'tests/unit/cppCore/export/ExportInfo.test.ts',
 ] as const;
 
 export default defineConfig({
@@ -41,7 +41,7 @@ export default defineConfig({
         exclude: [
             '**/node_modules/**',
             '**/dist/**',
-            ...(skipCoreCppTests ? ['tests/unit/core_cpp/**'] : []),
+            ...(skipCoreCppTests ? ['tests/unit/cppCore/**'] : []),
             ...(skipOhosSdkHomeDependentTests ? [...OHOS_SDK_HOME_DEPENDENT_TEST_FILES] : []),
         ],
         coverage: {
