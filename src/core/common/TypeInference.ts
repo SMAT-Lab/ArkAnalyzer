@@ -658,7 +658,9 @@ export class TypeInference {
         } else {
             returnType = VoidType.getInstance();
         }
-        if (arkMethod.containsModifier(ModifierType.ASYNC)) {
+        // If the method is async and the return type is not Promise, wrap it with Promise
+        if (arkMethod.containsModifier(ModifierType.ASYNC) && (!(returnType instanceof ClassType) ||
+            returnType.getClassSignature().getClassName() !== PROMISE)) {
             const promise = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
             if (promise instanceof ArkClass) {
                 return new ClassType(promise.getSignature(), [returnType]);
