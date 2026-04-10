@@ -16,7 +16,7 @@
   "name": "@lib1",
   "version": "1.0.0",
   "description": "Please describe the basic information.",
-  "main": "",
+  "main": "src/main/ets/lib1/Lib1.ets",
   "author": "",
   "license": "",
   "dependencies": {}

@@ -13,14 +13,27 @@
  * limitations under the License.
  */
 {
-  "name": "@log4js",
-  "version": "1.0.0",
-  "description": "Please describe the basic information.",
-  "main": "src/main/ets/log4jsability/log4jsability.ets",
-  "author": "",
-  "license": "",
-  "dependencies": {
-
-  }
+  "apiType": "stageMode",
+  "buildOption": {
+  },
+  "buildOptionSet": [
+    {
+      "name": "release",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": false,
+            "files": [
+              "./obfuscation-rules.txt"
+            ]
+          }
+        }
+      }
+    },
+  ],
+  "targets": [
+    {
+      "name": "default"
+    }
+  ]
 }
-

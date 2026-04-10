@@ -8,8 +8,8 @@
   ],
   "enableLeadingComments": false,
   "enableBuiltIn": true,
+  "enableOhModulesBody": false,
   "ignoreFileNames": [
-    "oh_modules",
     "node_modules",
     "build-tools",
     "hvigorfile.ts",

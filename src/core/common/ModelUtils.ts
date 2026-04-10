@@ -31,7 +31,6 @@ import {
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../model/ArkExport';
 import { ArkField } from '../model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { FileUtils, ModulePath } from '../../utils/FileUtils';
 import path from 'path';
 import { Sdk } from '../../Config';
 import { ALL, DEFAULT, TEMP_EXPORT_ALL_PREFIX, THIS_NAME } from './TSConst';
@@ -69,7 +68,16 @@ import { MethodParameter } from '../model/builder/ArkMethodBuilder';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import { Builtin } from './Builtin';
-import { CALL_BACK, DEFAULT_SDK_NUMS, ETS_PATH, PATH_BE_OMITTED, PATH_DELIMITER, SCOPE_PREFIX } from './EtsConst';
+import {
+    CALL_BACK,
+    DEFAULT_SDK_NUMS,
+    ETS_CODE_PATH,
+    ETS_PATH,
+    PATH_BE_OMITTED,
+    PATH_DELIMITER,
+    SCOPE_PREFIX
+} from './EtsConst';
+import { ModuleUtils } from '../../utils/ModuleUtils';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -702,7 +710,6 @@ export class ModelUtils {
 }
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
-let moduleMap: Map<string, ModulePath> | undefined;
 
 /**
  * find arkFile by from info
@@ -719,7 +726,7 @@ export function getArkFile(im: FromInfo): ArkFile | null {
     if (/^\.\.?\/|^\.$/.test(from)) {
         //relative path
         return getArkFileFromScene(im, path.resolve(path.dirname(im.getDeclaringArkFile().getFilePath()), from));
-    } else if (from.startsWith(ETS_PATH + PATH_DELIMITER)) {
+    } else if (from.startsWith(ETS_CODE_PATH)) {
         //relative path
         const curPath = im.getDeclaringArkFile().getFilePath();
         return getArkFileFromScene(im, path.resolve(curPath.substring(0, curPath.lastIndexOf(path.sep + ETS_PATH + path.sep)), from));
@@ -838,7 +845,7 @@ export function findArkExportInFile(name: string, declaringArkFile: ArkFile, vis
 }
 
 function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
-    const realPath = FileUtils.getFileRealPath(originPath);
+    const realPath = ModuleUtils.getFileRealPath(originPath);
     const fileName = path.relative(im.getDeclaringArkFile().getProjectDir(), realPath);
     const fromSignature = new FileSignature(im.getDeclaringArkFile().getProjectName(), fileName);
     const scene = im.getDeclaringArkFile().getScene();
@@ -846,7 +853,7 @@ function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
 }
 
 function getArkFileFormSDK(sdk: Sdk, from: string, scene: Scene): ArkFile | null {
-    const realPath = FileUtils.getFileRealPath(path.resolve(sdk.path, from));
+    const realPath = ModuleUtils.getFileRealPath(path.resolve(sdk.path, from));
     if (!realPath) {
         return null;
     }
@@ -910,27 +917,20 @@ export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile,
     return exportInfo;
 }
 
-export function initModulePathMap(ohPkgContentMap: Map<string, { [k: string]: unknown }>): void {
-    if (moduleMap) {
-        moduleMap.clear();
-    }
-    moduleMap = FileUtils.generateModuleMap(ohPkgContentMap);
-}
-
 function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     const from = fromInfo.getFrom();
-    if (!from || !moduleMap || moduleMap.size === 0) {
+    if (!from || ModuleUtils.MODULES.size === 0) {
         return null;
     }
     //find file by given from like '@ohos/module/src/xxx' 'module/src/xxx'
     const parts = from.split(PATH_DELIMITER);
     const candidate = from.startsWith(SCOPE_PREFIX) ? parts.slice(0, 2).join(PATH_DELIMITER) : parts[0];
-    const modulePath = moduleMap.get(candidate);
+    const modulePath = ModuleUtils.MODULES.get(candidate);
     if (!modulePath) {
         return null;
     }
-    const suffix = from.substring(candidate.length).trim();
-    const middle = suffix.startsWith(`${PATH_DELIMITER}${ETS_PATH}${PATH_DELIMITER}`) ? PATH_BE_OMITTED : '';
+    const suffix = from.substring(candidate.length + 1).trim();
+    const middle = suffix.startsWith(ETS_CODE_PATH) ? PATH_BE_OMITTED : '';
     const filePath = suffix.length > 1 ? path.join(modulePath.path, middle, suffix) : modulePath.main;
     return getArkFileFromScene(fromInfo, filePath);
 }
