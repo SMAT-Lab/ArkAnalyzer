@@ -6,6 +6,9 @@
         "tests/unit/**/*",
         "tests/HeapDumpTest.ts"
     ],
+    "exclude": [
+        "src/frontend/cppFrontend/ast/build/**/*"
+    ],
     "compilerOptions": {
         "outDir": "./out"
     }

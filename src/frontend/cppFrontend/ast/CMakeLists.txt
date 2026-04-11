@@ -1,14 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(astJsonDumper LANGUAGES CXX)
+project(astJsonDumper LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    find_package(LLVM REQUIRED CONFIG)
-    find_package(Clang REQUIRED CONFIG)
-endif()
+find_package(LLVM REQUIRED CONFIG)
+find_package(Clang REQUIRED CONFIG)
 
 message(STATUS "LLVM_DIR: ${LLVM_DIR}")
 message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
@@ -33,7 +31,18 @@ target_include_directories(astJsonDumper PRIVATE
     ${CLANG_INCLUDE_DIRS}
 )
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(LLVM_LIBRARY_DIRS)
+    target_link_directories(astJsonDumper PRIVATE ${LLVM_LIBRARY_DIRS})
+endif()
+
+# Prefer monolithic Clang/LLVM libraries on Linux distributions (e.g. Ubuntu).
+# Static clang component libs often need many extra LLVM symbols, which causes
+# undefined-reference link failures in docker images.
+if(TARGET clang-cpp)
+    target_link_libraries(astJsonDumper PRIVATE clang-cpp)
+elseif(TARGET Clang::clang-cpp)
+    target_link_libraries(astJsonDumper PRIVATE Clang::clang-cpp)
+else()
     target_link_libraries(astJsonDumper PRIVATE
         clangTooling
         clangSerialization
@@ -41,14 +50,34 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         clangAST
         clangLex
         clangBasic
-        LLVMSupport
-        LLVMDemangle
     )
+endif()
+
+# On Linux, link libLLVM from the same LLVM package explicitly to avoid:
+# 1) "DSO missing from command line" when using clang-cpp
+# 2) accidentally mixing LLVM 18 and 19 from different system paths
+if(UNIX AND NOT APPLE)
+    find_library(LLVM_SHARED_LIBRARY
+        NAMES LLVM
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(LLVM_SHARED_LIBRARY)
+        message(STATUS "Using LLVM shared library: ${LLVM_SHARED_LIBRARY}")
+        target_link_libraries(astJsonDumper PRIVATE ${LLVM_SHARED_LIBRARY})
+    elseif(TARGET LLVM::LLVM)
+        target_link_libraries(astJsonDumper PRIVATE LLVM::LLVM)
+    elseif(TARGET LLVM)
+        target_link_libraries(astJsonDumper PRIVATE LLVM)
+    else()
+        target_link_libraries(astJsonDumper PRIVATE LLVMSupport LLVMDemangle)
+    endif()
+elseif(TARGET LLVM::LLVM)
+    target_link_libraries(astJsonDumper PRIVATE LLVM::LLVM)
+elseif(TARGET LLVM)
+    target_link_libraries(astJsonDumper PRIVATE LLVM)
 else()
-    file(GLOB LIBS "/opt/LLVM-LIB-macOS-X64/*.a")
-    target_link_libraries(astJsonDumper PRIVATE
-        ${LIBS}
-    )
+    target_link_libraries(astJsonDumper PRIVATE LLVMSupport LLVMDemangle)
 endif()
 
 if(MSVC)

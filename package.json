@@ -13,6 +13,7 @@
   "scripts": {
     "prebuild": "node script/npmInstall.js",
     "build": "tsc",
+    "build:cpp": "node script/buildCpp.js",
     "prepack": "npm run build && tsc -p ./tsconfig.prod.json && node script/vendorOhosTypescript.js && copyfiles -f arkCppAst/* lib/ast",
     "test": "npm run build && vitest",
     "testonce": "npm run build && vitest --no-color run",
