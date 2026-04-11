@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources_cpp/scc');
+    config.buildFromProjectDir('./tests/cppResources/scc');
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypesOld();

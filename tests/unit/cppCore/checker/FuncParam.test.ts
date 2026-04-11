@@ -27,7 +27,7 @@ describe('check func parm', () => {
     });
 });
 
-const BASE_DIR = 'tests/resources_cpp/check';
+const BASE_DIR = 'tests/cppResources/check';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();

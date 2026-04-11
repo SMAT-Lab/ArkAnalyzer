@@ -36,7 +36,7 @@ const SETTINGS = {
 const PATHS = {
     projectRoot: process.cwd(),
     workDir: path.resolve(process.cwd(), 'tests', 'third_party'),
-    astRootDir: path.resolve(process.cwd(), 'src', 'cpp_frontend', 'ast'),
+    astRootDir: path.resolve(process.cwd(), 'src', 'cppFrontend', 'ast'),
 } as const;
 
 const AST_PATHS = {

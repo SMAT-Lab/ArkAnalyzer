@@ -39,7 +39,7 @@ import {
 import { assertBlocksEqual, testBlocksClass } from '../../common';
 import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../cppResources/exports/nestedCase/expectIR';
 
-const BASE_DIR = 'tests/resources_cpp/exports';
+const BASE_DIR = 'tests/cppResources/exports';
 const is_system_win32 = process.platform === 'win32';
 const devecoPaths = resolveDevecoPaths();
 const deveco_c = devecoPaths.devecoC;
@@ -193,7 +193,7 @@ describe('export Test', () => {
     });
 
     it('Indirect referencing header file case', () => {
-        const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/indirectRef/include');
+        const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/indirectRef/include');
         const projectScene = buildScene('indirectRef', [deveco_c, deveco_include, customizedIncludePath]);
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
@@ -248,7 +248,7 @@ describe('export Test', () => {
 });
 
 describe('cross file case', () => {
-    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/crossFileCase/include');
+    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/crossFileCase/include');
     const projectScene = buildScene('crossFileCase', [deveco_c, deveco_include, customizedIncludePath]);
 
     it('cross file case1', () => {
@@ -336,7 +336,7 @@ describe('cross file case', () => {
 });
 
 describe('nested case', () => {
-    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/nestedCase/include');
+    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/nestedCase/include');
     const projectScene = buildScene('nestedCase', [deveco_c, deveco_include, customizedIncludePath]);
 
     it('namespaceB.h', () => {
