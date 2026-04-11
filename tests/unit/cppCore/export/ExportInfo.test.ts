@@ -25,7 +25,8 @@ import {
     ArkAssignStmt,
     ArkMethod,
     ExportInfo,
-    ClassType
+    ClassType,
+    getCxxSourceFileExtensions
 } from '../../../../src';
 import { CAST_SAMPLE_EXPORT_INFO_EXPECT_IR, MY_HEADER_EXPORT_INFO_EXPECT_IR } from '../../../cppResources/exports/indirectRef/expectedIR';
 import {
@@ -77,8 +78,9 @@ function resolveDevecoPaths(): { devecoC: string; devecoInclude: string } {
 }
 
 function buildScene(folderName: string, includeDirs: string[]): Scene {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
+    const mergedIncludeDirs = [...includeDirs, deveco_c, deveco_include];
+    const config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+    config.buildFromProjectDir(path.join(BASE_DIR, folderName), mergedIncludeDirs);
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();

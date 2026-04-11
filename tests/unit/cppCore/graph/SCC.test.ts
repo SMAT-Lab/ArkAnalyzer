@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { SCCDetection, SceneConfig, Scene, CallGraph, CallGraphBuilder } from '../../../../src';
+import { SCCDetection, SceneConfig, Scene, CallGraph, CallGraphBuilder, getCxxSourceFileExtensions } from '../../../../src';
 import { describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {
-    let config: SceneConfig = new SceneConfig();
+    let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     config.buildFromProjectDir('./tests/cppResources/scc');
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
