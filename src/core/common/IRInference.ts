@@ -76,13 +76,14 @@ import { Constant } from '../base/Constant';
 import {
     ANONYMOUS_CLASS_PREFIX,
     CALL_SIGNATURE_NAME,
+    CONSTRUCT_SIGNATURE_NAME,
     DEFAULT_ARK_CLASS_NAME,
     GETTER_PREFIX,
     LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
     UNKNOWN_CLASS_NAME,
-    UNKNOWN_FILE_NAME
+    UNKNOWN_FILE_NAME,
 } from './Const';
 import { ValueUtil } from './ValueUtil';
 import { ArkFile } from '../model/ArkFile';
@@ -486,7 +487,7 @@ export class IRInference {
         }
         let method;
         if (methodName === CONSTRUCTOR_NAME) {
-            method = declaredClass?.getMethodWithName('construct-signature') ??
+            method = declaredClass?.getMethodWithName(CONSTRUCT_SIGNATURE_NAME) ??
                 declaredClass.getMethodWithName(CALL_SIGNATURE_NAME) ?? declaredClass?.getMethodWithName(CONSTRUCTOR_NAME);
             if (!method) {
                 const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));

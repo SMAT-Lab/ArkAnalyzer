@@ -36,6 +36,7 @@ export const ANONYMOUS_METHOD_PREFIX = NAME_PREFIX + 'AM';
 export const CALL_SIGNATURE_NAME = 'create';
 export const GETTER_PREFIX = 'Get-';
 export const SETTER_PREFIX = 'Set-';
+export const CONSTRUCT_SIGNATURE_NAME = 'construct-signature'; // method name for constructor like method in library
 
 // ArkSignature const
 export const UNKNOWN_PROJECT_NAME = NAME_PREFIX + UNKNOWN_NAME;

@@ -192,6 +192,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.getName().startsWith(ANONYMOUS_CLASS_PREFIX);
     }
 
+    public isLibraryClass(): boolean {
+        const file = this.getDeclaringArkFile();
+        return file.getProjectName() !== file.getScene().getProjectName();
+    }
+
     /**
      * Returns the signature of current class (i.e., {@link ClassSignature}).
      * The {@link ClassSignature} can uniquely identify a class, according to which we can find the class from the scene.
@@ -220,12 +225,19 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     /**
      * Returns the superclass of this class.
+     * If the superclass is defined in this project, then its category must not be INTERFACE.
+     * If the superclass is from the 3rd party library, then its category could be INTERFACE.
      * @returns The superclass of this class.
      */
     public getSuperClass(): ArkClass | null {
         const heritageClass = this.getHeritageClass(this.getSuperClassName());
-        if (heritageClass && heritageClass.getCategory() !== ClassCategory.INTERFACE) {
-            return heritageClass;
+        if (heritageClass) {
+            if (heritageClass.getCategory() !== ClassCategory.INTERFACE) {
+                return heritageClass;
+            }
+            if (heritageClass.isLibraryClass()) {
+                return heritageClass;
+            }
         }
         return null;
     }
