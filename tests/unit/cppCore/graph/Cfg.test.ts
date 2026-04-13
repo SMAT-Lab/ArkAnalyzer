@@ -93,9 +93,9 @@ function resolveDevecoPaths(): { devecoC: string; devecoInclude: string; devecoS
     const sdkHome = process.env.OHOS_SDK_HOME;
     if (!sdkHome || sdkHome.length === 0) {
         return {
-            devecoC: '',
-            devecoInclude: '',
-            devecoSysrootInclude: '',
+            devecoC: process.env.DEVECO_C ?? '',
+            devecoInclude: process.env.DEVECO_INCLUDE ?? '',
+            devecoSysrootInclude: process.env.DEVECO_SYSROOT_INCLUDE ?? '',
         };
     }
 

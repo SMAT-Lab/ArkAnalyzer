@@ -50,8 +50,8 @@ function resolveDevecoPaths(): { devecoC: string; devecoInclude: string } {
     const sdkHome = process.env.OHOS_SDK_HOME;
     if (!sdkHome || sdkHome.length === 0) {
         return {
-            devecoC: '',
-            devecoInclude: '',
+            devecoC: process.env.DEVECO_C ?? '',
+            devecoInclude: process.env.DEVECO_INCLUDE ?? '',
         };
     }
 
