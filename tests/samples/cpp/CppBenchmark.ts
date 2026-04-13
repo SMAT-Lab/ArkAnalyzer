@@ -26,7 +26,7 @@
  */
 import path from 'path';
 import { spawn, spawnSync } from 'node:child_process';
-import { access, cp, mkdir, rm } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { Scene, SceneConfig, getCxxSourceFileExtensions } from '../../../src';
 
 /** Path to {@code compile_commands.json} for a tree configured like this benchmark ({@code build_ninja_ccdb}). */
@@ -56,10 +56,19 @@ const PATHS = {
     projectRoot: process.cwd(),
     workDir: path.resolve(process.cwd(), 'tests', 'third_party'),
     astRootDir: path.resolve(process.cwd(), 'src', 'frontend', 'cppFrontend', 'ast'),
+    cppSampleDir: path.resolve(process.cwd(), 'tests', 'samples', 'cpp'),
 } as const;
 
 /** Expected path for a prebuilt astJsonDumper (see configuration docs; this script does not compile it). */
 const AST_JSON_DUMPER_PATH = path.join(PATHS.astRootDir, 'dumper', 'astJsonDumper');
+const BENCHMARK_METRICS_PATH = path.join(PATHS.cppSampleDir, 'CppBenchmark.metrics.json');
+
+type BenchmarkMetrics = {
+    generatedAt: string;
+    totalElapsedSeconds: number;
+    peakRssMb: number;
+    buildSceneSeconds: number | null;
+};
 
 enum StageName {
     ResetWorkspace = 'Reset workspace',
@@ -84,6 +93,50 @@ function recordPeakRss(): void {
 
 function formatRssMb(rssBytes: number): string {
     return `${(rssBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function getCurrentMetrics(totalElapsedMs: number, peakRssBytesValue: number): BenchmarkMetrics {
+    const buildSceneRow = stageTimings.find((row) => row.stage === StageName.BuildScene);
+    return {
+        generatedAt: new Date().toISOString(),
+        totalElapsedSeconds: Number((totalElapsedMs / 1000).toFixed(2)),
+        peakRssMb: Number((peakRssBytesValue / 1024 / 1024).toFixed(2)),
+        buildSceneSeconds: buildSceneRow ? Number((buildSceneRow.durationMs / 1000).toFixed(2)) : null,
+    };
+}
+
+function printVsBaseline(label: string, current: number, baseline: number, unit: string): void {
+    if (current > baseline) {
+        log(`${label}: ${current.toFixed(2)}${unit}, exceeded baseline ${baseline.toFixed(2)}${unit}.`);
+    } else {
+        log(`${label}: ${current.toFixed(2)}${unit}, not exceeded baseline ${baseline.toFixed(2)}${unit}.`);
+    }
+}
+
+async function compareOrInitBenchmarkBaseline(totalElapsedMs: number, peakRssBytesValue: number): Promise<void> {
+    const payload = getCurrentMetrics(totalElapsedMs, peakRssBytesValue);
+    if (!(await exists(BENCHMARK_METRICS_PATH))) {
+        await writeFile(BENCHMARK_METRICS_PATH, JSON.stringify(payload, null, 2), 'utf8');
+        log(`Baseline metrics file not found. Created baseline: ${BENCHMARK_METRICS_PATH}`);
+        return;
+    }
+
+    const rawBaseline = await readFile(BENCHMARK_METRICS_PATH, 'utf8');
+    const baseline = JSON.parse(rawBaseline) as Partial<BenchmarkMetrics>;
+    const baselinePeakRss = baseline.peakRssMb;
+    const baselineBuildScene = baseline.buildSceneSeconds;
+
+    if (typeof baselinePeakRss !== 'number' || typeof baselineBuildScene !== 'number') {
+        log(`Baseline file is invalid, recreating: ${BENCHMARK_METRICS_PATH}`);
+        await writeFile(BENCHMARK_METRICS_PATH, JSON.stringify(payload, null, 2), 'utf8');
+        return;
+    }
+
+    printVsBaseline('Peak RSS', payload.peakRssMb, baselinePeakRss, ' MB');
+    if (payload.buildSceneSeconds !== null) {
+        printVsBaseline('BuildScene runtime', payload.buildSceneSeconds, baselineBuildScene, 's');
+    }
+    log(`Baseline kept unchanged: ${BENCHMARK_METRICS_PATH}`);
 }
 
 function log(message: string): void {
@@ -344,6 +397,7 @@ async function runCppBenchmarkPipeline(): Promise<void> {
         log(`  ${row.stage}: ${tag}`);
     }
     log(`Peak RSS (this Node process): ${formatRssMb(peakRssBytes)}`);
+    await compareOrInitBenchmarkBaseline(totalElapsedMs, peakRssBytes);
 }
 
 const entryPath = process.argv[1]?.replace(/\\/g, '/') ?? '';
