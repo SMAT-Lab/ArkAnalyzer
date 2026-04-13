@@ -192,9 +192,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.getName().startsWith(ANONYMOUS_CLASS_PREFIX);
     }
 
-    /**
-     * Returns if this ArkClass is defined in this project or import from a 3rd party library.
-     */
     public isLibraryClass(): boolean {
         const file = this.getDeclaringArkFile();
         return file.getProjectName() !== file.getScene().getProjectName();
