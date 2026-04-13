@@ -16,8 +16,6 @@
  * Linux-only C++ benchmark: OpenCV under {@code tests/third_party}, compile_commands.json, astJsonDumper, Scene.
  * Exports {@link getCompileCommandsPathForCppProjectRoot} and {@link isProjectRootPreparedCppTree} for {@code PerfTest}.
  *
- * Run from repo root: {@code npm run ts-node -- tests/samples/cpp/CppBenchmark.ts} (8 GiB V8 heap via package.json {@code ts-node} script).
- *
  * Env: {@code CPP_BENCHMARK_NINJA_PATH}; optional {@code CPP_BENCHMARK_OPENCV_DIR}; optional apt via {@code tryLinuxCppBenchmarkToolchainOptional}.
  *
  * Full run on Linux also requires {@code git}, {@code cmake}, and network for OpenCV clone unless {@code CPP_BENCHMARK_OPENCV_DIR} is set.
