@@ -11,6 +11,7 @@ out/
 tests/resources/output
 tests/resources/callgraph/projectTest/*
 tests/third_party/
+tests/cppResources/opencv/
 coverage
 doc/
 exportRollup.config.mjs

@@ -19,15 +19,26 @@ import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast/const';
 const astJsonDumperAvailable = isAstJsonDumperAvailable();
 const sdkHome = process.env.OHOS_SDK_HOME?.trim();
 
+function isDevecoIncludeEnvConfigured(): boolean {
+    const c = process.env.DEVECO_C?.trim() ?? '';
+    const inc = process.env.DEVECO_INCLUDE?.trim() ?? '';
+    const sys = process.env.DEVECO_SYSROOT_INCLUDE?.trim() ?? '';
+    return c.length > 0 && inc.length > 0 && sys.length > 0;
+}
+
+const devecoIncludeEnvConfigured = isDevecoIncludeEnvConfigured();
 const skipCoreCppTests = !astJsonDumperAvailable;
 
-// These two suites resolve OHOS SDK include paths via OHOS_SDK_HOME; exclude only them when unset.
-const skipOhosSdkHomeDependentTests = astJsonDumperAvailable && !sdkHome;
+// These two need OHOS include roots: either OHOS_SDK_HOME or all of DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE.
+const skipOhosSdkHomeDependentTests =
+    astJsonDumperAvailable && !sdkHome && !devecoIncludeEnvConfigured;
 
 if (!astJsonDumperAvailable) {
     console.warn('[vitest] astJsonDumper not found — skipping tests/unit/cppCore (build src/cppFrontend/ast per README).');
-} else if (!sdkHome) {
-    console.warn('[vitest] OHOS_SDK_HOME is not set — skipping Cfg.test.ts and ExportInfo.test.ts only.');
+} else if (!sdkHome && !devecoIncludeEnvConfigured) {
+    console.warn(
+        '[vitest] OHOS_SDK_HOME and DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE are unset — skipping Cfg.test.ts and ExportInfo.test.ts only.'
+    );
 }
 
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
