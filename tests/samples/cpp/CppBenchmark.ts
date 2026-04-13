@@ -16,7 +16,7 @@
  * Linux-only C++ benchmark: OpenCV under {@code tests/third_party}, compile_commands.json, astJsonDumper, Scene.
  * Exports {@link getCompileCommandsPathForCppProjectRoot} and {@link isProjectRootPreparedCppTree} for {@code PerfTest}.
  *
- * Run from repo root: {@code npx ts-node tests/samples/cpp/CppBenchmark.ts}
+ * Run from repo root: {@code npm run ts-node -- tests/samples/cpp/CppBenchmark.ts} (8 GiB V8 heap via package.json {@code ts-node} script).
  *
  * Env: {@code CPP_BENCHMARK_NINJA_PATH}; optional {@code CPP_BENCHMARK_OPENCV_DIR}; optional apt via {@code tryLinuxCppBenchmarkToolchainOptional}.
  *
@@ -69,9 +69,22 @@ enum StageName {
     BuildScene = 'Build Scene for OpenCV',
 }
 
-const RUN_STAMP = new Date().toISOString().replace(/[:.]/g, '-');
-const DEFAULT_OPENCV_DIR = path.join(PATHS.workDir, `opencv_${RUN_STAMP}`);
+const DEFAULT_OPENCV_DIR = path.join(PATHS.workDir, 'opencv');
 let activeOpenCvDir = DEFAULT_OPENCV_DIR;
+
+let peakRssBytes = 0;
+const stageTimings: { stage: string; durationMs: number; skipped?: boolean }[] = [];
+
+function recordPeakRss(): void {
+    const rss = process.memoryUsage().rss;
+    if (rss > peakRssBytes) {
+        peakRssBytes = rss;
+    }
+}
+
+function formatRssMb(rssBytes: number): string {
+    return `${(rssBytes / 1024 / 1024).toFixed(2)} MB`;
+}
 
 function log(message: string): void {
     console.log(`${SETTINGS.logPrefix} ${message}`);
@@ -157,14 +170,31 @@ function tryLinuxCppBenchmarkToolchainOptional(): void {
     }
 }
 
-async function executeStage(stageName: string, action: () => Promise<void> | void): Promise<void> {
+async function executeStage(
+    stageName: string,
+    action: () => Promise<void> | void,
+    options?: { skipped?: boolean }
+): Promise<void> {
+    recordPeakRss();
     const start = Date.now();
+    if (options?.skipped) {
+        stageTimings.push({ stage: stageName, durationMs: 0, skipped: true });
+        log(`Stage skipped: ${stageName}`);
+        recordPeakRss();
+        return;
+    }
     log(`Stage started: ${stageName}`);
     try {
         await action();
-        log(`Stage finished: ${stageName}, elapsed=${formatDurationMs(Date.now() - start)}`);
+        const durationMs = Date.now() - start;
+        stageTimings.push({ stage: stageName, durationMs });
+        recordPeakRss();
+        log(`Stage finished: ${stageName}, elapsed=${formatDurationMs(durationMs)}`);
     } catch (error) {
-        log(`Stage failed: ${stageName}, elapsed=${formatDurationMs(Date.now() - start)}`);
+        const durationMs = Date.now() - start;
+        stageTimings.push({ stage: stageName, durationMs });
+        recordPeakRss();
+        log(`Stage failed: ${stageName}, elapsed=${formatDurationMs(durationMs)}`);
         throw error;
     }
 }
@@ -176,6 +206,10 @@ async function resetThirdPartyWorkspace(): Promise<void> {
 
 function getOpenCvCMakeListsPath(targetDir: string): string {
     return path.join(targetDir, 'CMakeLists.txt');
+}
+
+async function isReusableOpenCvTree(targetDir: string): Promise<boolean> {
+    return exists(getOpenCvCMakeListsPath(targetDir));
 }
 
 async function prepareOpenCvRepository(): Promise<void> {
@@ -270,13 +304,46 @@ async function runCppBenchmarkPipeline(): Promise<void> {
     }
     const start = Date.now();
     log('Pipeline started');
+    recordPeakRss();
     tryLinuxCppBenchmarkToolchainOptional();
-    await executeStage(`${StageName.ResetWorkspace}: ${PATHS.workDir}`, resetThirdPartyWorkspace);
-    await executeStage(StageName.PrepareOpenCV, prepareOpenCvRepository);
-    await executeStage(StageName.GenerateCcdb, ensureOpenCvCompilationDatabase);
+
+    const reuseOpenCvTree = await isReusableOpenCvTree(DEFAULT_OPENCV_DIR);
+    if (reuseOpenCvTree) {
+        activeOpenCvDir = DEFAULT_OPENCV_DIR;
+        log(
+            `Reusing existing OpenCV at ${DEFAULT_OPENCV_DIR} — skipping workspace reset and clone/copy. ` +
+                'Delete that directory if you want a fresh checkout.',
+        );
+        await executeStage(`${StageName.ResetWorkspace}: ${PATHS.workDir}`, async () => { /* noop */ }, {
+            skipped: true,
+        });
+        await executeStage(StageName.PrepareOpenCV, async () => { /* noop */ }, { skipped: true });
+    } else {
+        await executeStage(`${StageName.ResetWorkspace}: ${PATHS.workDir}`, resetThirdPartyWorkspace);
+        await executeStage(StageName.PrepareOpenCV, prepareOpenCvRepository);
+    }
+
+    const ccdbPath = getCompileCommandsPathForCppProjectRoot(activeOpenCvDir);
+    const reuseCcdb = await exists(ccdbPath);
+    if (reuseCcdb) {
+        log(`Reusing existing compile_commands.json: ${ccdbPath} — skipping CMake configure for ccdb.`);
+        await executeStage(StageName.GenerateCcdb, async () => { /* noop */ }, { skipped: true });
+    } else {
+        await executeStage(StageName.GenerateCcdb, ensureOpenCvCompilationDatabase);
+    }
+
     await executeStage(StageName.VerifyAstJsonDumper, requirePrebuiltAstJsonDumper);
     await executeStage(StageName.BuildScene, buildSceneForOpenCv);
-    log(`Pipeline completed, totalElapsed=${formatDurationMs(Date.now() - start)}`);
+    recordPeakRss();
+
+    const totalElapsedMs = Date.now() - start;
+    log(`Pipeline completed, totalElapsed=${formatDurationMs(totalElapsedMs)}`);
+    log('--- Stage timing (wall clock) ---');
+    for (const row of stageTimings) {
+        const tag = row.skipped ? 'skipped' : formatDurationMs(row.durationMs);
+        log(`  ${row.stage}: ${tag}`);
+    }
+    log(`Peak RSS (this Node process): ${formatRssMb(peakRssBytes)}`);
 }
 
 const entryPath = process.argv[1]?.replace(/\\/g, '/') ?? '';
