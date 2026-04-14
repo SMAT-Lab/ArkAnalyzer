@@ -87,6 +87,11 @@ function testAppProject(): void {
     if (!PROJECT_NAME || !PROJECT_ROOT) {
         throw new Error('PROJECT_ROOT / PROJECT_NAME must be set before Harmony perf run.');
     }
+    const resolvedRoot = path.resolve(PROJECT_ROOT);
+    if (isProjectRootPreparedCppTree(resolvedRoot)) {
+        logger.info('[PerfTest] PROJECT_ROOT basename ends with _cpp; skipping Harmony perf.');
+        return;
+    }
     performance.mark(PERF_PIPELINE_MARK.START);
     let config: SceneConfig = new SceneConfig();
     config.buildConfig(PROJECT_NAME, PROJECT_ROOT, Sdks);

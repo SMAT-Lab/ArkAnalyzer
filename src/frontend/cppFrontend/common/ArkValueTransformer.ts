@@ -89,7 +89,7 @@ import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { CxxModelUtils, setTs2CxxFuncMapOfClass } from './ModelUtils';
-import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast';
 import { DummyStmt } from '../../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../../core/model/ArkClass';

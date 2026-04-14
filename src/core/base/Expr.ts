@@ -46,7 +46,7 @@ import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
-import { getCxxSourceFileExtensionSet } from '../../frontend/cppFrontend/ast/const';
+import { getCxxSourceFileExtensionSet } from '../../frontend/cppFrontend/ast';
 import { ArkAssignStmt } from './Stmt';
 
 const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();

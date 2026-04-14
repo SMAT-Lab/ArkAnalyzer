@@ -30,7 +30,7 @@ import { ArkMethod } from '../../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2CxxEnum } from '../../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../../core/model/builder/builderUtils';
-import { astKind, CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast';
 import { Decorator } from '../../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { BuiltinCxx } from '../../common/Builtin';

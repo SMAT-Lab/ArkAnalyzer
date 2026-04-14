@@ -24,14 +24,13 @@ import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../../core/model/ArkClass';
 import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
-import { AstUtils } from '../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../../core/base/Position';
 import { buildGenericImportInfo, buildUsingNamespaceImportInfo } from './ArkImportBuilder';
 import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
-import { astKind, CxxAstNode, CxxIncludeInfo } from '../../ast/ArkCxxAstNode';
+import { AstParser, astKind, CxxAstNode, CxxIncludeInfo } from '../../ast';
 import { ArkExport } from '../../../../core/model/ArkExport';
 import { Scene } from '../../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -112,7 +111,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
     let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
     let llvmPath = findLLVMPath(sdkPath);
-    const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
+    const jsonObject = AstParser.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }

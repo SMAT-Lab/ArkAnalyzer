@@ -27,4 +27,5 @@ lib/
 src/frontend/cppFrontend/ast/*/
 !src/frontend/cppFrontend/ast/cmake/
 !src/frontend/cppFrontend/ast/utils/
-
+!src/frontend/cppFrontend/ast/astJsonNapi/
+!src/frontend/cppFrontend/ast/astJsonNapi/**

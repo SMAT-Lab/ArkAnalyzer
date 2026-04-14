@@ -24,7 +24,7 @@ import { ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../../../core/
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../../core/base/Expr';
-import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../../ast';
 import { IRUtils } from '../../common/IRUtils';
 import { CxxClosureCaptureType, CxxClosureFieldRef } from '../../base/Ref';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
