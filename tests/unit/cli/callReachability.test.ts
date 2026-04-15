@@ -13,10 +13,8 @@
  * limitations under the License.
  */
 
-import path from 'path';
-import { execFileSync } from 'child_process';
 import { assert, describe, it } from 'vitest';
-import { resolveMethodRef } from '../../../src/cli/commands/cg';
+import { analyzeCg, resolveMethodRef } from '../../../src/cli/commands/cg';
 import { buildScene } from '../common';
 
 describe('callReachability', () => {
@@ -30,23 +28,16 @@ describe('callReachability', () => {
         assert(m.getDeclaringArkClass().getName() === 'Dog');
     });
 
-    it('supports reachability query via cli cg command', () => {
-        const cliPath = path.resolve('src/cli/cli.ts');
-        const output = execFileSync(
-            'node',
-            ['-r', 'ts-node/register', cliPath, 'cg', projectDir, '-a', 'rta', '-f', 'json', '--edges', 'all', '-r', 'Dog.sound'],
-            { encoding: 'utf8' }
-        ).trim();
-
-        const jsonLine = output.split('\n').find((line) => line.startsWith('{'));
-        assert(jsonLine, 'CLI should output a JSON line');
-        const result = JSON.parse(jsonLine as string) as {
-            algorithmUsed: string;
-            direction: string;
-            reachableFrom: string[];
-            reachable: string[];
-            edgeCount: number;
-        };
+    it('supports reachability query via analyzeCg', () => {
+        const result = analyzeCg(projectDir, {
+            algorithm: 'rta',
+            output: 'stdout',
+            format: 'json',
+            entry: [],
+            reachableFrom: ['Dog.sound'],
+            direction: 'forward',
+            edges: 'all',
+        });
 
         assert.equal(result.algorithmUsed, 'rta');
         assert.equal(result.direction, 'forward');

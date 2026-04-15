@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# 将 GitCode 的 main/master 分支镜像到 GitHub，并创建 mirror 分支
-# 使用前请先在 GitHub 创建仓库，并替换下方 GITHUB_REPO 为实际地址
+# Mirror the current mainline branch from GitCode to GitHub as branch "mirror".
+# Create the GitHub repository first; override GITHUB_REPO via argument or edit DEFAULT_GITHUB_REPO.
 #
-# 用法: ./script/mirror-to-github.sh [github_repo_url]
-# 示例: ./script/mirror-to-github.sh
-# 示例: ./script/mirror-to-github.sh git@github.com:SMAT-Lab/ArkAnalyzer.git
+# Usage: ./script/mirror-to-github.sh [github_repo_url]
+# Example: ./script/mirror-to-github.sh
+# Example: ./script/mirror-to-github.sh git@github.com:SMAT-Lab/ArkAnalyzer.git
 #
 
 set -e
@@ -30,19 +30,22 @@ GITHUB_REPO="${1:-$DEFAULT_GITHUB_REPO}"
 
 cd "$REPO_DIR"
 
-# 检查是否已有 github 远程
+# Ensure remote "github" exists and points at GITHUB_REPO
 if git remote | grep -q '^github$'; then
   git remote set-url github "$GITHUB_REPO"
 else
   git remote add github "$GITHUB_REPO"
 fi
 
-# 获取当前主分支（master 或 main）
+# Current branch (typically main or master)
 MAIN_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "master")
 
-echo "Mirroring $MAIN_BRANCH to GitHub (mirror branch)..."
+# Fetch so --force-with-lease compares against the latest remote refs
+git fetch github
 
-# 推送主分支到 GitHub 的 mirror 分支
-git push github "${MAIN_BRANCH}:mirror"
+echo "Mirroring $MAIN_BRANCH to GitHub (mirror branch) with force push..."
+
+# Force push with lease (safer than bare --force)
+git push --force-with-lease github "${MAIN_BRANCH}:mirror"
 
 echo "Done. GitHub mirror branch updated."
