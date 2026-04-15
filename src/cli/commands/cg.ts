@@ -31,7 +31,7 @@ export type CgFormat = 'json' | 'text' | 'dot' | 'csv';
 export type CgDirection = 'forward' | 'backward';
 export type CgEdgeFilter = 'call' | 'virtual' | 'interface' | 'all';
 
-interface CgCommandOptions {
+export interface CgCommandOptions {
     algorithm: CgAlgorithm;
     output: string;
     format: CgFormat;
@@ -42,24 +42,13 @@ interface CgCommandOptions {
     ohosSdkHome?: string;
 }
 
-export interface RawCgCommandOptions {
-    algorithm: string;
-    output: string;
-    format: string;
-    entry: string[];
-    reachableFrom: string[];
-    direction: string;
-    edges: string;
-    ohosSdkHome?: string;
-}
-
 interface CgEdgeRow {
     src: string;
     dst: string;
     type: Exclude<CgEdgeFilter, 'all'>;
 }
 
-interface CgAnalyzeResult {
+export interface CgAnalyzeResult {
     input: string;
     algorithm: CgAlgorithm;
     algorithmUsed: 'cha' | 'rta';
@@ -272,7 +261,7 @@ function formatText(result: CgAnalyzeResult): string {
     return lines.join('\n');
 }
 
-function parseAndValidate(raw: RawCgCommandOptions): CgCommandOptions {
+function parseAndValidate(raw: CgCommandOptions): CgCommandOptions {
     const algorithm = raw.algorithm as CgAlgorithm;
     const format = raw.format as CgFormat;
     const direction = raw.direction as CgDirection;
@@ -421,10 +410,8 @@ function collectOutputNodes(reachableIds: Set<number>, idToSig: Map<number, stri
     return idsToSortedSignatures(reachableIds, idToSig);
 }
 
-export function runCgCommand(input: string, raw: RawCgCommandOptions): void {
-    const options = parseAndValidate(raw);
+export function analyzeCg(input: string, options: CgCommandOptions): CgAnalyzeResult {
     const scene = buildSceneForCg(input, options.ohosSdkHome);
-
     const { cg, algorithmUsed, entry } = buildGraphForCg(scene, options.algorithm, options.entry);
     const edgeRows = collectFilteredEdgeRows(scene, cg, options.edges);
     const reachableFrom = resolveReachabilityRoots(scene, options.reachableFrom);
@@ -434,7 +421,7 @@ export function runCgCommand(input: string, raw: RawCgCommandOptions): void {
     const reachable = idsToSortedSignatures(reachableIds, idToSig);
     const nodes = collectOutputNodes(reachableIds, idToSig);
 
-    const result: CgAnalyzeResult = {
+    return {
         input,
         algorithm: options.algorithm,
         algorithmUsed,
@@ -448,9 +435,13 @@ export function runCgCommand(input: string, raw: RawCgCommandOptions): void {
         edgeCount: filteredEdges.length,
         edgesData: filteredEdges,
     };
+}
 
-    const outputText = formatOutput(result, filteredEdges);
-    writeOutput(options.output, outputText);
+
+export function runCgCommand(input: string, raw: CgCommandOptions): void {
+    const options = parseAndValidate(raw);
+    const result = analyzeCg(input, options);
+    writeOutput(options.output, formatOutput(result, result.edgesData));
 }
 
 /**
@@ -482,7 +473,7 @@ export function register(program: Command): void {
         .option('--direction <dir>', 'Reachability direction: forward | backward', 'forward')
         .option('--edges <type>', 'Edge filter: call | virtual | interface | all', 'all')
         .option('--ohos-sdk-home <path>', 'OHOS SDK home. Fallback to env OHOS_SDK_HOME')
-        .action((input: string, opts: RawCgCommandOptions) => {
+        .action((input: string, opts: CgCommandOptions) => {
             runCgCommand(input, opts);
         });
 }
