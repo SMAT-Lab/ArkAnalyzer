@@ -30,7 +30,7 @@ import { Local } from './core/base/Local';
 import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively } from './utils/FileUtils';
+import { FileUtils, getFileRecursively, getFileSignatureMapKey } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import {
     addInitInConstructor,
@@ -499,10 +499,10 @@ export class Scene {
     }
 
     private isRepeatBuildFile(projectFile: string): boolean {
-        for (const [key, file] of this.filesMap) {
-            if (key && file.getFilePath().toLowerCase() === projectFile.toLowerCase()) {
-                return true;
-            }
+        const relativePath = path.relative(this.getRealProjectDir(), projectFile);
+        if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+            const mapKey = getFileSignatureMapKey(this.getProjectName(), relativePath);
+            return this.filesMap.has(mapKey);
         }
         return false;
     }
