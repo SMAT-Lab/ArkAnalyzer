@@ -91,7 +91,7 @@ export { ArkBody } from './core/model/ArkBody';
 export * from './core/model/ArkSignature';
 export * from './core/model/builder/ArkSignatureBuilder';
 
-export { SceneConfig } from './Config';
+export { SceneConfig, SceneOptions, buildSceneConfigFromProject } from './Config';
 export { Scene } from './Scene';
 
 // cpp_frontend
