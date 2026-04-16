@@ -12,6 +12,7 @@ tests/resources/output
 tests/resources/callgraph/projectTest/*
 tests/third_party/
 tests/cppResources/opencv/
+tests/samples/perf/fixtures
 coverage
 doc/
 exportRollup.config.mjs
@@ -26,3 +27,4 @@ lib/
 src/frontend/cppFrontend/ast/*/
 !src/frontend/cppFrontend/ast/cmake/
 !src/frontend/cppFrontend/ast/utils/
+

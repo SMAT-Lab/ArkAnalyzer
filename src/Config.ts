@@ -67,10 +67,11 @@ function collectSdksFromOhosSdkHome(explicitHome?: string): Sdk[] {
  *
  * @param project Project root directory path.
  * @param ohosSdkHome Optional OHOS SDK home path.
+ * @param options Optional SceneOptions.
  * @returns SceneConfig initialized with project files and discovered SDKs.
  */
-export function buildSceneConfigFromProject(project: string, ohosSdkHome?: string): SceneConfig {
-    const config = new SceneConfig();
+export function buildSceneConfigFromProject(project: string, ohosSdkHome?: string, options?: SceneOptions): SceneConfig {
+    const config = new SceneConfig(options);
     const sdks = collectSdksFromOhosSdkHome(ohosSdkHome);
     config.buildConfig(path.basename(project), project, sdks);
     return config;
