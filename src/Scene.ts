@@ -38,7 +38,7 @@ import {
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
-import { getCxxHeaderFileExtensionSet } from './frontend/cppFrontend/ast/const';
+import { findCompileCommands, getCxxHeaderFileExtensionSet } from './frontend/cppFrontend/ast';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
@@ -52,7 +52,6 @@ import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalys
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
-import { findCompileCommands } from './frontend/cppFrontend/ast/astUtils';
 import { ModuleUtils } from './utils/ModuleUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');

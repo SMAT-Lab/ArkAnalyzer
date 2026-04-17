@@ -22,7 +22,7 @@ import { LineColPosition } from '../../../../core/base/Position';
 import { ModifierType } from '../../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { buildGenericType } from '../../../../core/model/builder/builderUtils';
-import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../../ast';
 
 export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNode, cls: ArkClass): ArkField {
     let field = new ArkField();

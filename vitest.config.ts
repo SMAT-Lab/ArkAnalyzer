@@ -14,7 +14,7 @@
  */
 
 import { defineConfig } from 'vitest/config';
-import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast/const';
+import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast';
 
 const astJsonDumperAvailable = isAstJsonDumperAvailable();
 const sdkHome = process.env.OHOS_SDK_HOME?.trim();
@@ -34,7 +34,9 @@ const skipOhosSdkHomeDependentTests =
     astJsonDumperAvailable && !sdkHome && !devecoIncludeEnvConfigured;
 
 if (!astJsonDumperAvailable) {
-    console.warn('[vitest] astJsonDumper not found — skipping tests/unit/cppCore (build src/cppFrontend/ast per README).');
+    console.warn(
+        '[vitest] astJsonDumper.node not found — skipping tests/unit/cppCore (build per src/frontend/cppFrontend/ast/README.md).',
+    );
 } else if (!sdkHome && !devecoIncludeEnvConfigured) {
     console.warn(
         '[vitest] OHOS_SDK_HOME and DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE are unset — skipping Cfg.test.ts and ExportInfo.test.ts only.'

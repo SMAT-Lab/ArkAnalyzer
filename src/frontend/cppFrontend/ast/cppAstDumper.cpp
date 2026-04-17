@@ -36,7 +36,6 @@
 #include "utils/header_units.h"
 #include "utils/json_streaming.h"
 #include "utils/json_dumper_probe.h"
-
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -405,7 +404,7 @@ private:
     std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore;
 };
 
-int main(int argc, const char **argv)
+int RunAstJsonDump(int argc, const char **argv)
 {
     auto start = std::chrono::high_resolution_clock::now();
     // argv dump
@@ -452,3 +451,10 @@ int main(int argc, const char **argv)
     llvm::outs() << "[ASTDumper] finished in " << ms << " ms\n";
     return result;
 }
+
+#ifndef AST_JSON_NO_MAIN
+int main(int argc, const char **argv)
+{
+    return RunAstJsonDump(argc, argv);
+}
+#endif
