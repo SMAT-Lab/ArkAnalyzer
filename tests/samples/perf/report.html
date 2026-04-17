@@ -359,10 +359,10 @@
                     metaParts.push('Report: ' + escapeHtml(data.reportTime));
                 }
                 if (Number.isFinite(data.arkFileCount) && Number.isFinite(data.arkClassCount) &&
-                    Number.isFinite(data.arkMethodCount)) {
+                    Number.isFinite(data.arkMethodCount) && Number.isFinite(data.arkStmtCount)) {
                     metaParts.push(
                         'Scene: ' + data.arkFileCount + ' files · ' + data.arkClassCount + ' classes · ' +
-                        data.arkMethodCount + ' methods'
+                        data.arkMethodCount + ' methods · ' + data.arkStmtCount + ' stmts'
                     );
                 }
                 if (metaParts.length === 0) {
@@ -422,7 +422,8 @@
                     const heapAfterMB = (stage.heapAfter?.used || 0) / BYTES_PER_MB;
                     const heapPeakMB = item.heapPeakUsed / BYTES_PER_MB;
                     const growthMB = stage.heapGrowthBytes / BYTES_PER_MB;
-                    const topFunc = stage.hotFunctions?.[0] || null;
+                    const topCpuHotFunc = stage.cpuHotFunctions?.[0] || null;
+                    const topAllocFunc = stage.allocationHotFunctions?.[0] || null;
                     return `<tr>
                                     <td><strong>${stage.stageName}</strong></td>
                                     <td>${stage.durationMs.toFixed(2)}</td>
@@ -433,25 +434,28 @@
                                     <td>${stage.gcPauses.length}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
                                     <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
                                     <td class="hot-func">
-                                        ${topFunc ? `<span class="func-name">${topFunc.name}</span><br><span class="func-location">${topFunc.location} · ${topFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}
+                                        ${topCpuHotFunc ? `<span class="func-name">${topCpuHotFunc.name}</span><br><span class="func-location">${topCpuHotFunc.location} · ${topCpuHotFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}
+                                    </td>
+                                    <td class="hot-func">
+                                        ${topAllocFunc ? `<span class="func-name">${topAllocFunc.name}</span><br><span class="func-location">${topAllocFunc.location} · ${topAllocFunc.allocatedMb.toFixed(2)}MB</span>` : '<span class="badge">No samples</span>'}
                                     </td>
                                 </tr>`;
                 }).join('');
             }
 
-            function renderHotFunctionCards(stages) {
+            function renderCpuHotFunctionCards(stages) {
                 return stages.map((stage) => {
-                    if (!stage.hotFunctions || stage.hotFunctions.length === 0) {
+                    if (!stage.cpuHotFunctions || stage.cpuHotFunctions.length === 0) {
                         return '';
                     }
-                    const displayCount = Math.min(hotFunctionLimit, stage.hotFunctions.length);
+                    const displayCount = Math.min(hotFunctionLimit, stage.cpuHotFunctions.length);
                     return `
                         <div class="card" style="margin-bottom:16px;">
-                            <h3>🔥 ${stage.stageName} · Hot Functions (Top ${displayCount} by self time)</h3>
+                            <h3>🔥 ${stage.stageName} · CPU Hot Functions (Top ${displayCount} by self time)</h3>
                             <table style="min-width:780px;">
                                 <thead><tr><th>Function</th><th>Location</th><th>Self Time (ms)</th><th>StdDev (ms)</th><th>CV</th><th>Samples</th></tr></thead>
                                 <tbody>
-                                    ${stage.hotFunctions.slice(0, displayCount).map(fn => `
+                                    ${stage.cpuHotFunctions.slice(0, displayCount).map(fn => `
                                         <tr>
                                             <td class="func-name">${fn.name}</td>
                                             <td class="func-location">${fn.location}</td>
@@ -461,6 +465,36 @@
                                                 ${Number.isFinite(fn.selfTimeCv) ? (fn.selfTimeCv * 100).toFixed(1) + '%' : '-'}
                                             </td>
                                             <td>${fn.sampleCount}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }).join('');
+            }
+
+            function renderAllocationHotFunctionCards(stages) {
+                return stages.map((stage) => {
+                    if (!stage.allocationHotFunctions || stage.allocationHotFunctions.length === 0) {
+                        return '';
+                    }
+                    const displayCount = Math.min(hotFunctionLimit, stage.allocationHotFunctions.length);
+                    return `
+                        <div class="card" style="margin-bottom:16px;">
+                            <h3>🔥 ${stage.stageName} · Allocation Hot Functions (Top ${displayCount} by allocated bytes)</h3>
+                            <table style="min-width:780px;">
+                                <thead><tr><th>Function</th><th>Location</th><th>Allocated MB</th><th>StdDev (MB)</th><th>CV</th><th>Samples</th></tr></thead>
+                                <tbody>
+                                    ${stage.allocationHotFunctions.slice(0, displayCount).map(fn => `
+                                        <tr>
+                                            <td class="func-name">${fn.name}</td>
+                                            <td class="func-location">${fn.location}</td>
+                                            <td>${fn.allocatedMb.toFixed(2)}</td>
+                                            <td>${Number.isFinite(fn.allocatedBytesStdDev) ? (fn.allocatedBytesStdDev / 1024 / 1024).toFixed(2) : '-'}</td>
+                                            <td style="color:${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv > 0.5 ? '#b91c1c' : fn.allocatedBytesCv > 0.2 ? '#b45309' : '#15803d') : '#64748b'};">
+                                                ${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv * 100).toFixed(1) + '%' : '-'}
+                                            </td>
+                                            <td>${fn.sampleCount ?? '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -634,7 +668,8 @@
                                 <th>Heap Growth (MB)</th>
                                 <th>GC Count</th>
                                 <th>GC Time (ms)</th>
-                                <th>🔥 Top Hot Function</th>
+                                <th>🔥 Top CPU Hot Function</th>
+                                <th>🔥 Top Allocation Hot Function</th>
                             </tr>
                         </thead>
                         <tbody id="stageTableBody">
@@ -656,7 +691,8 @@
                             </select>
                         </div>
                     </div>
-                    ${renderHotFunctionCards(stages)}
+                    ${renderCpuHotFunctionCards(stages)}
+                    ${renderAllocationHotFunctionCards(stages)}
                 </div>
             `;
 

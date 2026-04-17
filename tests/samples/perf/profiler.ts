@@ -23,6 +23,7 @@ import * as fs from 'fs';
 import { getCxxSourceFileExtensions, Scene, buildSceneConfigFromProject } from '../../../src';
 
 const HEAP_SNAPSHOT_ENABLED = process.env.PERF_HEAP_SNAPSHOT === '1';
+const HEAP_SAMPLING_INTERVAL_BYTES = 32 * 1024;
 const RAW_OUTPUT_DIR = path.resolve(process.cwd(), 'output', 'raw');
 
 export interface HeapSize {
@@ -38,13 +39,43 @@ export interface GCPause {
     source: 'natural' | 'manual'; // GC trigger source
 }
 
-export interface FunctionStat {
+export interface CpuHotFunctionStat {
     name: string;
     location: string; // fileName:lineNumber
     selfTimeMs: number;
     sampleCount: number;
     selfTimeStdDevMs?: number; // Optional stability metric across repeated runs
     selfTimeCv?: number; // Optional coefficient of variation (stddev / mean)
+}
+
+export interface AllocationStat {
+    name: string;
+    location: string;
+    allocatedBytes: number;
+    allocatedMb: number;
+    allocatedBytesStdDev?: number; // Optional stability metric across repeated runs
+    allocatedBytesCv?: number; // Optional coefficient of variation (stddev / mean)
+    sampleCount?: number; // Optional allocation sample count
+}
+
+export interface SamplingHeapProfileNode {
+    callFrame: inspector.Runtime.CallFrame;
+    selfSize: number;
+    children?: SamplingHeapProfileNode[];
+}
+
+export interface SamplingHeapProfile {
+    head: SamplingHeapProfileNode;
+}
+
+export interface SamplingStopResult {
+    profile?: SamplingHeapProfile;
+}
+
+export interface StageSamplingResult {
+    stage: string;
+    outputPath: string;
+    profile?: SamplingHeapProfile;
 }
 
 export interface StageMetrics {
@@ -56,7 +87,8 @@ export interface StageMetrics {
     heapGrowthBytes: number;
     heapPeakUsedBytes: number;
     gcPauses: GCPause[];
-    hotFunctions: FunctionStat[]; // Top N functions by self time
+    cpuHotFunctions: CpuHotFunctionStat[]; // Top N functions by self time
+    allocationHotFunctions: AllocationStat[];
 }
 
 /**
@@ -76,6 +108,7 @@ export interface ProfilerSummaryFields {
     arkFileCount?: number;
     arkClassCount?: number;
     arkMethodCount?: number;
+    arkStmtCount?: number;
 }
 
 export interface ProfilerResult extends ProfilerSummaryFields {
@@ -106,7 +139,11 @@ function getHeapSize(): HeapSize {
 /**
  * Parse CPU profile data and extract Top-N hotspots by self time.
  */
-function analyzeHotFunctions(profile: inspector.Profiler.Profile, topN: number = 20): FunctionStat[] {
+function toMb(value: number): number {
+    return value / 1024 / 1024;
+}
+
+function analyzeCpuHotFunctions(profile: inspector.Profiler.Profile, topN: number = 20): CpuHotFunctionStat[] {
     const samples = profile.samples ?? [];
     const timeDeltas = profile.timeDeltas ?? [];
     const nodeMap = new Map<number, inspector.Profiler.ProfileNode>();
@@ -127,7 +164,7 @@ function analyzeHotFunctions(profile: inspector.Profiler.Profile, topN: number =
     }
 
     // Aggregate function stats.
-    const aggregated = new Map<string, FunctionStat>();
+    const aggregated = new Map<string, CpuHotFunctionStat>();
     for (const [nodeId, selfTimeMs] of selfTimeByNode) {
         const node = nodeMap.get(nodeId);
         if (!node) {
@@ -207,6 +244,12 @@ class StageProfiler {
         this.session.connect();
         await this.post('Profiler.enable');
         await this.post('Profiler.start');
+
+        // Start heap sampling profiler (using same session).
+        await this.post('HeapProfiler.enable');
+        await this.post('HeapProfiler.startSampling', { 
+            samplingInterval: HEAP_SAMPLING_INTERVAL_BYTES 
+        });
     }
 
     async stop(stageName: string): Promise<Omit<StageMetrics, 'stageName' | 'durationMs'>> {
@@ -221,6 +264,13 @@ class StageProfiler {
         const result = await this.post<{ profile: inspector.Profiler.Profile }>('Profiler.stop');
         await this.post('Profiler.disable');
 
+        // Stop heap sampling profiler and collect result.
+        const heapSamplingResult = await this.post<SamplingStopResult>('HeapProfiler.stopSampling');
+        await this.post('HeapProfiler.disable');
+        const allocationHotFunctions = heapSamplingResult.profile 
+            ? summarizeAllocationHotFunctions(heapSamplingResult.profile, 20) 
+            : [];
+
         // Stop GC observation.
         this.gcObserver.disconnect();
 
@@ -231,7 +281,7 @@ class StageProfiler {
         }
 
         // Analyze hotspot functions.
-        const hotFunctions = analyzeHotFunctions(result.profile, 20);
+        const cpuHotFunctions = analyzeCpuHotFunctions(result.profile, 20);
         try {
             await this.takeHeapSnapshotIfEnabled(stageName);
             return {
@@ -241,7 +291,8 @@ class StageProfiler {
                 heapGrowthBytes: this.heapAfter.used - this.heapBefore.used,
                 heapPeakUsedBytes: this.heapPeakUsedBytes,
                 gcPauses: this.gcEvents,
-                hotFunctions,
+                cpuHotFunctions,
+                allocationHotFunctions,
             };
         } finally {
             this.session.disconnect();
@@ -377,6 +428,14 @@ class StageProfiler {
     }
 
     private async post<T = unknown>(method: string, params?: object): Promise<T> {
+        return this.postWithSession(this.session, method, params);
+    }
+
+    private async postWithSession<T = unknown>(
+        session: inspector.Session,
+        method: string,
+        params?: object
+    ): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             const callback = (err: Error | null, result?: object): void => {
                 if (err) {
@@ -387,10 +446,10 @@ class StageProfiler {
             };
 
             if (params === undefined) {
-                this.session.post(method, callback);
+                session.post(method, callback);
                 return;
             }
-            this.session.post(method, params, callback);
+            session.post(method, params, callback);
         });
     }
 }
@@ -456,6 +515,59 @@ function buildSceneConfigStage(projectPath: string, ccJsonPath: string | undefin
     return sceneConfig;
 }
 
+function summarizeAllocationHotFunctions(profile: SamplingHeapProfile, topN: number): AllocationStat[] {
+    const aggregated = new Map<string, { stat: AllocationStat; count: number }>();
+    const stack: SamplingHeapProfileNode[] = [profile.head];
+
+    while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current) {
+            continue;
+        }
+        const frame = current.callFrame;
+        if (frame.functionName && frame.functionName !== '(idle)') {
+            const fileName = frame.url ? path.basename(frame.url) : 'unknown';
+            const location = `${fileName}:${frame.lineNumber + 1}`;
+            const key = `${frame.functionName}:${location}`;
+            const entry = aggregated.get(key) ?? {
+                stat: {
+                    name: frame.functionName,
+                    location,
+                    allocatedBytes: 0,
+                    allocatedMb: 0,
+                },
+                count: 0,
+            };
+            entry.stat.allocatedBytes += current.selfSize;
+            entry.stat.allocatedMb = toMb(entry.stat.allocatedBytes);
+            entry.count += 1;
+            aggregated.set(key, entry);
+        }
+        for (const child of current.children ?? []) {
+            stack.push(child);
+        }
+    }
+
+    return Array.from(aggregated.values())
+        .map((entry) => {
+            entry.stat.sampleCount = entry.count;
+            return entry.stat;
+        })
+        .sort((a, b) => b.allocatedBytes - a.allocatedBytes)
+        .slice(0, topN);
+}
+
+function countStmts(scene: Scene): number {
+    let stmtCount = 0;
+    for (const method of scene.getMethods()) {
+        const cfg = method.getCfg();
+        if (cfg) {
+            stmtCount += cfg.getStmts().length;
+        }
+    }
+    return stmtCount;
+}
+
 function summarizeResult(stages: StageMetrics[], scene: Scene): ProfilerResult {
     return {
         stages,
@@ -463,6 +575,7 @@ function summarizeResult(stages: StageMetrics[], scene: Scene): ProfilerResult {
         arkFileCount: scene.getFiles().length,
         arkClassCount: scene.getClasses().length,
         arkMethodCount: scene.getMethods().length,
+        arkStmtCount: countStmts(scene),
     };
 }
 
