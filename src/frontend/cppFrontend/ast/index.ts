@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-/** Minimal public surface for this package: only symbols imported via `…/ast`. */
 export {
     getCxxImplementationFileExtensionSet,
     getCxxImplementationFileExtensions,
