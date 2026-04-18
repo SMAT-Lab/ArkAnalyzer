@@ -83,6 +83,7 @@ export interface SceneOptions {
     ignoreFileNames?: string[];
     enableLeadingComments?: boolean;
     enableTrailingComments?: boolean;
+    enableJSDoc?: boolean;
     enableBuiltIn?: boolean;
     tsconfig?: string;
     isScanAbc?: boolean;
