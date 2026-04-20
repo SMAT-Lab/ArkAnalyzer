@@ -19,8 +19,8 @@
     "testonce": "npm run build && vitest --no-color run",
     "coverage": "npm run build && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
-    "perf:arkts": "node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",
-    "perf:cpp": "node --max-old-space-size=16384 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=opencv",
+    "perf:arkts": "npm run build && node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",
+    "perf:cpp": "npm run build && node --max-old-space-size=16384 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=opencv",
     "gendoc": "npm run build && npx typedoc"
   },
   "dependencies": {
