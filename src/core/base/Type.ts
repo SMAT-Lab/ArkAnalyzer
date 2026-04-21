@@ -881,12 +881,12 @@ export class AnnotationTypeQueryType extends AnnotationType {
 
 export class LexicalEnvType extends Type {
     private nestedMethodSignature: MethodSignature;
-    private closures: Local[] = [];
+    private closures: Local[];
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
         this.nestedMethodSignature = nestedMethod;
-        this.closures = closures ?? this.closures;
+        this.closures = closures ?? [];
     }
 
     public getNestedMethod(): MethodSignature {

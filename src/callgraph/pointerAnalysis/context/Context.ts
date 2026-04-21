@@ -167,8 +167,8 @@ export class FuncContext extends Context {
 }
 
 export class ContextCache {
-    private contextList: Context[] = [];
-    private contextToIDMap: Map<String, number> = new Map();
+    private contextList: Context[];
+    private contextToIDMap: Map<String, number>;
 
     constructor() {
         this.contextList = [];
