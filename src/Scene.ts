@@ -729,6 +729,14 @@ export class Scene {
                 cls.getDefaultArkMethod()?.buildBody();
                 cls.getDefaultArkMethod()?.freeBodyBuilder();
             });
+            // Release all method builders in SDK file to avoid retaining AST/build context in memory.
+            ModelUtils.getAllMethodsInFile(arkFile).forEach(method => {
+                if (method.getDeclaringArkFile()?.getLanguage() === Language.CXX) {
+                    method.freeCxxBodyBuilder();
+                } else {
+                    method.freeBodyBuilder();
+                }
+            });
             const fileSig = arkFile.getFileSignature().toMapKey();
             this.sdkArkFilesMap.set(fileSig, arkFile);
             SdkUtils.buildSdkImportMap(arkFile);
