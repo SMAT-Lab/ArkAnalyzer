@@ -55,7 +55,7 @@ export type CommentItem = {
 };
 
 export class CommentsMetadata implements ArkMetadataType {
-    private comments: CommentItem[] = [];
+    private comments: CommentItem[];
 
     constructor(comments: CommentItem[]) {
         this.comments = comments;

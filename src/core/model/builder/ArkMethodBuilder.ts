@@ -269,8 +269,8 @@ export class MethodParameter implements Value {
     private type!: Type;
     private optional: boolean = false;
     private restFlag: boolean = false;
-    private objElements: ObjectBindingPatternParameter[] = [];
-    private arrayElements: ArrayBindingPatternParameter[] = [];
+    private objElements!: ObjectBindingPatternParameter[];
+    private arrayElements!: ArrayBindingPatternParameter[];
 
     constructor() {}
 

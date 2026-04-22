@@ -36,7 +36,7 @@ export class Cfg {
     private startingStmt!: Stmt;
 
     private defUseChains: DefUseChain[] = [];
-    private declaringMethod: ArkMethod = new ArkMethod();
+    private declaringMethod!: ArkMethod;
 
     constructor() { }
 

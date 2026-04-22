@@ -192,10 +192,10 @@ export type ValueInit = {
  */
 export class Dispatch {
     name: string = 'dispatch';
-    readonly stmts: StmtClass[] = [];
-    readonly smap: Map<StmtClass, StmtPass[]> = new Map();
-    readonly values: ValueClass[] = [];
-    readonly vmap: Map<ValueClass, ValuePass[]> = new Map();
+    readonly stmts: StmtClass[];
+    readonly smap: Map<StmtClass, StmtPass[]>;
+    readonly values: ValueClass[];
+    readonly vmap: Map<ValueClass, ValuePass[]>;
 
     constructor(stmts: StmtInit[] = [], values: ValueInit[] = []) {
         this.stmts = stmts.map(v => v[0]);

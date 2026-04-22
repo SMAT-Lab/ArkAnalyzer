@@ -76,7 +76,7 @@ export class ArkFile {
 
     private fileSignature: FileSignature = FileSignature.DEFAULT;
 
-    private ohPackageJson5Path: string[] = [];
+    private ohPackageJson5Path!: string[];
 
     private anonymousClassNumber: number = 0;
 
