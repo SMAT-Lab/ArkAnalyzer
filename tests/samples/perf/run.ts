@@ -87,6 +87,7 @@ function printStageSummary(stage: StageMetrics): void {
     console.log(`  Duration      : ${stage.durationMs.toFixed(2)} ms`);
     console.log(`  Heap Growth   : ${(stage.heapGrowthBytes / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  Heap Peak     : ${(stage.heapPeakUsedBytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  RSS Peak      : ${((stage.rssPeakBytes ?? 0) / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  GC Pauses     : ${stage.gcPauses.length} (${stage.gcPauses.reduce((s, p) => s + p.durationMs, 0).toFixed(2)} ms)`);
     console.log(`  CPU Hot Functions : ${stage.cpuHotFunctions.length}`);
     if (stage.cpuHotFunctions.length > 0) {
@@ -124,6 +125,7 @@ interface StageAccumulator {
     durations: number[];
     heapGrowths: number[];
     heapPeakUsedBytes: number[];
+    rssPeakBytes: number[];
     heapBeforeUsed: number[];
     heapBeforeTotal: number[];
     heapBeforeLimit: number[];
@@ -229,6 +231,7 @@ function createStageAccumulator(stageName: string): StageAccumulator {
         durations: [],
         heapGrowths: [],
         heapPeakUsedBytes: [],
+        rssPeakBytes: [],
         heapBeforeUsed: [],
         heapBeforeTotal: [],
         heapBeforeLimit: [],
@@ -312,6 +315,7 @@ function appendStageMetrics(accumulator: StageAccumulator, stage: StageMetrics):
     accumulator.durations.push(stage.durationMs);
     accumulator.heapGrowths.push(stage.heapGrowthBytes);
     accumulator.heapPeakUsedBytes.push(stage.heapPeakUsedBytes);
+    accumulator.rssPeakBytes.push(stage.rssPeakBytes ?? 0);
     accumulator.heapBeforeUsed.push(stage.heapBefore.used);
     accumulator.heapBeforeTotal.push(stage.heapBefore.total);
     accumulator.heapBeforeLimit.push(stage.heapBefore.limit);
@@ -373,6 +377,7 @@ function buildAverageResult(
             cpuProfile: {} as StageMetrics['cpuProfile'],
             heapGrowthBytes: average(accumulator.heapGrowths),
             heapPeakUsedBytes: average(accumulator.heapPeakUsedBytes),
+            rssPeakBytes: average(accumulator.rssPeakBytes),
             heapBefore: {
                 used: average(accumulator.heapBeforeUsed),
                 total: average(accumulator.heapBeforeTotal),

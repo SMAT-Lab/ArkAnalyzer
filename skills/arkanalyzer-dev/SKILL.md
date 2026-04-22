@@ -7,7 +7,7 @@ description: >-
   在贡献底座代码、HomeCheck 兼容性验证、代码整洁、性能热点、写文档或提及 ArkAnalyzer、HomeCheck、ArkTS、Scene/Cfg/IR、ohos-typescript 时使用。
 ---
 
-# ArkAnalyzer 仓库开发与 Agent 导读
+# /arkanalyzer-dev
 
 ## 本 Skill 的价值与应用场景
 
@@ -48,8 +48,9 @@ description: >-
   - 使用本仓库锁定的 TypeScript 与 **ohos-typescript**（`package.json` / `bundledDependencies`）。  
   - 改动语法/类型相关逻辑时，需兼顾 ArkTS 与 OH TS fork 的差异。
 2. **本地门禁**
-  - **构建**：`npm run build`（PR 前建议无报错）。  
+  - **构建**：`npm run build`（PR 前建议无报错）；涉及 `src/frontend/cppFrontend` 的改动需额外执行 `npm run build:cpp`。  
   - **测试**：`npm test` 或 `npm run testonce`（脚本已包含先 build）。  
+  - **性能测试**：`npm run perf:arkts`。  
   - **文档**：公开 API 或行为变更时运行或更新 `npm run gendoc`（输出见 `docs/api_docs`）及 `docs/` 正文。
 3. **测试与资源**
   - 新增自验证：测试放 `tests/`，样例与资源放 `tests/resources/`，按场景建子目录（见仓库 `README.md`）。
@@ -59,6 +60,9 @@ description: >-
 
 ### 编程规范（必选）
 
+适用范围：**新增代码与变更代码**均必须遵从以下编程规范。
+冲突处理：若实现方式与本规范冲突，需**优先按本规范重构后再提交**。
+
 5. **文件 Copyright 头**  
    - **新建**源代码文件（如 `.ts`）须在**文件最顶部**包含与仓库 `src/` 一致的 **Apache License 2.0** 版权与许可头（`/* ... */` 多行注释）。  
    - 以 `Copyright (c) … Huawei Device Co., Ltd.` 起头，含 `Licensed under the Apache License, Version 2.0` 至 `limitations under the License.` 的完整段落；**年份**与同 PR、相邻新文件或仓库惯例一致。  
@@ -67,6 +71,7 @@ description: >-
 6. **行宽 ≤ 160**  
    - 任意提交中的每一物理行（代码、注释、字符串字面量）长度**不超过 160 字符**；超长则换行、拆字符串、拆链式调用或提取变量/常量。  
    - Agent 生成或修改代码时默认按 **160 列**折行。
+   - 单个函数实现体建议控制在 **50 行以内**；超过 **50 行**必须拆分为多个职责清晰、可独立测试的小函数。
 
 ### Clean Code 与可维护性（强烈建议）
 
@@ -189,7 +194,7 @@ description: >-
 |------|----------|
 | **需求 / Bug 描述** | 背景、目标或非目标、复现条件（Bug）、期望行为 vs 实际 |
 | **设计方案** | 选型理由、关键抽象与模块、接口/数据流、风险与兼容性 |
-| **测试方案** | UT/集成/样例路径、覆盖点、如何验证回归 |
+| **测试方案** | UT/集成/样例路径、覆盖点、如何验证回归；涉及性能路径时补充 perf 指标、执行命令与对比口径 |
 | **Commit 描述** | 建议的 commit message（subject；必要时含 body 要点），与提交一致 |
 | **PR 描述** | 拆分为下列子节，可直接粘贴或略改后用于 PR 表单 |
 
@@ -197,8 +202,6 @@ description: >-
 
 1. **内容说明** — 本次交付对用户/维护者的意义，一句话与展开均可。  
 2. **变更点** — 文件/模块级列表，行为或 API 变化注明 breaking 与否。  
-3. **自测点** — 本地已执行的命令与结果（如 `npm run testonce`）、关键断言或截图说明。  
-4. **测试关注点** — 供审阅者或 QA 重点验证的场景、边界、关联模块。
 
 **模板**（复制后填空）：
 
@@ -220,12 +223,11 @@ description: >-
 
 ### 2 变更点
 
-### 3 自测点
-
-### 4 测试关注点
 ```
 
 Agent 在特性或 Bug 流程收尾时**生成或更新**该设计文档，避免仅有代码而无可追溯说明。
+
+**提交默认策略**：Agent 生成或更新的设计文档默认作为工作草稿，**不自动加入本次提交**；仅在用户、维护者或评审明确要求时，才将对应 `.md` 纳入 commit。
 
 ---
 
@@ -249,6 +251,11 @@ Agent 在特性或 Bug 流程收尾时**生成或更新**该设计文档，避�
      - `git fetch myfork`  
      - 在本地分支上 `git push -u myfork <branch>`。  
    - **命名可自定**（`myfork`、`fork` 等），与 `git remote -v` 一致即可。
+
+5. **设计文档默认不提交**  
+   - 对 Agent 自动生成或批量生成的设计文档（通常位于 `docs/developer/`），默认不执行 `git add`。  
+   - 提交前必须执行 staged 文件清单检查（如 `git diff --cached --name-only`）；若命中 `docs/developer/`，默认先 `git restore --staged <file>` 移出暂存区。  
+   - 仅在任务要求、评审要求或用户明确指示需要随代码一并提交时，才将相关文档纳入本次 commit。未获明确授权时，不得把该目录文档提交到远端。  
 
 ---
 

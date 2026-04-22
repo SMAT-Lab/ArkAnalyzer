@@ -2,55 +2,42 @@
   "stages": [
     {
       "stageName": "buildConfig",
-      "durationMs": 80.62141699999984,
+      "durationMs": 40.408542000000125,
       "cpuProfile": {},
-      "heapGrowthBytes": -113717352,
-      "heapPeakUsedBytes": 411694848,
+      "heapGrowthBytes": -86308872,
+      "heapPeakUsedBytes": 386955008,
+      "rssPeakBytes": 656982016,
       "heapBefore": {
-        "used": 411694848,
-        "total": 492126208,
+        "used": 386955008,
+        "total": 507723776,
         "limit": 4496293888
       },
       "heapAfter": {
-        "used": 297977496,
-        "total": 495435776,
+        "used": 300646136,
+        "total": 463962112,
         "limit": 4496293888
       },
       "gcPauses": [
         {
           "type": "avg",
-          "durationMs": 10.295833989977837,
+          "durationMs": 20.29329204559326,
           "timestamp": 0,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 10.295833989977837,
-          "timestamp": 1,
           "source": "natural"
         }
       ],
-      "hotFunctions": [
+      "cpuHotFunctions": [
         {
           "name": "post",
           "location": "node:inspector:115",
-          "selfTimeMs": 188.875,
+          "selfTimeMs": 182.167,
           "sampleCount": 1,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "readdir",
-          "location": "unknown:0",
-          "selfTimeMs": 42.29,
-          "sampleCount": 34,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "(garbage collector)",
           "location": "unknown:0",
-          "selfTimeMs": 20.292,
+          "selfTimeMs": 20.333000000000002,
           "sampleCount": 16,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
@@ -58,39 +45,39 @@
         {
           "name": "lstat",
           "location": "unknown:0",
-          "selfTimeMs": 14.460999999999999,
-          "sampleCount": 12,
+          "selfTimeMs": 13.041,
+          "sampleCount": 11,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "readdir",
+          "location": "unknown:0",
+          "selfTimeMs": 11.249,
+          "sampleCount": 9,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "stat",
           "location": "unknown:0",
-          "selfTimeMs": 9.917,
+          "selfTimeMs": 10.001,
           "sampleCount": 8,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "realpathSync",
-          "location": "node:fs:2700",
-          "selfTimeMs": 3.75,
-          "sampleCount": 3,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "statSync",
-          "location": "node:fs:1724",
-          "selfTimeMs": 1.208,
+          "name": "normalizeString",
+          "location": "node:path:92",
+          "selfTimeMs": 1.25,
           "sampleCount": 1,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "(program)",
-          "location": "unknown:0",
-          "selfTimeMs": 1.208,
+          "name": "splitRoot",
+          "location": "node:fs:2656",
+          "selfTimeMs": 1.166,
           "sampleCount": 1,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
@@ -98,2943 +85,1735 @@
         {
           "name": "getAllFiles",
           "location": "getAllFiles.ts:67",
-          "selfTimeMs": 1.166,
+          "selfTimeMs": 0.5,
           "sampleCount": 1,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
+        }
+      ],
+      "allocationHotFunctions": [
+        {
+          "name": "includes",
+          "location": "unknown:0",
+          "allocatedBytes": 131400,
+          "allocatedMb": 0.12531280517578125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
         },
         {
-          "name": "extname",
-          "location": "node:path:1551",
-          "selfTimeMs": 0.833,
-          "sampleCount": 2,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
+          "name": "#onMessage",
+          "location": "node:inspector:84",
+          "allocatedBytes": 65648,
+          "allocatedMb": 0.0626068115234375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "resolve",
+          "location": "node:path:1245",
+          "allocatedBytes": 65568,
+          "allocatedMb": 0.062530517578125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "observerCallback",
+          "location": "observe:530",
+          "allocatedBytes": 34440,
+          "allocatedMb": 0.03284454345703125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "(root)",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "processTicksAndRejections",
+          "location": "task_queues:72",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "fulfilled",
+          "location": "profiler.ts:52",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "next",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "measureStage",
+          "location": "profiler.ts:388",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "buildSceneConfigStage",
+          "location": "profiler.ts:417",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "buildSceneConfigFromProject",
+          "location": "Config.ts:92",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "buildConfig",
+          "location": "Config.ts:130",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "getAllFiles",
+          "location": "getAllFiles.ts:67",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 9
+        },
+        {
+          "name": "forEach",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 9
+        },
+        {
+          "name": "wrappedFn",
+          "location": "errors:537",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "isDirectory",
+          "location": "FileUtils.ts:75",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "processImmediate",
+          "location": "timers:457",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "runNextTicks",
+          "location": "task_queues:63",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "post",
+          "location": "profiler.ts:353",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "__awaiter",
+          "location": "profiler.ts:49",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
         }
       ]
     },
     {
       "stageName": "buildScene",
-      "durationMs": 65942.687333,
+      "durationMs": 5666.590375,
       "cpuProfile": {},
-      "heapGrowthBytes": 1101552824,
-      "heapPeakUsedBytes": 1399632488,
+      "heapGrowthBytes": 929970352,
+      "heapPeakUsedBytes": 1230725552,
+      "rssPeakBytes": 2222096384,
       "heapBefore": {
-        "used": 298079664,
-        "total": 495435776,
+        "used": 300755200,
+        "total": 463962112,
         "limit": 4496293888
       },
       "heapAfter": {
-        "used": 1399632488,
-        "total": 2216361984,
+        "used": 1230725552,
+        "total": 1675608064,
         "limit": 4496293888
       },
       "gcPauses": [
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 0,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 1,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 2,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 3,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 4,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 5,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 6,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 7,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 8,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 9,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 10,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 11,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 12,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 13,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 14,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 15,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 16,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 17,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 18,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 19,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 20,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 21,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 22,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 23,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 24,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 25,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 26,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 27,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 28,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 29,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 30,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 31,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 32,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 33,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 34,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 35,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 36,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 37,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 38,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 39,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 40,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 41,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 42,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 43,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 44,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 45,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 46,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 47,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 48,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 49,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 50,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 51,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 52,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 53,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 54,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 55,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 56,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 57,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 58,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 59,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 60,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 61,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 62,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 63,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 64,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 65,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 66,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 67,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 68,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 69,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 70,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 71,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 72,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 73,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 74,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 75,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 76,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 77,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 78,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 79,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 80,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 81,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 82,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 83,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 84,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 85,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 86,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 87,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 88,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 89,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 90,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 91,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 92,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 93,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 94,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 95,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 96,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 97,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 98,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 99,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 100,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 101,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 102,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 103,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 104,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 105,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 106,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 107,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 108,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 109,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 110,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 111,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 112,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 113,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 114,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 115,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 116,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 117,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 118,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 119,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 120,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 121,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 122,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.5847014667193093,
+          "durationMs": 4.6258709594126675,
           "timestamp": 123,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 124,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 125,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 126,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 127,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 128,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 129,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 130,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 131,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 132,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 133,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 134,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 135,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 136,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 137,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 138,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 139,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 140,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 141,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 142,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 143,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 144,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 145,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 146,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 147,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 148,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 149,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 150,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 151,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 152,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 153,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 154,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 155,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 156,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 157,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 158,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 159,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 160,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 161,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 162,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 163,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 164,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 165,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 166,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 167,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 168,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 169,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 170,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 171,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 172,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 173,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 174,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 175,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 176,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 177,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 178,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 179,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 180,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 181,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 182,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 183,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 184,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 185,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 186,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 187,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 188,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 189,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 190,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 191,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 192,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 193,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 194,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 195,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 196,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 197,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 198,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 199,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 200,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 201,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 202,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 203,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 204,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 205,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 206,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 207,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 208,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 209,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 210,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 211,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 212,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 213,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 214,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 215,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 216,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 217,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 218,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 219,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 220,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 221,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 222,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 223,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 224,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 225,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 226,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 227,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 228,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 229,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 230,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 231,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 232,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 233,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 234,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 235,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 236,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 237,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 238,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 239,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 240,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 241,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 242,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 243,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 244,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 245,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 246,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 247,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 248,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 249,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 250,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 251,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 252,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 253,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 254,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 255,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 256,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 257,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 258,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 259,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 260,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 261,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 262,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 263,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 264,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 265,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 266,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 267,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 268,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 269,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 270,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 271,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 272,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 273,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 274,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 275,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 276,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 277,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 278,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 279,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 280,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 281,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 282,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 283,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 284,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 285,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 286,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 287,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 288,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 289,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 290,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 291,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 292,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 293,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 294,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 295,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 296,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 297,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 298,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 299,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 300,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 301,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 302,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 303,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 304,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 305,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 306,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 307,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 308,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 309,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 310,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 311,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 312,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 313,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 314,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 315,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 316,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 317,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 318,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 319,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 320,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 321,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 322,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 323,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 324,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 325,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 326,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 327,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 328,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 329,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 330,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 331,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 332,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 333,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 334,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 335,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 336,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 337,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 338,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 339,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 340,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 341,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 342,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 343,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 344,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 345,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 346,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 347,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 348,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 349,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 350,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 351,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 352,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 353,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 354,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 355,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 356,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 357,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 358,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 359,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 360,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 361,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 362,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 363,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 364,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 365,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 366,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 367,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 368,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 369,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 370,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 371,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 372,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 373,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.5847014667193093,
-          "timestamp": 374,
           "source": "natural"
         }
       ],
-      "hotFunctions": [
-        {
-          "name": "spawn",
-          "location": "unknown:0",
-          "selfTimeMs": 55158.92000000133,
-          "sampleCount": 44006,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
+      "cpuHotFunctions": [
         {
           "name": "(garbage collector)",
           "location": "unknown:0",
-          "selfTimeMs": 976.5330000000023,
-          "sampleCount": 780,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "readFileUtf8",
-          "location": "unknown:0",
-          "selfTimeMs": 607.6610000000001,
-          "sampleCount": 494,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "cxxParseArgumentsOfCallExpression",
-          "location": "ArkValueTransformer.ts:1800",
-          "selfTimeMs": 595.4559999999997,
-          "sampleCount": 493,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "buildTypeFromDerivedType",
-          "location": "builderUtils.ts:422",
-          "selfTimeMs": 554.7840000000002,
-          "sampleCount": 446,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "processAstFile",
-          "location": "astUtils.ts:182",
-          "selfTimeMs": 495.58299999999963,
-          "sampleCount": 396,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "buildTypeFromPreStr",
-          "location": "builderUtils.ts:291",
-          "selfTimeMs": 316.1629999999999,
-          "sampleCount": 260,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "flattenReducer",
-          "location": "ArkClass.ts:361",
-          "selfTimeMs": 290.8,
-          "sampleCount": 235,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "readdir",
-          "location": "unknown:0",
-          "selfTimeMs": 217.211,
-          "sampleCount": 179,
+          "selfTimeMs": 594.6239999999999,
+          "sampleCount": 467,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "skipTrivia",
           "location": "typescript.js:12015",
-          "selfTimeMs": 216.84200000000004,
-          "sampleCount": 184,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "RecoverExpressionToValueAndStmts",
-          "location": "ArkValueTransformer.ts:1637",
-          "selfTimeMs": 202.42100000000002,
-          "sampleCount": 167,
+          "selfTimeMs": 176.875,
+          "sampleCount": 148,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "scan",
           "location": "typescript.js:12847",
-          "selfTimeMs": 173.042,
-          "sampleCount": 165,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "getMethods",
-          "location": "ArkClass.ts:360",
-          "selfTimeMs": 171.373,
-          "sampleCount": 140,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "getParent",
-          "location": "astUtils.ts:242",
-          "selfTimeMs": 153.374,
-          "sampleCount": 124,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "cxxCallExpressionToValueAndStmts",
-          "location": "ArkValueTransformer.ts:1223",
-          "selfTimeMs": 144.541,
-          "sampleCount": 118,
+          "selfTimeMs": 169.458,
+          "sampleCount": 160,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "post",
           "location": "node:inspector:115",
-          "selfTimeMs": 135.708,
+          "selfTimeMs": 159.958,
           "sampleCount": 1,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "convertDataType",
-          "location": "builderUtils.ts:504",
-          "selfTimeMs": 131.294,
-          "sampleCount": 105,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "existsSync",
-          "location": "unknown:0",
-          "selfTimeMs": 122.628,
-          "sampleCount": 100,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "(program)",
-          "location": "unknown:0",
-          "selfTimeMs": 111.626,
-          "sampleCount": 94,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "scanJsDocToken",
           "location": "typescript.js:13534",
-          "selfTimeMs": 111.379,
-          "sampleCount": 97,
+          "selfTimeMs": 148.29,
+          "sampleCount": 124,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
+        },
+        {
+          "name": "readdir",
+          "location": "unknown:0",
+          "selfTimeMs": 128.12500000000003,
+          "sampleCount": 105,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "tsNodeToValueAndStmts",
+          "location": "ArkValueTransformer.ts:115",
+          "selfTimeMs": 116.58200000000001,
+          "sampleCount": 114,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "flattenReducer",
+          "location": "ArkClass.ts:361",
+          "selfTimeMs": 109.956,
+          "sampleCount": 91,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseTagComments",
+          "location": "typescript.js:34722",
+          "selfTimeMs": 97.954,
+          "sampleCount": 83,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "addWorkItem",
+          "location": "typescript.js:28746",
+          "selfTimeMs": 81.70699999999998,
+          "sampleCount": 71,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "computeLineAndCharacterOfPosition",
+          "location": "typescript.js:11944",
+          "selfTimeMs": 78.91699999999999,
+          "sampleCount": 65,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "readFileUtf8",
+          "location": "unknown:0",
+          "selfTimeMs": 73.87800000000001,
+          "sampleCount": 63,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "buildFromNode",
+          "location": "Position.ts:156",
+          "selfTimeMs": 56.583999999999996,
+          "sampleCount": 49,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "propertyAccessExpressionToValue",
+          "location": "ArkValueTransformer.ts:555",
+          "selfTimeMs": 55.581,
+          "sampleCount": 52,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "buildArkMethodFromArkClass",
+          "location": "ArkMethodBuilder.ts:97",
+          "selfTimeMs": 55.209999999999994,
+          "sampleCount": 51,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "buildDefUseStmt",
+          "location": "Cfg.ts:192",
+          "selfTimeMs": 53.666,
+          "sampleCount": 47,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "forEachChildRecursively",
+          "location": "typescript.js:28704",
+          "selfTimeMs": 53.33,
+          "sampleCount": 49,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseJSDocCommentWorker",
+          "location": "typescript.js:34480",
+          "selfTimeMs": 50.167,
+          "sampleCount": 43,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "computeLineStarts",
+          "location": "typescript.js:11892",
+          "selfTimeMs": 49.75,
+          "sampleCount": 42,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "existsSync",
+          "location": "unknown:0",
+          "selfTimeMs": 45.834,
+          "sampleCount": 38,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        }
+      ],
+      "allocationHotFunctions": [
+        {
+          "name": "generateAssignStmtForValue",
+          "location": "ArkIRTransformer.ts:781",
+          "allocatedBytes": 76751704,
+          "allocatedMb": 73.19612884521484,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 964
+        },
+        {
+          "name": "buildDefUseStmt",
+          "location": "Cfg.ts:192",
+          "allocatedBytes": 70486168,
+          "allocatedMb": 67.2208480834961,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 233
+        },
+        {
+          "name": "readFileSync",
+          "location": "node:fs:433",
+          "allocatedBytes": 69927720,
+          "allocatedMb": 66.68827056884766,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 64
+        },
+        {
+          "name": "set",
+          "location": "unknown:0",
+          "allocatedBytes": 59104640,
+          "allocatedMb": 56.3665771484375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 395
+        },
+        {
+          "name": "Map",
+          "location": "unknown:0",
+          "allocatedBytes": 53082256,
+          "allocatedMb": 50.62318420410156,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 550
+        },
+        {
+          "name": "parseArguments",
+          "location": "ArkValueTransformer.ts:772",
+          "allocatedBytes": 42122872,
+          "allocatedMb": 40.17150115966797,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1432
+        },
+        {
+          "name": "handleFieldRefInvoke",
+          "location": "ArkValueTransformer.ts:661",
+          "allocatedBytes": 34267272,
+          "allocatedMb": 32.67981719970703,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 337
+        },
+        {
+          "name": "buildFromNode",
+          "location": "Position.ts:156",
+          "allocatedBytes": 26595360,
+          "allocatedMb": 25.363311767578125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 485
+        },
+        {
+          "name": "processBlocks",
+          "location": "CfgBuilder.ts:1147",
+          "allocatedBytes": 25328272,
+          "allocatedMb": 24.154922485351562,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 420
+        },
+        {
+          "name": "push",
+          "location": "unknown:0",
+          "allocatedBytes": 21299344,
+          "allocatedMb": 20.312637329101562,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 215
+        },
+        {
+          "name": "propertyAccessExpressionToValue",
+          "location": "ArkValueTransformer.ts:555",
+          "allocatedBytes": 19293856,
+          "allocatedMb": 18.400054931640625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4580
+        },
+        {
+          "name": "getInitStmts",
+          "location": "ArkClassBuilder.ts:480",
+          "allocatedBytes": 18692448,
+          "allocatedMb": 17.826507568359375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 498
+        },
+        {
+          "name": "createCfg",
+          "location": "CfgBuilder.ts:1222",
+          "allocatedBytes": 17313256,
+          "allocatedMb": 16.511207580566406,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 102
+        },
+        {
+          "name": "buildFromNode",
+          "location": "Position.ts:122",
+          "allocatedBytes": 16852224,
+          "allocatedMb": 16.071533203125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 91
+        },
+        {
+          "name": "getText",
+          "location": "typescript.js:123371",
+          "allocatedBytes": 15311264,
+          "allocatedMb": 14.601959228515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 94
+        },
+        {
+          "name": "tsNodeToSingleAddressValueAndStmts",
+          "location": "ArkValueTransformer.ts:212",
+          "allocatedBytes": 14879208,
+          "allocatedMb": 14.189918518066406,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 999
+        },
+        {
+          "name": "buildArkMethodFromArkClass",
+          "location": "ArkMethodBuilder.ts:97",
+          "allocatedBytes": 14701064,
+          "allocatedMb": 14.020027160644531,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 727
+        },
+        {
+          "name": "identifierToValueAndStmts",
+          "location": "ArkValueTransformer.ts:535",
+          "allocatedBytes": 11972368,
+          "allocatedMb": 11.417739868164062,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 335
+        },
+        {
+          "name": "#onMessage",
+          "location": "node:inspector:84",
+          "allocatedBytes": 11168384,
+          "allocatedMb": 10.6510009765625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "assignmentToValueAndStmts",
+          "location": "ArkValueTransformer.ts:1212",
+          "allocatedBytes": 10312360,
+          "allocatedMb": 9.834632873535156,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 139
         }
       ]
     },
     {
       "stageName": "inferTypes",
-      "durationMs": 2504.8168749999895,
+      "durationMs": 2437.065458000001,
       "cpuProfile": {},
-      "heapGrowthBytes": -28962064,
-      "heapPeakUsedBytes": 1409445528,
+      "heapGrowthBytes": -72396680,
+      "heapPeakUsedBytes": 1236632968,
+      "rssPeakBytes": 2223751168,
       "heapBefore": {
-        "used": 1409445528,
-        "total": 2220359680,
+        "used": 1236632968,
+        "total": 1677262848,
         "limit": 4496293888
       },
       "heapAfter": {
-        "used": 1380483464,
-        "total": 1948729344,
+        "used": 1164236288,
+        "total": 1579565056,
         "limit": 4496293888
       },
       "gcPauses": [
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 0,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 1,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 2,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 3,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 4,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 5,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 6,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 7,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 8,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 9,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 10,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 11,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 12,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 13,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 14,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 15,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 16,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 17,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 18,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 19,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 20,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 21,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 22,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 23,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 24,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 25,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 26,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 27,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 28,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 29,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 30,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 31,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 32,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 33,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 34,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 35,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 36,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 37,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 38,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 39,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 40,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 41,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 42,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 43,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 44,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 45,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 46,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 47,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 48,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 49,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 50,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 51,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 52,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 53,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 54,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 55,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 56,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 57,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 58,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 59,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 60,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 61,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 62,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 63,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 64,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 65,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 66,
           "source": "natural"
         },
         {
           "type": "avg",
-          "durationMs": 2.9751544995949817,
+          "durationMs": 3.1691776426399456,
           "timestamp": 67,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 68,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 69,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 70,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 71,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 72,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 73,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 74,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 75,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 76,
-          "source": "natural"
-        },
-        {
-          "type": "avg",
-          "durationMs": 2.9751544995949817,
-          "timestamp": 77,
           "source": "natural"
         }
       ],
-      "hotFunctions": [
+      "cpuHotFunctions": [
         {
           "name": "post",
           "location": "node:inspector:115",
-          "selfTimeMs": 598.042,
+          "selfTimeMs": 476.667,
           "sampleCount": 1,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
@@ -3042,47 +1821,47 @@
         {
           "name": "(garbage collector)",
           "location": "unknown:0",
-          "selfTimeMs": 229.66400000000002,
-          "sampleCount": 183,
+          "selfTimeMs": 230.92100000000002,
+          "sampleCount": 185,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "inferValue",
           "location": "ModelInference.ts:387",
-          "selfTimeMs": 166.999,
-          "sampleCount": 142,
+          "selfTimeMs": 205.71,
+          "sampleCount": 171,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "isUnclearType",
           "location": "TypeInference.ts:472",
-          "selfTimeMs": 152.79500000000002,
-          "sampleCount": 132,
+          "selfTimeMs": 126.081,
+          "sampleCount": 108,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "infer",
           "location": "ModelInference.ts:241",
-          "selfTimeMs": 134.665,
-          "sampleCount": 119,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "getClass",
-          "location": "Scene.ts:950",
-          "selfTimeMs": 54.501000000000005,
-          "sampleCount": 46,
+          "selfTimeMs": 112.293,
+          "sampleCount": 98,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "findDeclaredLocal",
           "location": "ModelUtils.ts:412",
-          "selfTimeMs": 48.12700000000001,
+          "selfTimeMs": 51.332,
+          "sampleCount": 46,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "postInfer",
+          "location": "ModelInference.ts:345",
+          "selfTimeMs": 48.872,
           "sampleCount": 46,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
@@ -3090,115 +1869,298 @@
         {
           "name": "getMethodWithName",
           "location": "ArkClass.ts:401",
-          "selfTimeMs": 40.794,
-          "sampleCount": 34,
+          "selfTimeMs": 44.831999999999994,
+          "sampleCount": 37,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "postInfer",
-          "location": "ModelInference.ts:345",
-          "selfTimeMs": 39.205000000000005,
-          "sampleCount": 41,
+          "name": "getClass",
+          "location": "Scene.ts:959",
+          "selfTimeMs": 44.331,
+          "sampleCount": 38,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "getDefAndUses",
           "location": "Stmt.ts:77",
-          "selfTimeMs": 36.959,
-          "sampleCount": 30,
+          "selfTimeMs": 43.666000000000004,
+          "sampleCount": 38,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "findPropertyInClass",
           "location": "ModelUtils.ts:391",
-          "selfTimeMs": 34.294,
-          "sampleCount": 28,
+          "selfTimeMs": 42.544,
+          "sampleCount": 36,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "getUses",
-          "location": "Expr.ts:328",
-          "selfTimeMs": 30.792000000000343,
-          "sampleCount": 5182,
+          "name": "checkType",
+          "location": "TypeInference.ts:507",
+          "selfTimeMs": 39.334,
+          "sampleCount": 37,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "inferUnclearedType",
           "location": "TypeInference.ts:123",
-          "selfTimeMs": 30.461000000000006,
-          "sampleCount": 28,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "transferTypeBidirectional",
-          "location": "ModelInference.ts:447",
-          "selfTimeMs": 29.956000000000003,
-          "sampleCount": 28,
+          "selfTimeMs": 36.788999999999994,
+          "sampleCount": 34,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "getUses",
           "location": "Stmt.ts:322",
-          "selfTimeMs": 29.002000000000002,
-          "sampleCount": 26,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
-        },
-        {
-          "name": "infer",
-          "location": "ArkTsInference.ts:305",
-          "selfTimeMs": 28.666,
-          "sampleCount": 26,
+          "selfTimeMs": 33.00099999999999,
+          "sampleCount": 28,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
           "name": "typeSpread",
           "location": "ModelInference.ts:413",
-          "selfTimeMs": 27.291000000000004,
-          "sampleCount": 28,
+          "selfTimeMs": 30.919000000000004,
+          "sampleCount": 29,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "inferUnclearRefName",
-          "location": "TypeInference.ts:702",
-          "selfTimeMs": 26.584000000000003,
+          "name": "doInfer",
+          "location": "ValueInference.ts:107",
+          "selfTimeMs": 29.958000000000006,
+          "sampleCount": 27,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "infer",
+          "location": "ArkTsInference.ts:305",
+          "selfTimeMs": 27.583000000000002,
+          "sampleCount": 26,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "descriptor.value",
+          "location": "LRUCacheDecorator.ts:58",
+          "selfTimeMs": 25.75,
+          "sampleCount": 21,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "infer",
+          "location": "ModelInference.ts:208",
+          "selfTimeMs": 25.624000000000002,
           "sampleCount": 22,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
         },
         {
-          "name": "(program)",
+          "name": "readdir",
           "location": "unknown:0",
-          "selfTimeMs": 26.584,
-          "sampleCount": 37,
+          "selfTimeMs": 24.792,
+          "sampleCount": 21,
           "selfTimeStdDevMs": 0,
           "selfTimeCv": 0
-        },
+        }
+      ],
+      "allocationHotFunctions": [
         {
           "name": "getMethodsMap",
-          "location": "Scene.ts:1011",
-          "selfTimeMs": 25.875,
-          "sampleCount": 23,
-          "selfTimeStdDevMs": 0,
-          "selfTimeCv": 0
+          "location": "Scene.ts:1020",
+          "allocatedBytes": 7474728,
+          "allocatedMb": 7.128456115722656,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "toMapKey",
+          "location": "ArkSignature.ts:145",
+          "allocatedBytes": 5606080,
+          "allocatedMb": 5.34637451171875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "replace",
+          "location": "unknown:0",
+          "allocatedBytes": 3123200,
+          "allocatedMb": 2.978515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "Map",
+          "location": "unknown:0",
+          "allocatedBytes": 2725176,
+          "allocatedMb": 2.5989303588867188,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "ClassType",
+          "location": "Type.ts:416",
+          "allocatedBytes": 2688920,
+          "allocatedMb": 2.5643539428710938,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 35
+        },
+        {
+          "name": "set",
+          "location": "unknown:0",
+          "allocatedBytes": 2363080,
+          "allocatedMb": 2.2536087036132812,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "inferUnclearRefName",
+          "location": "TypeInference.ts:702",
+          "allocatedBytes": 2065760,
+          "allocatedMb": 1.970062255859375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 25
+        },
+        {
+          "name": "genFieldSignature",
+          "location": "IRInference.ts:715",
+          "allocatedBytes": 1607088,
+          "allocatedMb": 1.5326385498046875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 8
+        },
+        {
+          "name": "inferThisLocal",
+          "location": "IRInference.ts:277",
+          "allocatedBytes": 1541312,
+          "allocatedMb": 1.46990966796875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 6
+        },
+        {
+          "name": "inferInvokeExprWithDeclaredClass",
+          "location": "IRInference.ts:456",
+          "allocatedBytes": 918240,
+          "allocatedMb": 0.875701904296875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 13
+        },
+        {
+          "name": "updateRefSignature",
+          "location": "IRInference.ts:673",
+          "allocatedBytes": 852416,
+          "allocatedMb": 0.81292724609375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 9
+        },
+        {
+          "name": "#onMessage",
+          "location": "node:inspector:84",
+          "allocatedBytes": 817088,
+          "allocatedMb": 0.77923583984375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "AbstractInvokeExpr",
+          "location": "Expr.ts:53",
+          "allocatedBytes": 754592,
+          "allocatedMb": 0.719635009765625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 12
+        },
+        {
+          "name": "from",
+          "location": "unknown:0",
+          "allocatedBytes": 622960,
+          "allocatedMb": 0.5941009521484375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "toString",
+          "location": "ArkSignature.ts:246",
+          "allocatedBytes": 524560,
+          "allocatedMb": 0.5002593994140625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "getRealTypes",
+          "location": "IRInference.ts:539",
+          "allocatedBytes": 459864,
+          "allocatedMb": 0.43856048583984375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 3
+        },
+        {
+          "name": "inferArg",
+          "location": "IRInference.ts:320",
+          "allocatedBytes": 459648,
+          "allocatedMb": 0.4383544921875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 11
+        },
+        {
+          "name": "replaceRecursiveType",
+          "location": "TypeInference.ts:940",
+          "allocatedBytes": 459040,
+          "allocatedMb": 0.437774658203125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 24
+        },
+        {
+          "name": "preInfer",
+          "location": "ModelInference.ts:169",
+          "allocatedBytes": 426240,
+          "allocatedMb": 0.406494140625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "inferReturnType",
+          "location": "TypeInference.ts:628",
+          "allocatedBytes": 360600,
+          "allocatedMb": 0.34389495849609375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
         }
       ]
     }
   ],
-  "totalDurationMs": 69872.128542,
-  "arkFileCount": 2675,
-  "arkClassCount": 15149,
-  "arkMethodCount": 83998,
+  "totalDurationMs": 8144.064375000001,
+  "arkFileCount": 1779,
+  "arkClassCount": 11716,
+  "arkMethodCount": 57444,
+  "arkStmtCount": 712324,
   "project": "photos",
-  "gitCommit": "d4771e7db808e38d6105f62810d9252d15d45271",
-  "reportTime": "2026-04-16T02:21:59.643Z"
+  "gitCommit": "d71b0703680b7651e4272b287a6e6c888688c4e8",
+  "reportTime": "2026-04-22T06:22:23.700Z"
 }

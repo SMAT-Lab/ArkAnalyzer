@@ -334,6 +334,12 @@
                 const afterUsed = stage.heapAfter?.used || 0;
                 return Math.max(beforeUsed, afterUsed);
             }
+            function getRssPeak(stage) {
+                if (Number.isFinite(stage.rssPeakBytes)) {
+                    return stage.rssPeakBytes;
+                }
+                return 0;
+            }
             function getGcBreakdown(stage) {
                 return stage.gcPauses.reduce((acc, p) => {
                     const source = p.source === 'manual' ? 'manual' : 'natural';
@@ -379,7 +385,8 @@
                         stage,
                         gcTime: getGcTotalMs(stage),
                         gcBreakdown,
-                        heapPeakUsed: getHeapPeakUsed(stage)
+                        heapPeakUsed: getHeapPeakUsed(stage),
+                        rssPeak: getRssPeak(stage)
                     };
                 });
             }
@@ -408,9 +415,10 @@
                     const usedEnd = item.stage.heapAfter?.used || 0;
                     return `<div class="kpi-item">
                                     <div class="kpi-label">${item.stage.stageName}</div>
-                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(usedEnd)}</div>
-                                    <div style="font-size:0.8rem;">${item.stage.heapGrowthBytes > 0 ? '+' : ''}${formatBytes(item.stage.heapGrowthBytes)}</div>
+                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(item.rssPeak)}</div>
                                     <div style="font-size:0.8rem;color:#64748b;">peak ${formatMB(item.heapPeakUsed)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">used end ${formatMB(usedEnd)}</div>
+                                    <div style="font-size:0.8rem;">heap growth ${item.stage.heapGrowthBytes > 0 ? '+' : '-'}${formatBytes(Math.abs(item.stage.heapGrowthBytes))}</div>
                                 </div>`;
                 }).join('');
             }
@@ -421,6 +429,7 @@
                     const heapBeforeMB = (stage.heapBefore?.used || 0) / BYTES_PER_MB;
                     const heapAfterMB = (stage.heapAfter?.used || 0) / BYTES_PER_MB;
                     const heapPeakMB = item.heapPeakUsed / BYTES_PER_MB;
+                    const rssPeakMB = item.rssPeak / BYTES_PER_MB;
                     const growthMB = stage.heapGrowthBytes / BYTES_PER_MB;
                     const topCpuHotFunc = stage.cpuHotFunctions?.[0] || null;
                     const topAllocFunc = stage.allocationHotFunctions?.[0] || null;
@@ -431,6 +440,7 @@
                                     <td>${heapAfterMB.toFixed(2)}</td>
                                     <td>${heapPeakMB.toFixed(2)}</td>
                                     <td style="color:${growthMB > 0.5 ? '#b91c1c' : '#15803d'};">${growthMB > 0 ? '+' : ''}${growthMB.toFixed(2)}</td>
+                                    <td>${rssPeakMB.toFixed(2)}</td>
                                     <td>${stage.gcPauses.length}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
                                     <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
                                     <td class="hot-func">
@@ -506,7 +516,7 @@
             function renderCharts(stages) {
                 const stageNames = stages.map(s => s.stageName);
                 const durations = stages.map(s => s.durationMs);
-                const heapGrowths = stages.map(s => s.heapGrowthBytes / BYTES_PER_MB);
+                const rssPeaks = stages.map(s => getRssPeak(s) / BYTES_PER_MB);
                 const gcTimes = stages.map(s => getGcTotalMs(s));
 
                 const ctx1 = document.getElementById('durationChart').getContext('2d');
@@ -538,8 +548,8 @@
                         labels: stageNames,
                         datasets: [
                             {
-                                label: 'Heap Growth (MB)',
-                                data: heapGrowths,
+                                label: 'RSS Peak (MB)',
+                                data: rssPeaks,
                                 backgroundColor: 'rgba(16, 185, 129, 0.6)',
                                 borderRadius: 8,
                                 yAxisID: 'y',
@@ -564,7 +574,7 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                title: { display: true, text: 'Heap Growth (MB)' }
+                                title: { display: true, text: 'RSS Peak (MB)' }
                             },
                             y1: {
                                 position: 'right',
@@ -648,7 +658,7 @@
                         </div>
                     </div>
                     <div class="card" style="padding-bottom: 10px;">
-                        <h3>📊 Heap Growth & GC Time</h3>
+                        <h3>📊 RSS Peak & GC Time</h3>
                         <div class="chart-container">
                             <canvas id="heapGcChart"></canvas>
                         </div>
@@ -666,6 +676,7 @@
                                 <th>Heap End (MB)</th>
                                 <th>Heap Peak (MB)</th>
                                 <th>Heap Growth (MB)</th>
+                                <th>RSS Peak (MB)</th>
                                 <th>GC Count</th>
                                 <th>GC Time (ms)</th>
                                 <th>🔥 Top CPU Hot Function</th>

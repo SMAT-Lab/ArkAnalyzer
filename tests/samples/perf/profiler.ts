@@ -86,6 +86,7 @@ export interface StageMetrics {
     heapAfter: HeapSize;
     heapGrowthBytes: number;
     heapPeakUsedBytes: number;
+    rssPeakBytes: number;
     gcPauses: GCPause[];
     cpuHotFunctions: CpuHotFunctionStat[]; // Top N functions by self time
     allocationHotFunctions: AllocationStat[];
@@ -206,7 +207,8 @@ class StageProfiler {
     private heapBefore: HeapSize = { used: 0, total: 0, limit: 0 };
     private heapAfter: HeapSize = { used: 0, total: 0, limit: 0 };
     private heapPeakUsedBytes: number = 0;
-    private heapPeakSampler?: NodeJS.Timeout;
+    private rssPeakBytes: number = 0;
+    private memoryPeakSampler?: NodeJS.Timeout;
 
     private static readonly HEAP_SNAPSHOT_EVENT = 'HeapProfiler.addHeapSnapshotChunk';
 
@@ -229,13 +231,18 @@ class StageProfiler {
         this.stageStartTime = performance.now();
         this.heapBefore = getHeapSize();
         this.heapPeakUsedBytes = this.heapBefore.used;
-        this.heapPeakSampler = setInterval(() => {
+        this.rssPeakBytes = process.memoryUsage().rss;
+        this.memoryPeakSampler = setInterval(() => {
             const used = getHeapSize().used;
+            const rss = process.memoryUsage().rss;
             if (used > this.heapPeakUsedBytes) {
                 this.heapPeakUsedBytes = used;
             }
+            if (rss > this.rssPeakBytes) {
+                this.rssPeakBytes = rss;
+            }
         }, 10);
-        this.heapPeakSampler.unref();
+        this.memoryPeakSampler.unref();
 
         // Start GC observation.
         this.gcObserver.observe({ entryTypes: ['gc'], buffered: true });
@@ -253,9 +260,9 @@ class StageProfiler {
     }
 
     async stop(stageName: string): Promise<Omit<StageMetrics, 'stageName' | 'durationMs'>> {
-        if (this.heapPeakSampler) {
-            clearInterval(this.heapPeakSampler);
-            this.heapPeakSampler = undefined;
+        if (this.memoryPeakSampler) {
+            clearInterval(this.memoryPeakSampler);
+            this.memoryPeakSampler = undefined;
         }
         await this.triggerManualGcIfAvailable();
         this.collectPendingGcEntries();
@@ -279,6 +286,10 @@ class StageProfiler {
         if (this.heapAfter.used > this.heapPeakUsedBytes) {
             this.heapPeakUsedBytes = this.heapAfter.used;
         }
+        const rssAfter = process.memoryUsage().rss;
+        if (rssAfter > this.rssPeakBytes) {
+            this.rssPeakBytes = rssAfter;
+        }
 
         // Analyze hotspot functions.
         const cpuHotFunctions = analyzeCpuHotFunctions(result.profile, 20);
@@ -290,6 +301,7 @@ class StageProfiler {
                 heapAfter: this.heapAfter,
                 heapGrowthBytes: this.heapAfter.used - this.heapBefore.used,
                 heapPeakUsedBytes: this.heapPeakUsedBytes,
+                rssPeakBytes: this.rssPeakBytes,
                 gcPauses: this.gcEvents,
                 cpuHotFunctions,
                 allocationHotFunctions,

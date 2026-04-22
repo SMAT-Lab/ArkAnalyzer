@@ -28,6 +28,8 @@ interface StageDiff {
     heapGrowthDeltaPercent: number;
     heapPeakDelta: number; // Delta in bytes
     heapPeakDeltaPercent: number;
+    rssPeakDelta: number; // Delta in bytes
+    rssPeakDeltaPercent: number;
     gcTimeDelta: number; // Delta in milliseconds
     gcTimeDeltaPercent: number;
     gcCountDelta: number;
@@ -42,6 +44,8 @@ interface ComparisonResult {
     currentTotalHeapGrowthBytes: number;
     baselineMaxHeapPeakBytes: number;
     currentMaxHeapPeakBytes: number;
+    baselineMaxRssPeakBytes: number;
+    currentMaxRssPeakBytes: number;
     baselineTotalGcTimeMs: number;
     currentTotalGcTimeMs: number;
     baselineTotalGcCount: number;
@@ -52,6 +56,8 @@ interface ComparisonResult {
     totalHeapGrowthDeltaPercent: number;
     maxHeapPeakDelta: number;
     maxHeapPeakDeltaPercent: number;
+    maxRssPeakDelta: number;
+    maxRssPeakDeltaPercent: number;
     totalGcTimeDelta: number;
     totalGcTimeDeltaPercent: number;
     totalGcCountDelta: number;
@@ -92,6 +98,7 @@ function calcPercentChange(baseline: number, current: number): number {
 interface RunAggregates {
     totalHeapGrowthBytes: number;
     maxHeapPeakBytes: number;
+    maxRssPeakBytes: number;
     totalGcTimeMs: number;
     totalGcCount: number;
 }
@@ -100,6 +107,7 @@ function computeRunAggregates(stages: StageMetrics[]): RunAggregates {
     return {
         totalHeapGrowthBytes: stages.reduce((sum, stage) => sum + stage.heapGrowthBytes, 0),
         maxHeapPeakBytes: stages.reduce((max, stage) => Math.max(max, getHeapPeakUsed(stage)), 0),
+        maxRssPeakBytes: stages.reduce((max, stage) => Math.max(max, stage.rssPeakBytes ?? 0), 0),
         totalGcTimeMs: stages.reduce((sum, stage) => sum + getGcTotalTime(stage), 0),
         totalGcCount: stages.reduce((sum, stage) => sum + stage.gcPauses.length, 0),
     };
@@ -124,6 +132,8 @@ function buildStageDiffs(
         const currGcTime = getGcTotalTime(curr);
         const basePeak = getHeapPeakUsed(base);
         const currPeak = getHeapPeakUsed(curr);
+        const baseRssPeak = base.rssPeakBytes ?? 0;
+        const currRssPeak = curr.rssPeakBytes ?? 0;
 
         stagesDiff.push({
             stageName,
@@ -133,6 +143,8 @@ function buildStageDiffs(
             heapGrowthDeltaPercent: calcPercentChange(base.heapGrowthBytes, curr.heapGrowthBytes),
             heapPeakDelta: currPeak - basePeak,
             heapPeakDeltaPercent: calcPercentChange(basePeak, currPeak),
+            rssPeakDelta: currRssPeak - baseRssPeak,
+            rssPeakDeltaPercent: calcPercentChange(baseRssPeak, currRssPeak),
             gcTimeDelta: currGcTime - baseGcTime,
             gcTimeDeltaPercent: calcPercentChange(baseGcTime, currGcTime),
             gcCountDelta: curr.gcPauses.length - base.gcPauses.length,
@@ -158,6 +170,8 @@ function buildComparisonResult(
         currentTotalHeapGrowthBytes: currAgg.totalHeapGrowthBytes,
         baselineMaxHeapPeakBytes: baseAgg.maxHeapPeakBytes,
         currentMaxHeapPeakBytes: currAgg.maxHeapPeakBytes,
+        baselineMaxRssPeakBytes: baseAgg.maxRssPeakBytes,
+        currentMaxRssPeakBytes: currAgg.maxRssPeakBytes,
         baselineTotalGcTimeMs: baseAgg.totalGcTimeMs,
         currentTotalGcTimeMs: currAgg.totalGcTimeMs,
         baselineTotalGcCount: baseAgg.totalGcCount,
@@ -168,6 +182,8 @@ function buildComparisonResult(
         totalHeapGrowthDeltaPercent: calcPercentChange(baseAgg.totalHeapGrowthBytes, currAgg.totalHeapGrowthBytes),
         maxHeapPeakDelta: currAgg.maxHeapPeakBytes - baseAgg.maxHeapPeakBytes,
         maxHeapPeakDeltaPercent: calcPercentChange(baseAgg.maxHeapPeakBytes, currAgg.maxHeapPeakBytes),
+        maxRssPeakDelta: currAgg.maxRssPeakBytes - baseAgg.maxRssPeakBytes,
+        maxRssPeakDeltaPercent: calcPercentChange(baseAgg.maxRssPeakBytes, currAgg.maxRssPeakBytes),
         totalGcTimeDelta: currAgg.totalGcTimeMs - baseAgg.totalGcTimeMs,
         totalGcTimeDeltaPercent: calcPercentChange(baseAgg.totalGcTimeMs, currAgg.totalGcTimeMs),
         totalGcCountDelta: currAgg.totalGcCount - baseAgg.totalGcCount,
@@ -220,6 +236,7 @@ function formatStageDiffCells(stage: StageDiff): {
     duration: string;
     heap: string;
     peak: string;
+    rssPeak: string;
     gcTime: string;
     gcCount: string;
 } {
@@ -227,6 +244,7 @@ function formatStageDiffCells(stage: StageDiff): {
         duration: formatDeltaWithPercent(stage.durationDelta, 'ms', stage.durationDeltaPercent),
         heap: formatMbDeltaWithPercent(stage.heapGrowthDelta, stage.heapGrowthDeltaPercent),
         peak: formatMbDeltaWithPercent(stage.heapPeakDelta, stage.heapPeakDeltaPercent),
+        rssPeak: formatMbDeltaWithPercent(stage.rssPeakDelta, stage.rssPeakDeltaPercent),
         gcTime: formatDeltaWithPercent(stage.gcTimeDelta, 'ms', stage.gcTimeDeltaPercent),
         gcCount: formatSignedIntDelta(stage.gcCountDelta),
     };
@@ -236,6 +254,7 @@ function formatTotalsDiffCells(result: ComparisonResult): {
     duration: string;
     heap: string;
     peak: string;
+    rssPeak: string;
     gcTime: string;
     gcCount: string;
 } {
@@ -243,26 +262,29 @@ function formatTotalsDiffCells(result: ComparisonResult): {
         duration: formatDeltaWithPercent(result.totalDurationDelta, 'ms', result.totalDurationDeltaPercent),
         heap: formatMbDeltaWithPercent(result.totalHeapGrowthDelta, result.totalHeapGrowthDeltaPercent),
         peak: formatMbDeltaWithPercent(result.maxHeapPeakDelta, result.maxHeapPeakDeltaPercent),
+        rssPeak: formatMbDeltaWithPercent(result.maxRssPeakDelta, result.maxRssPeakDeltaPercent),
         gcTime: formatDeltaWithPercent(result.totalGcTimeDelta, 'ms', result.totalGcTimeDeltaPercent),
         gcCount: formatSignedIntDelta(result.totalGcCountDelta),
     };
 }
 
-const COMPARISON_TABLE_WIDTH = 108;
+const COMPARISON_TABLE_WIDTH = 116;
 
 function logComparisonTableRow(
     label: string,
     duration: string,
     heap: string,
     peak: string,
+    rssPeak: string,
     gcTime: string,
     gcCount: string
 ): void {
     console.log(
         label.padEnd(16) +
         duration.padEnd(20) +
-        heap.padEnd(20) +
-        peak.padEnd(20) +
+        heap.padEnd(16) +
+        peak.padEnd(16) +
+        rssPeak.padEnd(16) +
         gcTime.padEnd(20) +
         gcCount.padStart(12)
     );
@@ -282,6 +304,7 @@ function printComparisonReport(result: ComparisonResult, baselineId: string, cur
         'Duration Δ',
         'Heap Growth Δ',
         'Heap Peak Δ',
+        'RSS Peak Δ',
         'GC Time Δ',
         'GC Count Δ'
     );
@@ -289,12 +312,12 @@ function printComparisonReport(result: ComparisonResult, baselineId: string, cur
 
     for (const stage of result.stages) {
         const c = formatStageDiffCells(stage);
-        logComparisonTableRow(stage.stageName, c.duration, c.heap, c.peak, c.gcTime, c.gcCount);
+        logComparisonTableRow(stage.stageName, c.duration, c.heap, c.peak, c.rssPeak, c.gcTime, c.gcCount);
     }
 
     console.log('-'.repeat(COMPARISON_TABLE_WIDTH));
     const t = formatTotalsDiffCells(result);
-    logComparisonTableRow('TOTAL', t.duration, t.heap, t.peak, t.gcTime, t.gcCount);
+    logComparisonTableRow('TOTAL', t.duration, t.heap, t.peak, t.rssPeak, t.gcTime, t.gcCount);
     console.log('');
 }
 
@@ -320,6 +343,12 @@ function appendMarkdownOverallSection(lines: string[], result: ComparisonResult)
         `${formatPercent(result.maxHeapPeakDeltaPercent)} |`
     );
     lines.push(
+        `| Max RSS Peak | ${(result.baselineMaxRssPeakBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${(result.currentMaxRssPeakBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${formatSigned(result.maxRssPeakDelta / 1024 / 1024, 'MB')} | ` +
+        `${formatPercent(result.maxRssPeakDeltaPercent)} |`
+    );
+    lines.push(
         `| Total GC Time | ${result.baselineTotalGcTimeMs.toFixed(2)} ms | ${result.currentTotalGcTimeMs.toFixed(2)} ms | ` +
         `${formatSigned(result.totalGcTimeDelta, 'ms')} | ${formatPercent(result.totalGcTimeDeltaPercent)} |`
     );
@@ -334,12 +363,12 @@ function appendMarkdownOverallSection(lines: string[], result: ComparisonResult)
 function appendMarkdownStageSection(lines: string[], result: ComparisonResult): void {
     lines.push('## Stage Details');
     lines.push('');
-    lines.push('| Stage | Duration Δ | Heap Growth Δ | Heap Peak Δ | GC Time Δ | GC Count Δ |');
-    lines.push('|-------|------------|---------------|-------------|-----------|------------|');
+    lines.push('| Stage | Duration Δ | Heap Growth Δ | Heap Peak Δ | RSS Peak Δ | GC Time Δ | GC Count Δ |');
+    lines.push('|-------|------------|---------------|-------------|------------|-----------|------------|');
 
     for (const stage of result.stages) {
         const c = formatStageDiffCells(stage);
-        lines.push(`| ${stage.stageName} | ${c.duration} | ${c.heap} | ${c.peak} | ${c.gcTime} | ${c.gcCount} |`);
+        lines.push(`| ${stage.stageName} | ${c.duration} | ${c.heap} | ${c.peak} | ${c.rssPeak} | ${c.gcTime} | ${c.gcCount} |`);
     }
 }
 
