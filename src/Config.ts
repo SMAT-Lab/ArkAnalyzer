@@ -77,8 +77,6 @@ export function buildSceneConfigFromProject(project: string, ohosSdkHome?: strin
     return config;
 }
 
-export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | null | undefined;
-
 /**
  * Per-language switch and optional file extension list (for tooling and front-end selection; extension lists are
  * normalized for discovery and future use).
@@ -96,7 +94,18 @@ export interface CppLanguageOptions extends LanguageIdOptions {
 export interface SceneLanguagesOptions {
     arkts?: LanguageIdOptions;
     cpp?: CppLanguageOptions;
+    [option: string]: LanguageIdOptions | undefined;
 }
+
+export type SceneOptionsValue =
+    | string
+    | number
+    | boolean
+    | (string | number)[]
+    | string[]
+    | SceneLanguagesOptions
+    | null
+    | undefined;
 
 export interface SceneOptions {
     supportFileExts?: string[];
@@ -110,7 +119,7 @@ export interface SceneOptions {
     sdkGlobalFolders?: string[];
     /** Optional multi-language front-end section; defaults are merged in {@link SceneConfig} construction. */
     languages?: SceneLanguagesOptions;
-    [option: string]: SceneOptionsValue | SceneLanguagesOptions | undefined;
+    [option: string]: SceneOptionsValue;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
