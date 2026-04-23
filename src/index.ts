@@ -91,8 +91,19 @@ export { ArkBody } from './core/model/ArkBody';
 export * from './core/model/ArkSignature';
 export * from './core/model/builder/ArkSignatureBuilder';
 
-export { SceneConfig, SceneOptions, buildSceneConfigFromProject } from './Config';
+export {
+    SceneConfig,
+    SceneOptions,
+    buildSceneConfigFromProject,
+    LanguageIdOptions,
+    SceneLanguagesOptions,
+} from './Config';
 export { Scene } from './Scene';
+
+// frontends
+export { FrontendBuilder, FrontendParseFailure, FrontendParseResult } from './frontend/FrontendBuilder';
+export { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
+export { CppFrontend } from './frontend/cppFrontend/CppFrontend';
 
 // cpp_frontend
 export {
