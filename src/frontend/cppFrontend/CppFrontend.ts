@@ -19,7 +19,7 @@ import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from './model/builder/ArkFileBuilder';
 import { findCompileCommands, getCxxHeaderFileExtensionSet } from './ast';
-import { LanguageFrontend } from '../LanguageFrontend';
+import { FrontendParseFailure, FrontendParseResult, LanguageFrontend } from '../LanguageFrontend';
 
 const CXX_HEADER_EXTENSION_SET = getCxxHeaderFileExtensionSet();
 
@@ -45,6 +45,22 @@ export class CppFrontend implements LanguageFrontend {
             scene.setCcjsonPath(next);
         }
         buildArkFileFromFile(filePath, scene.getRealProjectDir(), arkFile, scene.getProjectName(), scene.getIncludeDirs());
+    }
+
+    public buildProjectFiles(scene: Scene, filePaths: string[], options: CppBuildProjectFileOptions): FrontendParseResult {
+        const arkFiles: ArkFile[] = [];
+        const failedFiles: FrontendParseFailure[] = [];
+        for (const filePath of filePaths) {
+            try {
+                const arkFile = new ArkFile(Language.CXX);
+                arkFile.setScene(scene);
+                this.buildProjectFile(scene, filePath, arkFile, options);
+                arkFiles.push(arkFile);
+            } catch (error) {
+                failedFiles.push({ filePath, reason: error });
+            }
+        }
+        return { arkFiles, failedFiles };
     }
 
     private findCCJsonPath(file: string, ccjsonPath: string): string {

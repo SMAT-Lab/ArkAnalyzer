@@ -16,7 +16,8 @@
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from '../../core/model/builder/ArkFileBuilder';
-import { LanguageFrontend } from '../LanguageFrontend';
+import { FrontendParseFailure, FrontendParseResult, LanguageFrontend } from '../LanguageFrontend';
+import { FileUtils } from '../../utils/FileUtils';
 
 
 /**
@@ -35,5 +36,21 @@ export class ArktsFrontend implements LanguageFrontend {
      */
     public static buildArkFileFromSdkPath(absoluteFilePath: string, sdkPath: string, arkFile: ArkFile, sdkName: string): void {
         buildArkFileFromFile(absoluteFilePath, sdkPath, arkFile, sdkName);
+    }
+
+    public buildProjectFiles(scene: Scene, filePaths: string[]): FrontendParseResult {
+        const arkFiles: ArkFile[] = [];
+        const failedFiles: FrontendParseFailure[] = [];
+        for (const filePath of filePaths) {
+            try {
+                const arkFile = new ArkFile(FileUtils.getFileLanguage(filePath, scene.getFileLanguages()));
+                arkFile.setScene(scene);
+                this.buildProjectFile(scene, filePath, arkFile);
+                arkFiles.push(arkFile);
+            } catch (error) {
+                failedFiles.push({ filePath, reason: error });
+            }
+        }
+        return { arkFiles, failedFiles };
     }
 }
