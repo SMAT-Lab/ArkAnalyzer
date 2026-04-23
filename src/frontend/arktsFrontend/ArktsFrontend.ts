@@ -16,7 +16,7 @@
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from '../../core/model/builder/ArkFileBuilder';
-import { FrontendParseFailure, FrontendParseResult } from '../LanguageFrontend';
+import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
 import { FileUtils } from '../../utils/FileUtils';
 
 

@@ -23,6 +23,16 @@ import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FrontendBuilder');
 
+export interface FrontendParseFailure {
+    filePath: string;
+    reason: unknown;
+}
+
+export interface FrontendParseResult {
+    arkFiles: ArkFile[];
+    failedFiles: FrontendParseFailure[];
+}
+
 /**
  * Dispatches language front-ends and exposes a single build entry for {@link Scene} so the scene no longer
  * branches on {@link Language} to pick {@link import('../core/model/builder/ArkFileBuilder').buildArkFileFromFile}

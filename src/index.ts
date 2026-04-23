@@ -101,8 +101,7 @@ export {
 export { Scene } from './Scene';
 
 // frontends
-export { FrontendParseFailure, FrontendParseResult } from './frontend/LanguageFrontend';
-export { FrontendBuilder } from './frontend/FrontendBuilder';
+export { FrontendBuilder, FrontendParseFailure, FrontendParseResult } from './frontend/FrontendBuilder';
 export { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
 export { CppFrontend } from './frontend/cppFrontend/CppFrontend';
 

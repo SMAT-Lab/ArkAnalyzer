@@ -17,7 +17,7 @@ import { Language } from '../../core/model/ArkFile';
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from './model/builder/ArkFileBuilder';
-import { FrontendParseFailure, FrontendParseResult } from '../LanguageFrontend';
+import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
 
 /**
  * C++ language frontend. Matches the former {@link Scene} branches for {@link Language#CXX}.
