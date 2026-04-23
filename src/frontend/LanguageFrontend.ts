@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { SceneOptions } from '../Config';
 import { ArkFile } from '../core/model/ArkFile';
 import type { Scene } from '../Scene';
 
@@ -35,33 +34,4 @@ export interface FrontendParseResult {
 export interface LanguageFrontend {
     readonly id: string;
 
-    /**
-     * Collect entry files for this frontend.
-     */
-    collectFiles(scene: Scene, config: SceneOptions): string[];
-
-    /**
-     * Collect files, parse, and return parsed files plus failures.
-     */
-    parse(scene: Scene, config: SceneOptions): FrontendParseResult;
-
-    /**
-     * Optional module-scoped parsing.
-     */
-    parseModuleFiles?(scene: Scene, modulePath: string, supportFileExts: string[]): FrontendParseResult;
-
-    /**
-     * Optional single-file parsing for dependency-driven build paths.
-     */
-    parseSingleFile?(scene: Scene, filePath: string, config: SceneOptions): FrontendParseResult;
-
-    /**
-     * Optional dependency-driven pre-pass (e.g. file lists for imports).
-     */
-    runDependencyBuild?(scene: Scene, config: SceneOptions): void;
-
-    /**
-     * Optional SDK single-file parsing.
-     */
-    parseSdkFile?(scene: Scene, filePath: string, sdkPath: string, sdkName: string, config: SceneOptions): FrontendParseResult;
 }

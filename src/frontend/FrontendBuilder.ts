@@ -13,16 +13,11 @@
  * limitations under the License.
  */
 
-import { SceneOptions } from '../Config';
 import { Language } from '../core/model/ArkFile';
-import { ModuleScene, Scene } from '../Scene';
-import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
+import { Scene } from '../Scene';
 import { ArktsFrontend } from './arktsFrontend/ArktsFrontend';
 import { CppFrontend } from './cppFrontend/CppFrontend';
-import { FrontendParseResult, LanguageFrontend } from './LanguageFrontend';
 import { ArkFile } from '../core/model/ArkFile';
-
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FrontendBuilder');
 
 /**
  * Options for routing project-file build (must stay aligned with legacy `Scene` C++ `compile_commands` handling).
@@ -42,66 +37,6 @@ export type BuildProjectFileOptions = {
  * vs the C++ builder.
  */
 export class FrontendBuilder {
-    public static run(scene: Scene): void {
-        const config = this.loadFrontendConfig(scene);
-        const frontends = this.createEnabledFrontends(config);
-        for (const frontend of frontends) {
-            const result = frontend.parse(scene, config);
-            this.mergeResult(scene, result, frontend.id);
-        }
-    }
-
-    public static runDependencyBuild(scene: Scene): void {
-        const config = this.loadFrontendConfig(scene);
-        const frontends = this.createEnabledFrontends(config);
-        frontends.forEach(frontend => frontend.runDependencyBuild?.(scene, config));
-    }
-
-    public static runModuleScene(moduleScene: ModuleScene, supportFileExts: string[]): void {
-        const scene = moduleScene.getProjectScene();
-        const config = this.loadFrontendConfig(scene);
-        const frontends = this.createEnabledFrontends(config);
-        const modulePath = moduleScene.getModulePath();
-
-        for (const frontend of frontends) {
-            if (!frontend.parseModuleFiles) {
-                continue;
-            }
-            const result = frontend.parseModuleFiles(scene, modulePath, supportFileExts);
-            this.mergeModuleSceneResult(moduleScene, scene, result, frontend.id);
-        }
-    }
-
-    public static runSingleFile(scene: Scene, filePath: string): FrontendParseResult {
-        const config = this.loadFrontendConfig(scene);
-        const frontends = this.createEnabledFrontends(config);
-        const merged: FrontendParseResult = { arkFiles: [], failedFiles: [] };
-        for (const frontend of frontends) {
-            if (!frontend.parseSingleFile) {
-                continue;
-            }
-            const result = frontend.parseSingleFile(scene, filePath, config);
-            merged.arkFiles.push(...result.arkFiles);
-            merged.failedFiles.push(...result.failedFiles);
-        }
-        return merged;
-    }
-
-    public static runSdkFile(scene: Scene, filePath: string, sdkPath: string, sdkName: string): FrontendParseResult {
-        const config = this.loadFrontendConfig(scene);
-        const frontends = this.createEnabledFrontends(config);
-        const merged: FrontendParseResult = { arkFiles: [], failedFiles: [] };
-        for (const frontend of frontends) {
-            if (!frontend.parseSdkFile) {
-                continue;
-            }
-            const result = frontend.parseSdkFile(scene, filePath, sdkPath, sdkName, config);
-            merged.arkFiles.push(...result.arkFiles);
-            merged.failedFiles.push(...result.failedFiles);
-        }
-        return merged;
-    }
-
     /**
      * Builds a single project file into a pre-allocated {@link ArkFile} (the former `if (CXX) … else …` in `Scene`).
      */
@@ -111,48 +46,5 @@ export class FrontendBuilder {
         } else {
             new ArktsFrontend().buildProjectFile(scene, filePath, arkFile);
         }
-    }
-
-    private static createEnabledFrontends(config: SceneOptions): LanguageFrontend[] {
-        const out: LanguageFrontend[] = [];
-        if (this.isArktsEnabled(config)) {
-            out.push(new ArktsFrontend());
-        }
-        if (this.isCppEnabled(config)) {
-            out.push(new CppFrontend());
-        }
-        return out;
-    }
-
-    private static isArktsEnabled(config: SceneOptions): boolean {
-        return config.languages?.arkts?.enabled !== false;
-    }
-
-    private static isCppEnabled(config: SceneOptions): boolean {
-        return config.languages?.cpp?.enabled !== false;
-    }
-
-    private static loadFrontendConfig(scene: Scene): SceneOptions {
-        return scene.getOptions();
-    }
-
-    private static mergeResult(scene: Scene, result: FrontendParseResult, frontendId: string): void {
-        result.arkFiles.forEach(file => scene.setFile(file));
-        result.failedFiles.forEach(failed => {
-            scene.addUnhandledFilePath(failed.filePath);
-            logger.error(`[${frontendId}] Error parsing file:`, failed.filePath, failed.reason);
-        });
-    }
-
-    private static mergeModuleSceneResult(moduleScene: ModuleScene, scene: Scene, result: FrontendParseResult, frontendId: string): void {
-        result.arkFiles.forEach(file => {
-            file.setModuleScene(moduleScene);
-            moduleScene.addArkFile(file);
-            scene.setFile(file);
-        });
-        result.failedFiles.forEach(failed => {
-            scene.addUnhandledFilePath(failed.filePath);
-            logger.error(`[${frontendId}] Error parsing file:`, failed.filePath, failed.reason);
-        });
     }
 }
