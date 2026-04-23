@@ -322,9 +322,31 @@
                     .replace(/"/g, '&quot;');
             }
 
+            function normalizeGcStats(stage) {
+                const gp = stage.gcPauses;
+                if (Array.isArray(gp)) {
+                    const totalDurationMs = gp.reduce((sum, p) => sum + (p.durationMs || 0), 0);
+                    const breakdown = gp.reduce((acc, p) => {
+                        const source = p.source === 'manual' ? 'manual' : 'natural';
+                        acc[source].count += 1;
+                        acc[source].timeMs += p.durationMs || 0;
+                        return acc;
+                    }, { natural: { count: 0, timeMs: 0 }, manual: { count: 0, timeMs: 0 } });
+                    return { count: gp.length, totalDurationMs, breakdown };
+                }
+                return {
+                    count: gp.count || 0,
+                    totalDurationMs: gp.totalDurationMs || 0,
+                    breakdown: {
+                        natural: { count: gp.naturalCount || 0, timeMs: gp.naturalDurationMs || 0 },
+                        manual: { count: gp.manualCount || 0, timeMs: gp.manualDurationMs || 0 },
+                    },
+                };
+            }
+
             // Calculate total GC time
             function getGcTotalMs(stage) {
-                return stage.gcPauses.reduce((sum, p) => sum + (p.durationMs || 0), 0);
+                return normalizeGcStats(stage).totalDurationMs;
             }
             function getHeapPeakUsed(stage) {
                 if (Number.isFinite(stage.heapPeakUsedBytes)) {
@@ -341,15 +363,7 @@
                 return 0;
             }
             function getGcBreakdown(stage) {
-                return stage.gcPauses.reduce((acc, p) => {
-                    const source = p.source === 'manual' ? 'manual' : 'natural';
-                    acc[source].count += 1;
-                    acc[source].timeMs += p.durationMs || 0;
-                    return acc;
-                }, {
-                    natural: { count: 0, timeMs: 0 },
-                    manual: { count: 0, timeMs: 0 }
-                });
+                return normalizeGcStats(stage).breakdown;
             }
 
             function buildMetaRow(data) {
@@ -393,7 +407,7 @@
 
             function getAggregateStats(stageStats) {
                 return stageStats.reduce((acc, item) => {
-                    acc.gcCount += item.stage.gcPauses.length;
+                    acc.gcCount += normalizeGcStats(item.stage).count;
                     acc.gcTime += item.gcTime;
                     acc.naturalCount += item.gcBreakdown.natural.count;
                     acc.naturalTime += item.gcBreakdown.natural.timeMs;
@@ -441,7 +455,7 @@
                                     <td>${heapPeakMB.toFixed(2)}</td>
                                     <td style="color:${growthMB > 0.5 ? '#b91c1c' : '#15803d'};">${growthMB > 0 ? '+' : ''}${growthMB.toFixed(2)}</td>
                                     <td>${rssPeakMB.toFixed(2)}</td>
-                                    <td>${stage.gcPauses.length}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
+                                    <td>${normalizeGcStats(stage).count}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
                                     <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
                                     <td class="hot-func">
                                         ${topCpuHotFunc ? `<span class="func-name">${topCpuHotFunc.name}</span><br><span class="func-location">${topCpuHotFunc.location} · ${topCpuHotFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}

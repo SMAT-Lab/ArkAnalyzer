@@ -16,7 +16,16 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { profileArkAnalyzer, serializeResult, StageMetrics, ProfilerResult, CpuHotFunctionStat, AllocationStat } from './profiler';
+import {
+    profileArkAnalyzer,
+    serializeResult,
+    StageMetrics,
+    ProfilerResult,
+    CpuHotFunctionStat,
+    AllocationStat,
+    GcPauseStats,
+    averageGcPauseStats,
+} from './profiler';
 import { ensureDir, PerfProjectConfig, RAW_DIR } from './utils';
 
 /** Repository root (arkanalyzer) from `tests/samples/perf`. */
@@ -88,7 +97,7 @@ function printStageSummary(stage: StageMetrics): void {
     console.log(`  Heap Growth   : ${(stage.heapGrowthBytes / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  Heap Peak     : ${(stage.heapPeakUsedBytes / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  RSS Peak      : ${((stage.rssPeakBytes ?? 0) / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  GC Pauses     : ${stage.gcPauses.length} (${stage.gcPauses.reduce((s, p) => s + p.durationMs, 0).toFixed(2)} ms)`);
+    console.log(`  GC Pauses     : ${stage.gcPauses.count} (${stage.gcPauses.totalDurationMs.toFixed(2)} ms)`);
     console.log(`  CPU Hot Functions : ${stage.cpuHotFunctions.length}`);
     if (stage.cpuHotFunctions.length > 0) {
         const top = stage.cpuHotFunctions[0];
@@ -132,8 +141,7 @@ interface StageAccumulator {
     heapAfterUsed: number[];
     heapAfterTotal: number[];
     heapAfterLimit: number[];
-    gcCounts: number[];
-    gcTotalDurations: number[];
+    gcStatsRuns: GcPauseStats[];
     cpuHotFunctionRuns: CpuHotFunctionStat[][];
     allocationHotFunctionRuns: AllocationStat[][];
 }
@@ -238,8 +246,7 @@ function createStageAccumulator(stageName: string): StageAccumulator {
         heapAfterUsed: [],
         heapAfterTotal: [],
         heapAfterLimit: [],
-        gcCounts: [],
-        gcTotalDurations: [],
+        gcStatsRuns: [],
         cpuHotFunctionRuns: [],
         allocationHotFunctionRuns: [],
     };
@@ -322,8 +329,7 @@ function appendStageMetrics(accumulator: StageAccumulator, stage: StageMetrics):
     accumulator.heapAfterUsed.push(stage.heapAfter.used);
     accumulator.heapAfterTotal.push(stage.heapAfter.total);
     accumulator.heapAfterLimit.push(stage.heapAfter.limit);
-    accumulator.gcCounts.push(stage.gcPauses.length);
-    accumulator.gcTotalDurations.push(stage.gcPauses.reduce((sum, pause) => sum + pause.durationMs, 0));
+    accumulator.gcStatsRuns.push(stage.gcPauses);
     accumulator.cpuHotFunctionRuns.push(stage.cpuHotFunctions);
     accumulator.allocationHotFunctionRuns.push(stage.allocationHotFunctions);
 }
@@ -360,16 +366,7 @@ function buildAverageResult(
     }
 
     const averagedStages: StageMetrics[] = stageAccumulators.map((accumulator) => {
-        const avgGcCount = Math.round(average(accumulator.gcCounts));
-        const avgGcTotalDurationMs = average(accumulator.gcTotalDurations);
-        const gcPauses = avgGcCount > 0
-            ? Array.from({ length: avgGcCount }, (_, index) => ({
-                type: 'avg',
-                durationMs: avgGcTotalDurationMs / avgGcCount,
-                timestamp: index,
-                source: 'natural' as const,
-            }))
-            : [];
+        const gcPauses = averageGcPauseStats(accumulator.gcStatsRuns);
 
         return {
             stageName: accumulator.stageName,

@@ -39,6 +39,73 @@ export interface GCPause {
     source: 'natural' | 'manual'; // GC trigger source
 }
 
+/**
+ * Aggregated GC metrics for a stage (summary JSON stores this instead of per-pause detail).
+ */
+export interface GcPauseStats {
+    count: number;
+    totalDurationMs: number;
+    naturalCount: number;
+    naturalDurationMs: number;
+    manualCount: number;
+    manualDurationMs: number;
+}
+
+export function emptyGcPauseStats(): GcPauseStats {
+    return {
+        count: 0,
+        totalDurationMs: 0,
+        naturalCount: 0,
+        naturalDurationMs: 0,
+        manualCount: 0,
+        manualDurationMs: 0,
+    };
+}
+
+export function summarizeGcPauses(events: GCPause[]): GcPauseStats {
+    let naturalCount = 0;
+    let naturalDurationMs = 0;
+    let manualCount = 0;
+    let manualDurationMs = 0;
+    for (const event of events) {
+        if (event.source === 'manual') {
+            manualCount += 1;
+            manualDurationMs += event.durationMs;
+        } else {
+            naturalCount += 1;
+            naturalDurationMs += event.durationMs;
+        }
+    }
+    return {
+        count: events.length,
+        totalDurationMs: naturalDurationMs + manualDurationMs,
+        naturalCount,
+        naturalDurationMs,
+        manualCount,
+        manualDurationMs,
+    };
+}
+
+export function averageGcPauseStats(runs: GcPauseStats[]): GcPauseStats {
+    if (runs.length === 0) {
+        return emptyGcPauseStats();
+    }
+    const mean = (values: number[]): number => {
+        if (values.length === 0) {
+            return 0;
+        }
+        return values.reduce((sum, value) => sum + value, 0) / values.length;
+    };
+    return {
+        count: Math.round(mean(runs.map((run) => run.count))),
+        totalDurationMs: mean(runs.map((run) => run.totalDurationMs)),
+        naturalCount: Math.round(mean(runs.map((run) => run.naturalCount))),
+        naturalDurationMs: mean(runs.map((run) => run.naturalDurationMs)),
+        manualCount: Math.round(mean(runs.map((run) => run.manualCount))),
+        manualDurationMs: mean(runs.map((run) => run.manualDurationMs)),
+    };
+}
+
 export interface CpuHotFunctionStat {
     name: string;
     location: string; // fileName:lineNumber
@@ -87,7 +154,7 @@ export interface StageMetrics {
     heapGrowthBytes: number;
     heapPeakUsedBytes: number;
     rssPeakBytes: number;
-    gcPauses: GCPause[];
+    gcPauses: GcPauseStats;
     cpuHotFunctions: CpuHotFunctionStat[]; // Top N functions by self time
     allocationHotFunctions: AllocationStat[];
 }
@@ -302,7 +369,7 @@ class StageProfiler {
                 heapGrowthBytes: this.heapAfter.used - this.heapBefore.used,
                 heapPeakUsedBytes: this.heapPeakUsedBytes,
                 rssPeakBytes: this.rssPeakBytes,
-                gcPauses: this.gcEvents,
+                gcPauses: summarizeGcPauses(this.gcEvents),
                 cpuHotFunctions,
                 allocationHotFunctions,
             };

@@ -78,7 +78,7 @@ function ensureReportsDir(): void {
  * Calculate total GC time for a single stage.
  */
 function getGcTotalTime(stage: StageMetrics): number {
-    return stage.gcPauses.reduce((sum, pause) => sum + pause.durationMs, 0);
+    return stage.gcPauses.totalDurationMs;
 }
 
 function getHeapPeakUsed(stage: StageMetrics): number {
@@ -109,7 +109,7 @@ function computeRunAggregates(stages: StageMetrics[]): RunAggregates {
         maxHeapPeakBytes: stages.reduce((max, stage) => Math.max(max, getHeapPeakUsed(stage)), 0),
         maxRssPeakBytes: stages.reduce((max, stage) => Math.max(max, stage.rssPeakBytes ?? 0), 0),
         totalGcTimeMs: stages.reduce((sum, stage) => sum + getGcTotalTime(stage), 0),
-        totalGcCount: stages.reduce((sum, stage) => sum + stage.gcPauses.length, 0),
+        totalGcCount: stages.reduce((sum, stage) => sum + stage.gcPauses.count, 0),
     };
 }
 
@@ -147,7 +147,7 @@ function buildStageDiffs(
             rssPeakDeltaPercent: calcPercentChange(baseRssPeak, currRssPeak),
             gcTimeDelta: currGcTime - baseGcTime,
             gcTimeDeltaPercent: calcPercentChange(baseGcTime, currGcTime),
-            gcCountDelta: curr.gcPauses.length - base.gcPauses.length,
+            gcCountDelta: curr.gcPauses.count - base.gcPauses.count,
         });
     }
 
