@@ -13,7 +13,8 @@
     },
     "cpp": {
       "enabled": false,
-      "extensions": [".cc", ".cpp", ".cxx", ".c", ".c++", ".hpp", ".h", ".hxx", ".hh"]
+      "sourceExtensions": [".cc", ".cpp", ".cxx", ".c", ".c++"],
+      "headerExtensions": [".hpp", ".h", ".hxx", ".hh"]
     }
   },
   "enableLeadingComments": false,

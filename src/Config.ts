@@ -88,9 +88,14 @@ export interface LanguageIdOptions {
     extensions?: string[];
 }
 
+export interface CppLanguageOptions extends LanguageIdOptions {
+    sourceExtensions?: string[];
+    headerExtensions?: string[];
+}
+
 export interface SceneLanguagesOptions {
     arkts?: LanguageIdOptions;
-    cpp?: LanguageIdOptions;
+    cpp?: CppLanguageOptions;
 }
 
 export interface SceneOptions {
@@ -135,6 +140,7 @@ export class SceneConfig {
         this.loadDefaultConfig(options);
         this.appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable();
         this.normalizeLanguageOptions();
+        this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
     }
 
     public getOptions(): SceneOptions {
@@ -270,6 +276,8 @@ export class SceneConfig {
             if (configurations.options) {
                 this.options = { ...this.options, ...configurations.options };
             }
+            this.normalizeLanguageOptions();
+            this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
 
             this.buildConfig(targetProjectName, targetProjectDirectory, sdks);
         } else {
@@ -383,9 +391,54 @@ export class SceneConfig {
 
     private normalizeLanguageOptions(): void {
         const from = this.options.languages;
-        this.options.languages = {
-            arkts: { enabled: true, ...from?.arkts },
-            cpp: { enabled: true, ...from?.cpp },
-        };
+        if (!from) {
+            return;
+        }
+        const normalized: SceneLanguagesOptions = {};
+        if (from.arkts) {
+            normalized.arkts = {
+                ...from.arkts,
+                extensions: this.uniqueFileExtensions(from.arkts.extensions ?? []),
+            };
+        }
+        if (from.cpp) {
+            normalized.cpp = {
+                ...from.cpp,
+                extensions: this.uniqueFileExtensions(from.cpp.extensions ?? []),
+                sourceExtensions: this.uniqueFileExtensions(from.cpp.sourceExtensions ?? []),
+                headerExtensions: this.uniqueFileExtensions(from.cpp.headerExtensions ?? []),
+            };
+        }
+        this.options.languages = normalized;
+    }
+
+    private mergeEnabledLanguageExtensionsIntoSupportFileExts(): void {
+        const languages = this.options.languages;
+        if (!languages) {
+            return;
+        }
+        const merged = [...(this.options.supportFileExts ?? [])];
+        if (languages.arkts?.enabled === true) {
+            merged.push(...(languages.arkts.extensions ?? []));
+        }
+        if (languages.cpp?.enabled === true) {
+            merged.push(...(languages.cpp.extensions ?? []));
+            merged.push(...(languages.cpp.sourceExtensions ?? []));
+            merged.push(...(languages.cpp.headerExtensions ?? []));
+        }
+        this.options.supportFileExts = this.uniqueFileExtensions(merged);
+    }
+
+    private uniqueFileExtensions(extensions: string[]): string[] {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const ext of extensions) {
+            const normalized = ext.toLowerCase();
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                out.push(normalized);
+            }
+        }
+        return out;
     }
 }
