@@ -14,10 +14,14 @@
  */
 
 import { Language } from '../core/model/ArkFile';
-import { Scene } from '../Scene';
+import { ModuleScene, Scene } from '../Scene';
 import { ArktsFrontend } from './arktsFrontend/ArktsFrontend';
 import { CppFrontend } from './cppFrontend/CppFrontend';
 import { ArkFile } from '../core/model/ArkFile';
+import { FileUtils } from '../utils/FileUtils';
+import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FrontendBuilder');
 
 /**
  * Options for routing project-file build (must stay aligned with legacy `Scene` C++ `compile_commands` handling).
@@ -37,6 +41,39 @@ export type BuildProjectFileOptions = {
  * vs the C++ builder.
  */
 export class FrontendBuilder {
+    public static buildFilesIntoArkFiles(scene: Scene, filePaths: string[], options: BuildProjectFileOptions): void {
+        for (const filePath of filePaths) {
+            logger.trace('=== parse file:', filePath);
+            try {
+                const arkFile = new ArkFile(FileUtils.getFileLanguage(filePath, scene.getFileLanguages()));
+                arkFile.setScene(scene);
+                this.buildProjectFileIntoArkFile(scene, filePath, arkFile, options);
+                scene.setFile(arkFile);
+            } catch (error) {
+                logger.error('Error parsing file:', filePath, error);
+                scene.addUnhandledFilePath(filePath);
+            }
+        }
+    }
+
+    public static buildModuleFilesIntoArkFiles(moduleScene: ModuleScene, filePaths: string[]): void {
+        const scene = moduleScene.getProjectScene();
+        for (const filePath of filePaths) {
+            logger.trace('=== parse file:', filePath);
+            try {
+                const arkFile = new ArkFile(FileUtils.getFileLanguage(filePath, scene.getFileLanguages()));
+                arkFile.setScene(scene);
+                arkFile.setModuleScene(moduleScene);
+                this.buildProjectFileIntoArkFile(scene, filePath, arkFile, { refreshCompileDatabasePath: false });
+                moduleScene.addArkFile(arkFile);
+                scene.setFile(arkFile);
+            } catch (error) {
+                logger.error('Error parsing file:', filePath, error);
+                scene.addUnhandledFilePath(filePath);
+            }
+        }
+    }
+
     /**
      * Builds a single project file into a pre-allocated {@link ArkFile} (the former `if (CXX) … else …` in `Scene`).
      */

@@ -413,19 +413,7 @@ export class Scene {
     }
 
     private genArkFiles(): void {
-        this.projectFiles.forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                FrontendBuilder.buildProjectFileIntoArkFile(this, file, arkFile, { refreshCompileDatabasePath: true });
-                this.setFile(arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledFilePaths.add(file);
-                return;
-            }
-        });
+        FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles, { refreshCompileDatabasePath: true });
         this.buildAllMethodBody();
         this.updateOrAddDefaultConstructors();
     }
@@ -1630,19 +1618,7 @@ export class ModuleScene {
     }
 
     private genArkFiles(supportFileExts: string[]): void {
-        getAllFiles(this.modulePath, supportFileExts, this.projectScene.getOptions().ignoreFileNames).forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.projectScene.getFileLanguages()));
-                arkFile.setScene(this.projectScene);
-                arkFile.setModuleScene(this);
-                FrontendBuilder.buildProjectFileIntoArkFile(this.projectScene, file, arkFile, { refreshCompileDatabasePath: false });
-                this.projectScene.setFile(arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.projectScene.getUnhandledFilePaths().push(file);
-                return;
-            }
-        });
+        const filePaths = getAllFiles(this.modulePath, supportFileExts, this.projectScene.getOptions().ignoreFileNames);
+        FrontendBuilder.buildModuleFilesIntoArkFiles(this, filePaths);
     }
 }
