@@ -39,6 +39,73 @@ export interface GCPause {
     source: 'natural' | 'manual'; // GC trigger source
 }
 
+/**
+ * Aggregated GC metrics for a stage (summary JSON stores this instead of per-pause detail).
+ */
+export interface GcPauseStats {
+    count: number;
+    totalDurationMs: number;
+    naturalCount: number;
+    naturalDurationMs: number;
+    manualCount: number;
+    manualDurationMs: number;
+}
+
+export function emptyGcPauseStats(): GcPauseStats {
+    return {
+        count: 0,
+        totalDurationMs: 0,
+        naturalCount: 0,
+        naturalDurationMs: 0,
+        manualCount: 0,
+        manualDurationMs: 0,
+    };
+}
+
+export function summarizeGcPauses(events: GCPause[]): GcPauseStats {
+    let naturalCount = 0;
+    let naturalDurationMs = 0;
+    let manualCount = 0;
+    let manualDurationMs = 0;
+    for (const event of events) {
+        if (event.source === 'manual') {
+            manualCount += 1;
+            manualDurationMs += event.durationMs;
+        } else {
+            naturalCount += 1;
+            naturalDurationMs += event.durationMs;
+        }
+    }
+    return {
+        count: events.length,
+        totalDurationMs: naturalDurationMs + manualDurationMs,
+        naturalCount,
+        naturalDurationMs,
+        manualCount,
+        manualDurationMs,
+    };
+}
+
+export function averageGcPauseStats(runs: GcPauseStats[]): GcPauseStats {
+    if (runs.length === 0) {
+        return emptyGcPauseStats();
+    }
+    const mean = (values: number[]): number => {
+        if (values.length === 0) {
+            return 0;
+        }
+        return values.reduce((sum, value) => sum + value, 0) / values.length;
+    };
+    return {
+        count: Math.round(mean(runs.map((run) => run.count))),
+        totalDurationMs: mean(runs.map((run) => run.totalDurationMs)),
+        naturalCount: Math.round(mean(runs.map((run) => run.naturalCount))),
+        naturalDurationMs: mean(runs.map((run) => run.naturalDurationMs)),
+        manualCount: Math.round(mean(runs.map((run) => run.manualCount))),
+        manualDurationMs: mean(runs.map((run) => run.manualDurationMs)),
+    };
+}
+
 export interface CpuHotFunctionStat {
     name: string;
     location: string; // fileName:lineNumber
@@ -86,7 +153,8 @@ export interface StageMetrics {
     heapAfter: HeapSize;
     heapGrowthBytes: number;
     heapPeakUsedBytes: number;
-    gcPauses: GCPause[];
+    rssPeakBytes: number;
+    gcPauses: GcPauseStats;
     cpuHotFunctions: CpuHotFunctionStat[]; // Top N functions by self time
     allocationHotFunctions: AllocationStat[];
 }
@@ -206,7 +274,8 @@ class StageProfiler {
     private heapBefore: HeapSize = { used: 0, total: 0, limit: 0 };
     private heapAfter: HeapSize = { used: 0, total: 0, limit: 0 };
     private heapPeakUsedBytes: number = 0;
-    private heapPeakSampler?: NodeJS.Timeout;
+    private rssPeakBytes: number = 0;
+    private memoryPeakSampler?: NodeJS.Timeout;
 
     private static readonly HEAP_SNAPSHOT_EVENT = 'HeapProfiler.addHeapSnapshotChunk';
 
@@ -229,13 +298,18 @@ class StageProfiler {
         this.stageStartTime = performance.now();
         this.heapBefore = getHeapSize();
         this.heapPeakUsedBytes = this.heapBefore.used;
-        this.heapPeakSampler = setInterval(() => {
+        this.rssPeakBytes = process.memoryUsage().rss;
+        this.memoryPeakSampler = setInterval(() => {
             const used = getHeapSize().used;
+            const rss = process.memoryUsage().rss;
             if (used > this.heapPeakUsedBytes) {
                 this.heapPeakUsedBytes = used;
             }
+            if (rss > this.rssPeakBytes) {
+                this.rssPeakBytes = rss;
+            }
         }, 10);
-        this.heapPeakSampler.unref();
+        this.memoryPeakSampler.unref();
 
         // Start GC observation.
         this.gcObserver.observe({ entryTypes: ['gc'], buffered: true });
@@ -253,9 +327,9 @@ class StageProfiler {
     }
 
     async stop(stageName: string): Promise<Omit<StageMetrics, 'stageName' | 'durationMs'>> {
-        if (this.heapPeakSampler) {
-            clearInterval(this.heapPeakSampler);
-            this.heapPeakSampler = undefined;
+        if (this.memoryPeakSampler) {
+            clearInterval(this.memoryPeakSampler);
+            this.memoryPeakSampler = undefined;
         }
         await this.triggerManualGcIfAvailable();
         this.collectPendingGcEntries();
@@ -279,6 +353,10 @@ class StageProfiler {
         if (this.heapAfter.used > this.heapPeakUsedBytes) {
             this.heapPeakUsedBytes = this.heapAfter.used;
         }
+        const rssAfter = process.memoryUsage().rss;
+        if (rssAfter > this.rssPeakBytes) {
+            this.rssPeakBytes = rssAfter;
+        }
 
         // Analyze hotspot functions.
         const cpuHotFunctions = analyzeCpuHotFunctions(result.profile, 20);
@@ -290,7 +368,8 @@ class StageProfiler {
                 heapAfter: this.heapAfter,
                 heapGrowthBytes: this.heapAfter.used - this.heapBefore.used,
                 heapPeakUsedBytes: this.heapPeakUsedBytes,
-                gcPauses: this.gcEvents,
+                rssPeakBytes: this.rssPeakBytes,
+                gcPauses: summarizeGcPauses(this.gcEvents),
                 cpuHotFunctions,
                 allocationHotFunctions,
             };
