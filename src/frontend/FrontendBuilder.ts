@@ -24,18 +24,6 @@ import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FrontendBuilder');
 
 /**
- * Options for routing project-file build (must stay aligned with legacy `Scene` C++ `compile_commands` handling).
- * @public
- */
-export type BuildProjectFileOptions = {
-    /**
-     * When `true`, refresh `compile_commands.json` path from the source file, matching former `Scene.genArkFiles`
-     * C++ only. `false` matches dependency-traversal and module-scene paths.
-     */
-    refreshCompileDatabasePath: boolean;
-};
-
-/**
  * Dispatches language front-ends and exposes a single build entry for {@link Scene} so the scene no longer
  * branches on {@link Language} to pick {@link import('../core/model/builder/ArkFileBuilder').buildArkFileFromFile}
  * vs the C++ builder.
@@ -61,12 +49,12 @@ export class FrontendBuilder {
         }
     }
 
-    public static buildFilesIntoArkFiles(scene: Scene, filePaths: string[], options: BuildProjectFileOptions): void {
+    public static buildFilesIntoArkFiles(scene: Scene, filePaths: string[]): void {
         const { cppFiles, arktsFiles } = this.partitionFilePaths(scene, filePaths);
         const arktsFrontend = new ArktsFrontend();
         const cppFrontend = new CppFrontend();
         const arktsResult = arktsFrontend.buildProjectFiles(scene, arktsFiles);
-        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles, options);
+        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles);
         arktsResult.arkFiles.forEach(file => scene.setFile(file));
         cppResult.arkFiles.forEach(file => scene.setFile(file));
         this.collectFailedFilePaths(scene, [...arktsResult.failedFiles, ...cppResult.failedFiles]);
@@ -78,7 +66,7 @@ export class FrontendBuilder {
         const arktsFrontend = new ArktsFrontend();
         const cppFrontend = new CppFrontend();
         const arktsResult = arktsFrontend.buildProjectFiles(scene, arktsFiles);
-        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles, { refreshCompileDatabasePath: false });
+        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles);
         [...arktsResult.arkFiles, ...cppResult.arkFiles].forEach(file => {
             file.setModuleScene(moduleScene);
             moduleScene.addArkFile(file);
@@ -90,9 +78,9 @@ export class FrontendBuilder {
     /**
      * Builds a single project file into a pre-allocated {@link ArkFile} (the former `if (CXX) … else …` in `Scene`).
      */
-    public static buildProjectFileIntoArkFile(scene: Scene, filePath: string, arkFile: ArkFile, options: BuildProjectFileOptions): void {
+    public static buildProjectFileIntoArkFile(scene: Scene, filePath: string, arkFile: ArkFile): void {
         if (arkFile.getLanguage() === Language.CXX) {
-            new CppFrontend().buildProjectFile(scene, filePath, arkFile, { refreshCompileDatabasePath: options.refreshCompileDatabasePath });
+            new CppFrontend().buildProjectFile(scene, filePath, arkFile);
         } else {
             new ArktsFrontend().buildProjectFile(scene, filePath, arkFile);
         }

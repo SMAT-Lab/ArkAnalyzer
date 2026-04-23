@@ -413,7 +413,7 @@ export class Scene {
     }
 
     private genArkFiles(): void {
-        FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles, { refreshCompileDatabasePath: true });
+        FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles);
         this.buildAllMethodBody();
         this.updateOrAddDefaultConstructors();
     }
@@ -439,7 +439,7 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            FrontendBuilder.buildProjectFileIntoArkFile(this, projectFile, arkFile, { refreshCompileDatabasePath: false });
+            FrontendBuilder.buildProjectFileIntoArkFile(this, projectFile, arkFile);
             for (const [modulePath, moduleName] of this.modulePath2NameMap) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
                     this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);

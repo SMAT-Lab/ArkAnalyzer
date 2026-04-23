@@ -101,10 +101,10 @@ export {
 export { Scene } from './Scene';
 
 // frontends
-export { LanguageFrontend, FrontendParseFailure, FrontendParseResult } from './frontend/LanguageFrontend';
-export { FrontendBuilder, type BuildProjectFileOptions } from './frontend/FrontendBuilder';
+export { FrontendParseFailure, FrontendParseResult } from './frontend/LanguageFrontend';
+export { FrontendBuilder } from './frontend/FrontendBuilder';
 export { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
-export { CppFrontend, type CppBuildProjectFileOptions } from './frontend/cppFrontend/CppFrontend';
+export { CppFrontend } from './frontend/cppFrontend/CppFrontend';
 
 // cpp_frontend
 export {

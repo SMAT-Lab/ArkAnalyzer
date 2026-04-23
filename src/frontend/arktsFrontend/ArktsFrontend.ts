@@ -16,15 +16,14 @@
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from '../../core/model/builder/ArkFileBuilder';
-import { FrontendParseFailure, FrontendParseResult, LanguageFrontend } from '../LanguageFrontend';
+import { FrontendParseFailure, FrontendParseResult } from '../LanguageFrontend';
 import { FileUtils } from '../../utils/FileUtils';
 
 
 /**
  * ArkTS/TS/JS: builds {@link ArkFile}s using the core TS/ArkTS pipeline (see {@link buildArkFileFromFile}).
  */
-export class ArktsFrontend implements LanguageFrontend {
-    public readonly id: string = 'arkts';
+export class ArktsFrontend {
 
     /** Fills a project {@link ArkFile} from a source file; delegates to {@link buildArkFileFromFile}. */
     public buildProjectFile(scene: Scene, filePath: string, arkFile: ArkFile): void {

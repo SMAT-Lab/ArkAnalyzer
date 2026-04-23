@@ -14,7 +14,6 @@
  */
 
 import { ArkFile } from '../core/model/ArkFile';
-import type { Scene } from '../Scene';
 
 export interface FrontendParseFailure {
     filePath: string;
@@ -24,14 +23,4 @@ export interface FrontendParseFailure {
 export interface FrontendParseResult {
     arkFiles: ArkFile[];
     failedFiles: FrontendParseFailure[];
-}
-
-/**
- * A language frontend is responsible for collecting and parsing files of one language.
- * High-level {@link Scene} flows can delegate to {@link FrontendBuilder} to avoid branching on file language inside
- * the scene.
- */
-export interface LanguageFrontend {
-    readonly id: string;
-
 }

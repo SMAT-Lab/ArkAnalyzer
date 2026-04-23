@@ -13,63 +13,34 @@
  * limitations under the License.
  */
 
-import path from 'path';
 import { Language } from '../../core/model/ArkFile';
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile } from './model/builder/ArkFileBuilder';
-import { findCompileCommands, getCxxHeaderFileExtensionSet } from './ast';
-import { FrontendParseFailure, FrontendParseResult, LanguageFrontend } from '../LanguageFrontend';
-
-const CXX_HEADER_EXTENSION_SET = getCxxHeaderFileExtensionSet();
-
-/**
- * C++: builds {@link ArkFile}s using the C++ front-end (see {@link buildArkFileFromFile} in this module).
- * {@link CppBuildProjectFileOptions#refreshCompileDatabasePath} must mirror legacy {@link Scene} behaviour: only the
- * project-wide `genArkFiles` path updated `compile_commands.json` discovery; dependency and module paths did not.
- */
-export type CppBuildProjectFileOptions = {
-    /** When `true`, apply the same `compile_commands.json` path refresh as the former `Scene.genArkFiles` C++ branch. */
-    refreshCompileDatabasePath: boolean;
-};
+import { FrontendParseFailure, FrontendParseResult } from '../LanguageFrontend';
 
 /**
  * C++ language frontend. Matches the former {@link Scene} branches for {@link Language#CXX}.
  */
-export class CppFrontend implements LanguageFrontend {
-    public readonly id: string = 'cpp';
+export class CppFrontend {
 
-    public buildProjectFile(scene: Scene, filePath: string, arkFile: ArkFile, options: CppBuildProjectFileOptions): void {
-        if (options.refreshCompileDatabasePath) {
-            const next = this.findCCJsonPath(filePath, scene.getCcjsonPath());
-            scene.setCcjsonPath(next);
-        }
+    public buildProjectFile(scene: Scene, filePath: string, arkFile: ArkFile): void {
         buildArkFileFromFile(filePath, scene.getRealProjectDir(), arkFile, scene.getProjectName(), scene.getIncludeDirs());
     }
 
-    public buildProjectFiles(scene: Scene, filePaths: string[], options: CppBuildProjectFileOptions): FrontendParseResult {
+    public buildProjectFiles(scene: Scene, filePaths: string[]): FrontendParseResult {
         const arkFiles: ArkFile[] = [];
         const failedFiles: FrontendParseFailure[] = [];
         for (const filePath of filePaths) {
             try {
                 const arkFile = new ArkFile(Language.CXX);
                 arkFile.setScene(scene);
-                this.buildProjectFile(scene, filePath, arkFile, options);
+                this.buildProjectFile(scene, filePath, arkFile);
                 arkFiles.push(arkFile);
             } catch (error) {
                 failedFiles.push({ filePath, reason: error });
             }
         }
         return { arkFiles, failedFiles };
-    }
-
-    private findCCJsonPath(file: string, ccjsonPath: string): string {
-        const ext = path.extname(file).toLowerCase();
-        const isHeader = CXX_HEADER_EXTENSION_SET.has(ext);
-        let currentCcjsonPath = '';
-        if (!isHeader) {
-            currentCcjsonPath = findCompileCommands(file);
-        }
-        return currentCcjsonPath === '' ? ccjsonPath : currentCcjsonPath;
     }
 }
