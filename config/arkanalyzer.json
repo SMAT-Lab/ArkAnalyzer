@@ -6,6 +6,16 @@
     ".d.ets",
     ".d.ts"
   ],
+  "languages": {
+    "arkts": {
+      "enabled": true,
+      "extensions": [".ets", ".ts", ".js", ".d.ets", ".d.ts"]
+    },
+    "cpp": {
+      "enabled": false,
+      "extensions": [".cc", ".cpp", ".cxx", ".c", ".c++", ".hpp", ".h", ".hxx", ".hh"]
+    }
+  },
   "enableLeadingComments": false,
   "enableBuiltIn": true,
   "enableOhModulesBody": false,

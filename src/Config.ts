@@ -78,6 +78,21 @@ export function buildSceneConfigFromProject(project: string, ohosSdkHome?: strin
 }
 
 export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | null | undefined;
+
+/**
+ * Per-language switch and optional file extension list (for tooling and front-end selection; extension lists are
+ * normalized for discovery and future use).
+ */
+export interface LanguageIdOptions {
+    enabled?: boolean;
+    extensions?: string[];
+}
+
+export interface SceneLanguagesOptions {
+    arkts?: LanguageIdOptions;
+    cpp?: LanguageIdOptions;
+}
+
 export interface SceneOptions {
     supportFileExts?: string[];
     ignoreFileNames?: string[];
@@ -88,7 +103,9 @@ export interface SceneOptions {
     tsconfig?: string;
     isScanAbc?: boolean;
     sdkGlobalFolders?: string[];
-    [option: string]: SceneOptionsValue;
+    /** Optional multi-language front-end section; defaults are merged in {@link SceneConfig} construction. */
+    languages?: SceneLanguagesOptions;
+    [option: string]: SceneOptionsValue | SceneLanguagesOptions | undefined;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
@@ -117,6 +134,7 @@ export class SceneConfig {
         this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
         this.appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable();
+        this.normalizeLanguageOptions();
     }
 
     public getOptions(): SceneOptions {
@@ -361,5 +379,13 @@ export class SceneConfig {
             return;
         }
         this.options.supportFileExts = [...configuredExts, ...missingCppExts];
+    }
+
+    private normalizeLanguageOptions(): void {
+        const from = this.options.languages;
+        this.options.languages = {
+            arkts: { enabled: true, ...from?.arkts },
+            cpp: { enabled: true, ...from?.cpp },
+        };
     }
 }
