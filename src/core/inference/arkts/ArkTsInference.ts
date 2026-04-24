@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -228,8 +228,9 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
     public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         TypeInference.inferRealGenericTypes(value.getRealGenericTypes(), arkMethod.getDeclaringArkClass());
+        const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
         const result =
-            IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
+            IRInference.inferInstanceMember(baseType, value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
             this.processExtendFunc(value, arkMethod, super.getMethodName(value, arkMethod));
         return !result || result === value ? undefined : result;
     }
