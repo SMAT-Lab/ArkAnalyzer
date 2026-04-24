@@ -18,7 +18,7 @@ import type { ChildProcess, SpawnSyncReturns } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
+import Logger, { LOG_MODULE_TYPE } from '../../../../../utils/logger';
 import { getAstJsonDumperNodePath } from '../astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astJsonDumper');

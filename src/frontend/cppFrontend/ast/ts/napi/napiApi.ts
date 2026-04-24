@@ -15,7 +15,7 @@
 
 import * as path from 'node:path';
 
-import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
+import Logger, { LOG_MODULE_TYPE } from '../../../../../utils/logger';
 import { isAstJsonDumperAvailable } from '../astUtils';
 import { runAstJsonArgv } from './napiRunner';
 

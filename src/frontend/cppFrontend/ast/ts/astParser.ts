@@ -16,9 +16,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
-import { dumpAstJson } from './astJsonNapi/napiApi';
+import { dumpAstJson } from './napi/napiApi';
 import { ClangPath, extractAllCppModifiers } from './astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astParser');

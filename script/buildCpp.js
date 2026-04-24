@@ -22,10 +22,12 @@ const { spawnSync } = require('child_process');
 const projectRoot = join(__dirname, '..');
 const isWin = process.platform === 'win32';
 const REL_AST = join('src', 'frontend', 'cppFrontend', 'ast');
-const REL_AST_BUILD = join(REL_AST, 'build');
+const REL_AST_CPP = join(REL_AST, 'cpp');
+const REL_AST_BUILD = join(REL_AST_CPP, 'build');
 
 const astDir = join(projectRoot, REL_AST);
-const buildDir = join(astDir, 'build');
+const astCppDir = join(projectRoot, REL_AST_CPP);
+const buildDir = join(astCppDir, 'build');
 const dumperDir = join(astDir, 'dumper');
 const astJsonDumperBinaryName = isWin ? 'astJsonDumper.exe' : 'astJsonDumper';
 const targetBinary = join(dumperDir, astJsonDumperBinaryName);
@@ -225,7 +227,7 @@ function ensureCleanCmakeCache() {
         return;
     }
     const cacheContent = readFileSync(cmakeCache, 'utf8');
-    const expectedSource = `CMAKE_HOME_DIRECTORY:INTERNAL=${astDir}`;
+    const expectedSource = `CMAKE_HOME_DIRECTORY:INTERNAL=${astCppDir}`;
     const expectedBuild = `CMAKE_CACHEFILE_DIR:INTERNAL=${buildDir}`;
     if (!cacheContent.includes(expectedSource) || !cacheContent.includes(expectedBuild)) {
         rmSync(buildDir, { recursive: true, force: true });
@@ -237,7 +239,7 @@ mkdirSync(buildDir, { recursive: true });
 mkdirSync(dumperDir, { recursive: true });
 
 const { llvmDir, clangDir } = discoverLlvmCmakeDirs();
-const cmakeConfigureArgs = ['-S', REL_AST, '-B', REL_AST_BUILD];
+const cmakeConfigureArgs = ['-S', REL_AST_CPP, '-B', REL_AST_BUILD];
 const useWinNinja = isWin && isCommandAvailable('ninja');
 if (useWinNinja) {
     cmakeConfigureArgs.unshift('-G', 'Ninja');

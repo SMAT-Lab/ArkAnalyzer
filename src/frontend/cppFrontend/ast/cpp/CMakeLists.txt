@@ -68,7 +68,7 @@ endfunction()
 set(NODE_API_INCLUDE_DIR "" CACHE PATH "Directory containing node_api.h (e.g. node_modules/node-api-headers/include)")
 if(NODE_API_INCLUDE_DIR AND EXISTS "${NODE_API_INCLUDE_DIR}/node_api.h")
     add_library(astJsonDumper_addon MODULE
-        astJsonNapi/napiBinding.cpp
+        napi/napiBinding.cpp
         ${AST_JSON_DUMPER_SOURCES}
     )
     target_compile_definitions(astJsonDumper_addon PRIVATE AST_JSON_NO_MAIN)
