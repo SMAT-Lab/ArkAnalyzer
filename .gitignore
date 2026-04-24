@@ -33,3 +33,4 @@ src/frontend/cppFrontend/ast/*/
 
 # Agent related files
 .claude/settings.json
+src/frontend/cppFrontend/ast/cpp/build/
