@@ -17,7 +17,6 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-    profileArkAnalyzer,
     serializeResult,
     StageMetrics,
     ProfilerResult,
@@ -88,33 +87,18 @@ function saveSummary(result: ProfilerResult, runId: string): string {
     return jsonFilePath;
 }
 
-/**
- * Print stage metrics to console.
- */
-function printStageSummary(stage: StageMetrics): void {
-    console.log(`\n[${stage.stageName}]`);
-    console.log(`  Duration      : ${stage.durationMs.toFixed(2)} ms`);
-    console.log(`  Heap Growth   : ${(stage.heapGrowthBytes / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  Heap Peak     : ${(stage.heapPeakUsedBytes / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  RSS Peak      : ${((stage.rssPeakBytes ?? 0) / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  GC Pauses     : ${stage.gcPauses.count} (${stage.gcPauses.totalDurationMs.toFixed(2)} ms)`);
-    console.log(`  CPU Hot Functions : ${stage.cpuHotFunctions.length}`);
-    if (stage.cpuHotFunctions.length > 0) {
-        const top = stage.cpuHotFunctions[0];
-        console.log(`    Top: ${top.name} (${top.selfTimeMs.toFixed(2)} ms)`);
-    }
-    console.log(`  Allocation Hot Functions : ${stage.allocationHotFunctions.length}`);
-    if (stage.allocationHotFunctions.length > 0) {
-        const top = stage.allocationHotFunctions[0];
-        console.log(`    Top: ${top.name} (${top.allocatedMb.toFixed(2)} MB)`);
-    }
-}
-
 function average(values: number[]): number {
     if (values.length === 0) {
         return 0;
     }
     return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function maximum(values: number[]): number {
+    if (values.length === 0) {
+        return 0;
+    }
+    return values.reduce((max, value) => Math.max(max, value), values[0]);
 }
 
 function standardDeviation(values: number[]): number {
@@ -252,20 +236,39 @@ function createStageAccumulator(stageName: string): StageAccumulator {
     };
 }
 
-async function triggerManualGcBetweenRounds(currentRound: number, totalRounds: number): Promise<void> {
-    if (typeof global.gc !== 'function') {
-        console.warn('[GC] Skipped: global.gc is unavailable. Start Node with --expose-gc to enable manual GC.');
-        return;
+function runSingleRoundInChild(args: ChildRoundExecutionArgs): ProfilerResult {
+    const { runId, currentRound, totalRounds, projectConfig } = args;
+    const resultPath = path.join(RAW_DIR, `${runId}-round${currentRound}-result.json`);
+    const workerPath = path.join(__dirname, 'round_worker.ts');
+    const workerArgs = [
+        ...process.execArgv,
+        workerPath,
+        `--project-path=${projectConfig.path}`,
+        `--result-path=${resultPath}`,
+        `--current-round=${currentRound}`,
+        `--total-rounds=${totalRounds}`,
+    ];
+
+    if (projectConfig.ccJsonPath) {
+        workerArgs.push(`--cc-json=${projectConfig.ccJsonPath}`);
     }
-    const before = process.memoryUsage().heapUsed;
-    global.gc();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    const after = process.memoryUsage().heapUsed;
-    const reclaimedMb = (before - after) / 1024 / 1024;
-    console.log(
-        `[GC] After round ${currentRound}/${totalRounds}, reclaimed ${reclaimedMb.toFixed(2)} MB ` +
-        `(heap: ${(before / 1024 / 1024).toFixed(2)} -> ${(after / 1024 / 1024).toFixed(2)} MB)`
-    );
+
+    const run = cp.spawnSync(process.execPath, workerArgs, {
+        cwd: ARKANALYZER_REPO_ROOT,
+        env: process.env,
+        stdio: 'inherit',
+    });
+
+    if (run.status !== 0) {
+        throw new Error(`Round ${currentRound} failed in child process (exit code: ${run.status ?? -1})`);
+    }
+
+    if (!fs.existsSync(resultPath)) {
+        throw new Error(`Round ${currentRound} result file not found: ${resultPath}`);
+    }
+
+    const resultContent = fs.readFileSync(resultPath, 'utf8');
+    return JSON.parse(resultContent) as ProfilerResult;
 }
 
 interface SceneCountSeries {
@@ -278,6 +281,13 @@ interface SceneCountSeries {
 interface RunSeries {
     totalDurations: number[];
     sceneCounts: SceneCountSeries;
+}
+
+interface ChildRoundExecutionArgs {
+    runId: string;
+    currentRound: number;
+    totalRounds: number;
+    projectConfig: PerfProjectConfig;
 }
 
 function createRunSeries(): RunSeries {
@@ -302,7 +312,7 @@ function printRunHeader(rounds: number, projectConfig: PerfProjectConfig, runId:
     console.log(`Project : ${projectConfig.path}`);
     console.log(`Run ID  : ${runId}`);
     console.log(`Rounds  : ${rounds}`);
-    console.log('GC Between Rounds : enabled');
+    console.log('Isolation Between Rounds : process restart');
     console.log(`Output  : ${RAW_DIR}`);
     if (projectConfig.ccJsonPath) {
         console.log(`CC JSON : ${projectConfig.ccJsonPath}`);
@@ -374,7 +384,8 @@ function buildAverageResult(
             cpuProfile: {} as StageMetrics['cpuProfile'],
             heapGrowthBytes: average(accumulator.heapGrowths),
             heapPeakUsedBytes: average(accumulator.heapPeakUsedBytes),
-            rssPeakBytes: average(accumulator.rssPeakBytes),
+            // RSS peak is a high-water mark metric; averaging multiple rounds underestimates the real peak.
+            rssPeakBytes: maximum(accumulator.rssPeakBytes),
             heapBefore: {
                 used: average(accumulator.heapBeforeUsed),
                 total: average(accumulator.heapBeforeTotal),
@@ -426,13 +437,11 @@ export async function runPerformanceProfiling(
         for (let i = 0; i < normalizedRounds; i++) {
             const currentRound = i + 1;
             console.log(`--- Round ${currentRound}/${normalizedRounds} ---`);
-            const result = await profileArkAnalyzer(projectConfig.path, projectConfig.ccJsonPath, {
-                onStageStart: (stageName) => {
-                    console.log(`[Round ${currentRound}/${normalizedRounds}] Starting ${stageName}...`);
-                },
-                onStageEnd: (_stageName, metrics) => {
-                    printStageSummary(metrics);
-                },
+            const result = runSingleRoundInChild({
+                runId,
+                currentRound,
+                totalRounds: normalizedRounds,
+                projectConfig,
             });
 
             if (stageAccumulators.length === 0) {
@@ -445,7 +454,6 @@ export async function runPerformanceProfiling(
             console.log(`[Round ${currentRound}/${normalizedRounds}] Total time: ${result.totalDurationMs.toFixed(2)} ms\n`);
 
             if (currentRound < normalizedRounds) {
-                await triggerManualGcBetweenRounds(currentRound, normalizedRounds);
                 console.log('');
             }
         }
