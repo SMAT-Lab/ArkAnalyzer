@@ -95,7 +95,7 @@ export {
     SceneConfig,
     SceneOptions,
     buildSceneConfigFromProject,
-    LanguageIdOptions,
+    LanguageOptions,
     SceneLanguagesOptions,
 } from './Config';
 export { Scene } from './Scene';

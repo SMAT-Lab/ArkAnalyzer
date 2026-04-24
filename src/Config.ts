@@ -81,20 +81,20 @@ export function buildSceneConfigFromProject(project: string, ohosSdkHome?: strin
  * Per-language switch and optional file extension list (for tooling and front-end selection; extension lists are
  * normalized for discovery and future use).
  */
-export interface LanguageIdOptions {
+export interface LanguageOptions {
     enabled?: boolean;
     extensions?: string[];
 }
 
-export interface CppLanguageOptions extends LanguageIdOptions {
+export interface CppLanguageOptions extends LanguageOptions {
     sourceExtensions?: string[];
     headerExtensions?: string[];
 }
 
 export interface SceneLanguagesOptions {
-    arkts?: LanguageIdOptions;
+    arkts?: LanguageOptions;
     cpp?: CppLanguageOptions;
-    [option: string]: LanguageIdOptions | undefined;
+    [option: string]: LanguageOptions | undefined;
 }
 
 export type SceneOptionsValue =
