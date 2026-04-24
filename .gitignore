@@ -1,5 +1,6 @@
 node_modules
 .vscode/*
+.trae/
 package-lock.json
 t.ts
 main.dot

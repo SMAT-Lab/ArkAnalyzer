@@ -1198,6 +1198,7 @@ export class Scene {
         }
         SdkUtils.dispose();
         ModuleUtils.dispose();
+        ValueUtil.dispose();
     }
 
     /**
