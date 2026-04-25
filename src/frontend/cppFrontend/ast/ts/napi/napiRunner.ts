@@ -167,7 +167,7 @@ function runArgvInSubprocess(context: AstJsonRunContext, ...argv: string[]): num
 }
 
 function shouldIsolateRuns(): boolean {
-    if(!('ARKANALYZER_AST_JSON_SUBPROCESS' in process.env)){
+    if (!('ARKANALYZER_AST_JSON_SUBPROCESS' in process.env)) {
         return true;
     }
     return process.env.VITEST === 'true';
