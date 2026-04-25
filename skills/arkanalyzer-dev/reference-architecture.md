@@ -1,124 +1,53 @@
-# ArkAnalyzer — 架构与目录参考
+# ArkAnalyzer — 架构与模块参考
 
-供深入模块定位时使用；日常优先读 `SKILL.md`。
+供深入模块定位时使用；日常开发优先读 `SKILL.md`。
+
+> **Warning**: `src/index.ts` 末尾 `export { ts } from 'ohos-typescript'`。直接接触 TS AST/API 时，必须使用本仓库锁定的 **ohos-typescript fork**，**禁止**混用官方 `typescript` 包，否则类型不兼容。
 
 ## 架构总览
 
-ArkAnalyzer 将 **ohos-typescript** 解析得到的 ArkTS/TS **AST**，经 builder 转为 **Ark IR**  
-（`core/base` + `core/model`：语句/类型/文件/类/方法等），汇总到 **`Scene`**（`Scene.ts`）  
-——即**被分析工程在内存中的整体视图**。
-
-在此基础上叠加 **CFG/图**、**数据流**、**调用图与指针分析**、**Pass 遍历**、**打印与序列化**等能力。
-
-典型依赖方向（自上而下抽象层级，非严格导入图）：
-
-```text
-工程路径 / arkanalyzer.json / SceneConfig
-        → Scene（工程入口、模块与 SDK、可见性、类型与 IR 构建阶段）
-        → ArkFile / ArkMethod / ArkBody …（模型层）
-        → Cfg / Dataflow / CallGraph / PointerAnalysis / Pass / DVFG …（分析层）
-        → Printer / Json / Dot / Source（输出层）
 ```
-
----
-
-## Scene 与配置
-
-- **`Scene`**（`src/Scene.ts`）  
-  分析会话核心：工程文件、模块场景、SDK、可见值、类型推理阶段等。  
-  语义上应能据 Scene 还原工程代码；下游多从中取 `ArkFile`、`ArkMethod`、调用图等。
-
-- **`SceneConfig`**（`src/Config.ts`）  
-  目标工程目录、Ets/SDK、`tsconfig`、选项（扩展名、忽略路径、built-in）。  
-  与 **`config/arkanalyzer.json`** 默认项合并；`CONFIG_FILENAME` 指向该文件。
-
-- **`SceneOptions`**（同 `Config.ts`）  
-  如 `supportFileExts`、`ignoreFileNames`、`enableBuiltIn`、`sdkGlobalFolders`、`tsconfig`。  
-  与发布后 `config/arkanalyzer.json` 字段对应。
-
-**默认配置**：根目录 `config/arkanalyzer.json`（如 `.ets`/`.ts`、忽略 `oh_modules`/`node_modules`、`tsconfig` 名等）。
-
-宿主集成常先构造 `SceneConfig`，再初始化 `Scene`（`new Scene(...)` 或等价流程）。
-
----
+工程路径 / arkanalyzer.json / SceneConfig
+  ↓ (Scene 层 — 工程入口、模块与 SDK、可见性、构建阶段)
+  ┌─ Scene.ts / Config.ts   ← 分析会话的起点
+  ↓ (frontend — 多语言 AST → IR)
+  ┌─ frontend/FrontendBuilder     ArkTS → IR（ohos-typescript）
+  │                               C/C++ → IR（cppFrontend，clang 驱动）
+  ↓
+  ┌─ core/base              IR 基元（表达式、语句、类型 …）
+  │  core/model             ArkFile / ArkMethod / ArkClass / ArkBody
+  │  core/common            横切能力（类型推理、常量、替换器 …）
+  │  core/inference         类型/值推理管线
+  ↓ (IR 模型)
+  ┌─ core/graph             CFG / 支配树 / SCC / ViewTree
+  │  core/dataflow          DataflowProblem / Solver / Fact
+  │  callgraph              调用图 + 指针分析（CHA / RTA）
+  │  pass                   Pass 调度框架（File / Class / Method 粒度）
+  │  VFG                    依赖值流图（DVFG）
+  ↓ (分析结果)
+  ┌─ save / transformer     打印（Source/Json/Dot）、IR 变换（SSA）
+  └─ index.ts               npm 包对外导出
+```
 
 ## `src/` 模块地图
 
-- **入口**  
-  `Scene.ts`、`Config.ts`：场景与配置（见上节）。
+每个模块附**使用场景**，帮助快速定位切入位置。
 
-- **`core/base/`**  
-  IR 基元：类型、表达式、语句、引用、位置、`Local`、`Value` 等。
+| 路径 | 职责 | 何时关注 |
+|------|------|---------|
+| **Scene.ts / Config.ts** | 分析会话入口：`Scene` 持有工程全量 IR、类型、模块；`SceneConfig` 定义扫描参数 | 改工程加载逻辑、新增配置项、初始化流程 |
+| **frontend/** | 多语言 AST → IR：`FrontendBuilder` 统一入口；`arktsFrontend/`（ohos-typescript）；`cppFrontend/`（clang 驱动，含独立 AST 解析 / IR 构建 / CFG 构建 / 推理） | 新增语言前端、改 C++/ArkTS 解析流程、改跨语言 IR 映射 |
+| **core/base/** | IR 基元：表达式(`Expr`)、语句(`Stmt`)、类型(`Type`)、引用、`Local`、`Value` 等 | 新增 AST→IR 映射、改 IR 结构 |
+| **core/model/** | 高层模型：`ArkFile` / `ArkClass` / `ArkMethod` / `ArkBody`；`builder/` 从 AST 构建 | 改文件/类/方法的 IR 表示 |
+| **core/common/** | 横切：`Const` / `TSConst` / `EtsConst`、`TypeInference`、替换器、`VisibleValue`、`SdkUtils` | 类型推理、常量处理、跨模块工具 |
+| **core/inference/** | `InferenceManager` 与类型/值推理管线（含 `arkts` / `abc` 子目录） | 涉及类型推理流程或新后端 |
+| **core/graph/** | `Cfg`、`BasicBlock`、支配树、`SCC`、`ViewTree`、显式图基类 | 改控制流结构、图遍历、支配关系 |
+| **core/dataflow/** | `DataflowProblem` / `Solver` / `Result` / `Fact`、未定义变量分析 | 新增数据流分析、改求解器 |
+| **pass/** | `Pass` / `Dispatcher` / `ScenePassMgr` / `Context`，按 File/Class/Method 粒度调度 | 新增完整遍历逻辑 |
+| **callgraph/** | `CallGraph`、`CallGraphBuilder`；`pointerAnalysis/`（PAG、Pts、配置）；CHA/RTA 算法 | 改调用图构建、指针分析、调用链 |
+| **VFG/** | `DVFG` / `DVFGBuilder`（依赖值流图） | 值流 / 污点分析相关 |
+| **save/** | `GraphPrinter` / `ViewTreePrinter` / `PrinterBuilder`，Source/Json/Dot 输出 | 改打印/序列化/输出格式 |
+| **transformer/** | IR 变换，如 `StaticSingleAssignmentFormer`（SSA） | 新增 IR pass/变换 |
+| **utils/** | `Logger`（`LOG_MODULE_TYPE`）、文件枚举、`AstTreeUtils`、`IntMap`、`PackedSparseMap` 等 | 通用工具、日志、性能敏感辅助结构 |
+| **index.ts** | npm 包对外导出。**HomeCheck 等下游依赖此契约** | 改导出符号前须确认下游兼容性 |
 
-- **`core/model/`**  
-  `ArkFile`/`ArkClass`/`ArkMethod`/`ArkBody`、签名及 `builder/`：从 AST/IR 构建模型。
-
-- **`core/common/`**  
-  `Const`/`TSConst`/`EtsConst`、替换器、`TypeInference`、`VisibleValue`、`SdkUtils`、`IRInference` 等横切逻辑。
-
-- **`core/inference/`**  
-  `InferenceManager` 等与类型/值推理管线协作（含 `arkts`、`abc` 等子目录）。
-
-- **`core/graph/`**  
-  `Cfg`、`BasicBlock`、支配、`SCC`、`ViewTree`、显式图基类等。
-
-- **`core/dataflow/`**  
-  `DataflowProblem`/`Solver`/`Result`、`Fact`、`UndefinedVariable*` 等。
-
-- **`pass/`**  
-  `Pass`、`Dispatcher`、`ScenePassMgr`、`Context`；按 File/Class/Method 等粒度调度。
-
-- **`callgraph/`**  
-  `CallGraph`、`CallGraphBuilder`；`pointerAnalysis/`（PAG、Pts、配置）；算法（如 CHA、RTA）。
-
-- **`VFG/`**  
-  `DVFG`、`DVFGBuilder`（数据流图构建；见 `index.ts` 导出）。
-
-- **`save/`**  
-  Source/Json/Dot 打印，`GraphPrinter`、`ViewTreePrinter`、`PrinterBuilder` 等。
-
-- **`transformer/`**  
-  SSA 等 IR 变换（如 `StaticSingleAssignmentFormer`）。
-
-- **`utils/`**  
-  `Logger`（`LOG_MODULE_TYPE`）、路径与文件枚举、`AstTreeUtils`、`json5parser`、  
-  `callGraphUtils`、`entryMethodUtils`、`IntMap`、`PackedSparseMap` 等。
-
-- **`index.ts`**  
-  **npm 包对外导出**：各模块稳定 public API；HomeCheck 等下游主要依赖此契约。
-
-**解析器出口**：`index.ts` 末尾 **`export { ts } from 'ohos-typescript'`**。
-
-直接接触 TS AST/API 时须与全仓使用**同一 ohos-typescript fork**，勿混用官方 `typescript` 版本。
-
----
-
-## 仓库根目录（与 `src` 协作）
-
-| 路径 | 说明 |
-|------|------|
-| `config/` | 默认 **arkanalyzer.json** 等，随包发布（`package.json` 的 `files` 含 `config`）。 |
-| `script/` | 构建辅助（如 `npmInstall.js`、与 `prebuild` 等脚本配合）。 |
-| `lib/` | **`tsc`/`tsconfig.prod` 产物**（通常不手改；`.gitignore` 忽略时以本地构建为准）。 |
-| `tsconfig.json` / `tsconfig.prod.json` | 开发与发布编译选项。 |
-| `tests/` | 见下文。 |
-
----
-
-## 测试目录（本仓库）
-
-| 路径 | 说明 |
-|------|------|
-| `tests/unit/` | 单元测试，与 `src` 能力点对应（模型、图、数据流、保存、调用图等子目录）。 |
-| `tests/samples/` | 可执行样例/演示脚本。 |
-| `tests/resources/` | 按场景的 **ArkTS/ets**、工程片段、**json** 输入。大规模资源须遵守仓库约定。 |
-
----
-
-## 与 HomeCheck 的关系
-
-**HomeCheck**（独立仓库）依赖本包 **`arkanalyzer`**（`lib`、`config`、类型），侧实现 **Checker / ruleSet**。
-
-若改动 **`index.ts` 导出**、**Scene** 或 **IR 形状**，须在 HomeCheck 回归。
-
-必要时按 `SKILL.md`「**HomeCheck 兼容性验证**」：`npm pack` 后对端 `npm run test`。
