@@ -90,7 +90,7 @@ export class ArkMetadataBuilder {
     private static parseJSDocContent(content: string): JSDocMetadata {
         const normalizedLines = content
             .split('\n')
-            .map(line => line.replace(/^\s*\/\*\*?/, '').replace(/\*\/\s*$/, '').replace(/^\s*\*\s?/, '').trim());
+            .map(line => line.replace(/^\s*\/\*\*?|\*\/\s*$|^\s*\*\s?(?!\/)/g, '').trim());
 
         const descriptionLines: string[] = [];
         const params: JSDocParamItem[] = [];

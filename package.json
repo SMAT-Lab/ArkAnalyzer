@@ -16,7 +16,7 @@
     "build:cpp": "node script/buildCpp.js",
     "prepack": "npm run build && tsc -p ./tsconfig.prod.json && node script/vendorOhosTypescript.js && copyfiles -f arkCppAst/* lib/ast",
     "test": "npm run build && vitest",
-    "testonce": "npm run build && vitest --no-color run",
+    "testonce": "npm run build && vitest run",
     "coverage": "npm run build && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
     "perf:arkts": "npm run build && node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",

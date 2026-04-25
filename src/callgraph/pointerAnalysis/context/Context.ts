@@ -127,13 +127,13 @@ export class CallSiteContext extends Context {
     }
 
     public dump(m: ContextItemManager, cg: CallGraph): string {
-        let content: string = '';
+        const contentParts: string[] = [];
         for (let i = 0; i < this.length(); i++) {
             const item = m.getItem(this.get(i)) as CallSiteContextItem;
             const callSiteInfo = cg.getCallSiteInfo(item.callSiteId);
-            content += `\t[${callSiteInfo}]\n`;
+            contentParts.push(`\t[${callSiteInfo}]\n`);
         }
-        return content;
+        return contentParts.join('');
     }
 }
 
@@ -156,13 +156,13 @@ export class FuncContext extends Context {
     }
 
     public dump(m: ContextItemManager, cg: CallGraph): string {
-        let content: string = '';
+        const contentParts: string[] = [];
         for (let i = 0; i < this.length(); i++) {
             const item = m.getItem(this.get(i)) as FuncContextItem;
             const methodSig = cg.getMethodByFuncID(item.funcID)!.toString();
-            content += `\t[${methodSig}]\n`;
+            contentParts.push(`\t[${methodSig}]\n`);
         }
-        return content;
+        return contentParts.join('');
     }
 }
 
@@ -221,12 +221,11 @@ export class ContextCache {
     }
 
     public dump(m: ContextItemManager, cg: CallGraph): string {
-        let content: string = '';
+        const contentParts: string[] = [];
         this.contextList.forEach((c, i) => {
-            content += `Context ${i}:\n`;
-            content += `${c.dump(m, cg)}\n`;
+            contentParts.push(`Context ${i}:\n`);
+            contentParts.push(`${c.dump(m, cg)}\n`);
         });
-
-        return content;
+        return contentParts.join('');
     }
 }

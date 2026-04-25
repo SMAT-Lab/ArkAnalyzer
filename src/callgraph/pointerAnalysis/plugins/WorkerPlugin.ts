@@ -176,7 +176,7 @@ export class WorkerPlugin implements IPagPlugin {
     public getFileByPath(callstmt: Stmt, filePath: StringConstant): ArkFile | null {
         let declaringarkfile = callstmt.getCfg().getDeclaringMethod().getDeclaringArkClass().getDeclaringArkFile();
         const scene = declaringarkfile.getScene();
-        let filepath = filePath.toString().replace('../', '').replace('./', '').replace("'", '').replace("'", '');
+        let filepath = filePath.toString().replace(/^(?:\.\.\/|\.\/)|'/g, '');
         filepath = filepath.substring(filepath.indexOf('ets'));
         if (/\.e?ts$/.test(filepath)) {
             const fileSignature = new FileSignature(declaringarkfile.getFileSignature().getProjectName(), filepath);
