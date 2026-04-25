@@ -61,7 +61,7 @@ import {
 import { EMPTY_STRING } from './ValueUtil';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
-import { ClosureFieldRef } from '../base/Ref';
+import { ArkInstanceFieldRef, ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
 import { TypeInference } from './TypeInference';
 import { MethodParameter } from '../model/builder/ArkMethodBuilder';
@@ -579,6 +579,36 @@ export class ModelUtils {
             return declare?.getBody()?.getAliasTypeByName(signature.getName()) ?? null;
         }
         return null;
+    }
+
+    /**
+     * Finds the initial value that a given value was assigned from by tracing through assignments.
+     * The method recursively traces the value to handle chained assignments.
+     * Has a maximum recursion depth of 10 to prevent infinite loops.
+     */
+    public static findRefInitValue(value: Value, scene: Scene, times: number = 0): Value {
+        if (times > 10) {
+            return value;
+        }
+        let initValue;
+        if (value instanceof Local) {
+            // Try to trace the value assignment
+            const declaringStmt = value.getDeclaringStmt();
+            if (declaringStmt instanceof ArkAssignStmt) {
+                initValue = this.findRefInitValue(declaringStmt.getRightOp(), scene, times + 1);
+            }
+        } else if (value instanceof ArkInstanceFieldRef) {
+            // Try to trace the field ref
+            const field = ModelUtils.findArkModelBySignature(value.getFieldSignature(), scene);
+            if (field instanceof ArkField) {
+                const stmts = field.getInitializer();
+                const lastStmt = stmts[stmts.length - 1];
+                if (lastStmt instanceof ArkAssignStmt) {
+                    initValue = this.findRefInitValue(lastStmt.getRightOp(), scene, times + 1);
+                }
+            }
+        }
+        return initValue ?? value;
     }
 
     public static parseArkBaseModel2Type(arkBaseModel: ArkBaseModel): Type | null {

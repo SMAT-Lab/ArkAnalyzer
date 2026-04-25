@@ -417,6 +417,21 @@ describe("function Test", () => {
         }
     })
 
+    it('testMoreType', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'CorrectType.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('test1')
+            ?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        if (stmts) {
+            assert.equal(stmts[4].toString(), 'instanceinvoke cat.<@inferType/CorrectType.ts: Cat.makeSound()>()');
+        }
+        const stmts1 = file?.getClassWithName('CatManager')?.getMethodWithName('animalMakeSound')?.getCfg()?.getStmts();
+        if (stmts1) {
+            assert.equal(stmts1[2].toString(), 'instanceinvoke %0.<@inferType/CorrectType.ts: Cat.makeSound()>()');
+        }
+    })
+
     it('testGenericWithDefaultSpread', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);

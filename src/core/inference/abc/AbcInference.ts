@@ -263,8 +263,9 @@ export class AbcInstanceInvokeExprInference extends InstanceInvokeExprInference 
      */
     public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
         const result =
-            IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
+            IRInference.inferInstanceMember(baseType, value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
             this.processExtendFunc(value, arkMethod);
         return !result || result === value ? undefined : result;
     }

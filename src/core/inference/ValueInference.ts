@@ -253,8 +253,8 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
      *          or undefined for regular instance fields
      */
     public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
-        const baseType = value.getBase().getType();
         const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
         // Generate updated field signature based on current context
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
         return !result || result === value ? undefined : result;
@@ -329,7 +329,8 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
      */
     public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        const result = IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
+        const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
+        const result = IRInference.inferInstanceMember(baseType, value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
         return !result || result === value ? undefined : result;
     }
 

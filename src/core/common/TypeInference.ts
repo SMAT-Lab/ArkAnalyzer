@@ -37,7 +37,8 @@ import {
     EnumValueType,
     FunctionType,
     GenericType,
-    IntersectionType, LiteralType,
+    IntersectionType,
+    LiteralType,
     NeverType,
     NullType,
     NumberType,
@@ -94,6 +95,7 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { SdkUtils } from './SdkUtils';
 import { ModifierType } from '../model/ArkBaseModel';
+import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME, Builtin.DUMMY_FILE_NAME];
@@ -1105,5 +1107,51 @@ export class TypeInference {
             return type2 instanceof TupleType || type2 instanceof ArrayType;
         }
         return type1.constructor === type2.constructor;
+    }
+
+    /**
+     * Infers the refined type for a value based on its initializer.
+     * If the value has an enum type, returns the enum type directly.
+     * If the value's declared type is AnyType, returns the initializer type.
+     * If the initializer type is a subtype or the same type as the declared type, returns the initializer type.
+     * Otherwise, returns the declared type.
+     */
+    public static inferRefinedValueType(value: Value, scene: Scene): Type {
+        const rightType = ModelUtils.findRefInitValue(value, scene).getType();
+        if (rightType instanceof EnumValueType) {
+            return rightType;
+        }
+        let leftType = value.getType();
+        if (rightType && this.checkType(leftType, t => t instanceof AnyType)) {
+            return rightType;
+        }
+        if (!rightType || this.isAnonType(rightType, scene.getProjectName())) {
+            return leftType;
+        }
+        if (this.isSubType(rightType, leftType, scene)) {
+            return rightType;
+        }
+        return leftType;
+    }
+
+    /**
+     * Checks if the child type is a subtype of the parent type or the same type.
+     */
+    public static isSubType(child: Type, parent: Type, scene: Scene): boolean {
+        const real = child instanceof AliasType ? this.replaceAliasType(child) : child;
+        const declare = parent instanceof AliasType ? this.replaceAliasType(parent) : parent;
+        if (!(declare instanceof ClassType) || !(real instanceof ClassType)) {
+            return false;
+        }
+        const fatherClass = scene.getClass(declare.getClassSignature());
+        let childClass = scene.getClass(real.getClassSignature());
+        while (childClass) {
+            if (childClass === fatherClass) {
+                return true;
+            }
+            childClass = childClass?.getSuperClass();
+        }
+        const objectClass = scene.getSdkGlobal(Builtin.OBJECT);
+        return fatherClass === objectClass;
     }
 }
