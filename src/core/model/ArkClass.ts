@@ -395,10 +395,28 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      ```
      */
     public getMethods(generated?: boolean): ArkMethod[] {
-        const flattenReducer = (acc: ArkMethod[], val: ArkMethod[]): ArkMethod[] => acc.concat(val);
-        const allMethods = Array.from(this.methods.values()).reduce(flattenReducer, []).filter(f => (!generated && !f.isGenerated()) || generated);
-        allMethods.push(...[...this.staticMethods.values()].reduce(flattenReducer, []));
-        return [...new Set(allMethods)];
+        const seen = new WeakSet<ArkMethod>();
+        const result: ArkMethod[] = [];
+
+        const addIfNeeded = (m: ArkMethod) => {
+            if (!seen.has(m) && (generated || !m.isGenerated())) {
+                seen.add(m);
+                result.push(m);
+            }
+        };
+
+        for (const methods of this.methods.values()) {
+            for (const m of methods) {
+                addIfNeeded(m);
+            }
+        }
+        for (const methods of this.staticMethods.values()) {
+            for (const m of methods) {
+                addIfNeeded(m);
+            }
+        }
+
+        return result;
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
