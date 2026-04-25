@@ -109,7 +109,7 @@ export class SdkUtils {
         if (fileName.startsWith(SCOPE_PREFIX)) {
             this.sdkImportMap.set(fileName.replace(/\.d\.e?ts$/, ''), file);
         } else if (file.getName().startsWith('api')) {
-            this.sdkImportMap.set(file.getName().replace('api', '').replace(/\.d\.e?ts$/, ''), file);
+            this.sdkImportMap.set(file.getName().replace(/^api[/\\]|\.d\.e?ts$/g, ''), file);
         }
     }
 

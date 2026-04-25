@@ -50,6 +50,48 @@ describe('metadata Test', () => {
         assertMethodJSDocMetadata(method!);
     });
 
+    it('test single-line jsdoc (all three patterns on one line)', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('JSDocEdgeCases.ts'));
+        assert.isDefined(arkFile);
+
+        const namespace = arkFile?.getNamespaceWithName('JsDocEdgeCases');
+        assert.isDefined(namespace);
+        const nsJsDoc = getJSDocMetadata(namespace!);
+        expect(nsJsDoc.length).toEqual(1);
+        expect(nsJsDoc[0].getDescription()).toEqual('namespace description');
+
+        const edgeClass = namespace?.getClassWithName('EdgeClass');
+        assert.isDefined(edgeClass);
+        const classJsDoc = getJSDocMetadata(edgeClass!);
+        expect(classJsDoc.length).toEqual(1);
+        expect(classJsDoc[0].getDescription()).toEqual('class description');
+
+        const runMethod = edgeClass?.getMethodWithName('run');
+        assert.isDefined(runMethod);
+        const methodJsDoc = getJSDocMetadata(runMethod!);
+        expect(methodJsDoc.length).toEqual(1);
+        expect(methodJsDoc[0].getDescription()).toEqual('method description');
+    });
+
+    it('test jsdoc with closing */ on same line as content', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('JSDocEdgeCases.ts'));
+        assert.isDefined(arkFile);
+
+        const namespace = arkFile?.getNamespaceWithName('JsDocEdgeCases');
+        const edgeClass = namespace?.getClassWithName('EdgeClass');
+        const method = edgeClass?.getMethodWithName('takeAndReturn');
+        assert.isDefined(method);
+
+        const methodJsDoc = getJSDocMetadata(method!);
+        expect(methodJsDoc.length).toEqual(1);
+        expect(methodJsDoc[0].getParams()).toEqual([
+            { name: 'name', type: 'string', description: 'the name' }
+        ]);
+        expect(methodJsDoc[0].getReturns()).toEqual([
+            { type: 'boolean', description: 'result' }
+        ]);
+    });
+
     it('test duplicated jsdoc blocks stored as multiple metadata entries', async () => {
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith('JSDocMetadata.ts'));
         assert.isDefined(arkFile);

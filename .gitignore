@@ -29,3 +29,6 @@ src/frontend/cppFrontend/ast/*/
 !src/frontend/cppFrontend/ast/utils/
 !src/frontend/cppFrontend/ast/astJsonNapi/
 !src/frontend/cppFrontend/ast/astJsonNapi/**
+
+# Agent related files
+.claude/settings.json

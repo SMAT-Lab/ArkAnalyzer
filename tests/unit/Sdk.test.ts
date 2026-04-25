@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { SdkUtils } from '../../src/core/common/SdkUtils';
 import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import { ArkClass, ArkMethod, MethodSignature, Scene, SceneConfig, } from '../../src';
@@ -106,5 +107,27 @@ describe('SDK Global Map Test', () => {
         expect((declareSignatures as MethodSignature[])[0].getType().toString()).toEqual('@/api/@internal/component/ets/column.d.ts: ColumnAttribute');
         expect(declareLines).toEqual([26]);
         expect(declareColumns).toEqual([5]);
+    });
+
+    it('test sdk import map for scope-prefixed files', async () => {
+        const sdk: Sdk = { name: '', path: SDK_DIR, moduleName: '' };
+        let config: SceneConfig = new SceneConfig();
+        config.buildConfig(path.basename(SDK_DIR), SDK_DIR, [sdk]);
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        const sdkFile = SdkUtils.getImportSdkFile('@ohos.web.webview');
+        assert.isDefined(sdkFile);
+        expect(sdkFile?.getName()).toContain('@ohos.web.webview.d.ts');
+    });
+
+    it('test sdk import map for api-prefixed files', async () => {
+        const sdk: Sdk = { name: '', path: SDK_DIR, moduleName: '' };
+        let config: SceneConfig = new SceneConfig();
+        config.buildConfig(path.basename(SDK_DIR), SDK_DIR, [sdk]);
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        const sdkFile = SdkUtils.getImportSdkFile('@internal/Promise');
+        assert.isDefined(sdkFile);
+        expect(sdkFile?.getName()).toContain('@internal/Promise.d.ts');
     });
 });
