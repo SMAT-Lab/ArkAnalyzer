@@ -19,7 +19,7 @@ export {
     getCxxHeaderFileExtensionSet,
     getCxxSourceFileExtensionSet,
     getCxxSourceFileExtensions,
-} from './const';
+} from './ts/const';
 
 export {
     astKind,
@@ -28,8 +28,8 @@ export {
     CxxTranslationUnit,
     defaultArg,
     getNodeStartLineAndCol,
-} from './ArkCxxAstNode';
+} from './ts/ArkCxxAstNode';
 
-export { findCompileCommands, isAstJsonDumperAvailable } from './astUtils';
+export { findCompileCommands, isAstJsonDumperAvailable } from './ts/astUtils';
 
-export { AstParser } from './astParser';
+export { AstParser } from './ts/astParser';

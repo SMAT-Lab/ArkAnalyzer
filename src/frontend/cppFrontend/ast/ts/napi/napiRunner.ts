@@ -18,7 +18,7 @@ import type { ChildProcess, SpawnSyncReturns } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
+import Logger, { LOG_MODULE_TYPE } from '../../../../../utils/logger';
 import { getAstJsonDumperNodePath } from '../astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astJsonDumper');
@@ -167,11 +167,8 @@ function runArgvInSubprocess(context: AstJsonRunContext, ...argv: string[]): num
 }
 
 function shouldIsolateRuns(): boolean {
-    if (process.env.ARKANALYZER_AST_JSON_SUBPROCESS === '1') {
+    if (!('ARKANALYZER_AST_JSON_SUBPROCESS' in process.env)) {
         return true;
-    }
-    if (process.env.ARKANALYZER_AST_JSON_SUBPROCESS === '0') {
-        return false;
     }
     return process.env.VITEST === 'true';
 }

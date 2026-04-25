@@ -15,7 +15,15 @@ message(STATUS "CLANG_INCLUDE_DIRS: ${CLANG_INCLUDE_DIRS}")
 
 add_definitions(-fno-rtti)
 
-set(AST_JSON_DUMPER_SOURCES
+# =============================================================================
+# Single build product: astJsonDumper.node (MODULE)
+#   N-API binding + libTooling AST JSON dumper (.cpp under this tree; .h via #include)
+#   Built only when NODE_API_INCLUDE_DIR points at a directory containing node_api.h.
+# =============================================================================
+
+set(AST_JSON_DUMPER_NAPI_SRC napi/napiBinding.cpp)
+
+set(AST_JSON_DUMPER_CORE_SRCS
     cppAstDumper.cpp
     utils/compile_db_utils.cpp
     utils/output_path.cpp
@@ -25,6 +33,12 @@ set(AST_JSON_DUMPER_SOURCES
     utils/json_streaming.cpp
 )
 
+set(AST_JSON_DUMPER_ADDON_SOURCES
+    ${AST_JSON_DUMPER_NAPI_SRC}
+    ${AST_JSON_DUMPER_CORE_SRCS}
+)
+
+# Links clangTooling + LLVM for targets that use AST_JSON_DUMPER_* sources above.
 function(ast_json_dumper_link_llvm target_name)
     if(LLVM_LIBRARY_DIRS)
         target_link_directories(${target_name} PRIVATE ${LLVM_LIBRARY_DIRS})
@@ -64,14 +78,13 @@ function(ast_json_dumper_link_llvm target_name)
     endif()
 endfunction()
 
-# Node-API addon (astJsonDumper.node).
 set(NODE_API_INCLUDE_DIR "" CACHE PATH "Directory containing node_api.h (e.g. node_modules/node-api-headers/include)")
+
 if(NODE_API_INCLUDE_DIR AND EXISTS "${NODE_API_INCLUDE_DIR}/node_api.h")
-    add_library(astJsonDumper_addon MODULE
-        astJsonNapi/napiBinding.cpp
-        ${AST_JSON_DUMPER_SOURCES}
+    add_library(astJsonDumper_addon MODULE ${AST_JSON_DUMPER_ADDON_SOURCES})
+    target_compile_definitions(astJsonDumper_addon PRIVATE
+        AST_JSON_NO_MAIN
     )
-    target_compile_definitions(astJsonDumper_addon PRIVATE AST_JSON_NO_MAIN)
     if(WIN32)
         target_compile_definitions(astJsonDumper_addon PRIVATE BUILDING_NODE_EXTENSION)
     endif()
@@ -81,7 +94,11 @@ if(NODE_API_INCLUDE_DIR AND EXISTS "${NODE_API_INCLUDE_DIR}/node_api.h")
         ${CLANG_INCLUDE_DIRS}
         ${NODE_API_INCLUDE_DIR}
     )
-    set_target_properties(astJsonDumper_addon PROPERTIES PREFIX "" OUTPUT_NAME "astJsonDumper" SUFFIX ".node")
+    set_target_properties(astJsonDumper_addon PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "astJsonDumper"
+        SUFFIX ".node"
+    )
     ast_json_dumper_link_llvm(astJsonDumper_addon)
     if(APPLE)
         target_link_options(astJsonDumper_addon PRIVATE -undefined dynamic_lookup)
