@@ -2,7 +2,8 @@
 
 [简体中文](./README.md) 
 
-## Development environment setup
+## What is ArkAnalyzer?
+ArkAnalyzer is a static code analysis framework for HarmonyOS native applications developed in ArkTS. It supports ArkTS, TypeScript, JavaScript, and C/C++ as inputs. By converting these languages into a unified three-address-code intermediate representation (ArkAnalyzer-IR, or ArkIR), ArkAnalyzer builds a Scene data structure that abstracts the code and implements a series of static analyses on top of the Scene.
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/download) or another IDE.
 2. Install [Node.js](https://nodejs.org/en/download/current) (includes npm).
@@ -80,21 +81,19 @@ For detailed option semantics and examples, see [skills/arkanalyzer/skills/cg.md
 ## Documentation
 
 1. Quick start: [QuickStart.md](docs/QuickStart.md).
-2. API reference: [globals.md](docs/api_docs/globals.md).
-3. Program Analysis SIG: [English](docs/sig_programanalysis.en.md).
+2. Full user manual: [ArkAnalyzer Documentation](docs/README.md).
+3. API reference: [globals.md](docs/api_docs/globals.md).
+4. Program Analysis SIG: [English](docs/sig_programanalysis.en.md).
+
+
+## Supported Use Cases (by Language)
+
+
 
 ## Contributing
 
-Follow the OpenHarmony-SIG contribution workflow: [HowToCreatePR.md (English)](docs/HowToCreatePR.md#english).
+If you run into problems while using ArkAnalyzer, please follow the [Issue Submission Guide](docs/contributing/HowToHandleIssues.md) to open an issue.
+Contributions are welcome — when submitting a PR, please follow the openharmony-sig repository conventions. See the [PR Submission Guide](docs/contributing/HowToCreatePR.md#english) for the full process.
 
-## Debugging
-
-Set the `args` array in `.vscode/launch.json` to the file path you want to debug, then start debugging.
-
-## Adding test cases
-
-Place new tests under `tests/`. Sample code and other resources go under `tests/resources/`, organized in folders per scenario.
-
-## Issues
-
-See [HowToHandleIssues.md](docs/HowToHandleIssues.md) to file issues.
+## Release History
+For version history and change logs, see: [CHANGELOG](CHANGELOG.md)

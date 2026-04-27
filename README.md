@@ -1,5 +1,8 @@
 # 方舟分析器：面向ArkTS语言的静态程序分析框架
 
+## 什么是 ArkAnalyzer？
+ArkAnalyzer 是针对基于 ArkTS 语言开发的鸿蒙原生应用的静态代码分析框架，支持 ArkTS、TypeScript、JavaScript、C/C++ 作为输入，通过将它们转换为统一的三地址码（ArkAnalyzer-IR, ArkIR）中间表示，构建 Scene 数据结构对代码结构进行抽象，并进行 Scene 实现一系列静态分析。
+
 ## ArkAnalyzer 环境配置
 1. 从 [Download Visual Studio Code](https://code.visualstudio.com/download) 下载 VS Code 并安装，或安装其他 IDE。
 2. 从 [Download Node.js](https://nodejs.org/en/download/current) 下载 Node.js 并安装（自带 npm）。
@@ -77,17 +80,18 @@ npx arkanalyzer ir ./myapp -f json -o ./out
 ## ArkAnalyzer 文档
 
 1. ArkAnalyzer 快速入门文档，请参考：[链接](docs/QuickStart.md)。
-2. ArkAnalyzer API文档，请参考：[链接](docs/api_docs/globals.md)。
-3. 程序分析 SIG 说明：[简体中文](docs/sig_programanalysis.md) · [English](docs/sig_programanalysis.en.md)。
+2. 完整使用说明请参考：[ArkAnalyzer 使用文档](docs/README.md)
+3. ArkAnalyzer API文档，请参考：[链接](docs/api_docs/globals.md)。
+4. 程序分析 SIG 说明：[简体中文](docs/sig_programanalysis.md) · [English](docs/sig_programanalysis.en.md)。
 
-## ArkAnalyzer 代码上库
-遵守openharmony-sig代码上库规范, 操作方法请参考：[链接](docs/HowToCreatePR.md#中文)
 
-## ArkAnalyzer 调试
-将调试配置文件`.vscode/launch.json`中`args`参数数组修改为想要调试的文件路径，然后启动调试。
+## 支持的使用场景（分语言）
 
-## 添加自验证测试用例
-新增测试代码统一放至`tests`目录下，对应的样例代码和其他资源文件统一放至`tests\resources`,按测试场景创建不同文件夹。
 
-## ArkAnalyzer Issues
-请参考[连接](docs/HowToHandleIssues.md)提交Issues。
+## 参与贡献
+
+如在使用过程中遇到问题，可参考 [Issue 提交指南](docs/contributing/HowToHandleIssues.md) 提交Issues
+欢迎参与项目共建，提交 PR 请遵循 openharmony-sig 代码仓规范，具体流程请参考：[PR 提交流程说明](docs/contributing/HowToCreatePR.md#中文) 提交 PR
+
+## 版本演进
+项目版本演进及历史变更记录请参考：[CHANGELOG](CHANGELOG.md)
