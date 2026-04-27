@@ -38,12 +38,10 @@ Scene 是 ArkAnalyzer 的核心数据结构，它是对整个项目的抽象表�
 
 ### 2.1 前置要求
 
-1. **Node.js**: 从 [Node.js官网](https://nodejs.org/en/download/current) 下载并安装（推荐使用最新LTS版本）
-2. **TypeScript**: 通过npm全局安装
-   ```shell
-   npm install -g typescript
-   ```
-3. **IDE**: 推荐使用 [Visual Studio Code](https://code.visualstudio.com/download)
+1. **Node.js**：从 [Node.js 官网](https://nodejs.org/en/download/current) 下载并安装（推荐最新 LTS 版本，自带 npm）。
+2. **IDE**：推荐 [Visual Studio Code](https://code.visualstudio.com/download)，也可使用其他熟悉的 IDE。
+
+> 不需要全局安装 TypeScript：本项目使用 `ohos-typescript`（已在 `devDependencies` 中），所有编译命令（`npm run build`、`npm run gendoc` 等）会自动调用本地版本，避免与全局 `tsc` 版本冲突。
 
 ### 2.2 安装依赖
 
@@ -151,7 +149,7 @@ for (const arkFile of scene.getFiles()) {
    ```json
    {
        "dependencies": {
-           "arkanalyzer": "^1.0.8"  //版本号根据实际情况修改
+           "arkanalyzer": "^1.0.87"  //版本号根据实际情况修改，最新版本可在 npm 上查询
        }
    }
    ```
@@ -164,20 +162,21 @@ for (const arkFile of scene.getFiles()) {
 
 2. **通过源码方式引入**
 
-   如果需要基于源码进行开发或调试，也可以将 `Arkanalyzer` 以源码形式引入项目，例如作为子模块或本地依赖。在 `tsconfig.json` 中添加以下配置：
+   如果需要基于源码进行开发或调试，也可以将 `arkanalyzer` 以源码形式引入项目，例如作为子模块或本地依赖。在 `tsconfig.json` 中添加以下配置：
 
    ```json
    {
        "compilerOptions": {
            "paths": {
-               "@ArkAnalyzer/*": ["../arkanalyzer/*"]
+               "arkanalyzer": ["../arkanalyzer/src/index.ts"]
            }
        }
    }
    ```
 
-   完成配置后，即可在项目中通过模块名直接引用 Arkanalyzer 相关接口。
+   完成配置后，即可在项目中以 `import { ... } from 'arkanalyzer'` 形式直接引用相关接口——与 npm 安装方式完全一致。
 
+> **示例代码的 import 约定**：以下 §3、§4、§5 的所有示例统一使用 `from 'arkanalyzer'`。若你以源码方式集成，请按上述 `paths` 配置或将其替换为相对路径（如 `from '../arkanalyzer/src/index'`）。
 
 ## 3. Scene 结构使用样例
 
@@ -208,7 +207,7 @@ ArkAnalyzer的分析对象支持指定目录（适合简单测试）或指定鸿
 #### 步骤2：构建Scene
 
 ```typescript
-import { SceneConfig, Scene } from 'src/index'; //index.ts的相对目录
+import { SceneConfig, Scene } from 'arkanalyzer';
 
 // 方式1：从项目目录构建配置
 const config = new SceneConfig();
@@ -239,7 +238,7 @@ scene.inferTypes();
 ### 3.2 基本示例：遍历项目结构
 
 ```typescript
-import { Scene, SceneConfig, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME } from 'src/index'; //index.ts的相对目录
+import { Scene, SceneConfig, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME } from 'arkanalyzer';
 
 // 构建Scene
 const config = new SceneConfig();
@@ -289,7 +288,7 @@ for (const arkFile of scene.getFiles()) {
 ### 4.1 控制流图（CFG）
 通过 ArkMethod 的getBody()方法获取方法体，再通过getCfg()方法可以获取方法的CFG，示例如下所示。
 ```typescript
-import { Scene, SceneConfig, DEFAULT_ARK_METHOD_NAME } from 'src/index'; //index.ts的相对目录
+import { Scene, SceneConfig, DEFAULT_ARK_METHOD_NAME } from 'arkanalyzer';
 
 // 构建Scene
 const config = new SceneConfig();
@@ -340,7 +339,7 @@ for (const method of scene.getMethods()) {
 ### 4.2 类型推导和分析
 
 ```typescript
-import { Scene, SceneConfig, UnknownType } from 'src/index'; //index.ts的相对目录
+import { Scene, SceneConfig, UnknownType } from 'arkanalyzer';
 
 // 构建Scene
 const config = new SceneConfig();
@@ -373,7 +372,7 @@ for (const method of scene.getMethods()) {
 ### 4.3 定义-使用链分析
 
 ```typescript
-import { Scene, SceneConfig, DEFAULT_ARK_METHOD_NAME } from 'src/index'; //index.ts的相对目录
+import { Scene, SceneConfig, DEFAULT_ARK_METHOD_NAME } from 'arkanalyzer';
 
 // 构建Scene
 const config = new SceneConfig();
@@ -418,7 +417,7 @@ for (const method of scene.getMethods()) {
 1. 从入口点 `main` 方法构建
 
 ```typescript
-import { Scene, SceneConfig, CallGraph, CallGraphBuilder, CallGraphNode, MethodSignature, DEFAULT_ARK_CLASS_NAME } from 'src/index'; //index.ts的相对目录
+import { Scene, SceneConfig, CallGraph, CallGraphBuilder, CallGraphNode, MethodSignature, DEFAULT_ARK_CLASS_NAME } from 'arkanalyzer';
 
 // 构建Scene
 const config = new SceneConfig();
@@ -463,8 +462,9 @@ console.log(`入口点数量: ${callGraph.getEntries().length}`);
 for (const node of callGraph.getNodesIter()) {
     const cgNode = node as CallGraphNode;
     console.log(`方法: ${cgNode.getMethod().toString()}`);
-    console.log(`  调用者数量: ${cgNode.getIncomingEdge().size}`);
-    console.log(`  被调用方法数量: ${cgNode.getOutgoingEdges().size}`);
+    // 注意：getIncomingEdge() / getOutgoingEdges() 在节点没有边时返回 undefined
+    console.log(`  调用者数量: ${cgNode.getIncomingEdge()?.size ?? 0}`);
+    console.log(`  被调用方法数量: ${cgNode.getOutgoingEdges()?.size ?? 0}`);
 }
 
 // 4. 导出调用图（DOT格式）
@@ -677,8 +677,10 @@ scene.inferTypes();  // 在分析前执行类型推导
 
 ### 7.1 详细文档
 
-- **[Scene详细文档](./README.md)**：深入了解ArkAnalyzer的Scene结构、各层组件、转换过程和使用示例
-- **[API文档](./api_docs/globals.md)**：完整的API参考文档
+- **[文档总目录](./README.md)**：完整的核心组件、静态分析、项目级说明索引
+- **[Scene 详细文档](./components/Scene.md)**：深入了解 ArkAnalyzer 的 Scene 结构、各层组件、构建过程与查询接口
+- **[多语言支持说明](./MultiLanguageSupport.md)**：ArkTS / TypeScript / JavaScript / C/C++ 各前端能力差异
+- **[API 文档](./api_docs/globals.md)**：自动生成的完整 API 参考
 
 ### 7.2 示例代码
 

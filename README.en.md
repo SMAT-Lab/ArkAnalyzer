@@ -5,6 +5,8 @@
 ## What is ArkAnalyzer?
 ArkAnalyzer is a static code analysis framework for HarmonyOS native applications developed in ArkTS. It supports ArkTS, TypeScript, JavaScript, and C/C++ as inputs. By converting these languages into a unified three-address-code intermediate representation (ArkAnalyzer-IR, or ArkIR), ArkAnalyzer builds a Scene data structure that abstracts the code and implements a series of static analyses on top of the Scene.
 
+## Development environment setup
+
 1. Install [Visual Studio Code](https://code.visualstudio.com/download) or another IDE.
 2. Install [Node.js](https://nodejs.org/en/download/current) (includes npm).
 3. Install dependencies:
@@ -88,7 +90,23 @@ For detailed option semantics and examples, see [skills/arkanalyzer/skills/cg.md
 
 ## Supported Use Cases (by Language)
 
+ArkAnalyzer compiles every supported source language into a unified **ArkIR** (three-address intermediate representation), so downstream analyses ([CallGraph](docs/analysis/CallGraph.md), [Def-Use Chain](docs/analysis/Def-Use%20Chain.md), [IFDS](docs/analysis/IFDS.md), [ViewTree](docs/analysis/ViewTree.md), …) work uniformly across languages. Maturity differences are mostly in **frontend coverage** and **type-inference precision**; see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md) for the detailed matrix.
 
+| Language | `Language` enum | IR lowering | Type inference | Call graph (CHA / RTA) | Def-Use / IFDS | ViewTree | Notes |
+|----------|-----------------|-------------|----------------|------------------------|----------------|----------|-------|
+| ArkTS 1.1 / 1.2 | `ARKTS1_1` / `ARKTS1_2` | ✅ full | ✅ full (incl. decorators) | ✅ | ✅ | ✅ | HarmonyOS first-class; the only language with ArkUI view-tree analysis |
+| TypeScript | `TYPESCRIPT` | ✅ full | ✅ full | ✅ | ✅ | — | Vanilla TS projects; namespaces, generics, decorators, `type`/`interface`, etc. |
+| JavaScript | `JAVASCRIPT` | ✅ basic | ⚠ limited (falls back to `UnknownType` without annotations) | ✅ | ✅ | — | Good for sketching dynamic call relations; for precision, prefer TS annotations |
+| C / C++ | `CXX` | ✅ (cppFrontend) | ⚠ partial | ✅ | ✅ | — | Requires `cppAstPath` / `ccjsonPath`; supports `VIRTUAL`, `INLINE`, `CONSTEXPR`, `MUTABLE`, …; targets HarmonyOS native modules |
+| ABC (ArkCompiler bytecode) | `ABC` | ⚠ experimental | — | — | — | — | Direct bytecode read, mainly for IR validation |
+
+**Typical scenarios**:
+
+- **HarmonyOS / ArkTS applications**: ArkUI view-tree analysis ([ViewTree](docs/analysis/ViewTree.md)) + state-dependency tracking + `@State` side-effect checks; multi-module projects are auto-detected via [`Scene.buildScene4HarmonyProject()`](docs/components/Scene.md#51-构建-scene).
+- **TS / JS libraries or server-side projects**: [CallGraph](docs/analysis/CallGraph.md) (CHA / RTA) + [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [IFDS](docs/analysis/IFDS.md) (custom checkers for taint, undefined-variable, divide-by-zero, …).
+- **Mixed TS/ArkTS + C/C++ projects**: use `ArkClass.getTs2cxxFuncMap()` to bridge TS-side `napi_*` calls to their C/C++ implementations for cross-language reachability.
+
+For a finer-grained capability matrix and IR differences across languages, see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md).
 
 ## Contributing
 

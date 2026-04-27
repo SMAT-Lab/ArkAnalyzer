@@ -1,57 +1,110 @@
-# ArkAnalyzer 完整文档目录
+# ArkAnalyzer 文档中心（`docs/`）
 
-### 快速开始
 
-- [**快速入门指南**](./QuickStart.md) - 环境配置、项目构建、示例运行与常见分析能力。
+## 1. 目录组织
 
-### 核心组件
-ArkAnalyzer 将项目代码抽象为层次化的 Scene 数据结构。以下文档按从整体到局部的顺序组织：
+`docs/` 下共 4 个子目录 + 若干顶层 .md 文件：
 
-| 组件 | 说明 | 文档 |
+| 路径 | 内容 |
+|------|------|
+| [`components/`](./components/) | **核心组件** 10 篇——Scene 数据结构层级模型 |
+| [`analysis/`](./analysis/) | **静态分析** 5 篇——TypeInference / Def-Use / CallGraph / IFDS / ViewTree |
+| [`cppFrontend/`](./cppFrontend/) | C/C++ 前端用户指南、构建指南、配套截图 |
+| [`contributing/`](./contributing/) | 贡献流程（PR / Issue 提交规范） |
+| [`api_docs/`](./api_docs/) | typedoc 自动生成的 API 参考（`npm run gendoc` 产物，**不要手工编辑**） |
+| [`images/`](./images/) | 项目级配图 |
+| 顶层 .md | QuickStart、MultiLanguageSupport、SIG 说明等通用文档 |
+
+## 2. 文件清单
+
+### 2.1 入门
+
+| 文档 | 说明 |
+|------|------|
+| [QuickStart.md](./QuickStart.md) | 环境配置、Scene 构建、各分析能力的最小可运行示例 |
+
+### 2.2 核心组件（`components/`）
+
+按"自上而下"的层级顺序：
+
+| 层级 | 文档 | 说明 |
 |------|------|------|
-| **Scene** | 项目级全局模型，管理文件、类和方法等结构 | [Scene](./components/Scene.md) |
-| **ArkFile** | 单个源文件的抽象 | [ArkFile](./components/ArkFile.md) |
-| **ArkNamespace** | 命名空间或模块作用域的抽象 | [ArkNamespace](./components/ArkNameSpace.md) |
-| **ArkClass** | 类、接口、枚举等类型声明的抽象 | [ArkClass](./components/ArkClass.md) |
-| **ArkMethod** | 方法或函数的抽象 | [ArkMethod](./components/ArkMethod.md) |
-| **ArkField** | 类字段或属性的抽象 | [ArkField](./components/ArkField.md) |
-| **ArkBody** | 方法体的 IR 容器 | [ArkBody](./components/ArkBody.md) |
-| **CFG** | 方法内部的控制流图 | [CFG](./components/CFG.md) |
-| **IRBasics** | ArkIR 值类型：Local / Constant / Ref / Expr | [IRBasics](./components/IRBasics.md) |
-| **Stmt** | ArkIR 语句类型与表达形式 | [Stmt](./components/Stmt.md) |
+| 项目 | [Scene.md](./components/Scene.md) | 项目级全局模型，全局索引 + 构建管线 |
+| 文件 | [ArkFile.md](./components/ArkFile.md) | 单个源文件抽象（含 Language 枚举、import/export） |
+| 命名空间 | [ArkNameSpace.md](./components/ArkNameSpace.md) | `namespace` 抽象，可嵌套、同名合并 |
+| 类型 | [ArkClass.md](./components/ArkClass.md) | 类 / 接口 / 枚举 / struct / 对象字面量 / type literal / union |
+| 方法 | [ArkMethod.md](./components/ArkMethod.md) | 方法 / 函数 / `%dflt` / `%instInit` / `%statInit` / `%AM` |
+| 字段 | [ArkField.md](./components/ArkField.md) | 字段 / 枚举成员 / 索引签名 / 参数属性 / GET 访问器 |
+| 方法体 | [ArkBody.md](./components/ArkBody.md) | locals / cfg / traps / aliasTypeMap |
+| CFG | [CFG.md](./components/CFG.md) | 控制流图（Cfg + BasicBlock）+ 5 类控制结构改写 |
+| 语句 | [Stmt.md](./components/Stmt.md) | 7 种 Stmt 子类 + def/use 关系 |
+| IR 值 | [IRBasics.md](./components/IRBasics.md) | Local / Constant / Ref / Expr 四大类 IR 基础元素 |
 
-**层次关系**：
+### 2.3 静态分析（`analysis/`）
+
+| 文档 | 说明 |
+|------|------|
+| [TypeInference.md](./analysis/TypeInference.md) | 类型推导（`scene.inferTypes()`），其他分析的前置 |
+| [Def-Use Chain.md](./analysis/Def-Use%20Chain.md) | 定义-使用链（`Cfg.buildDefUseChain()`） |
+| [CallGraph.md](./analysis/CallGraph.md) | 调用图（CHA / RTA 双算法 + DOT/JSON 导出） |
+| [IFDS.md](./analysis/IFDS.md) | 过程间数据流（4 类 FlowFunction + PathEdge） |
+| [ViewTree.md](./analysis/ViewTree.md) | ArkUI 组件树 + 状态绑定 |
+
+### 2.4 多语言与 C/C++ 前端
+
+| 文档 | 说明 |
+|------|------|
+| [MultiLanguageSupport.md](./MultiLanguageSupport.md) | ArkTS 1.1/1.2、TypeScript、JavaScript、C/C++、ABC 各前端能力矩阵与 IR 差异 |
+| [cppFrontend/cpp_frontend_user_guide.md](./cppFrontend/cpp_frontend_user_guide.md) | C/C++ 前端用户指南 |
+| [cppFrontend/cpp_frontend_build_guide.md](./cppFrontend/cpp_frontend_build_guide.md) | C/C++ 前端构建指南（cppast dumper、CMake 配置） |
+| [cppFrontend/ArkAnalyzer-cpp_usage_guide.md](./cppFrontend/ArkAnalyzer-cpp_usage_guide.md) | 分析 C/C++ 项目的端到端示例 |
+
+### 2.5 SIG 与社区
+
+| 文档 | 说明 |
+|------|------|
+| [sig_programanalysis.md](./sig_programanalysis.md) | OpenHarmony 程序分析 SIG 中文说明 |
+| [sig_programanalysis.en.md](./sig_programanalysis.en.md) | Program Analysis SIG (English) |
+
+### 2.6 贡献与维护
+
+| 文档 | 说明 |
+|------|------|
+| [contributing/HowToCreatePR.md](./contributing/HowToCreatePR.md) | 创建 PR 的完整流程 |
+| [contributing/HowToHandleIssues.md](./contributing/HowToHandleIssues.md) | Issue 提交与处理流程 |
+
+### 2.7 API 参考
+
+| 文档 | 说明 |
+|------|------|
+| [api_docs/globals.md](./api_docs/globals.md) | typedoc 自动生成；重新生成请运行 `npm run gendoc` |
+
+## 3. 项目层次速览
+
+下图展示 ArkAnalyzer 的 Scene 数据结构如何把项目代码自上而下组织起来，与 [§2.2 核心组件](#22-核心组件components) 表里的 10 篇文档一一对应：
+
 ```
 Scene
- └── ArkFile（文件）
-      ├── ArkNamespace（命名空间）
-      │    ├── ArkClass → ArkMethod / ArkField
-      │    └── 嵌套 ArkNamespace
-      └── ArkClass（类）
-          ├── ArkMethod（方法）
-          │    └── ArkBody → CFG → BasicBlock → Stmt
-          └── ArkField（字段）
+ ├── ArkFile（源文件）
+ │    ├── ArkNamespace（命名空间，可嵌套）
+ │    │    ├── ArkClass → ArkMethod / ArkField
+ │    │    └── 嵌套 ArkNamespace
+ │    └── ArkClass（类 / 接口 / 枚举 / struct / 对象字面量 / type literal / union）
+ │         ├── ArkMethod（方法 / 函数 / %dflt / %instInit / %statInit / %AM）
+ │         │    └── ArkBody → CFG → BasicBlock → Stmt
+ │         │                                     └─ Local / Constant / Ref / Expr
+ │         └── ArkField（字段 / 枚举成员 / 索引签名 / 参数属性 / GET 访问器）
+ ├── sdkArkFilesMap（SDK 文件，与项目代码同一套模型抽象）
+ └── ModuleScene（鸿蒙多模块工程的子作用域，可选）
 ```
 
+详见 [Scene.md §3 层次结构](./components/Scene.md#3-层次结构)。
 
-### 静态分析
-基于 Scene 和 CFG，ArkAnalyzer 提供以下分析能力。
+## 4. 推荐阅读顺序
 
-| 分析能力 | 说明 | 文档 |
-|----------|------|------|
-| **类型推导** | 为 IR 中的变量和值推断类型 | [TypeInference](./analysis/TypeInference.md) |
-| **Def-Use Chain** | 分析变量的定义和使用关系 | [Def-Use Chain](./analysis/Def-Use%20Chain.md) |
-| **调用图 (CallGraph)** | 构建方法间调用关系 | [CallGraph](./analysis/CallGraph.md) |
-| **数据流分析 (IFDS)** | 执行过程间数据流分析 | [IFDS](./analysis/IFDS.md) |
-| **ArkUI ViewTree** | 分析 ArkUI 组件树与状态绑定关系 | [ViewTree](./analysis/ViewTree.md) |
-
-
-
-### 开发指南
-
-- [**如何创建 PR**](./contributing/HowToCreatePR.md) - 贡献代码的流程
-- [**如何处理 Issues**](./contributing/HowToHandleIssues.md) - 问题报告和处理流程
-
-### API 文档
-
-- [**完整 API 参考**](./api_docs/globals.md) - 自动生成的接口参考
+| 读者类型 | 路径 |
+|---------|------|
+| 新用户 | [QuickStart](./QuickStart.md) → [IRBasics](./components/IRBasics.md) → [Stmt](./components/Stmt.md) → [CFG](./components/CFG.md) → [Scene](./components/Scene.md) → 任一 [analysis](./analysis/) 篇 |
+| 分析开发者 | 通读 [components/](./components/) → 按目标读 [analysis/](./analysis/) |
+| C/C++ 集成 | [MultiLanguageSupport](./MultiLanguageSupport.md) → [cppFrontend/](./cppFrontend/) |
+| 文档贡献者 | [contributing/HowToCreatePR.md](./contributing/HowToCreatePR.md) → 修改对应文档 → 提 PR |
