@@ -38,11 +38,19 @@ export function findProjectRoot(startDir: string = __dirname): string {
  */
 export function getAstJsonDumperNodePath(): string {
     const projectRoot = findProjectRoot(__dirname);
-    let nodeAddonPath = path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper.node');
-    if (!fs.existsSync(nodeAddonPath)) {
-        nodeAddonPath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.node');
+    const platformArch = `${process.platform}-${process.arch}`;
+    const addonPackageName = `@arkanalyzer/ast-addon-${platformArch}`;
+    const candidates = [
+        path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper.node'),
+        path.join(projectRoot, 'node_modules', addonPackageName, 'runtime', 'astJsonDumper.node'),
+        path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.node'), // Backward compatibility with old package layout.
+    ];
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
     }
-    return nodeAddonPath;
+    return candidates[0];
 }
 
 /** True when {@link getAstJsonDumperNodePath} exists on disk. */
