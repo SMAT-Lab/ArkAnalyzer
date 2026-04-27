@@ -87,6 +87,17 @@ if(NODE_API_INCLUDE_DIR AND EXISTS "${NODE_API_INCLUDE_DIR}/node_api.h")
     )
     if(WIN32)
         target_compile_definitions(astJsonDumper_addon PRIVATE BUILDING_NODE_EXTENSION)
+        # MSYS2/MinGW builds need libnode import library to resolve __imp_napi_* symbols.
+        find_library(NODE_IMPORT_LIB
+            NAMES node libnode
+            PATHS /mingw64/lib /ucrt64/lib
+        )
+        if(NODE_IMPORT_LIB)
+            target_link_libraries(astJsonDumper_addon PRIVATE ${NODE_IMPORT_LIB})
+            message(STATUS "Using Node import library: ${NODE_IMPORT_LIB}")
+        else()
+            message(WARNING "Node import library not found; WIN32 link may fail with unresolved napi symbols.")
+        endif()
     endif()
     target_include_directories(astJsonDumper_addon PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
