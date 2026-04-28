@@ -52,6 +52,7 @@ import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
+import { sortByDependency } from './utils/DependenciesSort';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -1164,11 +1165,19 @@ export class Scene {
      scene.inferTypes();
      ```
      */
-    public inferTypes(): void {
-
-        this.filesMap.forEach(file => {
-            InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
-        });
+    public inferTypes(times: number = 1): void {
+        if (times < 1) {
+            return;
+        } else if (times > 5) {
+            times = 5;
+        }
+        const sortedFiles = sortByDependency(this.filesMap, this.projectName);
+        while (times > 0) {
+            for (const file of sortedFiles) {
+                InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
+            }
+            times--;
+        }
         if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
             this.getMethodsMap(true);
             this.buildStage = SceneBuildStage.TYPE_INFERRED;

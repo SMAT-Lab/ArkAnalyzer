@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,7 +16,7 @@
 import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
 import {
-    ArkClass,
+    ArkClass, ArkFile,
     ClassType,
     CONSTRUCTOR_NAME,
     MethodSignature,
@@ -28,6 +28,7 @@ import {
 import { OperandOriginalPositions_Expect_IR } from '../resources/inferType/IRChange/OperandOriginalPositionsExpect';
 import { testMethodStmts } from './common';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
+import { sortByDependency } from '../../src/utils/DependenciesSort';
 
 describe('StaticSingleAssignmentFormer Test', () => {
     let config: SceneConfig = new SceneConfig();
@@ -118,6 +119,24 @@ describe('Infer Method Return Type', () => {
         const returnType = method?.getReturnType();
         assert.isDefined(returnType);
         assert.equal(returnType!.toString(), 'any[]');
+    });
+});
+
+describe('infer order', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, '../resources/inferType/exportAll'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+
+    it('file order case', () => {
+        const filesMap = new Map<string, ArkFile>();
+        scene.getFiles().forEach(file => filesMap.set(file.getFileSignature().toMapKey(), file));
+        const arkFiles = sortByDependency(filesMap, scene.getProjectName());
+        assert.equal(arkFiles.length, filesMap.size);
+        const expectedOrders = ['167090289test2.ets', '1323349145MyComponent.ets', '1947130106Index.ets'];
+        arkFiles.forEach((file, index) => {
+            assert.equal(file.getFileSignature().toMapKey(), expectedOrders[index]);
+        });
     });
 });
 
