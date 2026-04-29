@@ -14,10 +14,49 @@
  */
 
 import { defineConfig } from 'vitest/config';
+import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast';
+
+const astJsonDumperAvailable = isAstJsonDumperAvailable();
+const sdkHome = process.env.OHOS_SDK_HOME?.trim();
+
+function isDevecoIncludeEnvConfigured(): boolean {
+    const c = process.env.DEVECO_C?.trim() ?? '';
+    const inc = process.env.DEVECO_INCLUDE?.trim() ?? '';
+    const sys = process.env.DEVECO_SYSROOT_INCLUDE?.trim() ?? '';
+    return c.length > 0 && inc.length > 0 && sys.length > 0;
+}
+
+const devecoIncludeEnvConfigured = isDevecoIncludeEnvConfigured();
+const skipCoreCppTests = !astJsonDumperAvailable;
+
+// These two need OHOS include roots: either OHOS_SDK_HOME or all of DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE.
+const skipOhosSdkHomeDependentTests =
+    astJsonDumperAvailable && !sdkHome && !devecoIncludeEnvConfigured;
+
+if (!astJsonDumperAvailable) {
+    console.warn(
+        '[vitest] astJsonDumper.node not found — skipping tests/unit/cppCore (build per src/frontend/cppFrontend/ast/README.md).',
+    );
+} else if (!sdkHome && !devecoIncludeEnvConfigured) {
+    console.warn(
+        '[vitest] OHOS_SDK_HOME and DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE are unset — skipping Cfg.test.ts and ExportInfo.test.ts only.'
+    );
+}
+
+const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
+    'tests/unit/cppCore/graph/Cfg.test.ts',
+    'tests/unit/cppCore/export/ExportInfo.test.ts',
+] as const;
 
 export default defineConfig({
     test: {
         include: ['tests/unit/**/*.test.ts'],
+        exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            ...(skipCoreCppTests ? ['tests/unit/cppCore/**'] : []),
+            ...(skipOhosSdkHomeDependentTests ? [...OHOS_SDK_HOME_DEPENDENT_TEST_FILES] : []),
+        ],
         coverage: {
             include: ['src/**'],
         },

@@ -16,22 +16,20 @@
   "modelVersion": "5.0.0",
   "description": "Please describe the basic information.",
   "dependencies": {
+    "@MyLib": "./lib1"
   },
   "devDependencies": {
-    "@ohos/hypium": "1.0.19",
-    "@ohos/hamock": "1.0.0"
+    "@ohos/hypium": "1.0.19"
   },
   "overrides": {
-    "@model1":"./model1/index11.ets",
-    //"@model1":"./model1",
-    //"@model2": "1.0.0"
-    //"@model2": "file:./libs/model2.har",
-    "@model2": "file:./model2",
+    "@MyLib": "./libbase/lib1",
+    "@ohos/model2": "file:./libs/model2.har",
+    "@ohos/hamock": "@module:@MyLib"
   },
   "overrideDependencyMap": {
     //overrideDependencyMap依赖替换配置，可配置多条
     //value对应的文件路径只支持绝对路径，配置为相对路径时，需要手动设置.ohpmrc文件中odm_r2_project_root=true, 此时，相对路径会从项目根目录为起点开始解析。
-    "@libbase": "D:/work/branch/pjf/arkanalyzer/tests/resources/dependency/exampleProject/MyApplication4Files/dep-debug.json5"
+    "@libbase": "./dep-debug.json5"
   },
   // 开启参数化并指定参数化配置文件路径，只能是版本号，sdk情况暂不考虑。
   "parameterFile": './parameterFile.json5'

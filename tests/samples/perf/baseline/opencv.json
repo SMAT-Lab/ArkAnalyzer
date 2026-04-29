@@ -1,0 +1,752 @@
+{
+  "stages": [
+    {
+      "stageName": "buildConfig",
+      "durationMs": 99.695291,
+      "cpuProfile": {},
+      "heapGrowthBytes": -111068480,
+      "heapPeakUsedBytes": 411331888,
+      "rssPeakBytes": 661372928,
+      "heapBefore": {
+        "used": 411331888,
+        "total": 507461632,
+        "limit": 17381195776
+      },
+      "heapAfter": {
+        "used": 300263408,
+        "total": 468418560,
+        "limit": 17381195776
+      },
+      "gcPauses": {
+        "count": 2,
+        "totalDurationMs": 23.020915985107422,
+        "naturalCount": 1,
+        "naturalDurationMs": 0.9651250839233398,
+        "manualCount": 1,
+        "manualDurationMs": 22.055790901184082
+      },
+      "cpuHotFunctions": [
+        {
+          "name": "post",
+          "location": "node:inspector:115",
+          "selfTimeMs": 204.667,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "lstat",
+          "location": "unknown:0",
+          "selfTimeMs": 33.792,
+          "sampleCount": 27,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "(garbage collector)",
+          "location": "unknown:0",
+          "selfTimeMs": 24.000000000000004,
+          "sampleCount": 19,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "readdir",
+          "location": "unknown:0",
+          "selfTimeMs": 20.166999999999998,
+          "sampleCount": 16,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "stat",
+          "location": "unknown:0",
+          "selfTimeMs": 16.709,
+          "sampleCount": 14,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "realpathSync",
+          "location": "node:fs:2700",
+          "selfTimeMs": 10.499,
+          "sampleCount": 9,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "resolve",
+          "location": "node:path:1245",
+          "selfTimeMs": 6.25,
+          "sampleCount": 5,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "getAllFiles",
+          "location": "getAllFiles.ts:67",
+          "selfTimeMs": 2.916,
+          "sampleCount": 6,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "readdirSync",
+          "location": "node:fs:1558",
+          "selfTimeMs": 1.291,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "nextPart",
+          "location": "node:fs:2689",
+          "selfTimeMs": 1.25,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "normalizeString",
+          "location": "node:path:92",
+          "selfTimeMs": 1.25,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "dispatch",
+          "location": "unknown:0",
+          "selfTimeMs": 0.791,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        }
+      ],
+      "allocationHotFunctions": [
+        {
+          "name": "#onMessage",
+          "location": "node:inspector:84",
+          "allocatedBytes": 65616,
+          "allocatedMb": 0.0625762939453125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "(root)",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "processImmediate",
+          "location": "timers:457",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "runNextTicks",
+          "location": "task_queues:63",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "fulfilled",
+          "location": "profiler.ts:52",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "next",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 3
+        },
+        {
+          "name": "post",
+          "location": "profiler.ts:409",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "__awaiter",
+          "location": "profiler.ts:49",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "Promise",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 3
+        },
+        {
+          "name": "postWithSession",
+          "location": "profiler.ts:414",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "post",
+          "location": "node:inspector:115",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        }
+      ]
+    },
+    {
+      "stageName": "buildScene",
+      "durationMs": 105.44324999999981,
+      "cpuProfile": {},
+      "heapGrowthBytes": 6655080,
+      "heapPeakUsedBytes": 307046456,
+      "rssPeakBytes": 669106176,
+      "heapBefore": {
+        "used": 300391376,
+        "total": 468418560,
+        "limit": 17381195776
+      },
+      "heapAfter": {
+        "used": 307046456,
+        "total": 459997184,
+        "limit": 17381195776
+      },
+      "gcPauses": {
+        "count": 1,
+        "totalDurationMs": 24.702499985694885,
+        "naturalCount": 0,
+        "naturalDurationMs": 0,
+        "manualCount": 1,
+        "manualDurationMs": 24.702499985694885
+      },
+      "cpuHotFunctions": [
+        {
+          "name": "post",
+          "location": "node:inspector:115",
+          "selfTimeMs": 142.167,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "(garbage collector)",
+          "location": "unknown:0",
+          "selfTimeMs": 25.209,
+          "sampleCount": 20,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "buildArkMethodFromArkClass",
+          "location": "ArkMethodBuilder.ts:97",
+          "selfTimeMs": 4.375,
+          "sampleCount": 5,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "scanJsDocToken",
+          "location": "typescript.js:13534",
+          "selfTimeMs": 3.7100000000000004,
+          "sampleCount": 6,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseTagComments",
+          "location": "typescript.js:34722",
+          "selfTimeMs": 3.4589999999999996,
+          "sampleCount": 6,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "forEachChildRecursively",
+          "location": "typescript.js:28704",
+          "selfTimeMs": 3.333,
+          "sampleCount": 5,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "scan",
+          "location": "typescript.js:12847",
+          "selfTimeMs": 2.749,
+          "sampleCount": 6,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "nextTokenWithoutCheck",
+          "location": "typescript.js:29417",
+          "selfTimeMs": 2.584,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseInterfaceDeclaration",
+          "location": "typescript.js:34008",
+          "selfTimeMs": 2.5,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "readFileUtf8",
+          "location": "unknown:0",
+          "selfTimeMs": 2.5,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "stat",
+          "location": "unknown:0",
+          "selfTimeMs": 2.5,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseDeclarationWorker",
+          "location": "typescript.js:33180",
+          "selfTimeMs": 2.418,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "iterateCommentRanges",
+          "location": "typescript.js:12150",
+          "selfTimeMs": 2.3739999999999997,
+          "sampleCount": 4,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "skipTrivia",
+          "location": "typescript.js:12015",
+          "selfTimeMs": 2.292,
+          "sampleCount": 4,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "processCommentPragmas",
+          "location": "typescript.js:35625",
+          "selfTimeMs": 2,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "SyntaxKind",
+          "location": "typescript.js:177",
+          "selfTimeMs": 2,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseJSDocCommentWorker",
+          "location": "typescript.js:34480",
+          "selfTimeMs": 1.959,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseTag",
+          "location": "typescript.js:34640",
+          "selfTimeMs": 1.792,
+          "sampleCount": 3,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "inferUnclearedType",
+          "location": "TypeInference.ts:123",
+          "selfTimeMs": 1.791,
+          "sampleCount": 4,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "parseJSDocLinkPrefix",
+          "location": "typescript.js:34848",
+          "selfTimeMs": 1.292,
+          "sampleCount": 2,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        }
+      ],
+      "allocationHotFunctions": [
+        {
+          "name": "readFileSync",
+          "location": "node:fs:433",
+          "allocatedBytes": 401936,
+          "allocatedMb": 0.3833160400390625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "push",
+          "location": "unknown:0",
+          "allocatedBytes": 231096,
+          "allocatedMb": 0.22039031982421875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "Map",
+          "location": "unknown:0",
+          "allocatedBytes": 229792,
+          "allocatedMb": 0.219146728515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "ArkMethod",
+          "location": "ArkMethod.ts:46",
+          "allocatedBytes": 196944,
+          "allocatedMb": 0.1878204345703125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 3
+        },
+        {
+          "name": "buildArkMethodFromArkClass",
+          "location": "ArkMethodBuilder.ts:97",
+          "allocatedBytes": 196760,
+          "allocatedMb": 0.18764495849609375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 6
+        },
+        {
+          "name": "set",
+          "location": "unknown:0",
+          "allocatedBytes": 167968,
+          "allocatedMb": 0.160186767578125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 5
+        },
+        {
+          "name": "substring",
+          "location": "unknown:0",
+          "allocatedBytes": 164224,
+          "allocatedMb": 0.1566162109375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 5
+        },
+        {
+          "name": "ArkClass",
+          "location": "ArkClass.ts:76",
+          "allocatedBytes": 164160,
+          "allocatedMb": 0.15655517578125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "#onMessage",
+          "location": "node:inspector:84",
+          "allocatedBytes": 98464,
+          "allocatedMb": 0.093902587890625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "scan",
+          "location": "typescript.js:12847",
+          "allocatedBytes": 98368,
+          "allocatedMb": 0.09381103515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 4
+        },
+        {
+          "name": "updateMethodMap",
+          "location": "ArkClass.ts:445",
+          "allocatedBytes": 98352,
+          "allocatedMb": 0.0937957763671875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 3
+        },
+        {
+          "name": "setTextPos",
+          "location": "typescript.js:13681",
+          "allocatedBytes": 72736,
+          "allocatedMb": 0.069366455078125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "getStartPos",
+          "location": "typescript.js:12308",
+          "allocatedBytes": 72528,
+          "allocatedMb": 0.0691680908203125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "createToken3",
+          "location": "typescript.js:22182",
+          "allocatedBytes": 66488,
+          "allocatedMb": 0.06340789794921875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "parseList",
+          "location": "typescript.js:30043",
+          "allocatedBytes": 66240,
+          "allocatedMb": 0.06317138671875,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 12
+        },
+        {
+          "name": "setDeclareLinesAndCols",
+          "location": "ArkMethod.ts:109",
+          "allocatedBytes": 65664,
+          "allocatedMb": 0.0626220703125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "ArkField",
+          "location": "ArkField.ts:37",
+          "allocatedBytes": 65664,
+          "allocatedMb": 0.0626220703125,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 2
+        },
+        {
+          "name": "tsNode2Type",
+          "location": "builderUtils.ts:388",
+          "allocatedBytes": 65600,
+          "allocatedMb": 0.06256103515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 7
+        },
+        {
+          "name": "ClassType",
+          "location": "Type.ts:416",
+          "allocatedBytes": 65560,
+          "allocatedMb": 0.06252288818359375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "exec",
+          "location": "unknown:0",
+          "allocatedBytes": 34560,
+          "allocatedMb": 0.032958984375,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        }
+      ]
+    },
+    {
+      "stageName": "inferTypes",
+      "durationMs": 0.13512500000024374,
+      "cpuProfile": {},
+      "heapGrowthBytes": -822376,
+      "heapPeakUsedBytes": 307392952,
+      "rssPeakBytes": 669155328,
+      "heapBefore": {
+        "used": 307392952,
+        "total": 459997184,
+        "limit": 17381195776
+      },
+      "heapAfter": {
+        "used": 306570576,
+        "total": 459735040,
+        "limit": 17381195776
+      },
+      "gcPauses": {
+        "count": 1,
+        "totalDurationMs": 21.79937505722046,
+        "naturalCount": 0,
+        "naturalDurationMs": 0,
+        "manualCount": 1,
+        "manualDurationMs": 21.79937505722046
+      },
+      "cpuHotFunctions": [
+        {
+          "name": "post",
+          "location": "node:inspector:115",
+          "selfTimeMs": 150.792,
+          "sampleCount": 1,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        },
+        {
+          "name": "(garbage collector)",
+          "location": "unknown:0",
+          "selfTimeMs": 21.583000000000002,
+          "sampleCount": 17,
+          "selfTimeStdDevMs": 0,
+          "selfTimeCv": 0
+        }
+      ],
+      "allocationHotFunctions": [
+        {
+          "name": "getMethodsMap",
+          "location": "Scene.ts:1020",
+          "allocatedBytes": 32832,
+          "allocatedMb": 0.03131103515625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "Promise",
+          "location": "unknown:0",
+          "allocatedBytes": 32784,
+          "allocatedMb": 0.0312652587890625,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "(root)",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "processImmediate",
+          "location": "timers:457",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "runNextTicks",
+          "location": "task_queues:63",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "fulfilled",
+          "location": "profiler.ts:52",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "next",
+          "location": "unknown:0",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "measureStage",
+          "location": "profiler.ts:444",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "inferTypes",
+          "location": "Scene.ts:1131",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "post",
+          "location": "profiler.ts:409",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        },
+        {
+          "name": "__awaiter",
+          "location": "profiler.ts:49",
+          "allocatedBytes": 0,
+          "allocatedMb": 0,
+          "allocatedBytesStdDev": 0,
+          "allocatedBytesCv": 0,
+          "sampleCount": 1
+        }
+      ]
+    }
+  ],
+  "totalDurationMs": 205.27366600000005,
+  "arkFileCount": 0,
+  "arkClassCount": 0,
+  "arkMethodCount": 0,
+  "arkStmtCount": 0,
+  "project": "opencv",
+  "gitCommit": "4f062dc4d9d674b475fb14e72f12fba0b3159606",
+  "reportTime": "2026-04-23T01:20:56.534Z"
+}

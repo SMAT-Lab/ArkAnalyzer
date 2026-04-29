@@ -144,7 +144,7 @@ export abstract class ImportInfoInference extends ArkModelInference {
 }
 
 export class FileInference extends ArkModelInference {
-    private importInfoInference: ImportInfoInference;
+    protected importInfoInference: ImportInfoInference;
     private classInference: ClassInference;
 
     constructor(importInfoInference: ImportInfoInference, classInference: ClassInference) {

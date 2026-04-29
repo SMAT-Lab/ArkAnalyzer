@@ -54,6 +54,8 @@ import { ArkMetadataKind, CommentsMetadata } from '../../core/model/ArkMetadata'
 import { ImportInfo } from '../../core/model/ArkImport';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { Dump } from '../base/BasePrinter';
+import { CONSTRUCT_SIGNATURE_NAME } from '../../core/common/Const';
+import { CONSTRUCTOR_NAME } from '../../core/common/TSConst';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SourceStmt');
 const IGNOR_TYPES = new Set<string>(['any', 'Map', 'Set']);
@@ -307,7 +309,7 @@ export class SourceAssignStmt extends SourceStmt {
                 let instanceInvokeExpr = stmt.getRightOp() as ArkInstanceInvokeExpr;
                 const methodName = instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
                 if (
-                    ('constructor' === methodName || 'construct-signature' === methodName) &&
+                    (CONSTRUCTOR_NAME === methodName || CONSTRUCT_SIGNATURE_NAME === methodName) &&
                     instanceInvokeExpr.getBase().getName() === (this.leftOp as Local).getName()
                 ) {
                     this.handleConstructorInvoke(instanceInvokeExpr, originType);

@@ -15,6 +15,7 @@
 
 import { ClassCategory } from '../../core/model/ArkClass';
 import { ExportType } from '../../core/model/ArkExport';
+import { CxxTypeBitWidth } from '../../frontend/cppFrontend/base/Type';
 
 // Polymorphic wrapper type for discriminated unions
 type Polymorphic<K, T> = T & { _: K; };
@@ -116,6 +117,21 @@ export type TypeDto =
     | Polymorphic<'AnnotationTypeQueryType', AnnotationTypeQueryTypeDto>
     | Polymorphic<'EnumValueType', EnumValueTypeDto>
     | Polymorphic<'LexicalEnvType', LexicalEnvTypeDto>
+    | Polymorphic<'CxxIntType', CxxIntTypeDto>
+    | Polymorphic<'CxxShortType', CxxShortTypeDto>
+    | Polymorphic<'CxxLongType', CxxLongTypeDto>
+    | Polymorphic<'CxxLongLongType', CxxLongLongTypeDto>
+    | Polymorphic<'CxxSizeTType', CxxSizeTTypeDto>
+    | Polymorphic<'CxxFloatType', CxxFloatTypeDto>
+    | Polymorphic<'CxxDoubleType', CxxDoubleTypeDto>
+    | Polymorphic<'CxxLongDoubleType', CxxLongDoubleTypeDto>
+    | Polymorphic<'CxxCharType', CxxCharTypeDto>
+    | Polymorphic<'CxxWcharType', CxxWcharTypeDto>
+    | Polymorphic<'PointerType', PointerTypeDto>
+    | Polymorphic<'SmartPointerType', SmartPointerTypeDto>
+    | Polymorphic<'ReferenceType', ReferenceTypeDto>
+    | Polymorphic<'Thread', ThreadDto>
+    | Polymorphic<'TypeInfo', TypeInfoDto>
     | UnhandledTypeDto;
 
 export interface AnyTypeDto { }
@@ -152,6 +168,66 @@ export interface UndefinedTypeDto { }
 
 export interface LiteralTypeDto {
     literal: string | number | boolean;
+}
+
+export interface CxxIntTypeDto {
+    signType: string;
+}
+
+export interface CxxShortTypeDto {
+    signType: string;
+}
+
+export interface CxxLongTypeDto {
+    signType: string;
+}
+
+export interface CxxLongLongTypeDto {
+    signType: string;
+}
+
+export interface CxxSizeTTypeDto {
+    signType: string;
+}
+
+export interface CxxFloatTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxDoubleTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxLongDoubleTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxCharTypeDto {
+    text: string;
+}
+
+export interface CxxWcharTypeDto {
+    text: string;
+}
+
+export interface PointerTypeDto {
+    baseType: TypeDto;
+}
+
+export interface SmartPointerTypeDto {
+    baseType: TypeDto;
+}
+
+export interface ReferenceTypeDto {
+    baseType: TypeDto;
+}
+
+export interface ThreadDto {
+    text: string;
+}
+
+export interface TypeInfoDto {
+    name: string;
 }
 
 export interface ClassTypeDto {
@@ -262,6 +338,16 @@ export type ValueDto =
     | Polymorphic<'ClosureFieldRef', ClosureFieldRefDto>
     | Polymorphic<'InstanceFieldRef', InstanceFieldRefDto>
     | Polymorphic<'StaticFieldRef', StaticFieldRefDto>
+    | Polymorphic<'ArkCxxDeleteArrayExpr', ArkCxxDeleteArrayExprDto>
+    | Polymorphic<'ArkCxxNewArrayExpr', ArkCxxNewArrayExprDto>
+    | Polymorphic<'ArkCxxInitArrayExpr', ArkCxxInitArrayExprDto>
+    | Polymorphic<'ArkCxxUnaryExpr', ArkCxxUnaryExprDto>
+    | Polymorphic<'ArkCxxCastExpr', ArkCxxCastExprDto>
+    | Polymorphic<'ArkArrayTypeTraitExpr', ArkArrayTypeTraitExprDto>
+    | Polymorphic<'ArkTypeIdExpr', ArkTypeIdExprDto>
+    | Polymorphic<'ArkNoExpectExpr', ArkNoExpectExprDto>
+    | Polymorphic<'ArkCxxFolderExpr', ArkCxxFolderExprDto>
+    | Polymorphic<'ArkCxxNormalBinOpExpr', ArkCxxNormalBinOpExprDto>
     | UnhandledValueDto;
 
 export interface LocalValueDto extends LocalDto { }
@@ -385,6 +471,55 @@ export interface StaticFieldRefDto {
 
 export interface UnhandledValueDto extends UnhandledDto {
     type: TypeDto;
+}
+
+export interface ArkCxxDeleteArrayExprDto {
+    field: ValueDto;
+    type: TypeDto;
+}
+
+export interface ArkCxxNewArrayExprDto {
+    baseType: TypeDto;
+    size: ValueDto;
+    elementsNumber: number;
+}
+
+export interface ArkCxxInitArrayExprDto {
+    op: ValueDto;
+}
+
+export interface ArkCxxUnaryExprDto {
+
+}
+
+export interface ArkCxxCastExprDto {
+    cxxCastType: string;
+}
+
+export interface ArkArrayTypeTraitExprDto {
+    op: ValueDto;
+    dimensionOrder: number;
+    func: string;
+}
+
+export interface ArkTypeIdExprDto {
+    op: ValueDto;
+}
+
+export interface ArkNoExpectExprDto {
+    op: ValueDto;
+}
+
+export interface ArkCxxFolderExprDto {
+    arg: ValueDto;
+    op: string;
+}
+
+export interface ArkCxxNormalBinOpExprDto {
+    op1: ValueDto;
+    op2: ValueDto;
+    type: TypeDto;
+    operator: string;
 }
 
 // Statement DTOs using polymorphic pattern

@@ -1,32 +1,46 @@
 {
   "name": "arkanalyzer",
-  "version": "1.0.8",
+  "version": "1.0.90",
   "files": [
-    "docs",
     "lib",
     "config"
   ],
   "main": "lib/index.js",
+  "bin": {
+    "arkanalyzer": "lib/cli/cli.js"
+  },
   "scripts": {
+    "prebuild": "node script/npmInstall.js",
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json",
-    "test": "vitest",
-    "testonce": "vitest --no-color run",
-    "coverage": "vitest run --coverage",
+    "build:cpp": "node script/buildCpp.js",
+    "sync:addon-optional-deps": "node script/syncAddonOptionalDeps.js",
+    "preversion": "npm run sync:addon-optional-deps && npm run build",
+    "prepack": "npm run sync:addon-optional-deps && npm run build && tsc -p ./tsconfig.prod.json && node script/vendorOhosTypescript.js && node script/packageCppAddons.js",
+    "test": "npm run build && vitest",
+    "testonce": "npm run build && vitest run",
+    "coverage": "npm run build && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
-    "postinstall": "node script/npmInstall.js",
-    "gendoc": "npx typedoc"
+    "perf:arkts": "npm run build && node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",
+    "perf:cpp": "npm run build && node --max-old-space-size=16384 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=opencv",
+    "gendoc": "npm run build && npx typedoc",
+    "format": "npx prettier --write src/ tests/",
+    "format:check": "npx prettier --check src/ tests/"
   },
   "dependencies": {
     "commander": "13.1.0",
-    "log4js": "6.9.1",
-    "ohos-typescript": "^4.9.5-r4"
+    "log4js": "6.9.1"
   },
-  "bundledDependencies": [
-    "ohos-typescript"
-  ],
+  "optionalDependencies": {
+    "@arkanalyzer/ast-addon-darwin-arm64": "1.0.90",
+    "@arkanalyzer/ast-addon-linux-arm64": "1.0.90",
+    "@arkanalyzer/ast-addon-linux-x64": "1.0.90",
+    "@arkanalyzer/ast-addon-win32-x64": "1.0.90"
+  },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "^1.5.0",
+    "node-api-headers": "^1.1.0",
+    "ohos-typescript": "^4.9.5-r4",
     "ts-node": "^10.9.1",
     "typedoc": "^0.28.0",
     "typedoc-plugin-markdown": "^4.6.3",

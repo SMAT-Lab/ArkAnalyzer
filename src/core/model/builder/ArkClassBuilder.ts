@@ -185,7 +185,7 @@ export function buildNormalArkClass(clsNode: ClassLikeNode, cls: ArkClass, sourc
     IRUtils.setComments(cls, clsNode, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
 }
 
-function init4InstanceInitMethod(cls: ArkClass): void {
+export function init4InstanceInitMethod(cls: ArkClass): void {
     const instanceInit = new ArkMethod();
     instanceInit.setDeclaringArkClass(cls);
     instanceInit.setIsGeneratedFlag(true);
@@ -200,7 +200,7 @@ function init4InstanceInitMethod(cls: ArkClass): void {
     cls.setInstanceInitMethod(instanceInit);
 }
 
-function init4StaticInitMethod(cls: ArkClass): void {
+export function init4StaticInitMethod(cls: ArkClass): void {
     const staticInit = new ArkMethod();
     staticInit.setDeclaringArkClass(cls);
     staticInit.setIsGeneratedFlag(true);
@@ -439,12 +439,14 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
 }
 
 function isClassMethod(member: ClassElement | TypeElement | EnumMember): boolean {
-    return (ts.isMethodDeclaration(member) ||
+    return (
+        ts.isMethodDeclaration(member) ||
         ts.isConstructorDeclaration(member) ||
         ts.isMethodSignature(member) ||
         ts.isConstructSignatureDeclaration(member) ||
         ts.isAccessor(member) ||
-        ts.isCallSignatureDeclaration(member));
+        ts.isCallSignatureDeclaration(member)
+    );
 }
 
 function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, sourceFile: ts.SourceFile): void {
@@ -476,11 +478,9 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         if (ts.isIdentifier(parameter.name)) {
             fieldName = parameter.name.text;
         } else if (ts.isObjectBindingPattern(parameter.name)) {
-            // TODO
             logger.warn(`Need to support param property with ObjectBindingPattern node type: ${cls.getSignature().toString()}!`);
             return;
         } else if (ts.isArrayBindingPattern(parameter.name)) {
-            // TODO
             logger.warn(`Need to support param property with ArrayBindingPattern node type: ${cls.getSignature().toString()}!`);
             return;
         } else {

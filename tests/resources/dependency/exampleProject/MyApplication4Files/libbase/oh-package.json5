@@ -16,7 +16,7 @@
   "name": "@libbase",
   "version": "1.0.0",
   "description": "Please describe the basic information.",
-  "main": "",
+  "main": "index.ets",
   "author": "",
   "license": "",
   "dependencies": {

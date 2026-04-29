@@ -32,6 +32,8 @@ import { Local } from '../base/Local';
 import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
+import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
+import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
 
 export const arkMethodNodeKind = [
@@ -68,6 +70,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
+    // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
+    private CxxBodyBuilder?: CxxBodyBuilder;
 
     private isGeneratedFlag: boolean = false;
     private asteriskToken: boolean = false;
@@ -382,6 +386,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.bodyBuilder;
     }
 
+    public getCxxBodyBuilder(): CxxBodyBuilder | undefined {
+        return this.CxxBodyBuilder;
+    }
+
     /**
      * Get {@link ArkBody} of a Method.
      * A {@link ArkBody} contains the CFG and actual instructions or operations to be executed for a method.
@@ -554,8 +562,19 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
     }
 
+    public setCxxBodyBuilder(bodyBuilder: CxxBodyBuilder): void {
+        this.CxxBodyBuilder = bodyBuilder;
+        if (this.getDeclaringArkFile().getScene().buildClassDone()) {
+            this.buildBody();
+        }
+    }
+
     public freeBodyBuilder(): void {
         this.bodyBuilder = undefined;
+    }
+
+    public freeCxxBodyBuilder(): void {
+        this.CxxBodyBuilder = undefined;
     }
 
     public buildBody(): void {
@@ -566,6 +585,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
                     this.bodyBuilder.handleGlobalAndClosure();
+                }
+            }
+        }
+        // CXXTodo: Building body for Cxx. After the BodyBuilder completes abstraction, this part needs to be refactored.
+        if (this.CxxBodyBuilder) {
+            const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
+            if (arkBody) {
+                this.setBody(arkBody);
+                arkBody.getCfg().setDeclaringMethod(this);
+                if (this.getOuterMethod() === undefined) {
+                    this.CxxBodyBuilder.handleGlobalAndClosure();
                 }
             }
         }
@@ -647,7 +677,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
     public getFunctionLocal(name: string): Local | null {
         const local = this.getBody()?.getLocals().get(name);
-        return local?.getType() instanceof FunctionType ? local : null;
+        // CXXTodo: The type of a function pointer in CXX is 'PointerType(FunctionType, 1)'
+        if (!local) {
+            return null;
+        }
+        const localType = local.getType();
+        if (localType instanceof FunctionType || (localType instanceof PointerType && localType.getBaseType() instanceof FunctionType)) {
+            return local;
+        }
+        return null;
     }
 
     public setQuestionToken(questionToken: boolean): void {

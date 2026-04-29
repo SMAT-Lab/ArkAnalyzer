@@ -279,3 +279,16 @@ class AA {
         aa.count = n;
     }
 }
+
+class A {
+}
+
+function testMap(): void {
+    let map = new Map<string, A>();
+
+    const animatorData4 = new A();
+    const animatorData5 = new A();
+
+    map.set('d', animatorData4)
+        .set('e', animatorData5);
+}

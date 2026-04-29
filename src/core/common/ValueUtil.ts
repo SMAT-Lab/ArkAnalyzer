@@ -14,25 +14,29 @@
  */
 
 import { BigIntConstant, BooleanConstant, Constant, NullConstant, NumberConstant, StringConstant, UndefinedConstant } from '../base/Constant';
+import { clearLRUCache, LRUCache } from '../../utils/LRUCacheDecorator';
 
 export const EMPTY_STRING = '';
+const STRING_CACHE_MAX_LENGTH = 32;
 
 export class ValueUtil {
-    private static readonly NumberConstantCache: Map<string, Constant> = new Map();
     public static readonly EMPTY_STRING_CONSTANT = new StringConstant(EMPTY_STRING);
 
     /*
-     * Set static field to be null, then all related objects could be freed by GC.
-     * Class SdkUtils is only internally used by ArkAnalyzer, the dispose method should be called by users themselves before drop Scene.
+     * Clear LRU caches for number and string constants.
+     * These caches are used during IR construction and should be cleared after
+     * inferTypes() is complete to allow GC to reclaim memory.
      */
     public static dispose(): void {
-        this.NumberConstantCache.clear();
+        clearLRUCache(ValueUtil, 'getOrCreateNumberConst');
+        clearLRUCache(ValueUtil, 'getOrCreateStringConst');
     }
 
     /*
      * Get the number constant instance according to its value, and create a new one if didn't find.
      * In order to distinguish 1, 1.0, 0x0001, here support to find with string instead of only number.
      */
+    @LRUCache(128)
     public static getOrCreateNumberConst(n: number | string): Constant {
         let nStr: string;
         if (typeof n === 'number') {
@@ -40,21 +44,24 @@ export class ValueUtil {
         } else {
             nStr = n;
         }
-        let constant = this.NumberConstantCache.get(nStr);
-        if (constant === undefined) {
-            constant = new NumberConstant(nStr);
-            this.NumberConstantCache.set(nStr, constant);
-        }
-        return constant;
+        return new NumberConstant(nStr);
     }
 
     public static createBigIntConst(bigInt: bigint): BigIntConstant {
         return new BigIntConstant(bigInt);
     }
 
+    @LRUCache(4096)
+    private static getOrCreateStringConst(str: string): Constant {
+        return new StringConstant(str);
+    }
+
     public static createStringConst(str: string): Constant {
         if (str === EMPTY_STRING) {
             return this.EMPTY_STRING_CONSTANT;
+        }
+        if (str.length < STRING_CACHE_MAX_LENGTH) {
+            return this.getOrCreateStringConst(str);
         }
         return new StringConstant(str);
     }
@@ -64,7 +71,7 @@ export class ValueUtil {
         if (!isNaN(n)) {
             return this.getOrCreateNumberConst(str);
         }
-        return new StringConstant(str);
+        return this.createStringConst(str);
     }
 
     public static getUndefinedConst(): Constant {

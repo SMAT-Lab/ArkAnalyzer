@@ -16,7 +16,7 @@
   "name": "@log4js",
   "version": "1.0.0",
   "description": "Please describe the basic information.",
-  "main": "",
+  "main": "src/main/ets/log4jsability/log4jsability.ets",
   "author": "",
   "license": "",
   "dependencies": {

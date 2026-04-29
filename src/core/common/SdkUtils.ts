@@ -15,7 +15,7 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
+import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION, SCOPE_PREFIX } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -43,7 +43,10 @@ export class SdkUtils {
 
     private static sdkImportMap: Map<string, ArkFile> = new Map<string, ArkFile>();
     public static BUILT_IN_NAME = 'built-in';
-    private static BUILT_IN_PATH = 'node_modules/ohos-typescript/lib';
+    private static BUILT_IN_PATHS = [
+        'lib/node_modules/ohos-typescript/lib',
+        'node_modules/ohos-typescript/lib',
+    ];
 
     public static setEsVersion(buildProfile: any): void {
         const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
@@ -58,10 +61,12 @@ export class SdkUtils {
         try {
             // If arkanalyzer is used as dependency by other project, the base directory should be the module path.
             const moduleRoot = path.dirname(path.dirname(require.resolve('arkanalyzer')));
-            builtInPath = path.join(moduleRoot, this.BUILT_IN_PATH);
+            const candidatePaths = this.BUILT_IN_PATHS.map(item => path.join(moduleRoot, item));
+            builtInPath = candidatePaths.find(item => fs.existsSync(item)) ?? candidatePaths[0];
             logger.debug(`arkanalyzer is used as dependency, so using builtin sdk file in ${builtInPath}.`);
         } catch {
-            builtInPath = path.resolve(this.BUILT_IN_PATH);
+            const candidatePaths = this.BUILT_IN_PATHS.map(item => path.resolve(item));
+            builtInPath = candidatePaths.find(item => fs.existsSync(item)) ?? candidatePaths[0];
             logger.debug(`use builtin sdk file in ${builtInPath}.`);
         }
         return {
@@ -101,8 +106,10 @@ export class SdkUtils {
 
     public static buildSdkImportMap(file: ArkFile): void {
         const fileName = path.basename(file.getName());
-        if (fileName.startsWith('@')) {
+        if (fileName.startsWith(SCOPE_PREFIX)) {
             this.sdkImportMap.set(fileName.replace(/\.d\.e?ts$/, ''), file);
+        } else if (file.getName().startsWith('api')) {
+            this.sdkImportMap.set(file.getName().replace(/^api[/\\]|\.d\.e?ts$/g, ''), file);
         }
     }
 

@@ -6,15 +6,31 @@
     ".d.ets",
     ".d.ts"
   ],
+  "languages": {
+    "arkts": {
+      "enabled": true,
+      "extensions": [".ets", ".ts", ".js", ".d.ets", ".d.ts"]
+    },
+    "cpp": {
+      "enabled": false,
+      "sourceExtensions": [".cc", ".cpp", ".cxx", ".c", ".c++"],
+      "headerExtensions": [".hpp", ".h", ".hxx", ".hh"]
+    }
+  },
   "enableLeadingComments": false,
   "enableBuiltIn": true,
+  "enableOhModulesBody": false,
   "ignoreFileNames": [
-    "oh_modules",
     "node_modules",
     "build-tools",
     "hvigorfile.ts",
     "hvigorfile.js",
-    "hvigor-wrapper.js"
+    "hvigor-wrapper.js",
+    "build-tools",
+    "build",
+    ".cxx",
+    ".test",
+    ".preview"
   ],
   "sdkGlobalFolders": [
     "component",

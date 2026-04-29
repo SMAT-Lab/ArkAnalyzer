@@ -57,7 +57,6 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
-
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
@@ -77,9 +76,11 @@ export class ArkFile {
 
     private fileSignature: FileSignature = FileSignature.DEFAULT;
 
-    private ohPackageJson5Path: string[] = [];
+    private ohPackageJson5Path!: string[];
 
     private anonymousClassNumber: number = 0;
+
+    private anonymousNamespaceNumber: number = 0;
 
     private ast: ts.SourceFile | null = null;
 
@@ -216,8 +217,36 @@ export class ArkFile {
         return this.getClassWithName(className);
     }
 
-    public getClassWithName(Class: string): ArkClass | null {
-        return this.classes.get(Class) || null;
+    public getClassWithName(className: string): ArkClass | null {
+        // First, search for the top-level class
+        let cls: ArkClass | null | undefined = this.classes.get(className);
+        if (cls) {
+            return cls;
+        }
+
+        // Recursively search for classes within namespaces
+        for (const ns of this.namespaces.values()) {
+            cls = this.findClassInNamespace(ns, className);
+            if (cls) {
+                return cls;
+            }
+        }
+        return null;
+    }
+
+    private findClassInNamespace(namespace: ArkNamespace, className: string): ArkClass | null {
+        const cls = namespace.getClassWithName(className);
+        if (cls) {
+            return cls;
+        }
+
+        for (const ns of namespace.getNamespaces()) {
+            const found = this.findClassInNamespace(ns, className);
+            if (found) {
+                return found;
+            }
+        }
+        return null;
     }
 
     public getClasses(): ArkClass[] {
@@ -234,7 +263,18 @@ export class ArkFile {
      * @returns An **array** of import information.
      */
     public getImportInfos(): ImportInfo[] {
-        return Array.from(this.importInfoMap.values());
+        const imports = Array.from(this.importInfoMap.values());
+        if (this.language !== Language.CXX || imports.length < 2) {
+            return imports;
+        }
+        const from0 = (imports[0].getFrom() ?? '').replace(/\\/g, '/').toLowerCase();
+        const from1 = (imports[1].getFrom() ?? '').replace(/\\/g, '/').toLowerCase();
+        const firstIsSdkStd = from0.includes('/sdk/default/') || from0.includes('/libc++/');
+        const secondIsSdkStd = from1.includes('/sdk/default/') || from1.includes('/libc++/');
+        if (firstIsSdkStd && !secondIsSdkStd) {
+            return [imports[1], imports[0], ...imports.slice(2)];
+        }
+        return imports;
     }
 
     public getImportInfoBy(name: string): ImportInfo | undefined {
@@ -375,6 +415,10 @@ export class ArkFile {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousNamespaceNumber(): number {
+        return this.anonymousNamespaceNumber++;
     }
 
     public getAST(): ts.SourceFile | null {

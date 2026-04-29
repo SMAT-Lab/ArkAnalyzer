@@ -22,6 +22,8 @@ import { ArkTs2InferenceBuilder, ArkTsInferenceBuilder, JsInferenceBuilder } fro
 
 import { AbcInferenceBuilder } from './abc/AbcInference';
 import { InferLanguage } from './ValueInference';
+import { CxxInferenceBuilder } from '../../frontend/cppFrontend/inference/CxxInference';
+
 
 
 export type ArkModel = ArkBaseModel | ArkFile | Stmt;
@@ -94,6 +96,8 @@ export class InferenceManager {
                 inference = new JsInferenceBuilder().buildFileInference();
             } else if (inferLanguage === InferLanguage.ARK_TS1_2) {
                 inference = new ArkTs2InferenceBuilder().buildFileInference();
+            } else if (inferLanguage === InferLanguage.CXX) {
+                inference = new CxxInferenceBuilder().buildFileInference();
             } else {
                 throw new Error('Inference not supported');
             }
@@ -111,6 +115,8 @@ export class InferenceManager {
             return InferLanguage.JAVA_SCRIPT;
         } else if (lang === Language.ARKTS1_2) {
             return InferLanguage.ARK_TS1_2;
+        } else if (lang === Language.CXX) {
+            return InferLanguage.CXX;
         }
         return InferLanguage.UNKNOWN;
     }

@@ -76,13 +76,14 @@ import { Constant } from '../base/Constant';
 import {
     ANONYMOUS_CLASS_PREFIX,
     CALL_SIGNATURE_NAME,
+    CONSTRUCT_SIGNATURE_NAME,
     DEFAULT_ARK_CLASS_NAME,
     GETTER_PREFIX,
     LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
     UNKNOWN_CLASS_NAME,
-    UNKNOWN_FILE_NAME
+    UNKNOWN_FILE_NAME,
 } from './Const';
 import { ValueUtil } from './ValueUtil';
 import { ArkFile } from '../model/ArkFile';
@@ -238,8 +239,10 @@ export class IRInference {
 
         const baseType: Type = TypeInference.replaceAliasType(expr.getBase().getType());
         let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (methodName === CONSTRUCTOR_NAME &&
-            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME) {
+        if (
+            methodName === CONSTRUCTOR_NAME &&
+            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME
+        ) {
             return expr;
         }
         if (methodName.startsWith(NAME_PREFIX)) {
@@ -484,7 +487,7 @@ export class IRInference {
         }
         let method;
         if (methodName === CONSTRUCTOR_NAME) {
-            method = declaredClass?.getMethodWithName('construct-signature') ??
+            method = declaredClass?.getMethodWithName(CONSTRUCT_SIGNATURE_NAME) ??
                 declaredClass.getMethodWithName(CALL_SIGNATURE_NAME) ?? declaredClass?.getMethodWithName(CONSTRUCTOR_NAME);
             if (!method) {
                 const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
@@ -505,6 +508,7 @@ export class IRInference {
             }
             return expr;
         } else if (method instanceof ArkField || method instanceof Local) {
+            expr.setRealGenericTypes(IRInference.getRealTypes(expr, declaredClass, baseType));
             return this.changePtrInvokeExpr(method, scene, expr) ?? expr;
         }
         return null;
@@ -522,6 +526,9 @@ export class IRInference {
 
     private static changePtrInvokeExpr(method: ArkField | Local, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
         let type: Type | undefined = method.getType();
+        if (expr.getRealGenericTypes() && TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType)) {
+            type = TypeInference.replaceTypeWithReal(type, expr.getRealGenericTypes());
+        }
         if (type instanceof UnionType) {
             const funType = type.getTypes().find(t => t instanceof FunctionType);
             if (funType instanceof FunctionType) {
@@ -550,10 +557,10 @@ export class IRInference {
         return null;
     }
 
-    private static getRealTypes(expr: AbstractInvokeExpr, declaredClass: ArkClass | null, baseType: ClassType, method: ArkMethod): Type[] | undefined {
+    private static getRealTypes(expr: AbstractInvokeExpr, declaredClass: ArkClass | null, baseType: ClassType, method?: ArkMethod): Type[] | undefined {
         let realTypes;
         const tmp: Type[] = [];
-        if (method.getGenericTypes()) {
+        if (method?.getGenericTypes()) {
             expr.getMethodSignature().getMethodSubSignature().getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {

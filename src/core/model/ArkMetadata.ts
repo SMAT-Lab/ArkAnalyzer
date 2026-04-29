@@ -18,6 +18,7 @@ import { FullPosition } from '../base/Position';
 export enum ArkMetadataKind {
     LEADING_COMMENTS,
     TRAILING_COMMENTS,
+    JSDOC,
     ENUM_INIT_TYPE_USER
 }
 
@@ -54,7 +55,7 @@ export type CommentItem = {
 };
 
 export class CommentsMetadata implements ArkMetadataType {
-    private comments: CommentItem[] = [];
+    private comments: CommentItem[];
 
     constructor(comments: CommentItem[]) {
         this.comments = comments;
@@ -62,6 +63,69 @@ export class CommentsMetadata implements ArkMetadataType {
 
     public getComments(): CommentItem[] {
         return this.comments;
+    }
+}
+
+export type JSDocParamItem = {
+    name: string;
+    type?: string;
+    description: string;
+};
+
+export type JSDocTagItem = {
+    name: string;
+    description: string;
+};
+
+export type JSDocReturnItem = {
+    type?: string;
+    description: string;
+};
+
+export type JSDocThrowItem = {
+    type?: string;
+    description: string;
+};
+
+export class JSDocMetadata implements ArkMetadataType {
+    private description: string;
+    private params: JSDocParamItem[];
+    private tags: JSDocTagItem[];
+    private returns: JSDocReturnItem[];
+    private throws: JSDocThrowItem[];
+
+    constructor(
+        description: string,
+        params: JSDocParamItem[],
+        tags: JSDocTagItem[] = [],
+        returns: JSDocReturnItem[] = [],
+        throws: JSDocThrowItem[] = []
+    ) {
+        this.description = description;
+        this.params = params;
+        this.tags = tags;
+        this.returns = returns;
+        this.throws = throws;
+    }
+
+    public getDescription(): string {
+        return this.description;
+    }
+
+    public getParams(): JSDocParamItem[] {
+        return this.params;
+    }
+
+    public getTags(): JSDocTagItem[] {
+        return this.tags;
+    }
+
+    public getReturns(): JSDocReturnItem[] {
+        return this.returns;
+    }
+
+    public getThrows(): JSDocThrowItem[] {
+        return this.throws;
     }
 }
 

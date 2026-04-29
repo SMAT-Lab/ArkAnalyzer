@@ -971,7 +971,7 @@ class BigIntClass {
   %instInit(): void {
     label0:
       this = this: @type/bigIntType.ts: BigIntClass
-      this.<@type/bigIntType.ts: BigIntClass.fieldA> = 1
+      this.<@type/bigIntType.ts: BigIntClass.fieldA> = 1n
       return
   }
 
@@ -982,10 +982,10 @@ class BigIntClass {
       if typeof num === 'bigint' goto label1 label2
 
     label1:
-      a = 10
-      b = 100
+      a = 10n
+      b = 100n
       %0 = this.<@type/bigIntType.ts: BigIntClass.fieldA>
-      c = %0 + 100
+      c = %0 + 100n
       %1 = a + b
       %2 = %1 - c
       %3 = %2 * a
@@ -1005,8 +1005,8 @@ class BigIntClass {
       this = this: @type/bigIntType.ts: BigIntClass
       %0 = b & a
       %1 = a ^ %0
-      %2 = b << 1
-      %3 = %2 >> 2
+      %2 = b << 1n
+      %3 = %2 >> 2n
       c = %1 | %3
       aa = 123
       bb = 456

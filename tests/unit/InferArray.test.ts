@@ -211,7 +211,7 @@ describe("Infer Array Test", () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const aliasType = projectScene.getFile(fileId)?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName('TestType');
         assert.isTrue(aliasType?.getOriginalType() instanceof AliasType);
-        assert.equal((aliasType?.getOriginalType() as AliasType).getOriginalType().getTypeString(), '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>');
+        assert.equal((aliasType?.getOriginalType() as AliasType).getOriginalType().toString(), '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>');
     })
 
     it('constructor case', () => {
@@ -398,6 +398,14 @@ describe("function Test", () => {
         assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
     })
 
+    it('testMap', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('testMap')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.equal(stmts?.[11].toString(), 'instanceinvoke %3.<@built-in/lib.es2015.collection.d.ts: Map.set(K, V)>(\'e\', animatorData5)');
+    })
+
     it('testParamGenericWithConstraint', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
@@ -406,6 +414,21 @@ describe("function Test", () => {
         assert.isDefined(stmts);
         if (stmts) {
             assert.equal(stmts[2].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: TestInterface.callf()>()');
+        }
+    })
+
+    it('testMoreType', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'CorrectType.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('test1')
+            ?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        if (stmts) {
+            assert.equal(stmts[4].toString(), 'instanceinvoke cat.<@inferType/CorrectType.ts: Cat.makeSound()>()');
+        }
+        const stmts1 = file?.getClassWithName('CatManager')?.getMethodWithName('animalMakeSound')?.getCfg()?.getStmts();
+        if (stmts1) {
+            assert.equal(stmts1[2].toString(), 'instanceinvoke %0.<@inferType/CorrectType.ts: Cat.makeSound()>()');
         }
     })
 
@@ -895,6 +918,10 @@ object %AC5$AnimatablePropertyText-build {
             .getMethodWithName('goo')?.getReturnType();
         assert.isDefined(returnType2);
         assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+        const returnType3 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('zoo')?.getReturnType();
+        assert.isDefined(returnType3);
+        assert.equal(returnType3!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
     });
 })
 

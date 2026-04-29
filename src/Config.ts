@@ -19,6 +19,7 @@ import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
 import { FileUtils } from './utils/FileUtils';
+import { getCxxSourceFileExtensions, isAstJsonDumperAvailable } from './frontend/cppFrontend/ast';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -38,20 +39,91 @@ export interface TsConfig {
     };
 }
 
-export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | null | undefined;
+function collectSdksFromOhosSdkHome(explicitHome?: string): Sdk[] {
+    const sdkHome = explicitHome || process.env.OHOS_SDK_HOME;
+    if (!sdkHome) {
+        return [];
+    }
+    const candidates = [
+        { name: 'etsSdk', path: path.join(sdkHome, 'openharmony', 'ets') },
+        { name: 'hmsSdk', path: path.join(sdkHome, 'hms', 'ets') },
+    ];
+    const sdks: Sdk[] = [];
+    for (const c of candidates) {
+        if (fs.existsSync(c.path)) {
+            sdks.push({ moduleName: '', name: c.name, path: c.path });
+        }
+    }
+    return sdks;
+}
+
+/**
+ * Build a SceneConfig from a project directory and optional OHOS SDK home.
+ *
+ * SDK resolution order:
+ * 1) explicit `ohosSdkHome` (must contain at least one valid SDK directory:
+ *    `<ohosSdkHome>/openharmony/ets` or `<ohosSdkHome>/hms/ets`)
+ * 2) environment variable `OHOS_SDK_HOME`
+ *
+ * @param project Project root directory path.
+ * @param ohosSdkHome Optional OHOS SDK home path.
+ * @param options Optional SceneOptions.
+ * @returns SceneConfig initialized with project files and discovered SDKs.
+ */
+export function buildSceneConfigFromProject(project: string, ohosSdkHome?: string, options?: SceneOptions): SceneConfig {
+    const config = new SceneConfig(options);
+    const sdks = collectSdksFromOhosSdkHome(ohosSdkHome);
+    config.buildConfig(path.basename(project), project, sdks);
+    return config;
+}
+
+/**
+ * Per-language switch and optional file extension list (for tooling and front-end selection; extension lists are
+ * normalized for discovery and future use).
+ */
+export interface LanguageOptions {
+    enabled?: boolean;
+    extensions?: string[];
+}
+
+export interface CppLanguageOptions extends LanguageOptions {
+    sourceExtensions?: string[];
+    headerExtensions?: string[];
+}
+
+export interface SceneLanguagesOptions {
+    arkts?: LanguageOptions;
+    cpp?: CppLanguageOptions;
+    [option: string]: LanguageOptions | undefined;
+}
+
+export type SceneOptionsValue =
+    | string
+    | number
+    | boolean
+    | (string | number)[]
+    | string[]
+    | SceneLanguagesOptions
+    | null
+    | undefined;
+
 export interface SceneOptions {
     supportFileExts?: string[];
     ignoreFileNames?: string[];
     enableLeadingComments?: boolean;
     enableTrailingComments?: boolean;
+    enableJSDoc?: boolean;
     enableBuiltIn?: boolean;
     tsconfig?: string;
     isScanAbc?: boolean;
     sdkGlobalFolders?: string[];
+    /** Optional multi-language front-end section; defaults are merged in {@link SceneConfig} construction. */
+    languages?: SceneLanguagesOptions;
     [option: string]: SceneOptionsValue;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
+const CPP_SOURCE_FILE_EXTS: readonly string[] = getCxxSourceFileExtensions();
 
 export class SceneConfig {
     private targetProjectName: string = '';
@@ -64,13 +136,20 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     private projectFiles: string[] = [];
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
+    private ccjsonPath: string = '';
+    private cppAstPath: string = '';
 
     private options: SceneOptions;
 
     constructor(options?: SceneOptions) {
+        // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
         this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
+        this.appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable();
+        this.normalizeLanguageOptions();
+        this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
     }
 
     public getOptions(): SceneOptions {
@@ -100,6 +179,7 @@ export class SceneConfig {
      * targetProjectDirectory property of the sceneConfig object.
      * @param targetProjectDirectory - the target project directory, such as xxx/xxx/xxx, started from project
      *     directory.
+     * @param includeDirs - Header file directories that the CXX project depends on.
      * @example
      * 1. build a sceneConfig object.
     ```typescript
@@ -108,8 +188,17 @@ export class SceneConfig {
     sceneConfig.buildFromProjectDir(projectDir);
     ```
      */
-    public buildFromProjectDir(targetProjectDirectory: string): void {
+    public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
+        // Callers should prefer passing de-duplicated includeDirs to avoid redundant work in hot paths.
+        // Keep this defensive, order-preserving de-duplication as a fallback and reuse the target array.
+        // Intentionally avoid Set allocation here.
+        this.includeDirs.length = 0;
+        for (const includeDir of includeDirs) {
+            if (!this.includeDirs.includes(includeDir)) {
+                this.includeDirs.push(includeDir);
+            }
+        }
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }
@@ -196,6 +285,8 @@ export class SceneConfig {
             if (configurations.options) {
                 this.options = { ...this.options, ...configurations.options };
             }
+            this.normalizeLanguageOptions();
+            this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
 
             this.buildConfig(targetProjectName, targetProjectDirectory, sdks);
         } else {
@@ -213,6 +304,35 @@ export class SceneConfig {
 
     public getProjectFiles(): string[] {
         return this.projectFiles;
+    }
+
+    /** Obtain the header file directories of the input C++ project dependencies. */
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
+    public setCcjsonPath(ccjsonPath: string): void {
+        this.ccjsonPath = ccjsonPath;
+    }
+
+    /**
+     * Returns compile_commands.json path configured by the project.
+     *
+     * If ccjson is not configured, this value is empty initially. Before AST generation,
+     * astUtils may auto-discover a compile database near source files (for DevEco projects
+     * that load compilation databases). The discovered path is used directly by Scene and is
+     * not backfilled into this config field.
+     */
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
+    }
+
+    public setCppAstPath(cppAstPath: string): void {
+        this.cppAstPath = cppAstPath;
+    }
+
+    public getCppAstPath(): string {
+        return this.cppAstPath;
     }
 
     public getFileLanguages(): Map<string, Language> {
@@ -264,5 +384,70 @@ export class SceneConfig {
         if (options) {
             this.options = { ...this.options, ...options };
         }
+    }
+
+    private appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable(): void {
+        if (!isAstJsonDumperAvailable()) {
+            return;
+        }
+        const configuredExts = Array.isArray(this.options.supportFileExts) ? this.options.supportFileExts : [];
+        const missingCppExts = CPP_SOURCE_FILE_EXTS.filter(ext => !configuredExts.includes(ext));
+        if (missingCppExts.length === 0) {
+            return;
+        }
+        this.options.supportFileExts = [...configuredExts, ...missingCppExts];
+    }
+
+    private normalizeLanguageOptions(): void {
+        const from = this.options.languages;
+        if (!from) {
+            return;
+        }
+        const normalized: SceneLanguagesOptions = {};
+        if (from.arkts) {
+            normalized.arkts = {
+                ...from.arkts,
+                extensions: this.uniqueFileExtensions(from.arkts.extensions ?? []),
+            };
+        }
+        if (from.cpp) {
+            normalized.cpp = {
+                ...from.cpp,
+                extensions: this.uniqueFileExtensions(from.cpp.extensions ?? []),
+                sourceExtensions: this.uniqueFileExtensions(from.cpp.sourceExtensions ?? []),
+                headerExtensions: this.uniqueFileExtensions(from.cpp.headerExtensions ?? []),
+            };
+        }
+        this.options.languages = normalized;
+    }
+
+    private mergeEnabledLanguageExtensionsIntoSupportFileExts(): void {
+        const languages = this.options.languages;
+        if (!languages) {
+            return;
+        }
+        const merged = [...(this.options.supportFileExts ?? [])];
+        if (languages.arkts?.enabled === true) {
+            merged.push(...(languages.arkts.extensions ?? []));
+        }
+        if (languages.cpp?.enabled === true) {
+            merged.push(...(languages.cpp.extensions ?? []));
+            merged.push(...(languages.cpp.sourceExtensions ?? []));
+            merged.push(...(languages.cpp.headerExtensions ?? []));
+        }
+        this.options.supportFileExts = this.uniqueFileExtensions(merged);
+    }
+
+    private uniqueFileExtensions(extensions: string[]): string[] {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const ext of extensions) {
+            const normalized = ext.toLowerCase();
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                out.push(normalized);
+            }
+        }
+        return out;
     }
 }

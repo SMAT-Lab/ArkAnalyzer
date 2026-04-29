@@ -46,4 +46,8 @@ namespace MethodReturnType {
     async function goo() {
         await foo();
     }
+
+    async function zoo() {
+        return foo();
+    }
 }

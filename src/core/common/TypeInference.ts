@@ -37,7 +37,8 @@ import {
     EnumValueType,
     FunctionType,
     GenericType,
-    IntersectionType, LiteralType,
+    IntersectionType,
+    LiteralType,
     NeverType,
     NullType,
     NumberType,
@@ -50,6 +51,7 @@ import {
     UnknownType,
     VoidType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../frontend/cppFrontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -93,6 +95,7 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { SdkUtils } from './SdkUtils';
 import { ModifierType } from '../model/ArkBaseModel';
+import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME, Builtin.DUMMY_FILE_NAME];
@@ -509,6 +512,8 @@ export class TypeInference {
         } else if (type instanceof TypeQueryExpr) {
             return this.isUnclearType(type.getType()) ||
                 !!type.getGenerateTypes()?.find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
+        } else if (type instanceof PointerType || type instanceof ReferenceType) {
+            return this.isUnclearType(type.getBaseType());
         }
         return false;
     }
@@ -655,7 +660,9 @@ export class TypeInference {
         } else {
             returnType = VoidType.getInstance();
         }
-        if (arkMethod.containsModifier(ModifierType.ASYNC)) {
+        // If the method is async and the return type is not Promise, wrap it with Promise
+        if (arkMethod.containsModifier(ModifierType.ASYNC) && (!(returnType instanceof ClassType) ||
+            returnType.getClassSignature().getClassName() !== PROMISE)) {
             const promise = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
             if (promise instanceof ArkClass) {
                 return new ClassType(promise.getSignature(), [returnType]);
@@ -713,8 +720,8 @@ export class TypeInference {
         if (!refName) {
             return null;
         }
-        //split and iterate to infer each type
-        const singleNames = refName.split('.');
+        //split and iterate to infer each type. In C++, the operators used to access members also include :: and ->
+        const singleNames = refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
             let genericName: string = EMPTY_STRING;
@@ -1100,5 +1107,51 @@ export class TypeInference {
             return type2 instanceof TupleType || type2 instanceof ArrayType;
         }
         return type1.constructor === type2.constructor;
+    }
+
+    /**
+     * Infers the refined type for a value based on its initializer.
+     * If the value has an enum type, returns the enum type directly.
+     * If the value's declared type is AnyType, returns the initializer type.
+     * If the initializer type is a subtype or the same type as the declared type, returns the initializer type.
+     * Otherwise, returns the declared type.
+     */
+    public static inferRefinedValueType(value: Value, scene: Scene): Type {
+        const rightType = ModelUtils.findRefInitValue(value, scene).getType();
+        if (rightType instanceof EnumValueType) {
+            return rightType;
+        }
+        let leftType = value.getType();
+        if (rightType && this.checkType(leftType, t => t instanceof AnyType)) {
+            return rightType;
+        }
+        if (!rightType || this.isAnonType(rightType, scene.getProjectName())) {
+            return leftType;
+        }
+        if (this.isSubType(rightType, leftType, scene)) {
+            return rightType;
+        }
+        return leftType;
+    }
+
+    /**
+     * Checks if the child type is a subtype of the parent type or the same type.
+     */
+    public static isSubType(child: Type, parent: Type, scene: Scene): boolean {
+        const real = child instanceof AliasType ? this.replaceAliasType(child) : child;
+        const declare = parent instanceof AliasType ? this.replaceAliasType(parent) : parent;
+        if (!(declare instanceof ClassType) || !(real instanceof ClassType)) {
+            return false;
+        }
+        const fatherClass = scene.getClass(declare.getClassSignature());
+        let childClass = scene.getClass(real.getClassSignature());
+        while (childClass) {
+            if (childClass === fatherClass) {
+                return true;
+            }
+            childClass = childClass?.getSuperClass();
+        }
+        const objectClass = scene.getSdkGlobal(Builtin.OBJECT);
+        return fatherClass === objectClass;
     }
 }

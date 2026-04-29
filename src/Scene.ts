@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
-import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
+import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
@@ -27,31 +27,35 @@ import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
-import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively } from './utils/FileUtils';
+import { FileUtils, getFileRecursively, getFileSignatureMapKey } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import {
     addInitInConstructor,
     buildDefaultConstructor,
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
+import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
+import { IRInference as CxxIRInference } from './frontend/cppFrontend/common/IRInference';
+import { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
+import { FrontendBuilder } from './frontend/FrontendBuilder';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
-import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
+import { BUILD_PROFILE_JSON5, OH_MODULES, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
 import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
+import { ModuleUtils } from './utils/ModuleUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
-enum SceneBuildStage {
+export enum SceneBuildStage {
     BUILD_INIT,
     SDK_INFERRED,
     CLASS_DONE,
@@ -69,6 +73,9 @@ export class Scene {
     private projectName: string = '';
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
+    private ccjsonPath: string = '';
+    private cppAstPath: string = '';
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -119,6 +126,10 @@ export class Scene {
 
     public getOptions(): SceneOptions {
         return this.options;
+    }
+
+    public getBuildStage(): SceneBuildStage {
+        return this.buildStage;
     }
 
     public getOverRides(): Map<string, string> {
@@ -192,6 +203,9 @@ export class Scene {
         this.projectName = sceneConfig.getTargetProjectName();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
         this.projectFiles = sceneConfig.getProjectFiles();
+        this.includeDirs = sceneConfig.getIncludeDirs();
+        this.ccjsonPath = sceneConfig.getCcjsonPath();
+        this.cppAstPath = sceneConfig.getCppAstPath();
 
         this.parseBuildProfile();
 
@@ -209,7 +223,7 @@ export class Scene {
             logger.warn('This project has no tsconfig.json!');
         }
         this.buildOhPkgContentMap();
-        initModulePathMap(this.ohPkgContentMap);
+        ModuleUtils.generateModuleMap(this.ohPkgContentMap);
 
         // handle sdks
         if (this.options.enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
@@ -230,6 +244,10 @@ export class Scene {
         });
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
+                // CXXTodo: C++ does not handle SDK files.
+                if (file.getLanguage() === Language.CXX) {
+                    return;
+                }
                 InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
                 SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
             });
@@ -314,15 +332,30 @@ export class Scene {
         }
     }
 
+    /**
+     * Update or add default constructors for all classes in the scene.
+     *
+     * This function iterates through all files and classes in the scene,
+     * builds default constructors for each class, and processes existing constructors
+     * by replacing super constructor calls and adding initialization logic.
+     *
+     * @returns {void}
+     */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
+            // CXXTodo: Select the appropriate initialization function based on file type
+            const initInConstructorFn = file.getLanguage() === Language.CXX ? addCxxInitInConstructor : addInitInConstructor;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
-                const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
-                if (constructor !== null && !cls.isDefaultArkClass()) {
-                    replaceSuper2Constructor(constructor);
-                    addInitInConstructor(constructor);
+                // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
+                const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
+                if (cls.isDefaultArkClass()) {
+                    continue;
                 }
+                constructors.forEach(constructor => {
+                    replaceSuper2Constructor(constructor);
+                    initInConstructorFn(constructor);
+                });
             }
         }
     }
@@ -331,6 +364,13 @@ export class Scene {
         this.buildStage = SceneBuildStage.CLASS_DONE;
         const methods: ArkMethod[] = [];
         for (const file of this.getFiles()) {
+            if (!this.options.enableOhModulesBody && file.getName().includes(OH_MODULES)) {
+                const defaultArkMethod = file.getDefaultClass().getDefaultArkMethod();
+                if (defaultArkMethod) {
+                    methods.push(defaultArkMethod);
+                }
+                continue;
+            }
             for (const cls of file.getClasses()) {
                 for (const method of cls.getMethods(true)) {
                     methods.push(method);
@@ -338,6 +378,13 @@ export class Scene {
             }
         }
         for (const namespace of this.getNamespacesMap().values()) {
+            if (!this.options.enableOhModulesBody && namespace.getDeclaringArkFile().getName().includes(OH_MODULES)) {
+                const defaultArkMethod = namespace.getDefaultClass().getDefaultArkMethod();
+                if (defaultArkMethod) {
+                    methods.push(defaultArkMethod);
+                }
+                continue;
+            }
             for (const cls of namespace.getClasses()) {
                 for (const method of cls.getMethods(true)) {
                     methods.push(method);
@@ -351,7 +398,13 @@ export class Scene {
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                method.freeBodyBuilder();
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
+                if (isCxxFile) {
+                    method.freeCxxBodyBuilder();
+                } else {
+                    method.freeBodyBuilder();
+                }
             }
         }
 
@@ -360,19 +413,7 @@ export class Scene {
     }
 
     private genArkFiles(): void {
-        this.projectFiles.forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
-                this.setFile(arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledFilePaths.add(file);
-                return;
-            }
-        });
+        FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles);
         this.buildAllMethodBody();
         this.updateOrAddDefaultConstructors();
     }
@@ -385,7 +426,7 @@ export class Scene {
         this.updateOrAddDefaultConstructors();
     }
 
-    private getDependencyFilesDeeply(projectFile: string): void {
+    public getDependencyFilesDeeply(projectFile: string): void {
         if (!this.options.supportFileExts!.includes(path.extname(projectFile))) {
             return;
         }
@@ -398,7 +439,7 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
+            FrontendBuilder.buildProjectFileIntoArkFile(this, projectFile, arkFile);
             for (const [modulePath, moduleName] of this.modulePath2NameMap) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
                     this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);
@@ -422,10 +463,10 @@ export class Scene {
     }
 
     private isRepeatBuildFile(projectFile: string): boolean {
-        for (const [key, file] of this.filesMap) {
-            if (key && file.getFilePath().toLowerCase() === projectFile.toLowerCase()) {
-                return true;
-            }
+        const relativePath = path.relative(this.getRealProjectDir(), projectFile);
+        if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+            const mapKey = getFileSignatureMapKey(this.getProjectName(), relativePath);
+            return this.filesMap.has(mapKey);
         }
         return false;
     }
@@ -618,36 +659,57 @@ export class Scene {
         this.getDependencyFilesDeeply(filePath);
     }
 
+    /**
+     * Loads SDK sources into the scene. C++ SDK files are intentionally skipped: they are not parsed or registered
+     * here (only non-C++ SDK sources are processed).
+     */
     private buildSdk(sdkName: string, sdkPath: string): void {
-        let allFiles;
-        if (sdkName === SdkUtils.BUILT_IN_NAME) {
-            allFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
-            if (allFiles.length > 0) {
-                this.getOptions().sdkGlobalFolders?.push(sdkPath);
-            }
-        } else {
-            allFiles = getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
-        }
-        allFiles.forEach(file => {
-            logger.trace('=== parse sdk file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
-                ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
-                    cls.getDefaultArkMethod()?.buildBody();
-                    cls.getDefaultArkMethod()?.freeBodyBuilder();
-                });
-                const fileSig = arkFile.getFileSignature().toMapKey();
-                this.sdkArkFilesMap.set(fileSig, arkFile);
-                SdkUtils.buildSdkImportMap(arkFile);
-                SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledSdkFilePaths.push(file);
+        const allFiles = this.collectSdkFiles(sdkName, sdkPath);
+        allFiles.forEach((file) => {
+            if (FileUtils.getFileLanguage(file, this.fileLanguages) === Language.CXX) {
                 return;
             }
+            this.parseAndRegisterSdkFile(file, sdkPath, sdkName);
         });
+    }
+
+    private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
+        if (sdkName === SdkUtils.BUILT_IN_NAME) {
+            const builtInFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
+            if (builtInFiles.length > 0) {
+                this.getOptions().sdkGlobalFolders?.push(sdkPath);
+            }
+            return builtInFiles;
+        }
+        return getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
+    }
+
+    private parseAndRegisterSdkFile(file: string, sdkPath: string, sdkName: string): void {
+        logger.trace('=== parse sdk file:', file);
+        try {
+            const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
+            arkFile.setScene(this);
+            ArktsFrontend.buildArkFileFromSdkPath(file, sdkPath, arkFile, sdkName);
+            ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
+                cls.getDefaultArkMethod()?.buildBody();
+                cls.getDefaultArkMethod()?.freeBodyBuilder();
+            });
+            // Release all method builders in SDK file to avoid retaining AST/build context in memory.
+            ModelUtils.getAllMethodsInFile(arkFile).forEach(method => {
+                if (method.getDeclaringArkFile()?.getLanguage() === Language.CXX) {
+                    method.freeCxxBodyBuilder();
+                } else {
+                    method.freeBodyBuilder();
+                }
+            });
+            const fileSig = arkFile.getFileSignature().toMapKey();
+            this.sdkArkFilesMap.set(fileSig, arkFile);
+            SdkUtils.buildSdkImportMap(arkFile);
+            SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
+        } catch (error) {
+            logger.error('Error parsing file:', file, error);
+            this.unhandledSdkFilePaths.push(file);
+        }
     }
 
     /**
@@ -755,6 +817,10 @@ export class Scene {
         return this.sdkGlobalMap.get(globalName) || null;
     }
 
+    public getSdkGlobalMap(): Map<string, ArkExport> {
+        return this.sdkGlobalMap;
+    }
+
     /**
      * Returns the file based on its signature.
      * If no file can be found according to the input signature, **null** will be returned.
@@ -787,6 +853,10 @@ export class Scene {
      */
     public getUnhandledFilePaths(): string[] {
         return Array.from(this.unhandledFilePaths);
+    }
+
+    public addUnhandledFilePath(filePath: string): void {
+        this.unhandledFilePaths.add(filePath);
     }
 
     /*
@@ -1065,6 +1135,23 @@ export class Scene {
         return callGraph;
     }
 
+    /** Obtain the header file directories of the input C++ project dependencies. */
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
+    }
+
+    public setCcjsonPath(ccjsonPath: string): void {
+        this.ccjsonPath = ccjsonPath;
+    }
+
+    public getCppAstPath(): string {
+        return this.cppAstPath;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1087,6 +1174,8 @@ export class Scene {
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
+        ModuleUtils.dispose();
+        ValueUtil.dispose();
     }
 
     /**
@@ -1096,9 +1185,12 @@ export class Scene {
      * Scheduled for removal: one month from deprecation date.
      */
     public inferTypesOld(): void {
+        // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
+        CxxIRInference.mapCxxDeclAndImpl(this);
         this.filesMap.forEach(file => {
             try {
-                IRInference.inferFile(file);
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }
@@ -1460,6 +1552,10 @@ export class ModuleScene {
         this.projectScene = projectScene;
     }
 
+    public getProjectScene(): Scene {
+        return this.projectScene;
+    }
+
     public ModuleSceneBuilder(moduleName: string, modulePath: string, supportFileExts: string[], recursively: boolean = false): void {
         this.moduleName = moduleName;
         this.modulePath = modulePath;
@@ -1523,19 +1619,7 @@ export class ModuleScene {
     }
 
     private genArkFiles(supportFileExts: string[]): void {
-        getAllFiles(this.modulePath, supportFileExts, this.projectScene.getOptions().ignoreFileNames).forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.projectScene.getFileLanguages()));
-                arkFile.setScene(this.projectScene);
-                arkFile.setModuleScene(this);
-                buildArkFileFromFile(file, this.projectScene.getRealProjectDir(), arkFile, this.projectScene.getProjectName());
-                this.projectScene.setFile(arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.projectScene.getUnhandledFilePaths().push(file);
-                return;
-            }
-        });
+        const filePaths = getAllFiles(this.modulePath, supportFileExts, this.projectScene.getOptions().ignoreFileNames);
+        FrontendBuilder.buildModuleFilesIntoArkFiles(this, filePaths);
     }
 }

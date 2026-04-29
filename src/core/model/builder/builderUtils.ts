@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,12 +33,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { Decorator } from '../../base/Decorator';
-import {
-    ArrayBindingPatternParameter,
-    buildArkMethodFromArkClass,
-    MethodParameter,
-    ObjectBindingPatternParameter,
-} from './ArkMethodBuilder';
+import { ArrayBindingPatternParameter, buildArkMethodFromArkClass, MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
 import { buildNormalArkClassFromArkMethod } from './ArkClassBuilder';
 import { Builtin } from '../../common/Builtin';
 import { modifierKind2Enum } from '../ArkBaseModel';
@@ -102,7 +97,7 @@ export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<D
     return decorators;
 }
 
-function parseDecorator(node: ts.Decorator): Decorator | undefined {
+export function parseDecorator(node: ts.Decorator): Decorator | undefined {
     if (!node.expression) {
         return undefined;
     }
@@ -264,8 +259,12 @@ function buildArrayBindingPatternParam(methodParameter: MethodParameter, paramNa
     methodParameter.setArrayElements(elements);
 }
 
-export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkInstance: ArkMethod | ArkField, sourceFile: ts.SourceFile,
-                                paramsPosition: Map<string, FullPosition>): MethodParameter[] {
+export function buildParameters(
+    params: ts.NodeArray<ParameterDeclaration>,
+    arkInstance: ArkMethod | ArkField,
+    sourceFile: ts.SourceFile,
+    paramsPosition: Map<string, FullPosition>
+): MethodParameter[] {
     let parameters: MethodParameter[] = [];
     params.forEach(parameter => {
         let methodParameter = new MethodParameter();
@@ -374,7 +373,9 @@ export function buildGenericType(type: Type, arkInstance: ArkMethod | ArkField |
 }
 
 export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile, method: ArkMethod): Type {
-    if (node) {
+    if (node.kind === ts.SyntaxKind.ThisType) {
+        return new ClassType(method.getDeclaringArkClass().getSignature(), method.getDeclaringArkClass().getGenericsTypes());
+    } else if (node) {
         return tsNode2Type(node, sourceFile, method);
     } else {
         return UnknownType.getInstance();

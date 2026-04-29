@@ -1,5 +1,6 @@
 node_modules
 .vscode/*
+.trae/
 package-lock.json
 t.ts
 main.dot
@@ -10,6 +11,9 @@ out/
 .idea
 tests/resources/output
 tests/resources/callgraph/projectTest/*
+tests/third_party/
+tests/cppResources/opencv/
+tests/samples/perf/fixtures
 coverage
 doc/
 exportRollup.config.mjs
@@ -19,3 +23,14 @@ output
 builtIn/
 arktools/
 lib/
+
+# Keep only selected folders under src/frontend/cppFrontend/ast.
+src/frontend/cppFrontend/ast/*/
+!src/frontend/cppFrontend/ast/ts/
+!src/frontend/cppFrontend/ast/ts/**
+!src/frontend/cppFrontend/ast/cpp/
+!src/frontend/cppFrontend/ast/cpp/**
+
+# Agent related files
+.claude/settings.json
+src/frontend/cppFrontend/ast/cpp/build/

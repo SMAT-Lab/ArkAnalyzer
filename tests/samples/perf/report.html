@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArkAnalyzer Performance Visualization</title>
+    <!-- Lightweight visualization via Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fb;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-weight: 500;
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 16px;
+        }
+
+        .file-loader {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #e9eef4;
+        }
+
+        .file-input-wrapper {
+            flex: 2;
+            min-width: 260px;
+        }
+
+        label {
+            font-weight: 500;
+            margin-right: 12px;
+            color: #334155;
+        }
+
+        input[type="file"] {
+            padding: 10px 12px;
+            border: 1px dashed #94a3b8;
+            border-radius: 40px;
+            background: #fafcff;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .stats-badge {
+            background: #eef2ff;
+            color: #4f46e5;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #1e293b;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: white;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 20px 24px;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.02);
+            border: 1px solid #edf2f7;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-weight: 500;
+            font-size: 1.25rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .kpi-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px 24px;
+        }
+
+        .kpi-item {
+            min-width: 100px;
+        }
+
+        .kpi-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #64748b;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 450;
+            line-height: 1.3;
+            color: #0f172a;
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-left: 4px;
+            font-weight: 400;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 260px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .stage-table-container {
+            background: white;
+            border-radius: 24px;
+            padding: 8px 4px 4px 4px;
+            border: 1px solid #edf2f7;
+            overflow-x: auto;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            min-width: 800px;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px 16px 12px 16px;
+            font-weight: 500;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .hot-func {
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .func-name {
+            font-weight: 500;
+        }
+
+        .func-location {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .badge {
+            background: #e6edfb;
+            padding: 4px 10px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            color: #2563eb;
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .warning-msg {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 16px;
+            padding: 16px 24px;
+            color: #92400e;
+        }
+
+        .info-msg {
+            background: #e6f0ff;
+            border: 1px solid #a3c6ff;
+            border-radius: 16px;
+            padding: 16px 24px;
+            color: #1e40af;
+        }
+
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>
+            📊 ArkAnalyzer · Performance Snapshot
+        </h1>
+        <div class="subtitle">Visualize CPU time · Memory growth · GC activity · Hot functions</div>
+
+        <!-- Dynamic content area -->
+        <div id="dashboardContent">
+            <div class="warning-msg">
+                ⚠️ summary.json is not loaded yet. Select a file above, or click "Load Sample" for demo data.
+            </div>
+        </div>
+
+        <div class="footer-note">
+            ArkAnalyzer Profiler · Powered by V8 Inspector & PerformanceObserver
+        </div>
+    </div>
+
+    <!-- Embedded data placeholder (render directly if injected) -->
+    <script id="summary-data" type="application/json"></script>
+
+    <script>
+        (function () {
+            // ---------- DOM elements ----------
+            const dashboardEl = document.getElementById('dashboardContent');
+
+            let currentData = null; // Store parsed ProfilerResult
+            let chartInstances = []; // Keep Chart instances for cleanup
+            let hotFunctionLimit = 10; // Default hot function display count
+            const BYTES_PER_KB = 1024;
+            const BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
+
+            // ---------- Helper: destroy previous charts ----------
+            function destroyCharts() {
+                chartInstances.forEach(chart => chart.destroy());
+                chartInstances = [];
+            }
+
+            // ---------- Formatting helpers ----------
+            function formatMs(ms) {
+                return ms.toFixed(2) + ' ms';
+            }
+            function formatMB(bytes) {
+                return (bytes / BYTES_PER_MB).toFixed(2) + ' MB';
+            }
+            function formatBytes(bytes) {
+                if (bytes > BYTES_PER_MB) {
+                    return (bytes / BYTES_PER_MB).toFixed(2) + ' MB';
+                }
+                if (bytes > BYTES_PER_KB) {
+                    return (bytes / BYTES_PER_KB).toFixed(1) + ' KB';
+                }
+                return bytes + ' B';
+            }
+            function escapeHtml(s) {
+                if (s === undefined || s === null) {
+                    return '';
+                }
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function normalizeGcStats(stage) {
+                const gp = stage.gcPauses;
+                if (Array.isArray(gp)) {
+                    const totalDurationMs = gp.reduce((sum, p) => sum + (p.durationMs || 0), 0);
+                    const breakdown = gp.reduce((acc, p) => {
+                        const source = p.source === 'manual' ? 'manual' : 'natural';
+                        acc[source].count += 1;
+                        acc[source].timeMs += p.durationMs || 0;
+                        return acc;
+                    }, { natural: { count: 0, timeMs: 0 }, manual: { count: 0, timeMs: 0 } });
+                    return { count: gp.length, totalDurationMs, breakdown };
+                }
+                return {
+                    count: gp.count || 0,
+                    totalDurationMs: gp.totalDurationMs || 0,
+                    breakdown: {
+                        natural: { count: gp.naturalCount || 0, timeMs: gp.naturalDurationMs || 0 },
+                        manual: { count: gp.manualCount || 0, timeMs: gp.manualDurationMs || 0 },
+                    },
+                };
+            }
+
+            // Calculate total GC time
+            function getGcTotalMs(stage) {
+                return normalizeGcStats(stage).totalDurationMs;
+            }
+            function getHeapPeakUsed(stage) {
+                if (Number.isFinite(stage.heapPeakUsedBytes)) {
+                    return stage.heapPeakUsedBytes;
+                }
+                const beforeUsed = stage.heapBefore?.used || 0;
+                const afterUsed = stage.heapAfter?.used || 0;
+                return Math.max(beforeUsed, afterUsed);
+            }
+            function getRssPeak(stage) {
+                if (Number.isFinite(stage.rssPeakBytes)) {
+                    return stage.rssPeakBytes;
+                }
+                return 0;
+            }
+            function getGcBreakdown(stage) {
+                return normalizeGcStats(stage).breakdown;
+            }
+
+            function buildMetaRow(data) {
+                const metaParts = [];
+                if (data.project) {
+                    metaParts.push('Perf: <strong>' + escapeHtml(data.project) + '</strong>');
+                }
+                if (data.gitCommit) {
+                    const short = escapeHtml(String(data.gitCommit).slice(0, 12));
+                    metaParts.push('ArkAnalyzer: <code style="font-size:0.85em;">' + short + '</code>');
+                }
+                if (data.reportTime) {
+                    metaParts.push('Report: ' + escapeHtml(data.reportTime));
+                }
+                if (Number.isFinite(data.arkFileCount) && Number.isFinite(data.arkClassCount) &&
+                    Number.isFinite(data.arkMethodCount) && Number.isFinite(data.arkStmtCount)) {
+                    metaParts.push(
+                        'Scene: ' + data.arkFileCount + ' files · ' + data.arkClassCount + ' classes · ' +
+                        data.arkMethodCount + ' methods · ' + data.arkStmtCount + ' stmts'
+                    );
+                }
+                if (metaParts.length === 0) {
+                    return '';
+                }
+                return '<div class="subtitle" style="margin-top:-12px;margin-bottom:20px;font-size:0.92rem;line-height:1.6;">' +
+                    metaParts.join(' · ') + '</div>';
+            }
+
+            function collectStageStats(stages) {
+                return stages.map((stage) => {
+                    const gcBreakdown = getGcBreakdown(stage);
+                    return {
+                        stage,
+                        gcTime: getGcTotalMs(stage),
+                        gcBreakdown,
+                        heapPeakUsed: getHeapPeakUsed(stage),
+                        rssPeak: getRssPeak(stage)
+                    };
+                });
+            }
+
+            function getAggregateStats(stageStats) {
+                return stageStats.reduce((acc, item) => {
+                    acc.gcCount += normalizeGcStats(item.stage).count;
+                    acc.gcTime += item.gcTime;
+                    acc.naturalCount += item.gcBreakdown.natural.count;
+                    acc.naturalTime += item.gcBreakdown.natural.timeMs;
+                    acc.manualCount += item.gcBreakdown.manual.count;
+                    acc.manualTime += item.gcBreakdown.manual.timeMs;
+                    return acc;
+                }, {
+                    gcCount: 0,
+                    gcTime: 0,
+                    naturalCount: 0,
+                    naturalTime: 0,
+                    manualCount: 0,
+                    manualTime: 0
+                });
+            }
+
+            function renderHeapKpiItems(stageStats) {
+                return stageStats.map((item) => {
+                    const usedEnd = item.stage.heapAfter?.used || 0;
+                    return `<div class="kpi-item">
+                                    <div class="kpi-label">${item.stage.stageName}</div>
+                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(item.rssPeak)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">peak ${formatMB(item.heapPeakUsed)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">used end ${formatMB(usedEnd)}</div>
+                                    <div style="font-size:0.8rem;">heap growth ${item.stage.heapGrowthBytes > 0 ? '+' : '-'}${formatBytes(Math.abs(item.stage.heapGrowthBytes))}</div>
+                                </div>`;
+                }).join('');
+            }
+
+            function renderStageTableRows(stageStats) {
+                return stageStats.map((item) => {
+                    const stage = item.stage;
+                    const heapBeforeMB = (stage.heapBefore?.used || 0) / BYTES_PER_MB;
+                    const heapAfterMB = (stage.heapAfter?.used || 0) / BYTES_PER_MB;
+                    const heapPeakMB = item.heapPeakUsed / BYTES_PER_MB;
+                    const rssPeakMB = item.rssPeak / BYTES_PER_MB;
+                    const growthMB = stage.heapGrowthBytes / BYTES_PER_MB;
+                    const topCpuHotFunc = stage.cpuHotFunctions?.[0] || null;
+                    const topAllocFunc = stage.allocationHotFunctions?.[0] || null;
+                    return `<tr>
+                                    <td><strong>${stage.stageName}</strong></td>
+                                    <td>${stage.durationMs.toFixed(2)}</td>
+                                    <td>${heapBeforeMB.toFixed(2)}</td>
+                                    <td>${heapAfterMB.toFixed(2)}</td>
+                                    <td>${heapPeakMB.toFixed(2)}</td>
+                                    <td style="color:${growthMB > 0.5 ? '#b91c1c' : '#15803d'};">${growthMB > 0 ? '+' : ''}${growthMB.toFixed(2)}</td>
+                                    <td>${rssPeakMB.toFixed(2)}</td>
+                                    <td>${normalizeGcStats(stage).count}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
+                                    <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
+                                    <td class="hot-func">
+                                        ${topCpuHotFunc ? `<span class="func-name">${topCpuHotFunc.name}</span><br><span class="func-location">${topCpuHotFunc.location} · ${topCpuHotFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}
+                                    </td>
+                                    <td class="hot-func">
+                                        ${topAllocFunc ? `<span class="func-name">${topAllocFunc.name}</span><br><span class="func-location">${topAllocFunc.location} · ${topAllocFunc.allocatedMb.toFixed(2)}MB</span>` : '<span class="badge">No samples</span>'}
+                                    </td>
+                                </tr>`;
+                }).join('');
+            }
+
+            function renderCpuHotFunctionCards(stages) {
+                return stages.map((stage) => {
+                    if (!stage.cpuHotFunctions || stage.cpuHotFunctions.length === 0) {
+                        return '';
+                    }
+                    const displayCount = Math.min(hotFunctionLimit, stage.cpuHotFunctions.length);
+                    return `
+                        <div class="card" style="margin-bottom:16px;">
+                            <h3>🔥 ${stage.stageName} · CPU Hot Functions (Top ${displayCount} by self time)</h3>
+                            <table style="min-width:780px;">
+                                <thead><tr><th>Function</th><th>Location</th><th>Self Time (ms)</th><th>StdDev (ms)</th><th>CV</th><th>Samples</th></tr></thead>
+                                <tbody>
+                                    ${stage.cpuHotFunctions.slice(0, displayCount).map(fn => `
+                                        <tr>
+                                            <td class="func-name">${fn.name}</td>
+                                            <td class="func-location">${fn.location}</td>
+                                            <td>${fn.selfTimeMs.toFixed(2)}</td>
+                                            <td>${Number.isFinite(fn.selfTimeStdDevMs) ? fn.selfTimeStdDevMs.toFixed(2) : '-'}</td>
+                                            <td style="color:${Number.isFinite(fn.selfTimeCv) ? (fn.selfTimeCv > 0.5 ? '#b91c1c' : fn.selfTimeCv > 0.2 ? '#b45309' : '#15803d') : '#64748b'};">
+                                                ${Number.isFinite(fn.selfTimeCv) ? (fn.selfTimeCv * 100).toFixed(1) + '%' : '-'}
+                                            </td>
+                                            <td>${fn.sampleCount}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }).join('');
+            }
+
+            function renderAllocationHotFunctionCards(stages) {
+                return stages.map((stage) => {
+                    if (!stage.allocationHotFunctions || stage.allocationHotFunctions.length === 0) {
+                        return '';
+                    }
+                    const displayCount = Math.min(hotFunctionLimit, stage.allocationHotFunctions.length);
+                    return `
+                        <div class="card" style="margin-bottom:16px;">
+                            <h3>🔥 ${stage.stageName} · Allocation Hot Functions (Top ${displayCount} by allocated bytes)</h3>
+                            <table style="min-width:780px;">
+                                <thead><tr><th>Function</th><th>Location</th><th>Allocated MB</th><th>StdDev (MB)</th><th>CV</th><th>Samples</th></tr></thead>
+                                <tbody>
+                                    ${stage.allocationHotFunctions.slice(0, displayCount).map(fn => `
+                                        <tr>
+                                            <td class="func-name">${fn.name}</td>
+                                            <td class="func-location">${fn.location}</td>
+                                            <td>${fn.allocatedMb.toFixed(2)}</td>
+                                            <td>${Number.isFinite(fn.allocatedBytesStdDev) ? (fn.allocatedBytesStdDev / 1024 / 1024).toFixed(2) : '-'}</td>
+                                            <td style="color:${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv > 0.5 ? '#b91c1c' : fn.allocatedBytesCv > 0.2 ? '#b45309' : '#15803d') : '#64748b'};">
+                                                ${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv * 100).toFixed(1) + '%' : '-'}
+                                            </td>
+                                            <td>${fn.sampleCount ?? '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }).join('');
+            }
+
+            function renderCharts(stages) {
+                const stageNames = stages.map(s => s.stageName);
+                const durations = stages.map(s => s.durationMs);
+                const rssPeaks = stages.map(s => getRssPeak(s) / BYTES_PER_MB);
+                const gcTimes = stages.map(s => getGcTotalMs(s));
+
+                const ctx1 = document.getElementById('durationChart').getContext('2d');
+                const durationChart = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: stageNames,
+                        datasets: [{
+                            label: 'Duration (ms)',
+                            data: durations,
+                            backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                            borderRadius: 8,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: { callbacks: { label: (ctx) => `${ctx.raw.toFixed(2)} ms` } }
+                        }
+                    }
+                });
+                chartInstances.push(durationChart);
+
+                const ctx2 = document.getElementById('heapGcChart').getContext('2d');
+                const mixedChart = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: stageNames,
+                        datasets: [
+                            {
+                                label: 'RSS Peak per Round (MB)',
+                                data: rssPeaks,
+                                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                                borderRadius: 8,
+                                yAxisID: 'y',
+                            },
+                            {
+                                label: 'GC Time (ms)',
+                                data: gcTimes,
+                                type: 'line',
+                                borderColor: '#f97316',
+                                backgroundColor: 'transparent',
+                                borderWidth: 3,
+                                pointStyle: 'circle',
+                                pointBackgroundColor: '#f97316',
+                                tension: 0.2,
+                                yAxisID: 'y1',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'RSS Peak per Round (MB)' }
+                            },
+                            y1: {
+                                position: 'right',
+                                beginAtZero: true,
+                                title: { display: true, text: 'GC Time (ms)' },
+                                grid: { drawOnChartArea: false }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        if (ctx.dataset.label.includes('MB')) {
+                                            return `${ctx.dataset.label}: ${ctx.raw.toFixed(3)} MB`;
+                                        }
+                                        return `${ctx.dataset.label}: ${ctx.raw.toFixed(2)} ms`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                chartInstances.push(mixedChart);
+            }
+
+            // ---------- Render full dashboard ----------
+            function renderDashboard(data) {
+                destroyCharts();
+                if (!data || !data.stages) {
+                    dashboardEl.innerHTML = `<div class="warning-msg">❌ Invalid data format: missing "stages" field.</div>`;
+                    return;
+                }
+
+                currentData = data;
+                const stages = data.stages;
+                const totalMs = data.totalDurationMs || stages.reduce((s, st) => s + st.durationMs, 0);
+                const totalSeconds = totalMs / 1000;
+                const stageStats = collectStageStats(stages);
+                const aggregateStats = getAggregateStats(stageStats);
+
+                // Resolve runId
+                const runId = data.runId || `snapshot-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}`;
+                const metaRow = buildMetaRow(data);
+
+                // Build HTML structure
+                let html = `
+                ${metaRow}
+                <!-- KPI cards row -->
+                <div class="dashboard">
+                    <div class="card">
+                        <h3>⏱️ Total Duration</h3>
+                        <div class="kpi-value">${totalSeconds.toFixed(2)}<span class="unit">s</span></div>
+                        <div style="margin-top:12px; color:#64748b;">Stage count: ${stages.length}</div>
+                    </div>
+                    <div class="card">
+                        <h3>🧠 Heap Memory Change</h3>
+                        <div class="kpi-grid">
+                            ${renderHeapKpiItems(stageStats)}
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>🔄 GC Activity</h3>
+                        <div class="kpi-value">${aggregateStats.gcCount}<span class="unit">pauses</span></div>
+                        <div>Total GC time: ${aggregateStats.gcTime.toFixed(2)} ms</div>
+                        <div style="font-size:0.85rem; color:#64748b; margin-top:6px;">
+                            Natural: ${aggregateStats.naturalCount} /
+                            ${aggregateStats.naturalTime.toFixed(2)} ms
+                            &nbsp;|&nbsp;
+                            Manual: ${aggregateStats.manualCount} /
+                            ${aggregateStats.manualTime.toFixed(2)} ms
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts section -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
+                    <div class="card" style="padding-bottom: 10px;">
+                        <h3>📈 Stage Duration Comparison</h3>
+                        <div class="chart-container">
+                            <canvas id="durationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card" style="padding-bottom: 10px;">
+                        <h3>📊 RSS Peak per Round & GC Time</h3>
+                        <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">
+                            RSS uses per-round isolated process sampling.
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="heapGcChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stage details table -->
+                <div class="stage-table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stage</th>
+                                <th>Duration (ms)</th>
+                                <th>Heap Start (MB)</th>
+                                <th>Heap End (MB)</th>
+                                <th>Heap Peak (MB)</th>
+                                <th>Heap Growth (MB)</th>
+                                <th>RSS Peak per Round (MB)</th>
+                                <th>GC Count</th>
+                                <th>GC Time (ms)</th>
+                                <th>🔥 Top CPU Hot Function</th>
+                                <th>🔥 Top Allocation Hot Function</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stageTableBody">
+                            ${renderStageTableRows(stageStats)}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Hot function details section -->
+                <div style="margin-top: 30px;">
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="flex-row">
+                            <label for="hotFuncLimitSelect" style="margin-right: 0;">Hot Function display count:</label>
+                            <select id="hotFuncLimitSelect" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:10px; background:white;">
+                                <option value="5" ${hotFunctionLimit === 5 ? 'selected' : ''}>Top 5</option>
+                                <option value="10" ${hotFunctionLimit === 10 ? 'selected' : ''}>Top 10</option>
+                                <option value="20" ${hotFunctionLimit === 20 ? 'selected' : ''}>Top 20</option>
+                                <option value="50" ${hotFunctionLimit === 50 ? 'selected' : ''}>Top 50</option>
+                            </select>
+                        </div>
+                    </div>
+                    ${renderCpuHotFunctionCards(stages)}
+                    ${renderAllocationHotFunctionCards(stages)}
+                </div>
+            `;
+
+                dashboardEl.innerHTML = html;
+                const hotFuncLimitSelect = document.getElementById('hotFuncLimitSelect');
+                if (hotFuncLimitSelect) {
+                    hotFuncLimitSelect.addEventListener('change', (event) => {
+                        const selectedValue = Number(event.target.value);
+                        hotFunctionLimit = Number.isFinite(selectedValue) ? selectedValue : 10;
+                        renderDashboard(currentData);
+                    });
+                }
+                renderCharts(stages);
+            }
+
+            // ---------- Try loading data from embedded script ----------
+            function tryLoadEmbeddedData() {
+                const scriptTag = document.getElementById('summary-data');
+                if (!scriptTag) {
+                    return false;
+                }
+
+                const jsonText = scriptTag.textContent?.trim();
+                if (!jsonText) {
+                    return false;
+                }
+
+                try {
+                    const data = JSON.parse(jsonText);
+                    // Basic validation
+                    if (!data.stages) {
+                        console.warn('Embedded data is missing the "stages" field');
+                        return false;
+                    }
+                    // Fill runId if not provided
+                    if (!data.runId) {
+                        data.runId = 'embedded-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    }
+                    renderDashboard(data);
+                    return true;
+                } catch (e) {
+                    console.error('Failed to parse embedded JSON:', e);
+                    return false;
+                }
+            }
+
+            // ---------- Initialization: prioritize embedded data ----------
+            window.addEventListener('DOMContentLoaded', () => {
+                tryLoadEmbeddedData();
+            });
+
+        })();
+    </script>
+</body>
+
+</html>

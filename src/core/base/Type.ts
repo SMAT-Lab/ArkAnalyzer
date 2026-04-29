@@ -35,11 +35,51 @@ import { Constant } from './Constant';
  * @category core/base/type
  */
 export abstract class Type {
-    toString(): string {
-        return this.getTypeString();
+    /** True if this type can contain other types and thus participate in cycles */
+    protected canParticipateInCycle(): boolean {
+        return false;
     }
 
-    abstract getTypeString(): string;
+    /**
+     * Returns a short display name for this type when used as a cycle back-reference.
+     * Override in named types (AliasType, ClassType, GenericType, UnclearReferenceType)
+     * to return the type name; default returns UNKNOWN_KEYWORD for anonymous types.
+     */
+    protected getDisplayNameForCycle(): string {
+        return UNKNOWN_KEYWORD;
+    }
+
+    toString(): string {
+        return this.toStringWithVisited(new Set<Type>());
+    }
+
+    /**
+     * Converts type to string with cycle detection. Use when recursing into child types.
+     * Only container types are tracked in visited. We add on enter and remove on leave
+     * so that the same type in different branches (e.g. UnionType(A|B) where both use
+     * NumberType) is not falsely detected as a cycle.
+     * When a cycle is detected, returns the type's display name (e.g. A for AliasType)
+     * instead of a generic placeholder.
+     * @internal Package-internal use only. Prefer toString() for public API.
+     * @param visited Set of container types in the recursion path; omitted or undefined uses a new empty set (same root semantics as {@link toString}).
+     */
+    public toStringWithVisited(visited: Set<Type> = new Set<Type>()): string {
+        if (this.canParticipateInCycle() && visited.has(this)) {
+            return this.getDisplayNameForCycle();
+        }
+        if (this.canParticipateInCycle()) {
+            visited.add(this);
+        }
+        try {
+            return this.getTypeString(visited);
+        } finally {
+            if (this.canParticipateInCycle()) {
+                visited.delete(this);
+            }
+        }
+    }
+
+    protected abstract getTypeString(visited?: Set<Type>): string;
 }
 
 /**
@@ -57,7 +97,7 @@ export class AnyType extends Type {
         super();
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return ANY_KEYWORD;
     }
 }
@@ -77,7 +117,7 @@ export class UnknownType extends Type {
         super();
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return UNKNOWN_KEYWORD;
     }
 }
@@ -89,6 +129,14 @@ export class UnknownType extends Type {
 export class UnclearReferenceType extends Type {
     private name: string;
     private genericTypes: Type[];
+
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
+    protected getDisplayNameForCycle(): string {
+        return this.name;
+    }
 
     constructor(name: string, genericTypes: Type[] = []) {
         super();
@@ -104,10 +152,10 @@ export class UnclearReferenceType extends Type {
         return this.genericTypes;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.genericTypes.length > 0) {
-            str += '<' + this.genericTypes.join(',') + '>';
+            str += '<' + this.genericTypes.map(t => t.toStringWithVisited(visited)).join(',') + '>';
         }
         return str;
     }
@@ -129,7 +177,7 @@ export abstract class PrimitiveType extends Type {
         return this.name;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return this.name;
     }
 }
@@ -149,7 +197,7 @@ export class BooleanType extends PrimitiveType {
 export class NumberType extends PrimitiveType {
     private static readonly INSTANCE = new NumberType();
 
-    private constructor() {
+    protected constructor() {
         super(NUMBER_KEYWORD);
     }
 
@@ -174,10 +222,14 @@ export class BigIntType extends PrimitiveType {
     }
 }
 
+/**
+ * StringType type
+ * @category core/base/type
+ */
 export class StringType extends PrimitiveType {
     private static readonly INSTANCE = new StringType();
 
-    private constructor() {
+    protected constructor() {
         super(STRING_KEYWORD);
     }
 
@@ -187,7 +239,7 @@ export class StringType extends PrimitiveType {
 }
 
 /**
- * null type
+ * Null type in TS/ArkTS, and it also refers to nullptr in Cxx.
  * @category core/base/type
  */
 export class NullType extends PrimitiveType {
@@ -237,7 +289,7 @@ export class LiteralType extends PrimitiveType {
         return this.literalName;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return this.literalName.toString();
     }
 }
@@ -249,6 +301,11 @@ export class LiteralType extends PrimitiveType {
 export class UnionType extends Type {
     private types: Type[];
     private currType: Type; // The true type of the value at this time
+
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
     constructor(types: Type[], currType: Type = UnknownType.getInstance()) {
         super();
         this.types = [...types];
@@ -267,13 +324,13 @@ export class UnionType extends Type {
         this.currType = newType;
     }
 
-    public getTypeString(): string {
-        let typesString: string[] = [];
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        const typesString: string[] = [];
         this.getTypes().forEach(t => {
             if (t instanceof UnionType || t instanceof IntersectionType) {
-                typesString.push(`(${t.toString()})`);
+                typesString.push(`(${t.toStringWithVisited(visited)})`);
             } else {
-                typesString.push(t.toString());
+                typesString.push(t.toStringWithVisited(visited));
             }
         });
         return typesString.join('|');
@@ -300,6 +357,10 @@ export class UnionType extends Type {
 export class IntersectionType extends Type {
     private types: Type[];
 
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
     constructor(types: Type[]) {
         super();
         this.types = [...types];
@@ -309,13 +370,13 @@ export class IntersectionType extends Type {
         return this.types;
     }
 
-    public getTypeString(): string {
-        let typesString: string[] = [];
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        const typesString: string[] = [];
         this.getTypes().forEach(t => {
             if (t instanceof UnionType || t instanceof IntersectionType) {
-                typesString.push(`(${t.toString()})`);
+                typesString.push(`(${t.toStringWithVisited(visited)})`);
             } else {
-                typesString.push(t.toString());
+                typesString.push(t.toStringWithVisited(visited));
             }
         });
         return typesString.join('&');
@@ -337,11 +398,15 @@ export class VoidType extends Type {
         super();
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return VOID_KEYWORD;
     }
 }
 
+/**
+ * NeverType type
+ * @category core/base/type
+ */
 export class NeverType extends Type {
     private static readonly INSTANCE = new NeverType();
 
@@ -353,7 +418,7 @@ export class NeverType extends Type {
         super();
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return NEVER_KEYWORD;
     }
 }
@@ -365,6 +430,10 @@ export class NeverType extends Type {
 export class FunctionType extends Type {
     private methodSignature: MethodSignature;
     private realGenericTypes?: Type[];
+
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
 
     constructor(methodSignature: MethodSignature, realGenericTypes?: Type[]) {
         super();
@@ -380,8 +449,14 @@ export class FunctionType extends Type {
         return this.realGenericTypes;
     }
 
-    public getTypeString(): string {
-        return this.methodSignature.toString();
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        const sig = this.methodSignature.getMethodSubSignature();
+        const classStr = this.methodSignature.getDeclaringClassSignature().toString();
+        const paramStrs = sig.getParameterTypes()
+            .map(t => t ? t.toStringWithVisited(visited) : UnknownType.getInstance().toString())
+            .join(', ');
+        const methodPart = (sig.isStatic() ? '[static]' : '') + sig.getMethodName() + '(' + paramStrs + ')';
+        return classStr + '.' + methodPart;
     }
 }
 
@@ -401,18 +476,26 @@ export class ClosureType extends FunctionType {
         return this.lexicalEnv;
     }
 
-    public getTypeString(): string {
-        return 'closures: ' + super.getTypeString();
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        return 'closures: ' + super.getTypeString(visited);
     }
 }
 
 /**
- * type of an object
+ * type of object
  * @category core/base/type
  */
 export class ClassType extends Type {
     private classSignature: ClassSignature;
     private realGenericTypes?: Type[];
+
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
+    protected getDisplayNameForCycle(): string {
+        return this.classSignature.toString();
+    }
 
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
@@ -436,11 +519,10 @@ export class ClassType extends Type {
         this.realGenericTypes = types;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let temp = this.classSignature.toString();
-        let generic = this.realGenericTypes?.join(',');
-        if (generic) {
-            temp += `<${generic}>`;
+        if (this.realGenericTypes && this.realGenericTypes.length > 0) {
+            temp += `<${this.realGenericTypes.map(t => t.toStringWithVisited(visited)).join(',')}>`;
         }
         return temp;
     }
@@ -463,6 +545,10 @@ export class ArrayType extends Type {
     private baseType: Type;
     private dimension: number;
     private readonlyFlag?: boolean;
+
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
 
     constructor(baseType: Type, dimension: number) {
         super();
@@ -494,15 +580,17 @@ export class ArrayType extends Type {
         return this.readonlyFlag;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const strs: string[] = [];
         if (this.getReadonlyFlag()) {
             strs.push('readonly ');
         }
-        if (this.baseType instanceof UnionType || this.baseType instanceof IntersectionType) {
-            strs.push('(' + this.baseType.toString() + ')');
-        } else if (this.baseType) {
-            strs.push(this.baseType.toString());
+        if (this.baseType) {
+            if (this.baseType instanceof UnionType || this.baseType instanceof IntersectionType) {
+                strs.push('(' + this.baseType.toStringWithVisited(visited) + ')');
+            } else {
+                strs.push(this.baseType.toStringWithVisited(visited));
+            }
         }
         for (let i = 0; i < this.dimension; i++) {
             strs.push('[]');
@@ -528,6 +616,10 @@ export class TupleType extends Type {
     private types: Type[];
     private readonlyFlag?: boolean;
 
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
     constructor(types: Type[]) {
         super();
         this.types = types;
@@ -545,11 +637,12 @@ export class TupleType extends Type {
         return this.readonlyFlag;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        const typesStr = this.types.map(t => t.toStringWithVisited(visited)).join(', ');
         if (this.getReadonlyFlag()) {
-            return 'readonly [' + this.types.join(', ') + ']';
+            return 'readonly [' + typesStr + ']';
         }
-        return '[' + this.types.join(', ') + ']';
+        return '[' + typesStr + ']';
     }
 }
 
@@ -579,6 +672,14 @@ export class AliasType extends Type implements ArkExport {
     private genericTypes?: GenericType[];
     private realGenericTypes?: Type[];
 
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
+    protected getDisplayNameForCycle(): string {
+        return this.name;
+    }
+
     constructor(name: string, originalType: Type, signature: AliasTypeSignature, genericTypes?: GenericType[]) {
         super();
         this.name = name;
@@ -599,11 +700,14 @@ export class AliasType extends Type implements ArkExport {
         return this.originalType;
     }
 
-    public getTypeString(): string {
-        let res = this.getSignature().toString();
-        let generic = this.getRealGenericTypes()?.join(',') ?? this.getGenericTypes()?.join(',');
-        if (generic) {
-            res += `<${generic}>`;
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
+        let res = this.getSignature().toString(visited);
+        const realGeneric = this.getRealGenericTypes();
+        const generic = this.getGenericTypes();
+        if (realGeneric && realGeneric.length > 0) {
+            res += `<${realGeneric.map(t => t.toStringWithVisited(visited)).join(',')}>`;
+        } else if (generic && generic.length > 0) {
+            res += `<${generic.map(gt => gt.toStringWithVisited(visited)).join(',')}>`;
         }
         return res;
     }
@@ -671,6 +775,14 @@ export class GenericType extends Type {
     private constraint?: Type;
     private index: number = 0;
 
+    protected canParticipateInCycle(): boolean {
+        return true;
+    }
+
+    protected getDisplayNameForCycle(): string {
+        return this.name;
+    }
+
     constructor(name: string, defaultType?: Type, constraint?: Type) {
         super();
         this.name = name;
@@ -706,13 +818,13 @@ export class GenericType extends Type {
         return this.index ?? 0;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.constraint) {
-            str += ' extends ' + this.constraint.toString();
+            str += ' extends ' + this.constraint.toStringWithVisited(visited);
         }
         if (this.defaultType) {
-            str += ' = ' + this.defaultType.toString();
+            str += ' = ' + this.defaultType.toStringWithVisited(visited);
         }
         return str;
     }
@@ -730,7 +842,7 @@ export abstract class AnnotationType extends Type {
         return this.originType;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return this.originType;
     }
 }
@@ -769,12 +881,12 @@ export class AnnotationTypeQueryType extends AnnotationType {
 
 export class LexicalEnvType extends Type {
     private nestedMethodSignature: MethodSignature;
-    private closures: Local[] = [];
+    private closures: Local[];
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
         this.nestedMethodSignature = nestedMethod;
-        this.closures = closures ?? this.closures;
+        this.closures = closures ?? [];
     }
 
     public getNestedMethod(): MethodSignature {
@@ -789,7 +901,7 @@ export class LexicalEnvType extends Type {
         this.closures.push(closure);
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return `[${this.getClosures().join(', ')}]`;
     }
 }
@@ -812,7 +924,7 @@ export class EnumValueType extends Type {
         return this.constant;
     }
 
-    public getTypeString(): string {
+    protected getTypeString(_visited?: Set<Type>): string {
         return this.signature.toString();
     }
 }

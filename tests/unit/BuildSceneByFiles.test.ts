@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,10 +31,10 @@ describe('build scene by files Test', () => {
     scene.buildSceneFromFiles(sceneConfig);
     scene.inferTypes();
     it('check files num', () => {
-        assert.equal(scene.getFiles().length, 17);
+        assert.equal(scene.getFiles().length, 21);
         assert.equal(scene.getModuleSceneMap().size, 6);
-        assert.equal(scene.getClasses().length, 28);
-        assert.equal(scene.getMethods().length, 64);
+        assert.equal(scene.getClasses().length, 34);
+        assert.equal(scene.getMethods().length, 74);
         assert.equal(scene.getModuleSceneMap().size, 6);
         assert.equal(scene.getModuleSceneMap().get('lib1')?.getModuleFilesMap().size, 2);
         assert.equal(scene.getModuleSceneMap().get('libbase')?.getModuleFilesMap().size, 4);
@@ -45,8 +45,8 @@ describe('build scene by files Test', () => {
     });
 
     it('check dependencies info', () => {
-        assert.equal(scene.getOverRides().get('@model1'), './model1/index11.ets');
-        assert.equal(scene.getOverRides().get('@model2'), 'file:./model2');
+        assert.equal(scene.getOverRides().get('@MyLib'), './libbase/lib1');
+        assert.equal(scene.getOverRides().get('@ohos/model2'), 'file:./libs/model2.har');
         assert.equal(JSON.stringify(scene.getGlobalModule2PathMapping()!), JSON.stringify(globalModule2PathMapping_expect_result));
         assert.equal(scene.getbaseUrl(), './');
     });

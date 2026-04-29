@@ -17,6 +17,7 @@ import { ArkFile, Language } from './ArkFile';
 import { LineColPosition } from '../base/Position';
 import { ExportInfo, FromInfo } from './ArkExport';
 import { findExportInfo } from '../common/ModelUtils';
+import { findExportInfo as findCxxExportInfo } from '../../frontend/cppFrontend/common/ModelUtils';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 
@@ -73,7 +74,12 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
      */
     public getLazyExportInfo(): ExportInfo | null {
         if (this.lazyExportInfo === undefined) {
-            this.lazyExportInfo = findExportInfo(this);
+            // CXXTodo: Distinguish between C++ and TS/ArkTS.
+            if (this.declaringArkFile.getLanguage() === Language.CXX) {
+                this.lazyExportInfo = findCxxExportInfo(this);
+            } else {
+                this.lazyExportInfo = findExportInfo(this);
+            }
         }
         return this.lazyExportInfo || null;
     }

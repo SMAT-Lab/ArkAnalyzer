@@ -49,6 +49,8 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     private anonymousClassNumber: number = 0;
 
+    private anonymousNamespaceNumber: number = 0;
+
     constructor() {
         super();
     }
@@ -61,6 +63,13 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public addNamespace(namespace: ArkNamespace): void {
+        const existing = this.namespaces.get(namespace.getName());
+        if (existing) {
+            // Merge content of namespaces with the same name
+            namespace.getClasses().forEach(cls => existing.addArkClass(cls));
+            namespace.getNamespaces().forEach(ns => existing.addNamespace(ns));
+            return;
+        }
         this.namespaces.set(namespace.getName(), namespace);
     }
 
@@ -262,6 +271,10 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousNamespaceNumber(): number {
+        return this.anonymousNamespaceNumber++;
     }
 
     getExportType(): ExportType {

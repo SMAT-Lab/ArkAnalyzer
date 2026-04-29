@@ -42,12 +42,12 @@ import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
 import {
     ANONYMOUS_METHOD_PREFIX,
     CALL_SIGNATURE_NAME,
-    DEFAULT_ARK_CLASS_NAME,
+    CONSTRUCT_SIGNATURE_NAME,
     DEFAULT_ARK_METHOD_NAME,
     GETTER_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
-    SETTER_PREFIX
+    SETTER_PREFIX,
 } from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
@@ -117,7 +117,7 @@ export function buildArkMethodFromArkClass(
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
     });
-    let returnType = UnknownType.getInstance();
+    let returnType: Type = UnknownType.getInstance();
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode.type, sourceFile, mtd), mtd);
     }
@@ -172,7 +172,7 @@ function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceF
     else if (ts.isConstructorDeclaration(node)) {
         name = CONSTRUCTOR_NAME;
     } else if (ts.isConstructSignatureDeclaration(node)) {
-        name = 'construct-signature';
+        name = CONSTRUCT_SIGNATURE_NAME;
     } else if (ts.isCallSignatureDeclaration(node)) {
         name = CALL_SIGNATURE_NAME;
     } else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
@@ -193,7 +193,7 @@ function buildAnonymousMethodName(node: MethodLikeNode, declaringClass: ArkClass
     return `${ANONYMOUS_METHOD_PREFIX}${declaringClass.getAnonymousMethodNumber()}`;
 }
 
-function buildNestedMethodName(originName: string, declaringMethodName: string): string {
+export function buildNestedMethodName(originName: string, declaringMethodName: string): string {
     if (originName.startsWith(NAME_PREFIX)) {
         return `${originName}${NAME_DELIMITER}${declaringMethodName}`;
     }
@@ -269,8 +269,8 @@ export class MethodParameter implements Value {
     private type!: Type;
     private optional: boolean = false;
     private restFlag: boolean = false;
-    private objElements: ObjectBindingPatternParameter[] = [];
-    private arrayElements: ArrayBindingPatternParameter[] = [];
+    private objElements!: ObjectBindingPatternParameter[];
+    private arrayElements!: ArrayBindingPatternParameter[];
 
     constructor() {}
 
@@ -335,32 +335,40 @@ export class MethodParameter implements Value {
     }
 }
 
-function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
+export function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     const originClassType = arkClass.getCategory();
     return (
         arkClass.getMethodWithName(CONSTRUCTOR_NAME) === null &&
         (originClassType === ClassCategory.CLASS || originClassType === ClassCategory.OBJECT) &&
-        arkClass.getName() !== DEFAULT_ARK_CLASS_NAME &&
+        !arkClass.isDefaultArkClass() &&
+        !arkClass.isLibraryClass() &&
         !arkClass.isDeclare()
     );
 }
 
-function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
+function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): void {
+    if (visited.has(arkClass)) {
+        return;
+    }
+    visited.add(arkClass);
     let superClass: ArkClass | null = arkClass.getSuperClass();
     while (superClass !== null) {
+        if (visited.has(superClass)) {
+            break;
+        }
         if (superClass.getMethodWithName(CONSTRUCTOR_NAME) === null) {
-            buildDefaultConstructor(superClass);
+            buildDefaultConstructor(superClass, visited);
         }
         superClass = superClass.getSuperClass();
     }
 }
 
-export function buildDefaultConstructor(arkClass: ArkClass): boolean {
+export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): boolean {
+    recursivelyCheckAndBuildSuperConstructor(arkClass, visited);
+
     if (!needDefaultConstructorInClass(arkClass)) {
         return false;
     }
-
-    recursivelyCheckAndBuildSuperConstructor(arkClass);
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
@@ -499,7 +507,10 @@ export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
     if (presentMethod === null) {
         return;
     }
+    updateMethodSignaturesAndLineCols(method, presentMethod);
+}
 
+export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod): void {
     if (method.validate().errCode !== ArkErrorCode.OK || presentMethod.validate().errCode !== ArkErrorCode.OK) {
         return;
     }
@@ -533,37 +544,46 @@ export function replaceSuper2Constructor(constructor: ArkMethod): void {
     if (constructor.getName() !== CONSTRUCTOR_NAME) {
         return;
     }
-    const superClass = constructor.getDeclaringArkClass().getSuperClass();
-    if (superClass === null) {
+
+    const startingBlock = constructor.getBody()?.getCfg().getStartingBlock();
+    if (startingBlock === undefined) {
         return;
     }
-    const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+    let superInvokeStmt: ArkInvokeStmt | null = null;
+    for (const stmt of startingBlock.getStmts()) {
+        if (stmt instanceof ArkInvokeStmt) {
+            let invokeExpr = stmt.getInvokeExpr();
+            const methodSignature = invokeExpr.getMethodSignature();
+            if (methodSignature.getMethodSubSignature().getMethodName() === SUPER_NAME) {
+                superInvokeStmt = stmt;
+                break;
+            }
+        }
+    }
+    if (!superInvokeStmt) {
+        return;
+    }
+
+    // If there are superInvokeStmt, then there must have constructor of its super class.
+    const superClass = constructor.getDeclaringArkClass().getSuperClass();
+    if (superClass === null) {
+        logger.error(`Can not find super class for class ${constructor.getDeclaringArkClass().getSignature().toString()}`);
+        return;
+    }
+    const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME) ?? superClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME);
     if (superConstructor === null) {
         if (needDefaultConstructorInClass(superClass)) {
             logger.error(`Can not find constructor method for class ${superClass.getSignature().toString()}`);
         }
         return;
     }
-    const startingBlock = constructor.getBody()?.getCfg().getStartingBlock();
-    if (startingBlock === undefined) {
+    let base = constructor.getBody()?.getLocals().get(THIS_NAME);
+    if (base === undefined) {
+        logger.error(`Can not find local this in constructor method ${constructor.getSignature().toString()}`);
         return;
     }
-    for (const stmt of startingBlock.getStmts()) {
-        if (stmt instanceof ArkInvokeStmt) {
-            let invokeExpr = stmt.getInvokeExpr();
-            const methodSignature = invokeExpr.getMethodSignature();
-            if (methodSignature.getMethodSubSignature().getMethodName() !== SUPER_NAME) {
-                continue;
-            }
-            let base = constructor.getBody()?.getLocals().get(THIS_NAME);
-            if (base === undefined) {
-                logger.error(`Can not find local this in constructor method ${constructor.getSignature().toString()}`);
-                return;
-            }
 
-            const newInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), invokeExpr.getArgs());
-            stmt.replaceInvokeExpr(newInvokeExpr);
-            return;
-        }
-    }
+    const newInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), superInvokeStmt.getInvokeExpr().getArgs());
+    superInvokeStmt.replaceInvokeExpr(newInvokeExpr);
+    return;
 }

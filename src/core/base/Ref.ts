@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,8 +39,8 @@ export abstract class AbstractRef implements Value {
 }
 
 export class ArkArrayRef extends AbstractRef {
-    private base: Local; // 数组变量
-    private index: Value; // 索引
+    private base: Local; // Array variable
+    private index: Value; // Index
 
     constructor(base: Local, index: Value) {
         super();
@@ -310,6 +310,10 @@ export class ArkCaughtExceptionRef extends AbstractRef {
 
     public getType(): Type {
         return this.type;
+    }
+
+    public setType(newType: Type): void {
+        this.type = newType;
     }
 
     public getUses(): Value[] {

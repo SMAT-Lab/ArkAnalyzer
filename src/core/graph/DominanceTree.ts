@@ -17,10 +17,10 @@ import { BasicBlock } from './BasicBlock';
 import { DominanceFinder } from './DominanceFinder';
 
 export class DominanceTree {
-    private blocks: BasicBlock[] = [];
-    private blockToIdx = new Map<BasicBlock, number>();
-    private children: number[][] = [];
-    private parents: number[] = [];
+    private blocks: BasicBlock[];
+    private blockToIdx: Map<BasicBlock, number>;
+    private children: number[][];
+    private parents: number[];
 
     constructor(dominanceFinder: DominanceFinder) {
         this.blocks = dominanceFinder.getBlocks();

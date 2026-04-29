@@ -1,0 +1,28 @@
+{
+    "metadata": {
+        "environment": {
+            "hostCpu": "Intel Core i7-14700",
+            "hostMemoryGb": 32,
+            "runtime": "WSL2 Ubuntu 22.04",
+            "wslMemoryLimitGb": 16,
+            "cpuLimit": "cpu1t",
+            "nodeOptions": "--max-old-space-size=16384",
+            "projectRoot": "~/code/opencv_cpp",
+            "benchmarkCommand": "NODE_OPTIONS=\"--max-old-space-size=16384\" PROJECT_ROOT=~/code/opencv_cpp npx ts-node tests/samples/PerfTest.ts"
+        }
+    },
+    "results": [
+        {
+            "generatedAt": "2026-04-13",
+            "frontend": "cmd",
+            "totalElapsedSeconds": 579,
+            "peakRssMb": 12422
+        },
+        {
+            "generatedAt": "2026-04-15",
+            "frontend": "napi",
+            "totalElapsedSeconds": 497,
+            "peakRssMb": 10192
+        }
+    ]
+}

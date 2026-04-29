@@ -1412,7 +1412,7 @@ describe('BigInt Type Test', () => {
         assert.isTrue(fieldA!.getType() instanceof BigIntType);
         assert.equal(fieldA!.getType().toString(), `bigint`);
         assert.isAtLeast(fieldA!.getInitializer().length, 1);
-        checkLocalInitWithBigIntConstant(fieldA!.getInitializer()[0], '1');
+        checkLocalInitWithBigIntConstant(fieldA!.getInitializer()[0], '1n');
 
         const fieldB = targetClass?.getFieldWithName('fieldB');
         assert.isDefined(fieldB);
@@ -1463,8 +1463,8 @@ describe('BigInt Type Test', () => {
         const stmts = method?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
         assert.isAtLeast(stmts!.length, 4);
-        checkLocalInitWithBigIntConstant(stmts![3], '10');
-        checkLocalInitWithBigIntConstant(stmts![4], '100');
+        checkLocalInitWithBigIntConstant(stmts![3], '10n');
+        checkLocalInitWithBigIntConstant(stmts![4], '100n');
     });
 
     it('bigint bit operator stmt', () => {
@@ -1757,7 +1757,7 @@ describe('Object Type Test', () => {
         assert.isDefined(localNewEmptyObj);
         assert.equal(localNewEmptyObj!.getType().toString(), '@type/objectType.ts: %dflt.[static]%dflt()#newObject');
         assert.isTrue(localNewEmptyObj!.getType() instanceof AliasType);
-        assert.equal((localNewEmptyObj!.getType() as AliasType).getOriginalType().getTypeString(), objectTypeStr);
+        assert.equal((localNewEmptyObj!.getType() as AliasType).getOriginalType().toString(), objectTypeStr);
     });
 
     it('case6: alias Type', () => {
