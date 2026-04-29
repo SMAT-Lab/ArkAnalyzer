@@ -8,7 +8,7 @@
   ],
   "languages": {
     "arkts": {
-      "enabled": true,
+      "enabled": false,
       "extensions": [".ets", ".ts", ".js", ".d.ets", ".d.ts"]
     },
     "cpp": {
