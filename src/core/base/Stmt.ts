@@ -32,7 +32,9 @@ import { AbstractTypeExpr } from './TypeExpr';
 export abstract class Stmt {
     protected text?: string; // just for debug
     protected originalText?: string;
-    protected originalPosition: LineColPosition = LineColPosition.DEFAULT;
+    /** The full position (start/end line/col) of this statement in the source file.
+     *  Undefined when this statement is automatically generated during IR construction. */
+    protected originFullPosition?: FullPosition;
     protected cfg!: Cfg;
     protected operandOriginalPositions?: FullPosition[]; // operandOriginalPositions correspond with
     // def and uses one by one
@@ -247,8 +249,17 @@ export abstract class Stmt {
         return undefined;
     }
 
+    /**
+     * @deprecated Use setOriginFullPosition() instead.
+     * @param originPositionInfo - The LineColPosition to set.
+     */
     public setOriginPositionInfo(originPositionInfo: LineColPosition): void {
-        this.originalPosition = originPositionInfo;
+        this.originFullPosition = new FullPosition(
+            originPositionInfo.getLineNo(),
+            originPositionInfo.getColNo(),
+            originPositionInfo.getLineNo(),
+            originPositionInfo.getColNo()
+        );
     }
 
     /**
@@ -258,20 +269,41 @@ export abstract class Stmt {
      * and the latter (i.e., column number) indicates the position of the statement in the line.
      * The position is described as `LineColPosition(lineNo,colNum)` in ArkAnalyzer,
      * and its default value is LineColPosition(-1,-1).
-     * @returns The original location of the statement.
+     * @deprecated Use getOriginFullPosition() instead.
+     * @returns The original location of the statement as LineColPosition.
      * @example
      * 1. Get the stmt position info to make some condition judgements.
      ```typescript
      for (const stmt of stmts) {
-     if (stmt.getOriginPositionInfo().getLineNo() === -1) {
-     stmt.setOriginPositionInfo(originalStmt.getOriginPositionInfo());
+     if (stmt.getOriginFullPosition()?.getFirstLine() === -1) {
+     stmt.setOriginFullPosition(originalStmt.getOriginFullPosition()!);
      this.stmtToOriginalStmt.set(stmt, originalStmt);
      }
      }
      ```
      */
     public getOriginPositionInfo(): LineColPosition {
-        return this.originalPosition;
+        if (this.originFullPosition === undefined) {
+            return LineColPosition.DEFAULT;
+        }
+        return new LineColPosition(this.originFullPosition.getFirstLine(), this.originFullPosition.getFirstCol());
+    }
+
+    /**
+     * Sets the full position (start/end line/col) of this statement in the source file.
+     * @param originFullPosition - The full position in the source code to set.
+     */
+    public setOriginFullPosition(originFullPosition: FullPosition): void {
+        this.originFullPosition = originFullPosition;
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this statement in the source file.
+     * @returns The full position in the source code of this statement, or undefined if this statement
+     *          is automatically generated during IR construction.
+     */
+    public getOriginFullPosition(): FullPosition | undefined {
+        return this.originFullPosition;
     }
 
     abstract toString(): string;

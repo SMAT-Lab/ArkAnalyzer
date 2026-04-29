@@ -27,7 +27,7 @@ import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
 import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
-import { CxxAstNode, CxxTranslationUnit, getNodeStartLineAndCol } from '../../ast';
+import { CxxAstNode, CxxTranslationUnit } from '../../ast';
 import { ArkField } from '../../../../core/model/ArkField';
 import { Value } from '../../../../core/base/Value';
 import { NumberConstant } from '../../../../core/base/Constant';
@@ -54,9 +54,7 @@ export function buildNormalArkClassFromArkFile(clsNode: CxxAstNode, arkFile: Ark
                                                sourceFile: CxxAstNode, declaring?: ArkMethod | ArkClass): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.code);
-    const nodePos = getNodeStartLineAndCol(clsNode);
-    cls.setLine(nodePos.line);
-    cls.setColumn(nodePos.col);
+    cls.setOriginFullPosition(FullPosition.cxxBuildFromNode(clsNode, sourceFile));
     buildNormalArkClass(clsNode, cls, sourceFile, declaring);
     arkFile.addArkClass(cls);
 }
@@ -71,9 +69,7 @@ export function buildNormalArkClassFromArkNamespace(
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.code);
-    const nodePos = getNodeStartLineAndCol(clsNode);
-    cls.setLine(nodePos.line);
-    cls.setColumn(nodePos.col);
+    cls.setOriginFullPosition(FullPosition.cxxBuildFromNode(clsNode, sourceFile));
     buildNormalArkClass(clsNode, cls, sourceFile, declaring);
     arkNamespace.addArkClass(cls);
 }
@@ -430,9 +426,9 @@ function getInitStmts(
     stmts.push(assignStmt);
 
     const fieldSourceCode = field.getCode();
-    const fieldOriginPosition = field.getOriginPosition();
+    const fieldOriginPosition = field.getOriginFullPosition();
     for (const stmt of stmts) {
-        stmt.setOriginPositionInfo(fieldOriginPosition);
+        stmt.setOriginFullPosition(fieldOriginPosition);
         stmt.setOriginalText(fieldSourceCode);
     }
     field.setInitializer(stmts);

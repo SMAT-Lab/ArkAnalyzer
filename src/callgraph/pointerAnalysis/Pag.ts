@@ -380,7 +380,7 @@ export class PagNode extends BaseNode {
             if (method) {
                 label = label + '\n' + method;
             }
-            label = label + ' ln: ' + this.stmt.getOriginPositionInfo().getLineNo();
+            label = label + ' ln: ' + (this.stmt.getOriginFullPosition()?.getFirstLine() ?? 0);
         } else if (this.value) {
             label += `\n${this.value.toString()}`;
         }

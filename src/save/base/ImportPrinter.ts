@@ -26,7 +26,7 @@ export class ImportPrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        return this.infos[0].getOriginTsPosition().getLineNo();
+        return this.infos[0].getOriginFullPosition().getFirstLine();
     }
 
     public dump(): string {
@@ -74,7 +74,7 @@ function mergeImportInfos(infos: ImportInfo[]): Map<string, ImportInfo[]> {
     let map = new Map<string, ImportInfo[]>();
 
     for (let info of infos) {
-        let key = `${info.getOriginTsPosition().getLineNo()}-${info.getFrom()}`;
+        let key = `${info.getOriginFullPosition().getFirstLine()}-${info.getFrom()}`;
         let merge = map.get(key) || [];
         merge.push(info);
         map.set(key, merge);

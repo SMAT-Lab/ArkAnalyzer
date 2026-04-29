@@ -46,10 +46,8 @@ export class ArkIRMethodPrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        let line = this.method.getLine();
-        if (line === null) {
-            line = 0;
-        }
+        const position = this.method.getImplOriginFullPosition();
+        let line = position?.getFirstLine() ?? 0;
         if (line > 0) {
             return line;
         }
@@ -62,8 +60,8 @@ export class ArkIRMethodPrinter extends BasePrinter {
                 .forEach(stmt => stmts.push(stmt));
         }
         for (const stmt of stmts) {
-            if (stmt.getOriginPositionInfo().getLineNo() > 0) {
-                return stmt.getOriginPositionInfo().getLineNo();
+            if ((stmt.getOriginFullPosition()?.getFirstLine() ?? 0) > 0) {
+                return stmt.getOriginFullPosition()?.getFirstLine() ?? 0;
             }
         }
 

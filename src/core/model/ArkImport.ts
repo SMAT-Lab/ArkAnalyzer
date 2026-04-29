@@ -14,7 +14,7 @@
  */
 
 import { ArkFile, Language } from './ArkFile';
-import { LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 import { ExportInfo, FromInfo } from './ArkExport';
 import { findExportInfo } from '../common/ModelUtils';
 import { findExportInfo as findCxxExportInfo } from '../../frontend/cppFrontend/common/ModelUtils';
@@ -31,7 +31,11 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
     private nameBeforeAs?: string;
     private declaringArkFile!: ArkFile;
 
-    private originTsPosition?: LineColPosition;
+    /** The full position of the entire import statement in the source file. */
+    private originFullPosition!: FullPosition;
+    /** The full position of the specific import item within the import statement.
+     *  Undefined when this import info has no item (e.g., namespace import). */
+    private itemOriginFullPosition?: FullPosition;
     private tsSourceCode?: string;
     private lazyExportInfo?: ExportInfo | null;
 
@@ -50,16 +54,20 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
         importClauseName: string,
         importType: string,
         importFrom: string,
-        originTsPosition: LineColPosition,
+        originFullPosition: FullPosition,
         modifiers: number,
-        nameBeforeAs?: string
+        nameBeforeAs?: string,
+        itemOriginFullPosition?: FullPosition
     ): void {
         this.setImportClauseName(importClauseName);
         this.setImportType(importType);
         this.setImportFrom(importFrom);
-        this.setOriginTsPosition(originTsPosition);
+        this.setOriginFullPosition(originFullPosition);
         this.addModifier(modifiers);
         this.setNameBeforeAs(nameBeforeAs);
+        if (itemOriginFullPosition) {
+            this.setItemOriginFullPosition(itemOriginFullPosition);
+        }
     }
 
     public getOriginName(): string {
@@ -128,12 +136,61 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
         this.nameBeforeAs = nameBeforeAs;
     }
 
+    /**
+     * @deprecated Use setItemOriginFullPosition() instead.
+     * @param originTsPosition - The LineColPosition to set.
+     */
     public setOriginTsPosition(originTsPosition: LineColPosition): void {
-        this.originTsPosition = originTsPosition;
+        this.itemOriginFullPosition = new FullPosition(
+            originTsPosition.getLineNo(),
+            originTsPosition.getColNo(),
+            originTsPosition.getLineNo(),
+            originTsPosition.getColNo()
+        );
     }
 
+    /**
+     * @deprecated Use getItemOriginFullPosition() instead.
+     * @returns The LineColPosition of the import item.
+     */
     public getOriginTsPosition(): LineColPosition {
-        return this.originTsPosition ?? LineColPosition.DEFAULT;
+        if (this.itemOriginFullPosition === undefined) {
+            return LineColPosition.DEFAULT;
+        }
+        return new LineColPosition(this.itemOriginFullPosition.getFirstLine(), this.itemOriginFullPosition.getFirstCol());
+    }
+
+    /**
+     * Sets the full position of the entire import statement in the source file.
+     * @param originFullPosition - The full position in the source code to set.
+     */
+    public setOriginFullPosition(originFullPosition: FullPosition): void {
+        this.originFullPosition = originFullPosition;
+    }
+
+    /**
+     * Returns the full position of the entire import statement in the source file.
+     * @returns The full position in the source code of this import statement.
+     */
+    public getOriginFullPosition(): FullPosition {
+        return this.originFullPosition;
+    }
+
+    /**
+     * Sets the full position of the specific import item within the import statement.
+     * @param itemOriginFullPosition - The full position in the source code to set.
+     */
+    public setItemOriginFullPosition(itemOriginFullPosition: FullPosition): void {
+        this.itemOriginFullPosition = itemOriginFullPosition;
+    }
+
+    /**
+     * Returns the full position of the specific import item within the import statement.
+     * @returns The full position in the source code of the import item, or undefined if this
+     *          import info has no item (e.g., namespace import or default import).
+     */
+    public getItemOriginFullPosition(): FullPosition | undefined {
+        return this.itemOriginFullPosition;
     }
 
     public setTsSourceCode(tsSourceCode: string): void {

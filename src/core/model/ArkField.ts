@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 import { Stmt } from '../base/Stmt';
 import { ArkClass, ClassCategory } from './ArkClass';
 import { FieldSignature } from './ArkSignature';
@@ -46,7 +46,8 @@ export class ArkField extends ArkBaseModel {
     private exclamationToken: boolean = false;
 
     private fieldSignature!: FieldSignature;
-    private originPosition?: LineColPosition;
+    /** The full position (start/end line/col) of this field in the source file. */
+    private originFullPosition!: FullPosition;
 
     private initializer: Stmt[] = [];
 
@@ -133,16 +134,41 @@ export class ArkField extends ArkBaseModel {
         return this.exclamationToken;
     }
 
+    /**
+     * @deprecated Use setOriginFullPosition() instead.
+     * @param position - The LineColPosition to set.
+     */
     public setOriginPosition(position: LineColPosition): void {
-        this.originPosition = position;
+        this.originFullPosition = new FullPosition(
+            position.getLineNo(),
+            position.getColNo(),
+            position.getLineNo(),
+            position.getColNo()
+        );
     }
 
     /**
-     * Returns the original position of the field at source code.
+     * @deprecated Use getOriginFullPosition() instead.
      * @returns The original position of the field at source code.
      */
     public getOriginPosition(): LineColPosition {
-        return this.originPosition ?? LineColPosition.DEFAULT;
+        return new LineColPosition(this.originFullPosition.getFirstLine(), this.originFullPosition.getFirstCol());
+    }
+
+    /**
+     * Sets the full position of this field in the source file.
+     * @param position - The full position in the source code to set.
+     */
+    public setOriginFullPosition(position: FullPosition): void {
+        this.originFullPosition = position;
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this field in the source file.
+     * @returns The full position of this field in the source code.
+     */
+    public getOriginFullPosition(): FullPosition {
+        return this.originFullPosition;
     }
 
     public validate(): ArkError {

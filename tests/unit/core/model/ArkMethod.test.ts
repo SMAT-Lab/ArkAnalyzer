@@ -18,7 +18,9 @@ import { Scene } from '../../../../src/Scene';
 import { SceneConfig } from '../../../../src/Config';
 import path from 'path';
 import { ArkAssignStmt, ArkInvokeStmt, ArkMethod, ArkReturnStmt, FunctionType, GlobalRef, Local, Stmt, Value } from '../../../../src';
+import { getLineNo, getColNo } from '../../../../src/core/base/Position';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
+import { buildScene } from '../../common';
 
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, '../../../resources/model/method'));
@@ -811,5 +813,159 @@ describe('Empty Function constructor()', () => {
         assert.isDefined(method);
         const stmts = method?.getCfg()?.getStmts();
         assert.isDefined(stmts);
+    });
+});
+
+describe('ArkMethod Position Test', () => {
+    it('test getImplOriginFullPosition for getA method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        
+        const position = method!.getImplOriginFullPosition();
+        assert.isDefined(position);
+        expect(position!.getFirstLine()).eq(115);
+        expect(position!.getFirstCol()).eq(1);
+        expect(position!.getLastLine()).eq(117);
+        expect(position!.getLastCol()).eq(2);
+    });
+
+    it('test getLineCol for getA method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        
+        const lineCol = method!.getLineCol();
+        assert.isNotNull(lineCol);
+        expect(getLineNo(lineCol!)).eq(115);
+        expect(getColNo(lineCol!)).eq(1);
+    });
+
+    it('test getDeclareOriginFullPositions for getA method returns null', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        
+        const declarePositions = method!.getDeclareOriginFullPositions();
+        assert.isNull(declarePositions);
+    });
+
+    it('test getDeclareLineCols for getA method returns null', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        
+        const declareLineCols = method!.getDeclareLineCols();
+        assert.isNull(declareLineCols);
+    });
+
+    it('test getLine for getA method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        expect(method!.getLine()).eq(115);
+    });
+
+    it('test getColumn for getA method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('getA');
+        assert.isDefined(method);
+        expect(method!.getColumn()).eq(1);
+    });
+
+    it('test getImplOriginFullPosition for paramInitializerWithIfBranch method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
+        assert.isDefined(method);
+        
+        const position = method!.getImplOriginFullPosition();
+        assert.isDefined(position);
+        expect(position!.getFirstLine()).eq(125);
+        expect(position!.getFirstCol()).eq(1);
+        expect(position!.getLastLine()).eq(131);
+        expect(position!.getLastCol()).eq(2);
+    });
+
+    it('test getLineCol for paramInitializerWithIfBranch method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
+        assert.isDefined(method);
+        
+        const lineCol = method!.getLineCol();
+        assert.isNotNull(lineCol);
+        expect(getLineNo(lineCol!)).eq(125);
+        expect(getColNo(lineCol!)).eq(1);
+    });
+
+    it('test getLine for paramInitializerWithIfBranch method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
+        assert.isDefined(method);
+        expect(method!.getLine()).eq(125);
+    });
+
+    it('test getColumn for paramInitializerWithIfBranch method', async () => {
+        const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
+        assert.isDefined(method);
+        expect(method!.getColumn()).eq(1);
+    });
+});
+
+describe('ArkMethod Declare Method Position Test', () => {
+    const declareScene = buildScene(path.join(__dirname, '../../../resources/exports'));
+    const declareArkFile = declareScene.getFiles().find((file) => file.getName() === 'exportSample.ts');
+    const myNamespace = declareArkFile?.getNamespaceWithName('MyNameSpace');
+    const namespaceClass = myNamespace?.getDefaultClass();
+    const doaMethod = namespaceClass?.getMethodWithName('doa');
+
+    it('test getImplOriginFullPosition for doa method returns undefined', async () => {
+        assert.isDefined(doaMethod);
+        expect(doaMethod!.getImplOriginFullPosition()).eq(undefined);
+    });
+
+    it('test getLine for doa method returns null', async () => {
+        assert.isDefined(doaMethod);
+        expect(doaMethod!.getLine()).eq(null);
+    });
+
+    it('test getColumn for doa method returns null', async () => {
+        assert.isDefined(doaMethod);
+        expect(doaMethod!.getColumn()).eq(null);
+    });
+
+    it('test getLineCol for doa method returns null', async () => {
+        assert.isDefined(doaMethod);
+        expect(doaMethod!.getLineCol()).eq(null);
+    });
+
+    it('test getDeclareOriginFullPositions for doa method returns non-null', async () => {
+        assert.isDefined(doaMethod);
+        
+        const declarePositions = doaMethod!.getDeclareOriginFullPositions();
+        assert.isNotNull(declarePositions);
+        expect(declarePositions!.length).eq(1);
+        expect(declarePositions![0].getFirstLine()).eq(48);
+        expect(declarePositions![0].getFirstCol()).eq(5);
+        expect(declarePositions![0].getLastLine()).eq(48);
+        expect(declarePositions![0].getLastCol()).eq(38);
+    });
+
+    it('test getDeclareLineCols for doa method returns non-null', async () => {
+        assert.isDefined(doaMethod);
+        
+        const declareLineCols = doaMethod!.getDeclareLineCols();
+        assert.isNotNull(declareLineCols);
+        expect(declareLineCols!.length).eq(1);
+        expect(getLineNo(declareLineCols![0])).eq(48);
+        expect(getColNo(declareLineCols![0])).eq(5);
+    });
+
+    it('test getDeclareLines for doa method returns non-null', async () => {
+        assert.isDefined(doaMethod);
+        
+        const declareLines = doaMethod!.getDeclareLines();
+        assert.isNotNull(declareLines);
+        expect(declareLines!.length).eq(1);
+        expect(declareLines![0]).eq(48);
+    });
+
+    it('test getDeclareColumns for doa method returns non-null', async () => {
+        assert.isDefined(doaMethod);
+        
+        const declareColumns = doaMethod!.getDeclareColumns();
+        assert.isNotNull(declareColumns);
+        expect(declareColumns!.length).eq(1);
+        expect(declareColumns![0]).eq(5);
     });
 });

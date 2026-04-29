@@ -213,7 +213,7 @@ function processIncludeRef(fromInfo: ImportInfo, headerFile: ArkFile): ExportInf
         } else {
             importType = 'NamedImports';
         }
-        headerRealIm.build(curClauseName, importType, headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
+        headerRealIm.build(curClauseName, importType, headerFile.getFilePath(), exportInfo.getOriginFullPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
         if (shouldAddCxxHeaderImport(headerRealIm)) {
