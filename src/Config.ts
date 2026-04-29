@@ -19,7 +19,6 @@ import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
 import { FileUtils } from './utils/FileUtils';
-import { getCxxSourceFileExtensions, isAstJsonDumperAvailable } from './frontend/cppFrontend/ast';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -123,7 +122,6 @@ export interface SceneOptions {
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
-const CPP_SOURCE_FILE_EXTS: readonly string[] = getCxxSourceFileExtensions();
 
 export class SceneConfig {
     private targetProjectName: string = '';
@@ -147,7 +145,6 @@ export class SceneConfig {
         // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
         this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
-        this.appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable();
         this.normalizeLanguageOptions();
         this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
     }
@@ -384,18 +381,6 @@ export class SceneConfig {
         if (options) {
             this.options = { ...this.options, ...options };
         }
-    }
-
-    private appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable(): void {
-        if (!isAstJsonDumperAvailable()) {
-            return;
-        }
-        const configuredExts = Array.isArray(this.options.supportFileExts) ? this.options.supportFileExts : [];
-        const missingCppExts = CPP_SOURCE_FILE_EXTS.filter(ext => !configuredExts.includes(ext));
-        if (missingCppExts.length === 0) {
-            return;
-        }
-        this.options.supportFileExts = [...configuredExts, ...missingCppExts];
     }
 
     private normalizeLanguageOptions(): void {
