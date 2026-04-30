@@ -44,7 +44,7 @@ export class SourceClass extends SourceBase {
     }
 
     public getLine(): number {
-        return this.cls.getLine();
+        return this.cls.getOriginFullPosition()?.getFirstLine() ?? 0;
     }
 
     public dump(): string {
@@ -201,7 +201,7 @@ export class SourceDefaultClass extends SourceClass {
     }
 
     public getLine(): number {
-        return this.cls.getLine();
+        return this.cls.getOriginFullPosition()?.getFirstLine() ?? 0;
     }
 
     public dump(): string {

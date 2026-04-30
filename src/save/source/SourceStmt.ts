@@ -90,7 +90,7 @@ export abstract class SourceStmt implements Dump {
     constructor(context: StmtPrinterContext, original: Stmt) {
         this.original = original;
         this.context = context;
-        this.line = original.getOriginPositionInfo().getLineNo();
+        this.line = original.getOriginFullPosition()?.getFirstLine() ?? 0;
         this.transformer = new SourceTransformer(context);
     }
 
@@ -814,7 +814,7 @@ export class SourceReturnVoidStmt extends SourceStmt {
     }
 
     public transfer2ts(): void {
-        if (this.original.getOriginPositionInfo().getLineNo() <= 0) {
+        if ((this.original.getOriginFullPosition()?.getFirstLine() ?? 0) <= 0) {
             this.setText('');
         } else {
             this.setText('return;');

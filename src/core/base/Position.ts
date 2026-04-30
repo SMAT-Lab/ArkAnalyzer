@@ -24,7 +24,7 @@ const LOW_BITS_MASK = 0xffff;
 const HIGH_BITS_MASK = 0xffff0000;
 const MIN_NUMBER = 0;
 const MAX_NUMBER = 0xffff;
-const INVALID_LINE = -1;
+export const INVALID_LINE = -1;
 
 export type LineCol = number;
 

@@ -18,7 +18,7 @@ import { ArkClass } from '../../../../core/model/ArkClass';
 import { buildModifiers, cxxNode2Type } from './builderUtils';
 import { FieldSignature } from '../../../../core/model/ArkSignature';
 import { ClassType, Type, UnknownType } from '../../../../core/base/Type';
-import { LineColPosition } from '../../../../core/base/Position';
+import { FullPosition } from '../../../../core/base/Position';
 import { ModifierType } from '../../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { buildGenericType } from '../../../../core/model/builder/builderUtils';
@@ -29,7 +29,7 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);
     field.setDeclaringArkClass(cls);
-    field.setOriginPosition(LineColPosition.cxxBuildFromNode(member));
+    field.setOriginFullPosition(FullPosition.cxxBuildFromNode(member, sourceFile));
 
     let fieldName = member.name;
     field.addModifier(buildModifiers(member));

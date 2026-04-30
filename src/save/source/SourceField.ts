@@ -35,7 +35,7 @@ export class SourceField extends SourceBase {
     }
 
     public getLine(): number {
-        return this.field.getOriginPosition().getLineNo();
+        return this.field.getOriginFullPosition().getFirstLine();
     }
     public dump(): string {
         this.printer.clear();

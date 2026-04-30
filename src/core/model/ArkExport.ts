@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 import { ArkFile, Language } from './ArkFile';
 import { ArkSignature, ClassSignature, LocalSignature, MethodSignature, NamespaceSignature } from './ArkSignature';
 import { DEFAULT } from '../common/TSConst';
@@ -64,7 +64,8 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
     private arkExport?: ArkExport | null;
     private exportFrom?: string;
 
-    private originTsPosition?: LineColPosition;
+    /** The full position (start/end line/col) of this export in the source file. */
+    private originFullPosition!: FullPosition;
     private tsSourceCode?: string;
     private declaringArkFile!: ArkFile;
     private declaringArkNamespace?: ArkNamespace;
@@ -121,8 +122,20 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
         return this._default;
     }
 
+    /**
+     * @deprecated Use getOriginFullPosition() instead.
+     * @returns The LineColPosition of this export.
+     */
     public getOriginTsPosition(): LineColPosition {
-        return this.originTsPosition ?? LineColPosition.DEFAULT;
+        return new LineColPosition(this.originFullPosition.getFirstLine(), this.originFullPosition.getFirstCol());
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this export in the source file.
+     * @returns The full position in the source code of this export.
+     */
+    public getOriginFullPosition(): FullPosition {
+        return this.originFullPosition;
     }
 
     public getTsSourceCode(): string {
@@ -160,8 +173,26 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
             return this;
         }
 
+        /**
+         * @deprecated Use originFullPosition() instead.
+         * @param originTsPosition - The LineColPosition to set.
+         */
         public originTsPosition(originTsPosition: LineColPosition): ArkExportBuilder {
-            this.exportInfo.originTsPosition = originTsPosition;
+            this.exportInfo.originFullPosition = new FullPosition(
+                originTsPosition.getLineNo(),
+                originTsPosition.getColNo(),
+                originTsPosition.getLineNo(),
+                originTsPosition.getColNo()
+            );
+            return this;
+        }
+
+        /**
+         * Sets the full position of this export in the source file.
+         * @param originFullPosition - The full position in the source code to set.
+         */
+        public originFullPosition(originFullPosition: FullPosition): ArkExportBuilder {
+            this.exportInfo.originFullPosition = originFullPosition;
             return this;
         }
 

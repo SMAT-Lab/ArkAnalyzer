@@ -63,7 +63,7 @@ import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { COMPONENT_CREATE_FUNCTION, COMPONENT_POP_FUNCTION, COMPONENT_REPEAT } from '../../../core/common/EtsConst';
-import { FullPosition, LineColPosition } from '../../../core/base/Position';
+import { FullPosition } from '../../../core/base/Position';
 import { ArkCxxValueTransformer } from './ArkValueTransformer';
 import {
     AliasTypeSignature,
@@ -634,7 +634,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             const catchValue = new Local('error');
             this.catchedExceptions.push(catchValue);
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
-            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause));
+            assignStmt.setOriginFullPosition(FullPosition.cxxBuildFromNode(catchClause, this.cxxSourceFile));
             stmts.push(assignStmt);
         }
 
@@ -1017,7 +1017,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(node));
+                stmt.setOriginFullPosition(FullPosition.cxxBuildFromNode(node, this.cxxSourceFile));
                 stmt.setOriginalText(node.code);
             }
         }

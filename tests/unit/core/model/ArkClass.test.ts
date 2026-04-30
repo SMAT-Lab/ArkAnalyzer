@@ -521,3 +521,56 @@ describe('New Class Test', () => {
             '[[[32, 9], [32, 21]], [[32, 24], [32, 39]], [[32, 24], [32, 39]], [[32, 24], [32, 39]]]');
     });
 });
+
+describe('ArkClass Position Test', () => {
+    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+    const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithConstructor.ts');
+
+    it('test getOriginFullPosition for ClassWithNoConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithNoConstructor');
+        assert.isDefined(arkClass);
+        
+        const position = arkClass!.getOriginFullPosition();
+        assert.isDefined(position);
+        expect(position!.getFirstLine()).eq(16);
+        expect(position!.getFirstCol()).eq(1);
+        expect(position!.getLastLine()).eq(20);
+        expect(position!.getLastCol()).eq(2);
+    });
+
+    it('test getLine for ClassWithNoConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithNoConstructor');
+        assert.isDefined(arkClass);
+        expect(arkClass!.getLine()).eq(16);
+    });
+
+    it('test getColumn for ClassWithNoConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithNoConstructor');
+        assert.isDefined(arkClass);
+        expect(arkClass!.getColumn()).eq(1);
+    });
+
+    it('test getOriginFullPosition for ClassWithParamsConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithParamsConstructor');
+        assert.isDefined(arkClass);
+        
+        const position = arkClass!.getOriginFullPosition();
+        assert.isDefined(position);
+        expect(position!.getFirstLine()).eq(30);
+        expect(position!.getFirstCol()).eq(1);
+        expect(position!.getLastLine()).eq(37);
+        expect(position!.getLastCol()).eq(2);
+    });
+
+    it('test getLine for ClassWithParamsConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithParamsConstructor');
+        assert.isDefined(arkClass);
+        expect(arkClass!.getLine()).eq(30);
+    });
+
+    it('test getColumn for ClassWithParamsConstructor class', async () => {
+        const arkClass = arkFile?.getClassWithName('ClassWithParamsConstructor');
+        assert.isDefined(arkClass);
+        expect(arkClass!.getColumn()).eq(1);
+    });
+});

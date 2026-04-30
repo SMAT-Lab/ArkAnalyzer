@@ -45,7 +45,8 @@ import { buildGenericType } from '../../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
-import { CxxAstNode, getNodeStartLineAndCol } from '../../ast';
+import { CxxAstNode } from '../../ast';
+import { FullPosition } from '../../../../core/base/Position';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -77,7 +78,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     mtd.setImplementationSignature(methodSignature);
-    mtd.setLineCol(0);
+    mtd.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const defaultMethodNode = node ? node : sourceFile;
 
@@ -148,16 +149,14 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const nodePos = getNodeStartLineAndCol(methodNode);
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(nodePos.line);
-        mtd.setColumn(nodePos.col);
+        mtd.setImplOriginFullPosition(FullPosition.cxxBuildFromNode(methodNode, sourceFile));
         let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         mtd.setCxxBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
+        mtd.setDeclareOriginFullPositions([FullPosition.cxxBuildFromNode(methodNode, sourceFile)]);
     }
 
     checkAndUpdateCxxMethod(mtd, declaringClass);
