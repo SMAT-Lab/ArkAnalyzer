@@ -7,7 +7,18 @@
 ```shell
 npm install
 ```
-4. 【可选】生成最新 API 文档，输出目录为 `docs/api_docs`：
+4. 【可选】使用 Docker 开发环境（x86_64 Linux）：
+```shell
+# 构建镜像
+docker build --platform linux/amd64 -f Dockerfile.dev -t arkanalyzer:dev-amd64 .
+
+# 启动容器（挂载 SDK 和源码；源码修改即时生效）
+docker run --platform linux/amd64 -it \
+  -v /path/to/command-line-tools:/workspace/command-line-tools \
+  -v $(pwd):/workspace/arkanalyzer \
+  arkanalyzer:dev-amd64
+```
+5. 【可选】生成最新 API 文档，输出目录为 `docs/api_docs`：
 ```shell
 npm run gendoc
 ```
@@ -88,6 +99,15 @@ npx arkanalyzer ir ./myapp -f json -o ./out
 
 ## 添加自验证测试用例
 新增测试代码统一放至`tests`目录下，对应的样例代码和其他资源文件统一放至`tests\resources`,按测试场景创建不同文件夹。
+
+## UT 日志开关
+Vitest 单测默认静默运行，不输出详细 UT 日志。
+
+需要排查问题时可通过环境变量 `V=1` 开启详细日志（包含控制台输出与 `output/ArkAnalyzerUT.log` 文件日志）：
+
+```shell
+V=1 npx vitest run
+```
 
 ## ArkAnalyzer Issues
 请参考[连接](docs/HowToHandleIssues.md)提交Issues。

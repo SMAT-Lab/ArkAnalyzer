@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import Logger, { LOG_MODULE_TYPE } from '../../../../../utils/logger';
@@ -45,7 +46,9 @@ function buildRunEnv(llvmPath?: string): NodeJS.ProcessEnv {
 function buildAstJsonArgv(request: AstJsonDumpRequest): string[] {
     const argv: string[] = [request.sourceFile, '-o', request.outputFile];
     if (request.ccJsonPath) {
-        argv.push('-p', request.ccJsonPath);
+        const stats = fs.existsSync(request.ccJsonPath) ? fs.statSync(request.ccJsonPath) : null;
+        const buildDir = stats?.isFile() ? path.dirname(request.ccJsonPath) : request.ccJsonPath;
+        argv.push('-p', buildDir);
     }
     if (request.includeDirs && request.includeDirs.length > 0) {
         request.includeDirs.forEach((dir) => {

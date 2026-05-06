@@ -123,15 +123,14 @@ function createPersistentWorkerRunner(addonAbsolutePath: string): RunArgvFn {
     };
 }
 
-function logSpawnSyncFailure(result: SpawnSyncReturns<string>): number {
+function logSpawnSyncResult(result: SpawnSyncReturns<string>): void {
     if (result.stdout) {
-        logger.error(`[Debug] child stdout:\n${result.stdout}`);
+        logger.debug(`[Debug] child stdout:\n${result.stdout}`);
     }
     if (result.stderr) {
         logger.error(`[Debug] child stderr:\n${result.stderr}`);
     }
-    logger.error(`[Debug] astJsonDumper child exited with code ${result.status}`);
-    return -1;
+    logger.debug(`[Debug] astJsonDumper child exited with code ${result.status}`);
 }
 
 function runArgvInSubprocess(context: AstJsonRunContext, ...argv: string[]): number {
@@ -160,10 +159,10 @@ function runArgvInSubprocess(context: AstJsonRunContext, ...argv: string[]): num
         env: context.env,
         cwd: context.cwd,
     });
-    if (result.status !== 0) {
-        return logSpawnSyncFailure(result);
-    }
-    return 0;
+    
+    logSpawnSyncResult(result);
+    
+    return result.status ?? 0;
 }
 
 function shouldIsolateRuns(): boolean {

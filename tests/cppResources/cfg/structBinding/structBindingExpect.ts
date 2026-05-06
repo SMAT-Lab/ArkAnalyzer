@@ -154,7 +154,7 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 4,
             stmts: [
-                '%10 = %8.<@CXX/std/BuiltinClass: IterableIterator.*>',
+                '%10 = %8.<@CXX/std/BuiltinClass: operator*.*>',
                 'name = %10[0]',
                 'score = %10[1]',
                 'staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Structured binding access\')',
