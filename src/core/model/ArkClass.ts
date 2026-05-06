@@ -25,7 +25,7 @@ import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
 import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
 import { FullPosition, INVALID_LINE } from '../base/Position';
-import { ArkBaseModel } from './ArkBaseModel';
+import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { ModelUtils } from '../common/ModelUtils';
 
@@ -43,6 +43,18 @@ export enum ClassCategory {
     UNION = 6,
 }
 
+/**
+ * Shift amount for class category encoding in ArkClass tags field.
+ * Uses CLASS_SPECIFIC_TAG_SHIFT as the base offset for class-specific properties.
+ */
+export const CLASS_CATEGORY_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
+
+/**
+ * Mask for extracting class category from ArkClass tags field.
+ * Covers 3 bits for up to 8 class category values.
+ */
+export const CLASS_CATEGORY_MASK = 0x7 << CLASS_CATEGORY_SHIFT;
+
 export interface heritageClassWithInfo {
     baseClass: ArkClass | undefined | null;
     isVirtual: boolean;
@@ -53,7 +65,6 @@ export interface heritageClassWithInfo {
  * @category core/model
  */
 export class ArkClass extends ArkBaseModel implements ArkExport {
-    private category!: ClassCategory;
     private code?: string;
     /** The full position (start/end line/col) of this class in the source file.
      *  Undefined when this class is an automatically generated default class during IR construction. */
@@ -186,11 +197,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getCategory(): ClassCategory {
-        return this.category ?? ClassCategory.CLASS;
+        const value = this.getTagValue(CLASS_CATEGORY_MASK, CLASS_CATEGORY_SHIFT);
+        return value !== 0 ? (value as ClassCategory) : ClassCategory.CLASS;
     }
 
     public setCategory(category: ClassCategory): void {
-        this.category = category;
+        this.setTagValue(CLASS_CATEGORY_MASK, CLASS_CATEGORY_SHIFT, category);
     }
 
     /**
@@ -337,7 +349,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getImplementedInterfaceNames(): string[] {
-        if (this.category === ClassCategory.INTERFACE) {
+        if (this.getCategory() === ClassCategory.INTERFACE) {
             return [];
         }
         return Array.from(this.heritageClasses.keys()).slice(1);
@@ -706,7 +718,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public validate(): ArkError {
-        return this.validateFields(['declaringArkFile', 'category', 'classSignature']);
+        return this.validateFields(['declaringArkFile', 'classSignature']);
     }
 
     public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {

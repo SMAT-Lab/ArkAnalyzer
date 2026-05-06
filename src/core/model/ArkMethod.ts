@@ -26,7 +26,7 @@ import { BodyBuilder } from './builder/BodyBuilder';
 import { ArkExport, ExportType } from './ArkExport';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../common/Const';
 import { FullPosition, getColNo, getLineNo, INVALID_LINE, LineCol, setLineCol } from '../base/Position';
-import { ArkBaseModel, ModifierType } from './ArkBaseModel';
+import { ArkBaseModel, BaseModelTag, ModifierType } from './ArkBaseModel';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
 import { Local } from '../base/Local';
 import { ArkFile, Language } from './ArkFile';
@@ -75,10 +75,6 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private bodyBuilder?: BodyBuilder;
     // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
     private CxxBodyBuilder?: CxxBodyBuilder;
-
-    private isGeneratedFlag: boolean = false;
-    private asteriskToken: boolean = false;
-    private questionToken: boolean = false;
 
     constructor() {
         super();
@@ -642,19 +638,27 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public isGenerated(): boolean {
-        return this.isGeneratedFlag;
+        return this.containsTag(BaseModelTag.GENERATED);
     }
 
     public setIsGeneratedFlag(isGeneratedFlag: boolean): void {
-        this.isGeneratedFlag = isGeneratedFlag;
+        if (isGeneratedFlag) {
+            this.addTag(BaseModelTag.GENERATED);
+        } else {
+            this.removeTag(BaseModelTag.GENERATED);
+        }
     }
 
     public getAsteriskToken(): boolean {
-        return this.asteriskToken;
+        return this.containsTag(BaseModelTag.ASTERISK_TOKEN);
     }
 
     public setAsteriskToken(asteriskToken: boolean): void {
-        this.asteriskToken = asteriskToken;
+        if (asteriskToken) {
+            this.addTag(BaseModelTag.ASTERISK_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.ASTERISK_TOKEN);
+        }
     }
 
     public validate(): ArkError {
@@ -735,11 +739,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public setQuestionToken(questionToken: boolean): void {
-        this.questionToken = questionToken;
+        if (questionToken) {
+            this.addTag(BaseModelTag.QUESTION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.QUESTION_TOKEN);
+        }
     }
 
     public getQuestionToken(): boolean {
-        return this.questionToken;
+        return this.containsTag(BaseModelTag.QUESTION_TOKEN);
     }
 
     // For class method, if there is no public/private/protected access modifier, it is actually public
