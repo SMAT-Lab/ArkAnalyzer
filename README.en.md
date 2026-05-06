@@ -10,7 +10,18 @@
 ```shell
 npm install
 ```
-4. [Optional] Generate the latest API documentation under `docs/api_docs`:
+4. [Optional] Use Docker dev environment (x86_64 Linux):
+```shell
+# Build image
+docker build --platform linux/amd64 -f Dockerfile.dev -t arkanalyzer:dev-amd64 .
+
+# Start container (mount SDK and source; code changes on host take effect immediately)
+docker run --platform linux/amd64 -it \
+  -v /path/to/command-line-tools:/workspace/command-line-tools \
+  -v $(pwd):/workspace/arkanalyzer \
+  arkanalyzer:dev-amd64
+```
+5. [Optional] Generate the latest API documentation under `docs/api_docs`:
 ```shell
 npm run gendoc
 ```
@@ -94,6 +105,15 @@ Set the `args` array in `.vscode/launch.json` to the file path you want to debug
 ## Adding test cases
 
 Place new tests under `tests/`. Sample code and other resources go under `tests/resources/`, organized in folders per scenario.
+
+## UT log switch
+Vitest unit tests run quietly by default, without verbose UT logs.
+
+When troubleshooting, set `V=1` to enable verbose logs (both console output and file log at `output/ArkAnalyzerUT.log`):
+
+```shell
+V=1 npx vitest run
+```
 
 ## Issues
 

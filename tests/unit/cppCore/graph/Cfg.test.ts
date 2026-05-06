@@ -24,7 +24,9 @@ import {
     getCxxSourceFileExtensions,
 } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
+import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 import { assert, describe, expect, it, vi } from 'vitest';
+import fs from 'fs';
 import path from 'path';
 import {
     assertClassBlocksEqual,
@@ -33,6 +35,9 @@ import {
     testBlocksClass,
     assertBlocksEqual,
 } from '../../common';
+import { ensureCompileDb, resolveSdkPaths } from '../cppBuildUtils';
+
+// ---- Cfg test expect data imports ----
 import * as CONDITION_EXPECT from '../../../cppResources/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../cppResources/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../cppResources/cfg/switch/switchSampleExpects';
@@ -59,13 +64,13 @@ import * as BASE_DATA_TYPE_EXPECT from '../../../cppResources/cfg/baseDataType/b
 import * as WHILE_CONTINUE_EXPECT from '../../../cppResources/cfg/whileContinue/whileContinueSampleExpects';
 import * as CLASS_EXPECT from '../../../cppResources/cfg/class/classExpect';
 import * as LAZY_IMPORT_EXPECT1 from '../../../cppResources/cfg/lazyImport/lazyImportCase1/lazyImportCase1Expect';
-import * as lazyImportCase2 from '../../../cppResources/cfg/lazyImport/lazyImportCase2';
-import * as lazyImportCase3 from '../../../cppResources/cfg/lazyImport/lazyImportCase3';
-import * as lazyImportCase4 from '../../../cppResources/cfg/lazyImport/lazyImportCase4';
-import * as lazyImportCase5 from '../../../cppResources/cfg/lazyImport/lazyImportCase5';
-import * as lazyImportCase6 from '../../../cppResources/cfg/lazyImport/lazyImportCase6';
-import * as lazyImportCase7 from '../../../cppResources/cfg/lazyImport/lazyImportCase7';
-import * as lazyImportCase8 from '../../../cppResources/cfg/lazyImport/lazyImportCase8';
+import * as LAZY_IMPORT_EXPECT2 from '../../../cppResources/cfg/lazyImport/lazyImportCase2';
+import * as LAZY_IMPORT_EXPECT3 from '../../../cppResources/cfg/lazyImport/lazyImportCase3';
+import * as LAZY_IMPORT_EXPECT4 from '../../../cppResources/cfg/lazyImport/lazyImportCase4';
+import * as LAZY_IMPORT_EXPECT5 from '../../../cppResources/cfg/lazyImport/lazyImportCase5';
+import * as LAZY_IMPORT_EXPECT6 from '../../../cppResources/cfg/lazyImport/lazyImportCase6';
+import * as LAZY_IMPORT_EXPECT7 from '../../../cppResources/cfg/lazyImport/lazyImportCase7';
+import * as LAZY_IMPORT_EXPECT8 from '../../../cppResources/cfg/lazyImport/lazyImportCase8';
 import * as NAMESPACE_EXPECT from '../../../cppResources/cfg/namespace';
 import * as OVERLOAD from '../../../cppResources/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../cppResources/cfg/using/usingExpects';
@@ -81,47 +86,140 @@ import * as INITIALZERLIST from '../../../cppResources/cfg/stdInitializerListExp
 import * as SUPPLEMENTARY from '../../../cppResources/cfg/supplementary/supplementary';
 import * as TRAP from '../../../cppResources/cfg/trap/cxxTrapExpects';
 import * as OVERWRITE from '../../../cppResources/cfg/overwrite/overwriteExpect';
-import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 
-const devecoPaths = resolveDevecoPaths();
-const deveco_c = devecoPaths.devecoC;
-const deveco_include = devecoPaths.devecoInclude;
-const deveco_sysroot_include = devecoPaths.devecoSysrootInclude;
-const is_system_win32 = process.platform === 'win32';
+// ---- SDK paths and constants ----
+const { cxxIncludeDir, sysrootIncludeDir, configSiteDirs } = resolveSdkPaths();
+const isWin32 = process.platform === 'win32';
+const isLinux = process.platform === 'linux';
+const BASE_DIR = 'tests/cppResources/cfg';
 
-function resolveDevecoPaths(): { devecoC: string; devecoInclude: string; devecoSysrootInclude: string } {
-    const sdkHome = process.env.OHOS_SDK_HOME;
-    if (!sdkHome || sdkHome.length === 0) {
-        return {
-            devecoC: process.env.DEVECO_C ?? '',
-            devecoInclude: process.env.DEVECO_INCLUDE ?? '',
-            devecoSysrootInclude: process.env.DEVECO_SYSROOT_INCLUDE ?? '',
-        };
+// ---- Build helpers ----
+
+function buildScene(folderName: string): Scene {
+    vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
+    vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
+    const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+    const includeDirs: string[] = [cxxIncludeDir, ...configSiteDirs];
+    if (folderName.includes('lazyImport')) {
+        includeDirs.push(...getNapiIncludeDirs());
+    }
+    const projectDir = path.resolve(__dirname, '../../../cppResources/cfg', folderName);
+    const cmakeListsPath = path.join(projectDir, 'CMakeLists.txt');
+    if (process.env.OHOS_SDK_HOME && fs.existsSync(cmakeListsPath)) {
+        const buildDir = path.resolve(__dirname, '../../../../output/cppResources/cfg', folderName, 'build-ohos-db');
+        ensureCompileDb(projectDir, buildDir);
+        config.setCcjsonPath(path.join(buildDir, 'compile_commands.json'));
+    }
+    config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
+    const scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    return scene;
+}
+
+function getNapiIncludeDirs(): string[] {
+    return [
+        path.join(sysrootIncludeDir, 'x86_64-linux-ohos'),
+        sysrootIncludeDir,
+    ];
+}
+
+// ---- Test helpers ----
+
+function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectIR: any, namespace?: ArkNamespace): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkNamespace = namespace ? namespace : arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+
+    if (!arkNamespace) {
+        throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
     }
 
-    const sdkRoot = path.join(sdkHome, 'openharmony');
-    const devecoC = path.join(sdkRoot, 'native', 'llvm', 'include', 'libcxx-ohos', 'include', 'c++', 'v1');
-    const devecoSysrootInclude = path.join(sdkRoot, 'native', 'sysroot', 'usr', 'include');
-    const devecoInclude = process.platform === 'darwin'
-        ? path.join(
-            process.env.OHOS_XCODE_HOME ?? '/Applications/Xcode.app',
-            'Contents',
-            'Developer',
-            'Platforms',
-            'MacOSX.platform',
-            'Developer',
-            'SDKs',
-            'MacOSX.sdk',
-            'usr',
-            'include'
-        )
-        : path.join(sdkRoot, 'native', 'llvm', 'lib', 'clang', '15.0.4', 'include');
-    return {
-        devecoC,
-        devecoInclude,
-        devecoSysrootInclude,
-    };
+    const namespaceClassBlockMap = new Map<string, any>();
+    for (const classBlock of expectIR.classBlocks) {
+        namespaceClassBlockMap.set(classBlock.className, classBlock);
+    }
+    testClassInNamespace(arkNamespace, namespaceClassBlockMap);
+
+    const nestedNamspaceBlockMap = new Map<string, any>();
+    for (const nsBlock of expectIR.nestedNamespaces) {
+        nestedNamspaceBlockMap.set(nsBlock.namespaceName, nsBlock);
+    }
+    arkNamespace.getNamespaces().forEach(ns => {
+        const nsName = ns.getName();
+        testNamespaceClasses(scene, filePath, nsName, nestedNamspaceBlockMap.get(nsName), ns);
+    });
 }
+
+function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void {
+    ns.getClasses().forEach(arkClass => {
+        const expectedClassData = nsExpectClassMap.get(arkClass.getName());
+        if (!expectedClassData) {
+            throw new Error(`Expected class data for ${arkClass.getName()} not found`);
+        }
+        const heritageClasses = new Set<string>();
+        arkClass.getAllHeritageClasses()?.forEach(heritageClass => {
+            heritageClasses.add(heritageClass.getName());
+        });
+        expect(heritageClasses).toEqual(new Set(expectedClassData.heritageClasses));
+
+        const fieldOfClass = new Set<string>();
+        arkClass.getFields()?.forEach(field => {
+            fieldOfClass.add(field.getName());
+        });
+        expect(fieldOfClass).toEqual(new Set(expectedClassData.fields));
+
+        const classBlockMap = new Map<string, BasicBlock[]>();
+        for (const block of expectedClassData.blocks) {
+            classBlockMap.set(block.methodName, block.blocks);
+        }
+
+        arkClass.getMethods().forEach(method => {
+            const classBlock = classBlockMap.get(method.getName());
+            if (classBlock) {
+                assertClassBlocksEqual(method, classBlock);
+            }
+        });
+    });
+}
+
+function testLambdaFunction(scene: Scene, filePath: string, methodName: string, expectIR: any): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
+    const stmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
+    assert(stmtsLength === stmtToBlockLength);
+    assertBlocksEqual(blocks, expectIR.blocks);
+
+    expect(arkMethod?.getOuterMethod()?.getSignature().toString()).toEqual(expectIR.outerFunctionSignature);
+
+    const locals = arkMethod?.getBody()?.getLocals();
+    if (!locals) {
+        assert.isDefined(locals);
+        return;
+    }
+    const closureLocalPair = Array.from(locals).find(
+        ([key, value]) => key.startsWith(LEXICAL_ENV_NAME_PREFIX) && value.getType() instanceof LexicalEnvType);
+    if (!closureLocalPair) {
+        return;
+    }
+    const [_, closureLocal] = closureLocalPair;
+    const closures = new Set((closureLocal.getType() as LexicalEnvType).getClosures().map(c => c.getName()));
+    expect(closures).toEqual(new Set(expectIR.closures));
+
+    const genericTypes = arkMethod?.getGenericTypes() ?? [];
+    const genericTypesName = new Set(genericTypes.map(t => t.getName()));
+    expect(genericTypesName).toEqual(new Set(expectIR.genericTypes));
+}
+
+// ================================================================
+// Test suites
+// ================================================================
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -262,7 +360,7 @@ describe('Type Test', () => {
         const scene = buildScene('dataStruct');
         testBlocks(scene, 'dataStruct.cpp', 'VectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'SetTest',
-            is_system_win32 ? DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks : DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET_LINUX.blocks);
+            isWin32 ? DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks : DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET_LINUX.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'MapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'UnorderedMapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP2.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'QueueTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_QUEUE.blocks);
@@ -351,12 +449,12 @@ describe('Function Test', () => {
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM16$Case11', LAMBDA_EXPECT.LAMBDA_EXPECT_AM16_Case11);
 
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith('lambdaFuncSample.cpp'));
-        let arkMethod = arkFile?.getDefaultClass().getMethods()
+        const arkMethod10 = arkFile?.getDefaultClass().getMethods()
             .find((method) => (method.getName() === '%AM10$Case7'));
-        expect(arkMethod?.getModifiers()).toEqual(ModifierType.MUTABLE);
-        arkMethod = arkFile?.getDefaultClass().getMethods()
+        expect(arkMethod10?.getModifiers()).toEqual(ModifierType.MUTABLE);
+        const arkMethod11 = arkFile?.getDefaultClass().getMethods()
             .find((method) => (method.getName() === '%AM11$Case8'));
-        expect(arkMethod?.getModifiers()).toEqual(ModifierType.CONSTEXPR);
+        expect(arkMethod11?.getModifiers()).toEqual(ModifierType.CONSTEXPR);
     });
 
     it('case4: delete Expression Test', () => {
@@ -446,7 +544,7 @@ describe('Other Test', () => {
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'ArrayTypeTraitTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE2.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXNoexceptExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE3.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest',
-            is_system_win32 ? BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks : BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4_LINUX.blocks);
+            isLinux ? BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4_LINUX.blocks : BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks);
     });
     it('case7: malloc Test', () => {
         const scene = buildScene('malloc');
@@ -469,42 +567,42 @@ describe('Lazy Import Test', () => {
     it('case2: lazy import case2', () => {
         const scene = buildScene('lazyImport/lazyImportCase2');
         scene.inferTypes();
-        testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
-        testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', LAZY_IMPORT_EXPECT2.DEFINE_OBJECT_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', LAZY_IMPORT_EXPECT2.CALL_OBJECT_EXPECT.blocks);
     });
     it('case3: lazy import case3', () => {
         const scene = buildScene('lazyImport/lazyImportCase3');
-        testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', lazyImportCase3.MapDemo_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', LAZY_IMPORT_EXPECT3.MapDemo_EXPECT.blocks);
     });
     it('case4: lazy import case4', () => {
         const scene = buildScene('lazyImport/lazyImportCase4');
         scene.inferTypes();
-        testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', LAZY_IMPORT_EXPECT4.NativeCallArkTS_EXPECT.blocks);
     });
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
         scene.inferTypes();
-        testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
-        if (is_system_win32) {
-            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', LAZY_IMPORT_EXPECT5.Napi_AddPropertyInt32_EXPECT.blocks);
+        if (isWin32) {
+            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', LAZY_IMPORT_EXPECT5.CallbackToArkTS_EXPECT.blocks);
         }
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
         scene.inferTypes();
-        if (is_system_win32) {
-            testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
+        if (isWin32) {
+            testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', LAZY_IMPORT_EXPECT6.CallFunction_EXPECT.blocks);
         }
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');
         scene.inferTypes();
-        testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', LAZY_IMPORT_EXPECT7.ModifyObject_EXPECT.blocks);
     });
     it('case8: lazy import case8', () => {
         const scene = buildScene('lazyImport/lazyImportCase8');
         scene.inferTypes();
-        testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', LAZY_IMPORT_EXPECT8.NativeCallArkTS8_EXPECT.blocks);
     });
 });
 
@@ -628,127 +726,3 @@ describe('supplementary', () => {
         testBlocks(scene, 'cxxTrap.cpp', 'OuterFunction', TRAP.OUTERFUNC_EXPECT_CASE1.blocks);
     });
 });
-
-const BASE_DIR = 'tests/cppResources/cfg';
-
-function buildScene(folderName: string): Scene {
-    vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
-    vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
-    let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
-    let includeDirs: string[] = [];
-    // header file configuration for DevEco
-    includeDirs.push(deveco_c);
-    includeDirs.push(deveco_include);
-    if (folderName.includes('lazyImport')) {
-        includeDirs.push(...getNapiIncludeDirs());
-    }
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    return scene;
-}
-
-function getNapiIncludeDirs(): string[] {
-    return [
-        path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
-        deveco_sysroot_include,
-    ];
-}
-
-function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectIR: any, namespace?: ArkNamespace): void {
-    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkNamespace = namespace ? namespace : arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
-
-    if (!arkNamespace) {
-        throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
-    }
-
-    const namespaceClassBlockMap = new Map<string, any>();
-    for (const classBlock of expectIR.classBlocks) {
-        namespaceClassBlockMap.set(classBlock.className, classBlock);
-    }
-    // Check each class under the namespace
-    testClassInNamespace(arkNamespace, namespaceClassBlockMap);
-
-    const nestedNamspaceBlockMap = new Map<string, any>();
-    for (const nsBlock of expectIR.nestedNamespaces) {
-        nestedNamspaceBlockMap.set(nsBlock.namespaceName, nsBlock);
-    }
-    // check each nested namespace in the namespace
-    arkNamespace.getNamespaces().forEach(namespace => {
-        const nsName = namespace.getName();
-        testNamespaceClasses(scene, filePath, nsName, nestedNamspaceBlockMap.get(nsName), namespace);
-    });
-}
-
-function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void {
-    // Check each class under the namespace
-    ns.getClasses().forEach(arkClass => {
-        const expectedClassData = nsExpectClassMap.get(arkClass.getName());
-        if (!expectedClassData) {
-            throw new Error(`Expected class data for ${arkClass.getName()} not found`);
-        }
-        // 1. Check class inheritance relationships
-        const heritageClasses = new Set<string>();
-        arkClass.getAllHeritageClasses()?.forEach(heritageClass => {
-            heritageClasses.add(heritageClass.getName());
-        });
-        expect(heritageClasses).toEqual(new Set(expectedClassData.heritageClasses));
-
-        // 2. Check class fields
-        const fieldOfClass = new Set<string>();
-        arkClass.getFields()?.forEach(field => {
-            fieldOfClass.add(field.getName());
-        });
-        expect(fieldOfClass).toEqual(new Set(expectedClassData.fields));
-
-        // 3. Check class member functions
-        const classBlockMap = new Map<string, BasicBlock[]>();
-        for (const block of expectedClassData.blocks) {
-            classBlockMap.set(block.methodName, block.blocks);
-        }
-
-        arkClass.getMethods().forEach(method => {
-            const classBlock = classBlockMap.get(method.getName());
-            if (classBlock) {
-                assertClassBlocksEqual(method, classBlock);
-            }
-        });
-    });
-}
-
-function testLambdaFunction(scene: Scene, filePath: string, methodName: string, expectIR: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods()
-        .find((method) => (method.getName() === methodName));
-    // 1. test blocks
-    const blocks = arkMethod?.getCfg()?.getBlocks();
-    if (!blocks) {
-        assert.isDefined(blocks);
-        return;
-    }
-    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
-    const StmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
-    assert(stmtsLength === StmtToBlockLength);
-    assertBlocksEqual(blocks, expectIR.blocks);
-    // 2. test outer function
-    expect(arkMethod?.getOuterMethod()?.getSignature().toString()).toEqual(expectIR.outerFunctionSignature);
-    // 3. test closures
-    const locals = arkMethod?.getBody()?.getLocals();
-    if (!locals) {
-        assert.isDefined(locals);
-        return;
-    }
-    const closureLocalPair = Array.from(locals).find(
-        ([key, value]) => key.startsWith(LEXICAL_ENV_NAME_PREFIX) && value.getType() instanceof LexicalEnvType);
-    if (!closureLocalPair) {
-        return;
-    }
-    const [_, closureLocal] = closureLocalPair;
-    const closures = new Set((closureLocal.getType() as LexicalEnvType).getClosures().map(c => c.getName()));
-    expect(closures).toEqual(new Set(expectIR.closures));
-    // 4. test generic types
-    const genericTypes = arkMethod?.getGenericTypes() ?? [];
-    const genericTypesName = new Set(genericTypes.map(t => t.getName()));
-    expect(genericTypesName).toEqual(new Set(expectIR.genericTypes));
-}
