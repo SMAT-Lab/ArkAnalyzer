@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ImportInfo } from '../../core/model/ArkImport';
+import { ImportInfo, ImportType } from '../../core/model/ArkImport';
 import { ArkMetadataKind, CommentsMetadata } from '../../core/model/ArkMetadata';
 import { BasePrinter, Dump } from './BasePrinter';
 
@@ -38,20 +38,21 @@ export class ImportPrinter extends BasePrinter {
         let namedImports: string[] = [];
 
         for (const info of this.infos) {
-            if (info.getImportType() === 'Identifier') {
+            const importTypeTag = info.getImportTypeTag();
+            if (importTypeTag === ImportType.IDENTIFIER_IMPORT) {
                 // sample: import fs from 'fs'
                 clauseNames.push(info.getImportClauseName());
-            } else if (info.getImportType() === 'NamedImports') {
+            } else if (importTypeTag === ImportType.NAMED_IMPORTS_IMPORT) {
                 // sample: import {xxx} from './yyy'
                 if (info.getNameBeforeAs()) {
                     namedImports.push(`${info.getNameBeforeAs()} as ${info.getImportClauseName()}`);
                 } else {
                     namedImports.push(info.getImportClauseName());
                 }
-            } else if (info.getImportType() === 'NamespaceImport') {
+            } else if (importTypeTag === ImportType.NAMESPACE_IMPORT) {
                 // sample: import * as ts from 'ohos-typescript'
                 clauseNames.push(`* as ${info.getImportClauseName()}`);
-            } else if (info.getImportType() === 'EqualsImport') {
+            } else if (importTypeTag === ImportType.EQUALS_IMPORT) {
                 // sample: import mmmm = require('./xxx')
                 this.printer.writeIndent().writeLine(`import ${info.getImportClauseName()} =  require('${info.getFrom() as string}');`);
             } else {

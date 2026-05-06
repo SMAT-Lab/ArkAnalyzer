@@ -18,7 +18,7 @@ import { Stmt } from '../base/Stmt';
 import { ArkClass, ClassCategory } from './ArkClass';
 import { FieldSignature } from './ArkSignature';
 import { Type } from '../base/Type';
-import { ArkBaseModel, ModifierType } from './ArkBaseModel';
+import { ArkBaseModel, BaseModelTag, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { Language } from './ArkFile';
 
@@ -35,15 +35,24 @@ export enum FieldCategory {
 }
 
 /**
+ * Shift amount for field category encoding in ArkField tags field.
+ * Uses CLASS_SPECIFIC_TAG_SHIFT as the base offset for class-specific properties.
+ */
+export const FIELD_CATEGORY_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
+
+/**
+ * Mask for extracting field category from ArkField tags field.
+ * Covers 4 bits for up to 16 field category values.
+ */
+export const FIELD_CATEGORY_MASK = 0xF << FIELD_CATEGORY_SHIFT;
+
+/**
  * @category core/model
  */
 export class ArkField extends ArkBaseModel {
     private code: string = '';
-    private category!: FieldCategory;
 
     private declaringClass!: ArkClass;
-    private questionToken: boolean = false;
-    private exclamationToken: boolean = false;
 
     private fieldSignature!: FieldSignature;
     /** The full position (start/end line/col) of this field in the source file. */
@@ -83,11 +92,11 @@ export class ArkField extends ArkBaseModel {
     }
 
     public getCategory(): FieldCategory {
-        return this.category;
+        return this.getTagValue(FIELD_CATEGORY_MASK, FIELD_CATEGORY_SHIFT) as FieldCategory;
     }
 
     public setCategory(category: FieldCategory): void {
-        this.category = category;
+        this.setTagValue(FIELD_CATEGORY_MASK, FIELD_CATEGORY_SHIFT, category);
     }
 
     public getName(): string {
@@ -119,19 +128,27 @@ export class ArkField extends ArkBaseModel {
     }
 
     public setQuestionToken(questionToken: boolean): void {
-        this.questionToken = questionToken;
+        if (questionToken) {
+            this.addTag(BaseModelTag.QUESTION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.QUESTION_TOKEN);
+        }
     }
 
     public setExclamationToken(exclamationToken: boolean): void {
-        this.exclamationToken = exclamationToken;
+        if (exclamationToken) {
+            this.addTag(BaseModelTag.EXCLAMATION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.EXCLAMATION_TOKEN);
+        }
     }
 
     public getQuestionToken(): boolean {
-        return this.questionToken;
+        return this.containsTag(BaseModelTag.QUESTION_TOKEN);
     }
 
     public getExclamationToken(): boolean {
-        return this.exclamationToken;
+        return this.containsTag(BaseModelTag.EXCLAMATION_TOKEN);
     }
 
     /**
@@ -172,7 +189,7 @@ export class ArkField extends ArkBaseModel {
     }
 
     public validate(): ArkError {
-        return this.validateFields(['category', 'declaringClass', 'fieldSignature']);
+        return this.validateFields(['declaringClass', 'fieldSignature']);
     }
 
     // For class field, it is default public if there is not any access modify

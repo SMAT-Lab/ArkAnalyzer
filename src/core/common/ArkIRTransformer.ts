@@ -45,7 +45,7 @@ import { Builtin } from './Builtin';
 import { CONSTRUCTOR_NAME, DEFAULT, PROMISE } from './TSConst';
 import { buildGenericType, buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
-import { ImportInfo } from '../model/ArkImport';
+import { ImportInfo, ImportType } from '../model/ArkImport';
 import { AbstractTypeExpr } from '../base/TypeExpr';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { ArkClass } from '../model/ArkClass';
@@ -475,7 +475,6 @@ export class ArkIRTransformer {
     }
 
     private resolveImportTypeNode(importTypeNode: ts.ImportTypeNode): AliasTypeExpr {
-        const importType = 'typeAliasDefine';
         let importFrom = '';
         let importClauseName = '';
 
@@ -491,7 +490,7 @@ export class ArkIRTransformer {
         }
 
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importType, importFrom, FullPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
+        importInfo.build(importClauseName, ImportType.TYPE_ALIAS_IMPORT, importFrom, FullPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
         importInfo.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
 
         return new AliasTypeExpr(importInfo, importTypeNode.isTypeOf);

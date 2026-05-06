@@ -19,7 +19,7 @@ import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../../core/model
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { getFileAbsPath } from '../../../utils/FileUtils';
 import path from 'path';
-import { ImportInfo } from '../../../core/model/ArkImport';
+import { ImportInfo, ImportType } from '../../../core/model/ArkImport';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
 import { Value } from '../../../core/base/Value';
@@ -115,7 +115,7 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
  */
 export function findExportInfo(fromInfo: FromInfo, fromFile?: ArkFile | null): ExportInfo | null {
     // scenario 1. processing using namespace xxx
-    if (fromInfo instanceof ImportInfo && fromInfo.getImportType() === 'NamespaceImport' && fromInfo.getFrom() === '') {
+    if (fromInfo instanceof ImportInfo && fromInfo.getImportTypeTag() === ImportType.NAMESPACE_IMPORT && fromInfo.getFrom() === '') {
         return processNamespaceImport(fromInfo);
     }
     // scenario 2. processing #include "xx.h"
@@ -206,14 +206,14 @@ function processIncludeRef(fromInfo: ImportInfo, headerFile: ArkFile): ExportInf
         let headerRealIm = new ImportInfo();
         // if there is "using namespace xxx" in declFile or the indirectly referenced file, we should keep the original import type
         const curClauseName = exportInfo.getExportClauseName();
-        let importType: string;
-        if (declFile.getImportInfoBy(curClauseName)?.getImportType() === 'NamespaceImport' ||
-            headerFile.getImportInfoBy(curClauseName)?.getImportType() === 'NamespaceImport') {
-            importType = 'NamespaceImport';
+        let importTypeTag: ImportType;
+        if (declFile.getImportInfoBy(curClauseName)?.getImportTypeTag() === ImportType.NAMESPACE_IMPORT ||
+            headerFile.getImportInfoBy(curClauseName)?.getImportTypeTag() === ImportType.NAMESPACE_IMPORT) {
+            importTypeTag = ImportType.NAMESPACE_IMPORT;
         } else {
-            importType = 'NamedImports';
+            importTypeTag = ImportType.NAMED_IMPORTS_IMPORT;
         }
-        headerRealIm.build(curClauseName, importType, headerFile.getFilePath(), exportInfo.getOriginFullPosition(), 0);
+headerRealIm.build(curClauseName, importTypeTag, headerFile.getFilePath(), exportInfo.getOriginFullPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
         if (shouldAddCxxHeaderImport(headerRealIm)) {
@@ -387,7 +387,7 @@ export class CxxModelUtils {
             }
             const imNS = imArkExport as ArkNamespace;
             // using namespace xxx
-            if (im.getImportType() === 'NamespaceImport') {
+            if (im.getImportTypeTag() === ImportType.NAMESPACE_IMPORT) {
                 arkExport = CxxModelUtils.findPropertyInNamespace(name, imNS);
                 if (arkExport) {
                     return arkExport;
