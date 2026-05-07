@@ -1,5 +1,6 @@
 node_modules
 .vscode/*
+.trae/
 package-lock.json
 t.ts
 main.dot
@@ -25,6 +26,11 @@ lib/
 
 # Keep only selected folders under src/frontend/cppFrontend/ast.
 src/frontend/cppFrontend/ast/*/
-!src/frontend/cppFrontend/ast/cmake/
-!src/frontend/cppFrontend/ast/utils/
+!src/frontend/cppFrontend/ast/ts/
+!src/frontend/cppFrontend/ast/ts/**
+!src/frontend/cppFrontend/ast/cpp/
+!src/frontend/cppFrontend/ast/cpp/**
 
+# Agent related files
+.claude/settings.json
+src/frontend/cppFrontend/ast/cpp/build/

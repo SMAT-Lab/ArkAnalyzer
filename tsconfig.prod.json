@@ -4,7 +4,8 @@
         "src/**/*"
     ],
     "exclude": [
-        "src/frontend/cppFrontend/ast/build/**/*"
+        "src/frontend/cppFrontend/ast/build/**/*",
+        "src/frontend/cppFrontend/ast/cpp/build/**/*"
     ],
     "compilerOptions": {
         "outDir": "./lib"

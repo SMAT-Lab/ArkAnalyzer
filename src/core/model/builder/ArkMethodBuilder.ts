@@ -74,7 +74,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     mtd.setImplementationSignature(methodSignature);
-    mtd.setLineCol(0);
+    mtd.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const defaultMethodNode = node ? node : sourceFile;
 
@@ -123,17 +123,15 @@ export function buildArkMethodFromArkClass(
     }
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, methodNode.getStart(sourceFile));
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(line + 1);
-        mtd.setColumn(character + 1);
+        mtd.setImplOriginFullPosition(FullPosition.buildFromNode(methodNode, sourceFile));
         let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         bodyBuilder.setParamsPositions(paramsPosition);
         mtd.setBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
+        mtd.setDeclareOriginFullPositions([FullPosition.buildFromNode(methodNode, sourceFile)]);
     }
 
     if (mtd.hasBuilderDecorator()) {
@@ -269,8 +267,8 @@ export class MethodParameter implements Value {
     private type!: Type;
     private optional: boolean = false;
     private restFlag: boolean = false;
-    private objElements: ObjectBindingPatternParameter[] = [];
-    private arrayElements: ArrayBindingPatternParameter[] = [];
+    private objElements!: ObjectBindingPatternParameter[];
+    private arrayElements!: ArrayBindingPatternParameter[];
 
     constructor() {}
 
@@ -374,7 +372,7 @@ export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClas
     defaultConstructor.setDeclaringArkClass(arkClass);
     defaultConstructor.setCode('');
     defaultConstructor.setIsGeneratedFlag(true);
-    defaultConstructor.setLineCol(0);
+    defaultConstructor.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
     const thisDefStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature())));
@@ -515,26 +513,33 @@ export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMeth
         return;
     }
     const presentDeclareSignatures = presentMethod.getDeclareSignatures();
-    const presentDeclareLineCols = presentMethod.getDeclareLineCols();
+    const presentDeclarePositions = presentMethod.getDeclareOriginFullPositions();
     const presentImplSignature = presentMethod.getImplementationSignature();
     const newDeclareSignature = method.getDeclareSignatures();
-    const newDeclareLineCols = method.getDeclareLineCols();
+    const newDeclarePositions = method.getDeclareOriginFullPositions();
     const newImplSignature = method.getImplementationSignature();
 
     if (presentDeclareSignatures !== null && presentImplSignature === null) {
         if (newDeclareSignature === null || presentMethod.getDeclareSignatureIndex(newDeclareSignature[0]) >= 0) {
             method.setDeclareSignatures(presentDeclareSignatures);
-            method.setDeclareLineCols(presentDeclareLineCols as number[]);
+            if (presentDeclarePositions) {
+                method.setDeclareOriginFullPositions(presentDeclarePositions);
+            }
         } else {
             method.setDeclareSignatures(presentDeclareSignatures.concat(newDeclareSignature));
-            method.setDeclareLineCols((presentDeclareLineCols as number[]).concat(newDeclareLineCols as number[]));
+            if (presentDeclarePositions && newDeclarePositions) {
+                method.setDeclareOriginFullPositions([...presentDeclarePositions, ...newDeclarePositions]);
+            }
         }
         return;
     }
     if (presentDeclareSignatures === null && presentImplSignature !== null) {
         if (newImplSignature === null) {
             method.setImplementationSignature(presentImplSignature);
-            method.setLineCol(presentMethod.getLineCol() as number);
+            const position = presentMethod.getImplOriginFullPosition();
+            if (position) {
+                method.setImplOriginFullPosition(position);
+            }
         }
         return;
     }

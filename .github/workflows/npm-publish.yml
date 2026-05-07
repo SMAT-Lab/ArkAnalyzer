@@ -8,7 +8,155 @@ on:
   workflow_dispatch:
 
 jobs:
+  define-addon-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          echo 'matrix={"include":[{"os":"linux","arch":"x64","artifact_name":"astJsonDumper-linux-x64","runner":"ubuntu-latest"},{"os":"linux","arch":"arm64","artifact_name":"astJsonDumper-linux-arm64","runner":"ubuntu-24.04-arm"},{"os":"win32","arch":"x64","artifact_name":"astJsonDumper-win32-x64","runner":"windows-latest"},{"os":"darwin","arch":"arm64","artifact_name":"astJsonDumper-darwin-arm64","runner":"macos-latest"}]}' >> "$GITHUB_OUTPUT"
+
+  build-cpp-addon:
+    needs: define-addon-matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.define-addon-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        if: matrix.os != 'win32'
+        run: npm install
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build llvm-19-dev libclang-19-dev clang-19
+
+      - name: Resolve LLVM_DIR and Clang_DIR
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          LLVM_DIR_CANDIDATE="/usr/lib/llvm-19/lib/cmake/llvm"
+          CLANG_DIR_CANDIDATE="/usr/lib/llvm-19/lib/cmake/clang"
+          if [ ! -d "$LLVM_DIR_CANDIDATE" ]; then
+            echo "Missing LLVM_DIR candidate: $LLVM_DIR_CANDIDATE"
+            exit 1
+          fi
+          if [ ! -d "$CLANG_DIR_CANDIDATE" ]; then
+            echo "Missing Clang_DIR candidate: $CLANG_DIR_CANDIDATE"
+            exit 1
+          fi
+          echo "LLVM_DIR=$LLVM_DIR_CANDIDATE" >> "$GITHUB_ENV"
+          echo "Clang_DIR=$CLANG_DIR_CANDIDATE" >> "$GITHUB_ENV"
+
+      - name: Build Linux astJsonDumper.node
+        if: matrix.os == 'linux'
+        run: |
+          LLVM_DIR="$LLVM_DIR" Clang_DIR="$Clang_DIR" npm run build:cpp
+          mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
+          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          ldd src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | awk '
+            /=> \// { print $3 }
+            /^\/.*\.so/ { print $1 }
+          ' | sort -u | while read -r dep; do
+            [ -f "$dep" ] || continue
+            cp "$dep" artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/
+          done
+
+      - name: Install macOS build dependencies
+        if: matrix.os == 'darwin'
+        run: |
+          brew update
+          brew install cmake ninja llvm@19
+
+      - name: Resolve macOS LLVM_DIR and Clang_DIR
+        if: matrix.os == 'darwin'
+        run: |
+          set -euo pipefail
+          LLVM_PREFIX="$(brew --prefix llvm@19 || brew --prefix llvm)"
+          LLVM_DIR_CANDIDATE="$LLVM_PREFIX/lib/cmake/llvm"
+          CLANG_DIR_CANDIDATE="$LLVM_PREFIX/lib/cmake/clang"
+          if [ ! -d "$LLVM_DIR_CANDIDATE" ]; then
+            echo "Missing LLVM_DIR candidate: $LLVM_DIR_CANDIDATE"
+            exit 1
+          fi
+          if [ ! -d "$CLANG_DIR_CANDIDATE" ]; then
+            echo "Missing Clang_DIR candidate: $CLANG_DIR_CANDIDATE"
+            exit 1
+          fi
+          echo "LLVM_DIR=$LLVM_DIR_CANDIDATE" >> "$GITHUB_ENV"
+          echo "Clang_DIR=$CLANG_DIR_CANDIDATE" >> "$GITHUB_ENV"
+
+      - name: Build macOS astJsonDumper.node
+        if: matrix.os == 'darwin'
+        run: |
+          LLVM_DIR="$LLVM_DIR" Clang_DIR="$Clang_DIR" npm run build:cpp
+          mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
+          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          otool -L src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | tail -n +2 | awk '{print $1}' | while read -r dep; do
+            case "$dep" in
+              /usr/lib/*|/System/*) continue ;;
+            esac
+            [ -f "$dep" ] || continue
+            cp "$dep" artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/
+          done
+
+      - name: Setup MSYS2
+        if: matrix.os == 'win32'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+
+      - name: Install Windows build dependencies (MSYS2 MinGW64)
+        if: matrix.os == 'win32'
+        shell: msys2 {0}
+        run: |
+          pacman -S --noconfirm --needed \
+            mingw-w64-x86_64-llvm \
+            mingw-w64-x86_64-clang \
+            mingw-w64-x86_64-clang-tools-extra \
+            mingw-w64-x86_64-cmake \
+            mingw-w64-x86_64-ninja \
+            mingw-w64-x86_64-nodejs \
+            git
+
+      - name: Build Windows astJsonDumper.node
+        if: matrix.os == 'win32'
+        shell: msys2 {0}
+        run: |
+          export LLVM_DIR="/mingw64/lib/cmake/llvm"
+          export Clang_DIR="/mingw64/lib/cmake/clang"
+          test -d "$LLVM_DIR"
+          test -d "$Clang_DIR"
+          npm install
+          npm run build:cpp
+          mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
+          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          llvm-objdump -p src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | awk '/DLL Name:/ { print $3 }' | sort -u | while read -r dll; do
+            dep="/mingw64/bin/$dll"
+            [ -f "$dep" ] || continue
+            cp "$dep" artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/
+          done
+
+      - name: Upload astJsonDumper.node artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
+
   pack:
+    needs: build-cpp-addon
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +179,61 @@ jobs:
           name: arkanalyzer-tarball
           path: 'arkanalyzer-*.tgz'
 
+  pack-addon-packages:
+    needs:
+      - define-addon-matrix
+      - build-cpp-addon
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.define-addon-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download addon artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: astJsonDumper-${{ matrix.os }}-${{ matrix.arch }}
+          path: .artifacts/cpp-addon/${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Build addon npm package
+        run: |
+          set -euo pipefail
+          addonName="${{ matrix.os }}-${{ matrix.arch }}"
+          pkgDir=".artifacts/addon-packages/$addonName"
+          mkdir -p "$pkgDir/runtime"
+          cp -R ".artifacts/cpp-addon/$addonName"/. "$pkgDir/runtime/"
+          VERSION="$(node -p "require('./package.json').version")"
+          cat > "$pkgDir/package.json" <<EOF
+          {
+            "name": "@arkanalyzer/ast-addon-$addonName",
+            "version": "$VERSION",
+            "description": "Platform specific astJsonDumper addon for ArkAnalyzer ($addonName)",
+            "license": "Apache-2.0",
+            "os": ["${{ matrix.os }}"],
+            "cpu": ["${{ matrix.arch }}"],
+            "files": ["runtime"],
+            "main": "runtime/astJsonDumper.node"
+          }
+          EOF
+          npm pack "$pkgDir"
+
+      - name: Upload addon package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: addon-package-${{ matrix.os }}-${{ matrix.arch }}
+          path: 'arkanalyzer-ast-addon-${{ matrix.os }}-${{ matrix.arch }}-*.tgz'
+
   publish:
-    needs: pack
+    needs:
+      - pack
+      - pack-addon-packages
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
@@ -41,11 +242,27 @@ jobs:
         with:
           name: arkanalyzer-tarball
 
+      - name: Download addon package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: addon-package-*
+          path: .artifacts/addon-tarballs
+          merge-multiple: true
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish addon packages to npm
+        run: |
+          set -euo pipefail
+          for tarball in .artifacts/addon-tarballs/*.tgz; do
+            npm publish "$tarball" --access public
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm
         run: npm publish ./arkanalyzer-*.tgz --access public

@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 /**
- * Linux-only C++ benchmark: OpenCV under {@code tests/third_party}, compile_commands.json, astJsonDumper, Scene.
+ * Linux-only C++ benchmark: OpenCV under {@code tests/third_party}, compile_commands.json, astJsonDumper.node, Scene.
  * Exports {@link getCompileCommandsPathForCppProjectRoot} and {@link isProjectRootPreparedCppTree} for {@code PerfTest}.
  *
  * Env: {@code CPP_BENCHMARK_NINJA_PATH}; optional {@code CPP_BENCHMARK_OPENCV_DIR}; optional apt via {@code tryLinuxCppBenchmarkToolchainOptional}.
  *
  * Full run on Linux also requires {@code git}, {@code cmake}, and network for OpenCV clone unless {@code CPP_BENCHMARK_OPENCV_DIR} is set.
- * {@code astJsonDumper} is not built here — generate it beforehand per {@code docs/cppFrontend/ArkAnalyzer-cpp_usage_guide.md} and place it under
- * {@code src/frontend/cppFrontend/ast/dumper/astJsonDumper}.
+ * {@code astJsonDumper.node} is not built here — build with CMake per {@code src/frontend/cppFrontend/ast/README.md}
+ * ({@code NODE_API_INCLUDE_DIR}) and place {@code astJsonDumper.node} under {@code src/frontend/cppFrontend/ast/dumper/}.
  */
 import path from 'path';
 import { spawn, spawnSync } from 'node:child_process';
-import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, rm } from 'node:fs/promises';
 import { Scene, SceneConfig, getCxxSourceFileExtensions } from '../../../src';
 
 /** Path to {@code compile_commands.json} for a tree configured like this benchmark ({@code build_ninja_ccdb}). */
@@ -57,22 +57,14 @@ const PATHS = {
     cppSampleDir: path.resolve(process.cwd(), 'tests', 'samples', 'cpp'),
 } as const;
 
-/** Expected path for a prebuilt astJsonDumper (see configuration docs; this script does not compile it). */
-const AST_JSON_DUMPER_PATH = path.join(PATHS.astRootDir, 'dumper', 'astJsonDumper');
-const BENCHMARK_METRICS_PATH = path.join(PATHS.cppSampleDir, 'CppBenchmark.metrics.json');
-
-type BenchmarkMetrics = {
-    generatedAt: string;
-    totalElapsedSeconds: number;
-    peakRssMb: number;
-    buildSceneSeconds: number | null;
-};
+/** Expected path for a prebuilt astJsonDumper N-API addon (see configuration docs; this script does not compile it). */
+const AST_JSON_DUMPER_NODE_PATH = path.join(PATHS.astRootDir, 'dumper', 'astJsonDumper.node');
 
 enum StageName {
     ResetWorkspace = 'Reset workspace',
     PrepareOpenCV = 'Prepare OpenCV repository',
     GenerateCcdb = 'Generate OpenCV compilation database',
-    VerifyAstJsonDumper = 'Verify prebuilt astJsonDumper',
+    VerifyAstJsonDumper = 'Verify prebuilt astJsonDumper.node',
     BuildScene = 'Build Scene for OpenCV',
 }
 
@@ -91,50 +83,6 @@ function recordPeakRss(): void {
 
 function formatRssMb(rssBytes: number): string {
     return `${(rssBytes / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function getCurrentMetrics(totalElapsedMs: number, peakRssBytesValue: number): BenchmarkMetrics {
-    const buildSceneRow = stageTimings.find((row) => row.stage === StageName.BuildScene);
-    return {
-        generatedAt: new Date().toISOString(),
-        totalElapsedSeconds: Number((totalElapsedMs / 1000).toFixed(2)),
-        peakRssMb: Number((peakRssBytesValue / 1024 / 1024).toFixed(2)),
-        buildSceneSeconds: buildSceneRow ? Number((buildSceneRow.durationMs / 1000).toFixed(2)) : null,
-    };
-}
-
-function printVsBaseline(label: string, current: number, baseline: number, unit: string): void {
-    if (current > baseline) {
-        log(`${label}: ${current.toFixed(2)}${unit}, exceeded baseline ${baseline.toFixed(2)}${unit}.`);
-    } else {
-        log(`${label}: ${current.toFixed(2)}${unit}, not exceeded baseline ${baseline.toFixed(2)}${unit}.`);
-    }
-}
-
-async function compareOrInitBenchmarkBaseline(totalElapsedMs: number, peakRssBytesValue: number): Promise<void> {
-    const payload = getCurrentMetrics(totalElapsedMs, peakRssBytesValue);
-    if (!(await exists(BENCHMARK_METRICS_PATH))) {
-        await writeFile(BENCHMARK_METRICS_PATH, JSON.stringify(payload, null, 2), 'utf8');
-        log(`Baseline metrics file not found. Created baseline: ${BENCHMARK_METRICS_PATH}`);
-        return;
-    }
-
-    const rawBaseline = await readFile(BENCHMARK_METRICS_PATH, 'utf8');
-    const baseline = JSON.parse(rawBaseline) as Partial<BenchmarkMetrics>;
-    const baselinePeakRss = baseline.peakRssMb;
-    const baselineBuildScene = baseline.buildSceneSeconds;
-
-    if (typeof baselinePeakRss !== 'number' || typeof baselineBuildScene !== 'number') {
-        log(`Baseline file is invalid, recreating: ${BENCHMARK_METRICS_PATH}`);
-        await writeFile(BENCHMARK_METRICS_PATH, JSON.stringify(payload, null, 2), 'utf8');
-        return;
-    }
-
-    printVsBaseline('Peak RSS', payload.peakRssMb, baselinePeakRss, ' MB');
-    if (payload.buildSceneSeconds !== null) {
-        printVsBaseline('BuildScene runtime', payload.buildSceneSeconds, baselineBuildScene, 's');
-    }
-    log(`Baseline kept unchanged: ${BENCHMARK_METRICS_PATH}`);
 }
 
 function log(message: string): void {
@@ -324,17 +272,17 @@ async function ensureOpenCvCompilationDatabase(): Promise<void> {
 }
 
 /**
- * Does not compile astJsonDumper. Per {@code docs/cppFrontend/ArkAnalyzer-cpp_usage_guide.md}, build the tool in advance and
- * install it at {@link AST_JSON_DUMPER_PATH}. This pipeline assumes that step is already done; if the file is missing, fail fast.
+ * Does not compile the addon. Build {@code astJsonDumper.node} per {@code src/frontend/cppFrontend/ast/README.md} and install at
+ * {@link AST_JSON_DUMPER_NODE_PATH}. This pipeline assumes that step is already done; if the file is missing, fail fast.
  */
 async function requirePrebuiltAstJsonDumper(): Promise<void> {
-    if (await exists(AST_JSON_DUMPER_PATH)) {
-        log(`astJsonDumper found: ${AST_JSON_DUMPER_PATH}`);
+    if (await exists(AST_JSON_DUMPER_NODE_PATH)) {
+        log(`astJsonDumper.node found: ${AST_JSON_DUMPER_NODE_PATH}`);
         return;
     }
     throw new Error(
-        `astJsonDumper not found at ${AST_JSON_DUMPER_PATH}. Build it beforehand per docs/cppFrontend/ArkAnalyzer-cpp_usage_guide.md ` +
-            '(Linux / toolchain sections), copy the binary to ast/dumper/astJsonDumper, then re-run this benchmark.',
+        `astJsonDumper.node not found at ${AST_JSON_DUMPER_NODE_PATH}. Build per src/frontend/cppFrontend/ast/README.md ` +
+            '(CMake + NODE_API_INCLUDE_DIR), then re-run this benchmark.',
     );
 }
 
@@ -394,8 +342,8 @@ async function runCppBenchmarkPipeline(): Promise<void> {
         const tag = row.skipped ? 'skipped' : formatDurationMs(row.durationMs);
         log(`  ${row.stage}: ${tag}`);
     }
+    log(`Total elapsed: ${formatDurationMs(totalElapsedMs)}`);
     log(`Peak RSS (this Node process): ${formatRssMb(peakRssBytes)}`);
-    await compareOrInitBenchmarkBaseline(totalElapsedMs, peakRssBytes);
 }
 
 const entryPath = process.argv[1]?.replace(/\\/g, '/') ?? '';

@@ -13,10 +13,6 @@
  * limitations under the License.
  */
 
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-
 /** C/C++ implementation file extensions (translation units). */
 const CXX_IMPLEMENTATION_EXTENSIONS: readonly string[] = ['.c', '.cc', '.cpp', '.cxx'];
 
@@ -59,58 +55,4 @@ export function getCxxImplementationFileExtensions(): readonly string[] {
 /** Returns a read-only set for fast C/C++ implementation-file checks. */
 export function getCxxImplementationFileExtensionSet(): ReadonlySet<string> {
     return CXX_IMPLEMENTATION_EXTENSION_SET;
-}
-
-export function findProjectRoot(startDIr: string = __dirname): string {
-    let dir = path.resolve(startDIr);
-    while (true) {
-        if (fs.existsSync(path.join(dir, 'package.json'))) {
-            return dir;
-        }
-        const parentDIr = path.dirname(dir);
-        if (parentDIr === dir) {
-            return dir;
-        }
-        dir = parentDIr;
-    }
-}
-
-const projectRoot = findProjectRoot(__dirname);
-
-function getPrintAstExePath(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper.exe');
-    if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.exe');
-    }
-    return printAstExePath;
-}
-
-function getPrintAstExePathLinux(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper');
-    if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper');
-    }
-    return printAstExePath;
-}
-
-const printAstExePath = getPrintAstExePath();
-const printAstExePathLinux = getPrintAstExePathLinux();
-
-/**
- * Resolved path to the astJsonDumper executable for the current OS (Windows: .exe under dumper/ or lib/ast/).
- */
-export function getAstJsonDumperPath(): string {
-    return os.platform() === 'win32' ? getPrintAstExePath() : getPrintAstExePathLinux();
-}
-
-/** True when the astJsonDumper binary exists at {@link getAstJsonDumperPath}. */
-export function isAstJsonDumperAvailable(): boolean {
-    return fs.existsSync(getAstJsonDumperPath());
-}
-
-export class ClangPath {
-    static WindowsPath = printAstExePath;
-    static LinuxPath = printAstExePathLinux;
-    static Unknown = '';
-    static protectRoot = projectRoot;
 }

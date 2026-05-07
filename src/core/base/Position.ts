@@ -16,7 +16,7 @@
 import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { CxxAstNode, getNodeStartLineAndCol } from '../../frontend/cppFrontend/ast/ArkCxxAstNode';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../frontend/cppFrontend/ast';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 
 const LOW_BITS_SIZE = 16;
@@ -24,7 +24,7 @@ const LOW_BITS_MASK = 0xffff;
 const HIGH_BITS_MASK = 0xffff0000;
 const MIN_NUMBER = 0;
 const MAX_NUMBER = 0xffff;
-const INVALID_LINE = -1;
+export const INVALID_LINE = -1;
 
 export type LineCol = number;
 

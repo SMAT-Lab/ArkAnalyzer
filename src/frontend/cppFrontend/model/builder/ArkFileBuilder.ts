@@ -24,14 +24,13 @@ import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../../core/model/ArkClass';
 import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
-import { AstUtils } from '../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../../core/model/ArkSignature';
-import { LineColPosition } from '../../../../core/base/Position';
+import { FullPosition } from '../../../../core/base/Position';
 import { buildGenericImportInfo, buildUsingNamespaceImportInfo } from './ArkImportBuilder';
 import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
-import { astKind, CxxAstNode, CxxIncludeInfo } from '../../ast/ArkCxxAstNode';
+import { AstParser, astKind, CxxAstNode, CxxIncludeInfo } from '../../ast';
 import { ArkExport } from '../../../../core/model/ArkExport';
 import { Scene } from '../../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -112,7 +111,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
     let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
     let llvmPath = findLLVMPath(sdkPath);
-    const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
+    const jsonObject = AstParser.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
@@ -123,7 +122,7 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : 'class';
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
-    addExportInfoOnCondition(classNode, cls, arkFile);
+    addExportInfoOnCondition(classNode, cls, arkFile, astRoot);
     if (classNode.id) {
         classMap.set(classNode.id, cls);
     }
@@ -168,16 +167,16 @@ function buildImportInfoFromUsing(usingNode: CxxAstNode, astRoot: CxxAstNode, ar
     }
 }
 
-function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {
+function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CxxAstNode): void {
     if (currNode.loc?.file?.endsWith('.h')) {
-        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode)));
+        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, FullPosition.cxxBuildFromNode(currNode, astRoot)));
     }
 }
 
 function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
     let mtd = new ArkMethod();
     buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
-    addExportInfoOnCondition(mtdNode, mtd, arkFile);
+    addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
 }
 
 /**
@@ -223,7 +222,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 ns.setDeclaringArkFile(arkFile);
                 buildArkNamespace(child, arkFile, ns, astRoot);
                 arkFile.addNamespace(ns);
-                addExportInfoOnCondition(child, ns, arkFile);
+                addExportInfoOnCondition(child, ns, arkFile, astRoot);
                 break;
             case astKind.CXXMethodDecl:
             case astKind.CXXConstructorDecl:

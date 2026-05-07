@@ -49,7 +49,7 @@ import {
 import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../ArkSignature';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
-import { FullPosition, LineColPosition } from '../../base/Position';
+import { FullPosition } from '../../base/Position';
 import { Type, UnknownType, VoidType } from '../../base/Type';
 import { BodyBuilder } from './BodyBuilder';
 import { ArkNormalBinopExpr, ArkStaticInvokeExpr, NormalBinaryOperator } from '../../base/Expr';
@@ -115,8 +115,8 @@ export function buildNormalArkClassFromArkFile(
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.getText(sourceFile));
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getStart(sourceFile));
-    cls.setLine(line + 1);
-    cls.setColumn(character + 1);
+    const endPos = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getEnd());
+    cls.setOriginFullPosition(new FullPosition(line + 1, character + 1, endPos.line + 1, endPos.character + 1));
 
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
@@ -133,8 +133,8 @@ export function buildNormalArkClassFromArkNamespace(
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.getText(sourceFile));
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getStart(sourceFile));
-    cls.setLine(line + 1);
-    cls.setColumn(character + 1);
+    const endPos = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getEnd());
+    cls.setOriginFullPosition(new FullPosition(line + 1, character + 1, endPos.line + 1, endPos.character + 1));
 
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkNamespace.addArkClass(cls);
@@ -193,7 +193,7 @@ export function init4InstanceInitMethod(cls: ArkClass): void {
     methodSubSignature.setReturnType(VoidType.getInstance());
     const methodSignature = new MethodSignature(instanceInit.getDeclaringArkClass().getSignature(), methodSubSignature);
     instanceInit.setImplementationSignature(methodSignature);
-    instanceInit.setLineCol(0);
+    instanceInit.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     checkAndUpdateMethod(instanceInit, cls);
     cls.addMethod(instanceInit);
@@ -211,7 +211,7 @@ export function init4StaticInitMethod(cls: ArkClass): void {
     methodSubSignature.setReturnType(VoidType.getInstance());
     const methodSignature = new MethodSignature(staticInit.getDeclaringArkClass().getSignature(), methodSubSignature);
     staticInit.setImplementationSignature(methodSignature);
-    staticInit.setLineCol(0);
+    staticInit.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     checkAndUpdateMethod(staticInit, cls);
     cls.addMethod(staticInit);
@@ -495,7 +495,7 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
 
         field.setCode(parameter.getText(sourceFile));
         field.setCategory(FieldCategory.PARAMETER_PROPERTY);
-        field.setOriginPosition(LineColPosition.buildFromNode(parameter, sourceFile));
+        field.setOriginFullPosition(FullPosition.buildFromNode(parameter, sourceFile));
 
         let fieldType: Type;
         if (parameter.type) {
@@ -527,9 +527,7 @@ function buildStaticBlocksForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkCla
             const methodSignature = new MethodSignature(cls.getSignature(), methodSubSignature);
             staticBlockMethodSignatures.push(methodSignature);
             staticBlockMethod.setImplementationSignature(methodSignature);
-            const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, member.getStart(sourceFile));
-            staticBlockMethod.setLine(line + 1);
-            staticBlockMethod.setColumn(character + 1);
+            staticBlockMethod.setImplOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
             let bodyBuilder = new BodyBuilder(staticBlockMethod.getSignature(), member, staticBlockMethod, sourceFile);
             staticBlockMethod.setBodyBuilder(bodyBuilder);
@@ -591,9 +589,9 @@ function getInitStmts(
     stmts.push(assignStmt);
 
     const fieldSourceCode = field.getCode();
-    const fieldOriginPosition = field.getOriginPosition();
+    const fieldOriginPosition = field.getOriginFullPosition();
     for (const stmt of stmts) {
-        stmt.setOriginPositionInfo(fieldOriginPosition);
+        stmt.setOriginFullPosition(fieldOriginPosition);
         stmt.setOriginalText(fieldSourceCode);
     }
     field.setInitializer(stmts);

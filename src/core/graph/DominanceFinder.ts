@@ -17,25 +17,33 @@ import { BasicBlock } from './BasicBlock';
 import { Cfg } from './Cfg';
 
 export class DominanceFinder {
-    private blocks: BasicBlock[] = [];
-    private blockToIdx = new Map<BasicBlock, number>();
-    private idoms: number[] = [];
-    private domFrontiers: number[][] = [];
+    private blocks: BasicBlock[];
+    private blockToIdx: Map<BasicBlock, number>;
+    private idoms: number[];
+    private domFrontiers: number[][];
 
     constructor(cfg: Cfg) {
         this.blocks = Array.from(cfg.getBlocks());
-        for (let i = 0; i < this.blocks.length; i++) {
-            let block = this.blocks[i];
-            this.blockToIdx.set(block, i);
-        }
-        const startingBlock = cfg.getStartingBlock();
+        this.blockToIdx = this.buildBlockIndex();
+        this.idoms = this.computeImmediateDominators(cfg.getStartingBlock());
+        this.domFrontiers = this.computeDominanceFrontiers();
+    }
 
-        // calculate immediate dominator for each block
-        this.idoms = new Array<number>(this.blocks.length);
-        this.idoms[0] = 0;
-        for (let i = 1; i < this.idoms.length; i++) {
-            this.idoms[i] = -1;
+    private buildBlockIndex(): Map<BasicBlock, number> {
+        const blockToIdx = new Map<BasicBlock, number>();
+        for (let i = 0; i < this.blocks.length; i++) {
+            blockToIdx.set(this.blocks[i], i);
         }
+        return blockToIdx;
+    }
+
+    private computeImmediateDominators(startingBlock: BasicBlock | undefined): number[] {
+        const idoms = new Array<number>(this.blocks.length).fill(-1);
+        if (idoms.length === 0) {
+            return idoms;
+        }
+        idoms[0] = 0;
+
         let isChanged = true;
         while (isChanged) {
             isChanged = false;
@@ -43,52 +51,58 @@ export class DominanceFinder {
                 if (block === startingBlock) {
                     continue;
                 }
-                let blockIdx = this.blockToIdx.get(block) as number;
-                let preds = Array.from(block.getPredecessors());
-                let newIdom = this.getFirstDefinedBlockPredIdx(preds);
+                const blockIdx = this.blockToIdx.get(block) as number;
+                const preds = Array.from(block.getPredecessors());
+                let newIdom = this.getFirstDefinedBlockPredIdx(preds, idoms);
                 if (preds.length <= 0 || newIdom === -1) {
                     continue;
                 }
+
                 for (const pred of preds) {
-                    let predIdx = this.blockToIdx.get(pred) as number;
-                    this.idoms[predIdx] !== -1 ? (newIdom = this.intersect(newIdom, predIdx)) : null;
+                    const predIdx = this.blockToIdx.get(pred) as number;
+                    if (idoms[predIdx] !== -1) {
+                        newIdom = this.intersect(newIdom, predIdx, idoms);
+                    }
                 }
-                if (this.idoms[blockIdx] !== newIdom) {
-                    this.idoms[blockIdx] = newIdom;
+                if (idoms[blockIdx] !== newIdom) {
+                    idoms[blockIdx] = newIdom;
                     isChanged = true;
                 }
             }
         }
+        return idoms;
+    }
 
-        // calculate dominance frontiers for each block
-        this.domFrontiers = new Array(this.blocks.length);
-        for (let i = 0; i < this.domFrontiers.length; i++) {
-            this.domFrontiers[i] = new Array<number>();
+    private computeDominanceFrontiers(): number[][] {
+        const domFrontiers = new Array<number[]>(this.blocks.length);
+        for (let i = 0; i < domFrontiers.length; i++) {
+            domFrontiers[i] = [];
         }
+
         for (const block of this.blocks) {
-            let preds = Array.from(block.getPredecessors());
+            const preds = Array.from(block.getPredecessors());
             if (preds.length <= 1) {
                 continue;
             }
-            let blockIdx = this.blockToIdx.get(block) as number;
+            const blockIdx = this.blockToIdx.get(block) as number;
             for (const pred of preds) {
                 let predIdx = this.blockToIdx.get(pred) as number;
                 while (predIdx !== this.idoms[blockIdx]) {
-                    this.domFrontiers[predIdx].push(blockIdx);
+                    domFrontiers[predIdx].push(blockIdx);
                     predIdx = this.idoms[predIdx];
                 }
             }
         }
+        return domFrontiers;
     }
 
     public getDominanceFrontiers(block: BasicBlock): Set<BasicBlock> {
         if (!this.blockToIdx.has(block)) {
             throw new Error('The given block: ' + block + ' is not in Cfg!');
         }
-        let idx = this.blockToIdx.get(block) as number;
-        let dfs = new Set<BasicBlock>();
-        let dfsIdx = this.domFrontiers[idx];
-        for (const dfIdx of dfsIdx) {
+        const idx = this.blockToIdx.get(block) as number;
+        const dfs = new Set<BasicBlock>();
+        for (const dfIdx of this.domFrontiers[idx]) {
             dfs.add(this.blocks[dfIdx]);
         }
         return dfs;
@@ -106,22 +120,22 @@ export class DominanceFinder {
         return this.idoms;
     }
 
-    private getFirstDefinedBlockPredIdx(preds: BasicBlock[]): number {
+    private getFirstDefinedBlockPredIdx(preds: BasicBlock[], idoms: number[]): number {
         for (const block of preds) {
-            let idx = this.blockToIdx.get(block) as number;
-            if (this.idoms[idx] !== -1) {
+            const idx = this.blockToIdx.get(block) as number;
+            if (idoms[idx] !== -1) {
                 return idx;
             }
         }
         return -1;
     }
 
-    private intersect(a: number, b: number): number {
+    private intersect(a: number, b: number, idoms: number[]): number {
         while (a !== b) {
             if (a > b) {
-                a = this.idoms[a];
+                a = idoms[a];
             } else {
-                b = this.idoms[b];
+                b = idoms[b];
             }
         }
         return a;

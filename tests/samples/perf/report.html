@@ -322,9 +322,31 @@
                     .replace(/"/g, '&quot;');
             }
 
+            function normalizeGcStats(stage) {
+                const gp = stage.gcPauses;
+                if (Array.isArray(gp)) {
+                    const totalDurationMs = gp.reduce((sum, p) => sum + (p.durationMs || 0), 0);
+                    const breakdown = gp.reduce((acc, p) => {
+                        const source = p.source === 'manual' ? 'manual' : 'natural';
+                        acc[source].count += 1;
+                        acc[source].timeMs += p.durationMs || 0;
+                        return acc;
+                    }, { natural: { count: 0, timeMs: 0 }, manual: { count: 0, timeMs: 0 } });
+                    return { count: gp.length, totalDurationMs, breakdown };
+                }
+                return {
+                    count: gp.count || 0,
+                    totalDurationMs: gp.totalDurationMs || 0,
+                    breakdown: {
+                        natural: { count: gp.naturalCount || 0, timeMs: gp.naturalDurationMs || 0 },
+                        manual: { count: gp.manualCount || 0, timeMs: gp.manualDurationMs || 0 },
+                    },
+                };
+            }
+
             // Calculate total GC time
             function getGcTotalMs(stage) {
-                return stage.gcPauses.reduce((sum, p) => sum + (p.durationMs || 0), 0);
+                return normalizeGcStats(stage).totalDurationMs;
             }
             function getHeapPeakUsed(stage) {
                 if (Number.isFinite(stage.heapPeakUsedBytes)) {
@@ -334,16 +356,14 @@
                 const afterUsed = stage.heapAfter?.used || 0;
                 return Math.max(beforeUsed, afterUsed);
             }
+            function getRssPeak(stage) {
+                if (Number.isFinite(stage.rssPeakBytes)) {
+                    return stage.rssPeakBytes;
+                }
+                return 0;
+            }
             function getGcBreakdown(stage) {
-                return stage.gcPauses.reduce((acc, p) => {
-                    const source = p.source === 'manual' ? 'manual' : 'natural';
-                    acc[source].count += 1;
-                    acc[source].timeMs += p.durationMs || 0;
-                    return acc;
-                }, {
-                    natural: { count: 0, timeMs: 0 },
-                    manual: { count: 0, timeMs: 0 }
-                });
+                return normalizeGcStats(stage).breakdown;
             }
 
             function buildMetaRow(data) {
@@ -359,10 +379,10 @@
                     metaParts.push('Report: ' + escapeHtml(data.reportTime));
                 }
                 if (Number.isFinite(data.arkFileCount) && Number.isFinite(data.arkClassCount) &&
-                    Number.isFinite(data.arkMethodCount)) {
+                    Number.isFinite(data.arkMethodCount) && Number.isFinite(data.arkStmtCount)) {
                     metaParts.push(
                         'Scene: ' + data.arkFileCount + ' files · ' + data.arkClassCount + ' classes · ' +
-                        data.arkMethodCount + ' methods'
+                        data.arkMethodCount + ' methods · ' + data.arkStmtCount + ' stmts'
                     );
                 }
                 if (metaParts.length === 0) {
@@ -379,14 +399,15 @@
                         stage,
                         gcTime: getGcTotalMs(stage),
                         gcBreakdown,
-                        heapPeakUsed: getHeapPeakUsed(stage)
+                        heapPeakUsed: getHeapPeakUsed(stage),
+                        rssPeak: getRssPeak(stage)
                     };
                 });
             }
 
             function getAggregateStats(stageStats) {
                 return stageStats.reduce((acc, item) => {
-                    acc.gcCount += item.stage.gcPauses.length;
+                    acc.gcCount += normalizeGcStats(item.stage).count;
                     acc.gcTime += item.gcTime;
                     acc.naturalCount += item.gcBreakdown.natural.count;
                     acc.naturalTime += item.gcBreakdown.natural.timeMs;
@@ -408,9 +429,10 @@
                     const usedEnd = item.stage.heapAfter?.used || 0;
                     return `<div class="kpi-item">
                                     <div class="kpi-label">${item.stage.stageName}</div>
-                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(usedEnd)}</div>
-                                    <div style="font-size:0.8rem;">${item.stage.heapGrowthBytes > 0 ? '+' : ''}${formatBytes(item.stage.heapGrowthBytes)}</div>
+                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(item.rssPeak)}</div>
                                     <div style="font-size:0.8rem;color:#64748b;">peak ${formatMB(item.heapPeakUsed)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">used end ${formatMB(usedEnd)}</div>
+                                    <div style="font-size:0.8rem;">heap growth ${item.stage.heapGrowthBytes > 0 ? '+' : '-'}${formatBytes(Math.abs(item.stage.heapGrowthBytes))}</div>
                                 </div>`;
                 }).join('');
             }
@@ -421,8 +443,10 @@
                     const heapBeforeMB = (stage.heapBefore?.used || 0) / BYTES_PER_MB;
                     const heapAfterMB = (stage.heapAfter?.used || 0) / BYTES_PER_MB;
                     const heapPeakMB = item.heapPeakUsed / BYTES_PER_MB;
+                    const rssPeakMB = item.rssPeak / BYTES_PER_MB;
                     const growthMB = stage.heapGrowthBytes / BYTES_PER_MB;
-                    const topFunc = stage.hotFunctions?.[0] || null;
+                    const topCpuHotFunc = stage.cpuHotFunctions?.[0] || null;
+                    const topAllocFunc = stage.allocationHotFunctions?.[0] || null;
                     return `<tr>
                                     <td><strong>${stage.stageName}</strong></td>
                                     <td>${stage.durationMs.toFixed(2)}</td>
@@ -430,28 +454,32 @@
                                     <td>${heapAfterMB.toFixed(2)}</td>
                                     <td>${heapPeakMB.toFixed(2)}</td>
                                     <td style="color:${growthMB > 0.5 ? '#b91c1c' : '#15803d'};">${growthMB > 0 ? '+' : ''}${growthMB.toFixed(2)}</td>
-                                    <td>${stage.gcPauses.length}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
+                                    <td>${rssPeakMB.toFixed(2)}</td>
+                                    <td>${normalizeGcStats(stage).count}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
                                     <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
                                     <td class="hot-func">
-                                        ${topFunc ? `<span class="func-name">${topFunc.name}</span><br><span class="func-location">${topFunc.location} · ${topFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}
+                                        ${topCpuHotFunc ? `<span class="func-name">${topCpuHotFunc.name}</span><br><span class="func-location">${topCpuHotFunc.location} · ${topCpuHotFunc.selfTimeMs.toFixed(2)}ms</span>` : '<span class="badge">No samples</span>'}
+                                    </td>
+                                    <td class="hot-func">
+                                        ${topAllocFunc ? `<span class="func-name">${topAllocFunc.name}</span><br><span class="func-location">${topAllocFunc.location} · ${topAllocFunc.allocatedMb.toFixed(2)}MB</span>` : '<span class="badge">No samples</span>'}
                                     </td>
                                 </tr>`;
                 }).join('');
             }
 
-            function renderHotFunctionCards(stages) {
+            function renderCpuHotFunctionCards(stages) {
                 return stages.map((stage) => {
-                    if (!stage.hotFunctions || stage.hotFunctions.length === 0) {
+                    if (!stage.cpuHotFunctions || stage.cpuHotFunctions.length === 0) {
                         return '';
                     }
-                    const displayCount = Math.min(hotFunctionLimit, stage.hotFunctions.length);
+                    const displayCount = Math.min(hotFunctionLimit, stage.cpuHotFunctions.length);
                     return `
                         <div class="card" style="margin-bottom:16px;">
-                            <h3>🔥 ${stage.stageName} · Hot Functions (Top ${displayCount} by self time)</h3>
+                            <h3>🔥 ${stage.stageName} · CPU Hot Functions (Top ${displayCount} by self time)</h3>
                             <table style="min-width:780px;">
                                 <thead><tr><th>Function</th><th>Location</th><th>Self Time (ms)</th><th>StdDev (ms)</th><th>CV</th><th>Samples</th></tr></thead>
                                 <tbody>
-                                    ${stage.hotFunctions.slice(0, displayCount).map(fn => `
+                                    ${stage.cpuHotFunctions.slice(0, displayCount).map(fn => `
                                         <tr>
                                             <td class="func-name">${fn.name}</td>
                                             <td class="func-location">${fn.location}</td>
@@ -469,10 +497,40 @@
                 }).join('');
             }
 
+            function renderAllocationHotFunctionCards(stages) {
+                return stages.map((stage) => {
+                    if (!stage.allocationHotFunctions || stage.allocationHotFunctions.length === 0) {
+                        return '';
+                    }
+                    const displayCount = Math.min(hotFunctionLimit, stage.allocationHotFunctions.length);
+                    return `
+                        <div class="card" style="margin-bottom:16px;">
+                            <h3>🔥 ${stage.stageName} · Allocation Hot Functions (Top ${displayCount} by allocated bytes)</h3>
+                            <table style="min-width:780px;">
+                                <thead><tr><th>Function</th><th>Location</th><th>Allocated MB</th><th>StdDev (MB)</th><th>CV</th><th>Samples</th></tr></thead>
+                                <tbody>
+                                    ${stage.allocationHotFunctions.slice(0, displayCount).map(fn => `
+                                        <tr>
+                                            <td class="func-name">${fn.name}</td>
+                                            <td class="func-location">${fn.location}</td>
+                                            <td>${fn.allocatedMb.toFixed(2)}</td>
+                                            <td>${Number.isFinite(fn.allocatedBytesStdDev) ? (fn.allocatedBytesStdDev / 1024 / 1024).toFixed(2) : '-'}</td>
+                                            <td style="color:${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv > 0.5 ? '#b91c1c' : fn.allocatedBytesCv > 0.2 ? '#b45309' : '#15803d') : '#64748b'};">
+                                                ${Number.isFinite(fn.allocatedBytesCv) ? (fn.allocatedBytesCv * 100).toFixed(1) + '%' : '-'}
+                                            </td>
+                                            <td>${fn.sampleCount ?? '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }).join('');
+            }
+
             function renderCharts(stages) {
                 const stageNames = stages.map(s => s.stageName);
                 const durations = stages.map(s => s.durationMs);
-                const heapGrowths = stages.map(s => s.heapGrowthBytes / BYTES_PER_MB);
+                const rssPeaks = stages.map(s => getRssPeak(s) / BYTES_PER_MB);
                 const gcTimes = stages.map(s => getGcTotalMs(s));
 
                 const ctx1 = document.getElementById('durationChart').getContext('2d');
@@ -504,8 +562,8 @@
                         labels: stageNames,
                         datasets: [
                             {
-                                label: 'Heap Growth (MB)',
-                                data: heapGrowths,
+                                label: 'RSS Peak per Round (MB)',
+                                data: rssPeaks,
                                 backgroundColor: 'rgba(16, 185, 129, 0.6)',
                                 borderRadius: 8,
                                 yAxisID: 'y',
@@ -530,7 +588,7 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                title: { display: true, text: 'Heap Growth (MB)' }
+                                title: { display: true, text: 'RSS Peak per Round (MB)' }
                             },
                             y1: {
                                 position: 'right',
@@ -614,7 +672,10 @@
                         </div>
                     </div>
                     <div class="card" style="padding-bottom: 10px;">
-                        <h3>📊 Heap Growth & GC Time</h3>
+                        <h3>📊 RSS Peak per Round & GC Time</h3>
+                        <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">
+                            RSS uses per-round isolated process sampling.
+                        </div>
                         <div class="chart-container">
                             <canvas id="heapGcChart"></canvas>
                         </div>
@@ -632,9 +693,11 @@
                                 <th>Heap End (MB)</th>
                                 <th>Heap Peak (MB)</th>
                                 <th>Heap Growth (MB)</th>
+                                <th>RSS Peak per Round (MB)</th>
                                 <th>GC Count</th>
                                 <th>GC Time (ms)</th>
-                                <th>🔥 Top Hot Function</th>
+                                <th>🔥 Top CPU Hot Function</th>
+                                <th>🔥 Top Allocation Hot Function</th>
                             </tr>
                         </thead>
                         <tbody id="stageTableBody">
@@ -656,7 +719,8 @@
                             </select>
                         </div>
                     </div>
-                    ${renderHotFunctionCards(stages)}
+                    ${renderCpuHotFunctionCards(stages)}
+                    ${renderAllocationHotFunctionCards(stages)}
                 </div>
             `;
 

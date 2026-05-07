@@ -19,7 +19,6 @@ import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
 import { FileUtils } from './utils/FileUtils';
-import { getCxxSourceFileExtensions, isAstJsonDumperAvailable } from './frontend/cppFrontend/ast/const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -77,21 +76,52 @@ export function buildSceneConfigFromProject(project: string, ohosSdkHome?: strin
     return config;
 }
 
-export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | null | undefined;
+/**
+ * Per-language switch and optional file extension list (for tooling and front-end selection; extension lists are
+ * normalized for discovery and future use).
+ */
+export interface LanguageOptions {
+    enabled?: boolean;
+    extensions?: string[];
+}
+
+export interface CppLanguageOptions extends LanguageOptions {
+    sourceExtensions?: string[];
+    headerExtensions?: string[];
+}
+
+export interface SceneLanguagesOptions {
+    arkts?: LanguageOptions;
+    cpp?: CppLanguageOptions;
+    [option: string]: LanguageOptions | undefined;
+}
+
+export type SceneOptionsValue =
+    | string
+    | number
+    | boolean
+    | (string | number)[]
+    | string[]
+    | SceneLanguagesOptions
+    | null
+    | undefined;
+
 export interface SceneOptions {
     supportFileExts?: string[];
     ignoreFileNames?: string[];
     enableLeadingComments?: boolean;
     enableTrailingComments?: boolean;
+    enableJSDoc?: boolean;
     enableBuiltIn?: boolean;
     tsconfig?: string;
     isScanAbc?: boolean;
     sdkGlobalFolders?: string[];
+    /** Optional multi-language front-end section; defaults are merged in {@link SceneConfig} construction. */
+    languages?: SceneLanguagesOptions;
     [option: string]: SceneOptionsValue;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
-const CPP_SOURCE_FILE_EXTS: readonly string[] = getCxxSourceFileExtensions();
 
 export class SceneConfig {
     private targetProjectName: string = '';
@@ -115,7 +145,8 @@ export class SceneConfig {
         // Seed defaults before merging `config/arkanalyzer.json`. Same values remain if that file is missing or invalid.
         this.options = { supportFileExts: ['.ets', '.ts'] };
         this.loadDefaultConfig(options);
-        this.appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable();
+        this.normalizeLanguageOptions();
+        this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
     }
 
     public getOptions(): SceneOptions {
@@ -251,6 +282,8 @@ export class SceneConfig {
             if (configurations.options) {
                 this.options = { ...this.options, ...configurations.options };
             }
+            this.normalizeLanguageOptions();
+            this.mergeEnabledLanguageExtensionsIntoSupportFileExts();
 
             this.buildConfig(targetProjectName, targetProjectDirectory, sdks);
         } else {
@@ -350,15 +383,56 @@ export class SceneConfig {
         }
     }
 
-    private appendCppExtsToDefaultOptionsIfAstJsonDumperAvailable(): void {
-        if (!isAstJsonDumperAvailable()) {
+    private normalizeLanguageOptions(): void {
+        const from = this.options.languages;
+        if (!from) {
             return;
         }
-        const configuredExts = Array.isArray(this.options.supportFileExts) ? this.options.supportFileExts : [];
-        const missingCppExts = CPP_SOURCE_FILE_EXTS.filter(ext => !configuredExts.includes(ext));
-        if (missingCppExts.length === 0) {
+        const normalized: SceneLanguagesOptions = {};
+        if (from.arkts) {
+            normalized.arkts = {
+                ...from.arkts,
+                extensions: this.uniqueFileExtensions(from.arkts.extensions ?? []),
+            };
+        }
+        if (from.cpp) {
+            normalized.cpp = {
+                ...from.cpp,
+                extensions: this.uniqueFileExtensions(from.cpp.extensions ?? []),
+                sourceExtensions: this.uniqueFileExtensions(from.cpp.sourceExtensions ?? []),
+                headerExtensions: this.uniqueFileExtensions(from.cpp.headerExtensions ?? []),
+            };
+        }
+        this.options.languages = normalized;
+    }
+
+    private mergeEnabledLanguageExtensionsIntoSupportFileExts(): void {
+        const languages = this.options.languages;
+        if (!languages) {
             return;
         }
-        this.options.supportFileExts = [...configuredExts, ...missingCppExts];
+        const merged = [...(this.options.supportFileExts ?? [])];
+        if (languages.arkts?.enabled === true) {
+            merged.push(...(languages.arkts.extensions ?? []));
+        }
+        if (languages.cpp?.enabled === true) {
+            merged.push(...(languages.cpp.extensions ?? []));
+            merged.push(...(languages.cpp.sourceExtensions ?? []));
+            merged.push(...(languages.cpp.headerExtensions ?? []));
+        }
+        this.options.supportFileExts = this.uniqueFileExtensions(merged);
+    }
+
+    private uniqueFileExtensions(extensions: string[]): string[] {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const ext of extensions) {
+            const normalized = ext.toLowerCase();
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                out.push(normalized);
+            }
+        }
+        return out;
     }
 }

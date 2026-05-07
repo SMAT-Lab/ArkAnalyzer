@@ -16,7 +16,15 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { profileArkAnalyzer, serializeResult, StageMetrics, ProfilerResult, FunctionStat } from './profiler';
+import {
+    serializeResult,
+    StageMetrics,
+    ProfilerResult,
+    CpuHotFunctionStat,
+    AllocationStat,
+    GcPauseStats,
+    averageGcPauseStats,
+} from './profiler';
 import { ensureDir, PerfProjectConfig, RAW_DIR } from './utils';
 
 /** Repository root (arkanalyzer) from `tests/samples/perf`. */
@@ -79,27 +87,18 @@ function saveSummary(result: ProfilerResult, runId: string): string {
     return jsonFilePath;
 }
 
-/**
- * Print stage metrics to console.
- */
-function printStageSummary(stage: StageMetrics): void {
-    console.log(`\n[${stage.stageName}]`);
-    console.log(`  Duration      : ${stage.durationMs.toFixed(2)} ms`);
-    console.log(`  Heap Growth   : ${(stage.heapGrowthBytes / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  Heap Peak     : ${(stage.heapPeakUsedBytes / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`  GC Pauses     : ${stage.gcPauses.length} (${stage.gcPauses.reduce((s, p) => s + p.durationMs, 0).toFixed(2)} ms)`);
-    console.log(`  Hot Functions : ${stage.hotFunctions.length}`);
-    if (stage.hotFunctions.length > 0) {
-        const top = stage.hotFunctions[0];
-        console.log(`    Top: ${top.name} (${top.selfTimeMs.toFixed(2)} ms)`);
-    }
-}
-
 function average(values: number[]): number {
     if (values.length === 0) {
         return 0;
     }
     return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function maximum(values: number[]): number {
+    if (values.length === 0) {
+        return 0;
+    }
+    return values.reduce((max, value) => Math.max(max, value), values[0]);
 }
 
 function standardDeviation(values: number[]): number {
@@ -119,29 +118,30 @@ interface StageAccumulator {
     durations: number[];
     heapGrowths: number[];
     heapPeakUsedBytes: number[];
+    rssPeakBytes: number[];
     heapBeforeUsed: number[];
     heapBeforeTotal: number[];
     heapBeforeLimit: number[];
     heapAfterUsed: number[];
     heapAfterTotal: number[];
     heapAfterLimit: number[];
-    gcCounts: number[];
-    gcTotalDurations: number[];
-    hotFunctionRuns: FunctionStat[][];
+    gcStatsRuns: GcPauseStats[];
+    cpuHotFunctionRuns: CpuHotFunctionStat[][];
+    allocationHotFunctionRuns: AllocationStat[][];
 }
 
-function aggregateAverageHotFunctions(hotFunctionRuns: FunctionStat[][], topN: number = 20): FunctionStat[] {
+function aggregateAverageCpuHotFunctions(cpuHotFunctionRuns: CpuHotFunctionStat[][], topN: number = 20): CpuHotFunctionStat[] {
     const grouped = new Map<string, {
         name: string;
         location: string;
         selfTimes: number[];
         sampleCounts: number[];
     }>();
-    const rounds = hotFunctionRuns.length;
+    const rounds = cpuHotFunctionRuns.length;
 
     for (let runIndex = 0; runIndex < rounds; runIndex++) {
-        const hotFunctions = hotFunctionRuns[runIndex];
-        for (const fn of hotFunctions) {
+        const cpuHotFunctions = cpuHotFunctionRuns[runIndex];
+        for (const fn of cpuHotFunctions) {
             const key = `${fn.name}:${fn.location}`;
             const current = grouped.get(key) ?? {
                 name: fn.name,
@@ -173,49 +173,121 @@ function aggregateAverageHotFunctions(hotFunctionRuns: FunctionStat[][], topN: n
         .slice(0, topN);
 }
 
+function aggregateAverageAllocationHotFunctions(allocationHotFunctionRuns: AllocationStat[][], topN: number = 20): AllocationStat[] {
+    const grouped = new Map<string, {
+        name: string;
+        location: string;
+        allocatedBytes: number[];
+        sampleCounts: number[];
+    }>();
+    const rounds = allocationHotFunctionRuns.length;
+
+    for (let runIndex = 0; runIndex < rounds; runIndex++) {
+        const allocationHotFunctions = allocationHotFunctionRuns[runIndex];
+        for (const fn of allocationHotFunctions) {
+            const key = `${fn.name}:${fn.location}`;
+            const current = grouped.get(key) ?? {
+                name: fn.name,
+                location: fn.location,
+                allocatedBytes: Array.from({ length: rounds }, () => 0),
+                sampleCounts: Array.from({ length: rounds }, () => 0),
+            };
+            current.allocatedBytes[runIndex] = fn.allocatedBytes;
+            current.sampleCounts[runIndex] = fn.sampleCount ?? 0;
+            grouped.set(key, current);
+        }
+    }
+
+    return Array.from(grouped.values())
+        .map((item) => {
+            const allocatedBytes = average(item.allocatedBytes);
+            const allocatedBytesStdDev = standardDeviation(item.allocatedBytes);
+            const allocatedBytesCv = allocatedBytes > 0 ? allocatedBytesStdDev / allocatedBytes : 0;
+            return {
+                name: item.name,
+                location: item.location,
+                allocatedBytes,
+                allocatedMb: allocatedBytes / 1024 / 1024,
+                allocatedBytesStdDev,
+                allocatedBytesCv,
+                sampleCount: Math.round(average(item.sampleCounts)),
+            };
+        })
+        .sort((a, b) => b.allocatedBytes - a.allocatedBytes)
+        .slice(0, topN);
+}
+
 function createStageAccumulator(stageName: string): StageAccumulator {
     return {
         stageName,
         durations: [],
         heapGrowths: [],
         heapPeakUsedBytes: [],
+        rssPeakBytes: [],
         heapBeforeUsed: [],
         heapBeforeTotal: [],
         heapBeforeLimit: [],
         heapAfterUsed: [],
         heapAfterTotal: [],
         heapAfterLimit: [],
-        gcCounts: [],
-        gcTotalDurations: [],
-        hotFunctionRuns: [],
+        gcStatsRuns: [],
+        cpuHotFunctionRuns: [],
+        allocationHotFunctionRuns: [],
     };
 }
 
-async function triggerManualGcBetweenRounds(currentRound: number, totalRounds: number): Promise<void> {
-    if (typeof global.gc !== 'function') {
-        console.warn('[GC] Skipped: global.gc is unavailable. Start Node with --expose-gc to enable manual GC.');
-        return;
+function runSingleRoundInChild(args: ChildRoundExecutionArgs): ProfilerResult {
+    const { runId, currentRound, totalRounds, projectConfig } = args;
+    const resultPath = path.join(RAW_DIR, `${runId}-round${currentRound}-result.json`);
+    const workerPath = path.join(__dirname, 'round_worker.ts');
+    const workerArgs = [
+        ...process.execArgv,
+        workerPath,
+        `--project-path=${projectConfig.path}`,
+        `--result-path=${resultPath}`,
+        `--current-round=${currentRound}`,
+        `--total-rounds=${totalRounds}`,
+    ];
+
+    if (projectConfig.ccJsonPath) {
+        workerArgs.push(`--cc-json=${projectConfig.ccJsonPath}`);
     }
-    const before = process.memoryUsage().heapUsed;
-    global.gc();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    const after = process.memoryUsage().heapUsed;
-    const reclaimedMb = (before - after) / 1024 / 1024;
-    console.log(
-        `[GC] After round ${currentRound}/${totalRounds}, reclaimed ${reclaimedMb.toFixed(2)} MB ` +
-        `(heap: ${(before / 1024 / 1024).toFixed(2)} -> ${(after / 1024 / 1024).toFixed(2)} MB)`
-    );
+
+    const run = cp.spawnSync(process.execPath, workerArgs, {
+        cwd: ARKANALYZER_REPO_ROOT,
+        env: process.env,
+        stdio: 'inherit',
+    });
+
+    if (run.status !== 0) {
+        throw new Error(`Round ${currentRound} failed in child process (exit code: ${run.status ?? -1})`);
+    }
+
+    if (!fs.existsSync(resultPath)) {
+        throw new Error(`Round ${currentRound} result file not found: ${resultPath}`);
+    }
+
+    const resultContent = fs.readFileSync(resultPath, 'utf8');
+    return JSON.parse(resultContent) as ProfilerResult;
 }
 
 interface SceneCountSeries {
     arkFileCounts: number[];
     arkClassCounts: number[];
     arkMethodCounts: number[];
+    arkStmtCounts: number[];
 }
 
 interface RunSeries {
     totalDurations: number[];
     sceneCounts: SceneCountSeries;
+}
+
+interface ChildRoundExecutionArgs {
+    runId: string;
+    currentRound: number;
+    totalRounds: number;
+    projectConfig: PerfProjectConfig;
 }
 
 function createRunSeries(): RunSeries {
@@ -225,6 +297,7 @@ function createRunSeries(): RunSeries {
             arkFileCounts: [],
             arkClassCounts: [],
             arkMethodCounts: [],
+            arkStmtCounts: [],
         },
     };
 }
@@ -239,7 +312,7 @@ function printRunHeader(rounds: number, projectConfig: PerfProjectConfig, runId:
     console.log(`Project : ${projectConfig.path}`);
     console.log(`Run ID  : ${runId}`);
     console.log(`Rounds  : ${rounds}`);
-    console.log('GC Between Rounds : enabled');
+    console.log('Isolation Between Rounds : process restart');
     console.log(`Output  : ${RAW_DIR}`);
     if (projectConfig.ccJsonPath) {
         console.log(`CC JSON : ${projectConfig.ccJsonPath}`);
@@ -252,21 +325,23 @@ function pushSceneCounts(series: RunSeries, result: ProfilerResult): void {
     series.sceneCounts.arkFileCounts.push(result.arkFileCount ?? 0);
     series.sceneCounts.arkClassCounts.push(result.arkClassCount ?? 0);
     series.sceneCounts.arkMethodCounts.push(result.arkMethodCount ?? 0);
+    series.sceneCounts.arkStmtCounts.push(result.arkStmtCount ?? 0);
 }
 
 function appendStageMetrics(accumulator: StageAccumulator, stage: StageMetrics): void {
     accumulator.durations.push(stage.durationMs);
     accumulator.heapGrowths.push(stage.heapGrowthBytes);
     accumulator.heapPeakUsedBytes.push(stage.heapPeakUsedBytes);
+    accumulator.rssPeakBytes.push(stage.rssPeakBytes ?? 0);
     accumulator.heapBeforeUsed.push(stage.heapBefore.used);
     accumulator.heapBeforeTotal.push(stage.heapBefore.total);
     accumulator.heapBeforeLimit.push(stage.heapBefore.limit);
     accumulator.heapAfterUsed.push(stage.heapAfter.used);
     accumulator.heapAfterTotal.push(stage.heapAfter.total);
     accumulator.heapAfterLimit.push(stage.heapAfter.limit);
-    accumulator.gcCounts.push(stage.gcPauses.length);
-    accumulator.gcTotalDurations.push(stage.gcPauses.reduce((sum, pause) => sum + pause.durationMs, 0));
-    accumulator.hotFunctionRuns.push(stage.hotFunctions);
+    accumulator.gcStatsRuns.push(stage.gcPauses);
+    accumulator.cpuHotFunctionRuns.push(stage.cpuHotFunctions);
+    accumulator.allocationHotFunctionRuns.push(stage.allocationHotFunctions);
 }
 
 function saveRoundProfilesAndAccumulate(
@@ -301,16 +376,7 @@ function buildAverageResult(
     }
 
     const averagedStages: StageMetrics[] = stageAccumulators.map((accumulator) => {
-        const avgGcCount = Math.round(average(accumulator.gcCounts));
-        const avgGcTotalDurationMs = average(accumulator.gcTotalDurations);
-        const gcPauses = avgGcCount > 0
-            ? Array.from({ length: avgGcCount }, (_, index) => ({
-                type: 'avg',
-                durationMs: avgGcTotalDurationMs / avgGcCount,
-                timestamp: index,
-                source: 'natural' as const,
-            }))
-            : [];
+        const gcPauses = averageGcPauseStats(accumulator.gcStatsRuns);
 
         return {
             stageName: accumulator.stageName,
@@ -318,6 +384,8 @@ function buildAverageResult(
             cpuProfile: {} as StageMetrics['cpuProfile'],
             heapGrowthBytes: average(accumulator.heapGrowths),
             heapPeakUsedBytes: average(accumulator.heapPeakUsedBytes),
+            // RSS peak is a high-water mark metric; averaging multiple rounds underestimates the real peak.
+            rssPeakBytes: maximum(accumulator.rssPeakBytes),
             heapBefore: {
                 used: average(accumulator.heapBeforeUsed),
                 total: average(accumulator.heapBeforeTotal),
@@ -329,7 +397,8 @@ function buildAverageResult(
                 limit: average(accumulator.heapAfterLimit),
             },
             gcPauses,
-            hotFunctions: aggregateAverageHotFunctions(accumulator.hotFunctionRuns),
+            cpuHotFunctions: aggregateAverageCpuHotFunctions(accumulator.cpuHotFunctionRuns),
+            allocationHotFunctions: aggregateAverageAllocationHotFunctions(accumulator.allocationHotFunctionRuns),
         };
     });
 
@@ -339,6 +408,7 @@ function buildAverageResult(
         arkFileCount: Math.round(average(sceneCounts.arkFileCounts)),
         arkClassCount: Math.round(average(sceneCounts.arkClassCounts)),
         arkMethodCount: Math.round(average(sceneCounts.arkMethodCounts)),
+        arkStmtCount: Math.round(average(sceneCounts.arkStmtCounts)),
     };
 }
 
@@ -367,13 +437,11 @@ export async function runPerformanceProfiling(
         for (let i = 0; i < normalizedRounds; i++) {
             const currentRound = i + 1;
             console.log(`--- Round ${currentRound}/${normalizedRounds} ---`);
-            const result = await profileArkAnalyzer(projectConfig.path, projectConfig.ccJsonPath, {
-                onStageStart: (stageName) => {
-                    console.log(`[Round ${currentRound}/${normalizedRounds}] Starting ${stageName}...`);
-                },
-                onStageEnd: (_stageName, metrics) => {
-                    printStageSummary(metrics);
-                },
+            const result = runSingleRoundInChild({
+                runId,
+                currentRound,
+                totalRounds: normalizedRounds,
+                projectConfig,
             });
 
             if (stageAccumulators.length === 0) {
@@ -386,7 +454,6 @@ export async function runPerformanceProfiling(
             console.log(`[Round ${currentRound}/${normalizedRounds}] Total time: ${result.totalDurationMs.toFixed(2)} ms\n`);
 
             if (currentRound < normalizedRounds) {
-                await triggerManualGcBetweenRounds(currentRound, normalizedRounds);
                 console.log('');
             }
         }

@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 import { ArkFile, Language } from './ArkFile';
 import { ArkSignature, ClassSignature, LocalSignature, MethodSignature, NamespaceSignature } from './ArkSignature';
 import { DEFAULT } from '../common/TSConst';
-import { ArkBaseModel, ModifierType } from './ArkBaseModel';
+import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { ArkMetadataKind, CommentsMetadata } from './ArkMetadata';
 import { ArkNamespace } from './ArkNamespace';
@@ -32,6 +32,18 @@ export enum ExportType {
     TYPE = 4,
     UNKNOWN = 9,
 }
+
+/**
+ * Shift amount for export type encoding in ExportInfo tags field.
+ * Uses CLASS_SPECIFIC_TAG_SHIFT as the base offset for class-specific properties.
+ */
+export const EXPORT_TYPE_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
+
+/**
+ * Mask for extracting export type from ExportInfo tags field.
+ * Covers 4 bits for up to 16 export type values.
+ */
+export const EXPORT_TYPE_MASK = 0xF << EXPORT_TYPE_SHIFT;
 
 export interface ArkExport extends ArkSignature {
     getModifiers(): number;
@@ -56,15 +68,14 @@ export interface FromInfo {
  * @category core/model
  */
 export class ExportInfo extends ArkBaseModel implements FromInfo {
-    private _default?: boolean;
     private nameBeforeAs?: string;
     private exportClauseName: string = '';
 
-    private exportClauseType: ExportType = ExportType.UNKNOWN;
     private arkExport?: ArkExport | null;
     private exportFrom?: string;
 
-    private originTsPosition?: LineColPosition;
+    /** The full position (start/end line/col) of this export in the source file. */
+    private originFullPosition!: FullPosition;
     private tsSourceCode?: string;
     private declaringArkFile!: ArkFile;
     private declaringArkNamespace?: ArkNamespace;
@@ -92,11 +103,11 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
     }
 
     public setExportClauseType(exportClauseType: ExportType): void {
-        this.exportClauseType = exportClauseType;
+        this.setTagValue(EXPORT_TYPE_MASK, EXPORT_TYPE_SHIFT, exportClauseType);
     }
 
     public getExportClauseType(): ExportType {
-        return this.exportClauseType;
+        return this.getTagValue(EXPORT_TYPE_MASK, EXPORT_TYPE_SHIFT);
     }
 
     public getNameBeforeAs(): string | undefined {
@@ -115,14 +126,23 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
         if (this.exportFrom) {
             return this.nameBeforeAs === DEFAULT;
         }
-        if (this._default === undefined) {
-            this._default = this.containsModifier(ModifierType.DEFAULT);
-        }
-        return this._default;
+        return this.containsModifier(ModifierType.DEFAULT);
     }
 
+    /**
+     * @deprecated Use getOriginFullPosition() instead.
+     * @returns The LineColPosition of this export.
+     */
     public getOriginTsPosition(): LineColPosition {
-        return this.originTsPosition ?? LineColPosition.DEFAULT;
+        return new LineColPosition(this.originFullPosition.getFirstLine(), this.originFullPosition.getFirstCol());
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this export in the source file.
+     * @returns The full position in the source code of this export.
+     */
+    public getOriginFullPosition(): FullPosition {
+        return this.originFullPosition;
     }
 
     public getTsSourceCode(): string {
@@ -160,8 +180,26 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
             return this;
         }
 
+        /**
+         * @deprecated Use originFullPosition() instead.
+         * @param originTsPosition - The LineColPosition to set.
+         */
         public originTsPosition(originTsPosition: LineColPosition): ArkExportBuilder {
-            this.exportInfo.originTsPosition = originTsPosition;
+            this.exportInfo.originFullPosition = new FullPosition(
+                originTsPosition.getLineNo(),
+                originTsPosition.getColNo(),
+                originTsPosition.getLineNo(),
+                originTsPosition.getColNo()
+            );
+            return this;
+        }
+
+        /**
+         * Sets the full position of this export in the source file.
+         * @param originFullPosition - The full position in the source code to set.
+         */
+        public originFullPosition(originFullPosition: FullPosition): ArkExportBuilder {
+            this.exportInfo.originFullPosition = originFullPosition;
             return this;
         }
 

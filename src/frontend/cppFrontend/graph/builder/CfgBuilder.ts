@@ -31,7 +31,7 @@ import { ModifierType } from '../../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../../core/common/TSConst';
-import { astKind, CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../../ast';
 import { CxxLoopBuilder } from './LoopBuilder';
 import { CxxIfBuilder } from './IfBuilder';
 

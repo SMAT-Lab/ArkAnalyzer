@@ -21,7 +21,7 @@ import { ArkMethod } from '../ArkMethod';
 import { buildDecorators, buildGenericType, buildModifiers, handlePropertyAccessExpression, tsNode2Type } from './builderUtils';
 import { FieldSignature } from '../ArkSignature';
 import { ClassType, Type, UnknownType } from '../../base/Type';
-import { LineColPosition } from '../../base/Position';
+import { FullPosition } from '../../base/Position';
 import { ModifierType } from '../ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 
@@ -38,7 +38,7 @@ export function buildProperty2ArkField(
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.getText(sourceFile));
     field.setDeclaringArkClass(cls);
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
     let fieldName = member.getText(sourceFile);
     if (member.name && ts.isComputedPropertyName(member.name)) {
@@ -93,7 +93,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setDeclaringArkClass(cls);
 
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
     if (member.modifiers) {
         let modifier = buildModifiers(member);
@@ -115,7 +115,7 @@ export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mth
 
     field.setCode(member.getText(sourceFile));
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
     let fieldName = member.getText(sourceFile);
     if (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name)) {

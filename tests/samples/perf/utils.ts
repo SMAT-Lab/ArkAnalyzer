@@ -30,7 +30,7 @@ export type PerfProjectConfig = {
     url: string;
     project: string;
     path: string;
-    baseline: string;
+    baseline?: string;
     ccJsonPath?: string;
 };
 

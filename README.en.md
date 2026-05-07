@@ -13,7 +13,18 @@ ArkAnalyzer is a static code analysis framework for HarmonyOS native application
 ```shell
 npm install
 ```
-4. [Optional] Generate the latest API documentation under `docs/api_docs`:
+4. [Optional] Use Docker dev environment (x86_64 Linux):
+```shell
+# Build image
+docker build --platform linux/amd64 -f Dockerfile.dev -t arkanalyzer:dev-amd64 .
+
+# Start container (mount SDK and source; code changes on host take effect immediately)
+docker run --platform linux/amd64 -it \
+  -v /path/to/command-line-tools:/workspace/command-line-tools \
+  -v $(pwd):/workspace/arkanalyzer \
+  arkanalyzer:dev-amd64
+```
+5. [Optional] Generate the latest API documentation under `docs/api_docs`:
 ```shell
 npm run gendoc
 ```
@@ -108,6 +119,15 @@ ArkAnalyzer compiles every supported source language into a unified **ArkIR** (t
 
 For a finer-grained capability matrix and IR differences across languages, see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md).
 
+## UT log switch
+Vitest unit tests run quietly by default, without verbose UT logs.
+
+When troubleshooting, set `V=1` to enable verbose logs (both console output and file log at `output/ArkAnalyzerUT.log`):
+
+```shell
+V=1 npx vitest run
+```
+
 ## Contributing
 
 If you run into problems while using ArkAnalyzer, please follow the [Issue Submission Guide](docs/contributing/HowToHandleIssues.md) to open an issue.
@@ -115,3 +135,4 @@ Contributions are welcome — when submitting a PR, please follow the openharmon
 
 ## Release History
 For version history and change logs, see: [CHANGELOG](CHANGELOG.md)
+

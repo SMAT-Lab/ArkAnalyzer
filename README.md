@@ -10,7 +10,18 @@ ArkAnalyzer 是针对基于 ArkTS 语言开发的鸿蒙原生应用的静态代�
 ```shell
 npm install
 ```
-4. 【可选】生成最新 API 文档，输出目录为 `docs/api_docs`：
+4. 【可选】使用 Docker 开发环境（x86_64 Linux）：
+```shell
+# 构建镜像
+docker build --platform linux/amd64 -f Dockerfile.dev -t arkanalyzer:dev-amd64 .
+
+# 启动容器（挂载 SDK 和源码；源码修改即时生效）
+docker run --platform linux/amd64 -it \
+  -v /path/to/command-line-tools:/workspace/command-line-tools \
+  -v $(pwd):/workspace/arkanalyzer \
+  arkanalyzer:dev-amd64
+```
+5. 【可选】生成最新 API 文档，输出目录为 `docs/api_docs`：
 ```shell
 npm run gendoc
 ```
@@ -105,6 +116,14 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 
 更细粒度的语言能力矩阵与 IR 差异说明请参见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。
 
+## UT 日志开关
+Vitest 单测默认静默运行，不输出详细 UT 日志。
+
+需要排查问题时可通过环境变量 `V=1` 开启详细日志（包含控制台输出与 `output/ArkAnalyzerUT.log` 文件日志）：
+
+```shell
+V=1 npx vitest run
+```
 
 ## 参与贡献
 
@@ -113,3 +132,4 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 
 ## 版本演进
 项目版本演进及历史变更记录请参考：[CHANGELOG](CHANGELOG.md)
+

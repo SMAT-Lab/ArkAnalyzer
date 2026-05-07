@@ -380,7 +380,9 @@ export class StmtInference extends ArkModelInference {
             invokeStmt.setOriginalText(stmt.getOriginalText() ?? '');
             invokeStmt.setOperandOriginalPositions(stmt.getOperandOriginalPositions() ?? []);
             invokeStmt.setCfg(stmt.getCfg());
-            invokeStmt.setOriginPositionInfo(stmt.getOriginPositionInfo());
+            if (stmt.getOriginFullPosition()) {
+                invokeStmt.setOriginFullPosition(stmt.getOriginFullPosition()!);
+            }
             invokeStmt.metadata = stmt.metadata;
             replacedStmts.push(invokeStmt);
         } else {

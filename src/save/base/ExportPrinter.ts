@@ -27,7 +27,7 @@ export class ExportPrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        return this.info.getOriginTsPosition().getLineNo();
+        return this.info.getOriginFullPosition().getFirstLine();
     }
 
     public dump(): string {

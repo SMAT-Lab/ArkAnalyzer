@@ -39,13 +39,13 @@ import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
-import { FullPosition, LineColPosition } from '../base/Position';
+import { FullPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
 import { CONSTRUCTOR_NAME, DEFAULT, PROMISE } from './TSConst';
 import { buildGenericType, buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
-import { ImportInfo } from '../model/ArkImport';
+import { ImportInfo, ImportType } from '../model/ArkImport';
 import { AbstractTypeExpr } from '../base/TypeExpr';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { ArkClass } from '../model/ArkClass';
@@ -475,7 +475,6 @@ export class ArkIRTransformer {
     }
 
     private resolveImportTypeNode(importTypeNode: ts.ImportTypeNode): AliasTypeExpr {
-        const importType = 'typeAliasDefine';
         let importFrom = '';
         let importClauseName = '';
 
@@ -491,7 +490,7 @@ export class ArkIRTransformer {
         }
 
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importType, importFrom, LineColPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
+        importInfo.build(importClauseName, ImportType.TYPE_ALIAS_IMPORT, importFrom, FullPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
         importInfo.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
 
         return new AliasTypeExpr(importInfo, importTypeNode.isTypeOf);
@@ -785,7 +784,7 @@ export class ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.buildFromNode(node, this.sourceFile));
+                stmt.setOriginFullPosition(FullPosition.buildFromNode(node, this.sourceFile));
                 stmt.setOriginalText(node.getText(this.sourceFile));
             }
         }

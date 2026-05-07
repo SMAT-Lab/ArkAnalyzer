@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../../base/Position';
+import { FullPosition } from '../../base/Position';
 import { buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
 import { ArkFile } from '../ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
@@ -56,8 +56,8 @@ export function buildArkNamespace(node: ts.ModuleDeclaration, declaringInstance:
 
     // set line and column
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
-    ns.setLine(line + 1);
-    ns.setColumn(character + 1);
+    const endPos = ts.getLineAndCharacterOfPosition(sourceFile, node.getEnd());
+    ns.setOriginFullPositions([new FullPosition(line + 1, character + 1, endPos.line + 1, endPos.character + 1)]);
 
     genDefaultArkClass(ns, node, sourceFile);
 
@@ -102,7 +102,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
 
             if (cls.isExported()) {
-                namespace.addExportInfo(buildExportInfo(cls, namespace.getDeclaringArkFile(), LineColPosition.buildFromNode(child, sourceFile)));
+                namespace.addExportInfo(buildExportInfo(cls, namespace.getDeclaringArkFile(), FullPosition.buildFromNode(child, sourceFile)));
             }
         }
         // TODO: Check
@@ -113,7 +113,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
 
             if (mthd.isExported()) {
-                namespace.addExportInfo(buildExportInfo(mthd, namespace.getDeclaringArkFile(), LineColPosition.buildFromNode(child, sourceFile)));
+                namespace.addExportInfo(buildExportInfo(mthd, namespace.getDeclaringArkFile(), FullPosition.buildFromNode(child, sourceFile)));
             }
         } else if (ts.isFunctionDeclaration(child)) {
             let mthd: ArkMethod = new ArkMethod();
@@ -121,7 +121,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
 
             if (mthd.isExported()) {
-                namespace.addExportInfo(buildExportInfo(mthd, namespace.getDeclaringArkFile(), LineColPosition.buildFromNode(child, sourceFile)));
+                namespace.addExportInfo(buildExportInfo(mthd, namespace.getDeclaringArkFile(), FullPosition.buildFromNode(child, sourceFile)));
             }
         } else if (ts.isExportDeclaration(child)) {
             buildExportDeclaration(child, sourceFile, namespace.getDeclaringArkFile()).forEach(item => namespace.addExportInfo(item));
@@ -139,8 +139,10 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
     nestedMergedNameSpaces.forEach(nestedNameSpace => {
         namespace.addNamespace(nestedNameSpace);
         if (nestedNameSpace.isExport()) {
-            const linCol = new LineColPosition(nestedNameSpace.getLine(), nestedNameSpace.getColumn());
-            namespace.addExportInfo(buildExportInfo(nestedNameSpace, namespace.getDeclaringArkFile(), linCol));
+            const positions = nestedNameSpace.getOriginFullPositions();
+            if (positions.length > 0) {
+                namespace.addExportInfo(buildExportInfo(nestedNameSpace, namespace.getDeclaringArkFile(), positions[0]));
+            }
         }
     });
 }
@@ -173,9 +175,9 @@ export function mergeNameSpaces(arkNamespaces: ArkNamespace[]): ArkNamespace[] {
             const preSourceCodes = prevNamespace.getCodes();
             const currSourceCodes = currNamespace.getCodes();
             prevNamespace.setCodes([...preSourceCodes, ...currSourceCodes]);
-            const prevLineColPairs = prevNamespace.getLineColPairs();
-            const currLineColPairs = currNamespace.getLineColPairs();
-            prevNamespace.setLineCols([...prevLineColPairs, ...currLineColPairs]);
+            const prevLineColPairs = prevNamespace.getOriginFullPositions();
+            const currLineColPairs = currNamespace.getOriginFullPositions();
+            prevNamespace.setOriginFullPositions([...prevLineColPairs, ...currLineColPairs]);
         } else {
             namespaceMap.set(currName, currNamespace);
         }

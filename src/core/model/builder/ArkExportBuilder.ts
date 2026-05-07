@@ -14,7 +14,7 @@
  */
 
 import ts from 'ohos-typescript';
-import { LineColPosition } from '../../base/Position';
+import { FullPosition } from '../../base/Position';
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../ArkExport';
 import { buildModifiers } from './builderUtils';
 import { ArkFile } from '../ArkFile';
@@ -33,7 +33,7 @@ function getTempAll(): string {
     return `${TEMP_EXPORT_ALL_PREFIX}${tempIndex++}`;
 }
 
-function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, line: LineColPosition): ExportInfo {
+function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, position: FullPosition): ExportInfo {
     let exportClauseName: string;
     if (arkInstance instanceof ArkBaseModel && arkInstance.isDefault()) {
         exportClauseName = DEFAULT;
@@ -45,7 +45,7 @@ function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, line: LineCol
         .exportClauseType(arkInstance.getExportType())
         .modifiers(arkInstance.getModifiers())
         .arkExport(arkInstance)
-        .originTsPosition(line)
+        .originFullPosition(position)
         .declaringArkFile(arkFile)
         .build();
 }
@@ -60,7 +60,7 @@ export function buildDefaultExportInfo(im: FromInfo, file: ArkFile, arkExport?: 
 }
 
 function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ExportInfo[] {
-    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
     const tsSourceCode = node.getText(sourceFile);
     let exportFrom = '';
     if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -80,7 +80,7 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
             }
             let builder = new ExportInfo.Builder()
                 .exportClauseType(ExportType.UNKNOWN).exportClauseName(element.name.text)
-                .tsSourceCode(tsSourceCode).exportFrom(exportFrom).originTsPosition(originTsPosition)
+                .tsSourceCode(tsSourceCode).exportFrom(exportFrom).originFullPosition(originFullPosition)
                 .declaringArkFile(arkFile)
                 .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
                 .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
@@ -98,7 +98,7 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
         .exportFrom(exportFrom).declaringArkFile(arkFile)
         .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
         .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
-        .originTsPosition(originTsPosition);
+        .originFullPosition(originFullPosition);
     if (node.exportClause && ts.isNamespaceExport(node.exportClause) && ts.isIdentifier(node.exportClause.name)) {
         // just like: export * as xx from './yy'
         exportInfos.push(builder1.exportClauseName(node.exportClause.name.text).build());
@@ -115,7 +115,7 @@ function buildExportAssignment(node: ts.ExportAssignment, sourceFile: ts.SourceF
     if (!node.expression) {
         return exportInfos;
     }
-    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
     const tsSourceCode = node.getText(sourceFile);
     let modifiers = buildModifiers(node);
 
@@ -127,7 +127,7 @@ function buildExportAssignment(node: ts.ExportAssignment, sourceFile: ts.SourceF
         .exportClauseType(ExportType.UNKNOWN)
         .modifiers(modifiers)
         .tsSourceCode(tsSourceCode)
-        .originTsPosition(originTsPosition)
+        .originFullPosition(originFullPosition)
         .declaringArkFile(arkFile)
         .exportClauseName(DEFAULT)
         .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
@@ -158,7 +158,7 @@ function buildExportAssignment(node: ts.ExportAssignment, sourceFile: ts.SourceF
  */
 export function buildExportVariableStatement(node: ts.VariableStatement, sourceFile: ts.SourceFile, arkFile: ArkFile, namespace?: ArkNamespace): ExportInfo[] {
     let exportInfos: ExportInfo[] = [];
-    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
     const modifiers = node.modifiers ? buildModifiers(node) : 0;
     const tsSourceCode = node.getText(sourceFile);
     node.declarationList.declarations.forEach(dec => {
@@ -167,7 +167,7 @@ export function buildExportVariableStatement(node: ts.VariableStatement, sourceF
             .exportClauseType(ExportType.LOCAL)
             .modifiers(modifiers)
             .tsSourceCode(tsSourceCode)
-            .originTsPosition(originTsPosition)
+            .originFullPosition(originFullPosition)
             .declaringArkFile(arkFile);
         if (namespace) {
             exportInfoBuilder.declaringArkNamespace(namespace);
@@ -185,7 +185,7 @@ export function buildExportVariableStatement(node: ts.VariableStatement, sourceF
  */
 export function buildExportTypeAliasDeclaration(node: ts.TypeAliasDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ExportInfo[] {
     let exportInfos: ExportInfo[] = [];
-    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
     let modifiers = node.modifiers ? buildModifiers(node) : 0;
     modifiers |= ModifierType.TYPE;
     const tsSourceCode = node.getText(sourceFile);
@@ -194,7 +194,7 @@ export function buildExportTypeAliasDeclaration(node: ts.TypeAliasDeclaration, s
         .exportClauseType(ExportType.TYPE)
         .tsSourceCode(tsSourceCode)
         .modifiers(modifiers)
-        .originTsPosition(originTsPosition)
+        .originFullPosition(originFullPosition)
         .declaringArkFile(arkFile)
         .build();
     exportInfos.push(exportInfo);
