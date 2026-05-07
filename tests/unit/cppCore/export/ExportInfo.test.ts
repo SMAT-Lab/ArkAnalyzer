@@ -41,14 +41,14 @@ import { assertBlocksEqual, testBlocksClass } from '../../common';
 import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../cppResources/exports/nestedCase/expectIR';
 import { ensureCompileDb, resolveSdkPaths } from '../cppBuildUtils';
 
-const BASE_DIR = 'tests/cppResources/exports';
+const EXPORTS_PROJECT_ROOT = path.resolve(__dirname, '../../../cppResources/exports');
 const isWin32 = process.platform === 'win32';
 const { cxxIncludeDir, configSiteDirs } = resolveSdkPaths();
 
 function buildScene(folderName: string, extraIncludeDirs: string[] = [], ccJsonPath?: string): Scene {
     const mergedIncludeDirs = [cxxIncludeDir, ...configSiteDirs, ...extraIncludeDirs];
     const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName), mergedIncludeDirs);
+    config.buildFromProjectDir(path.join(EXPORTS_PROJECT_ROOT, folderName), mergedIncludeDirs);
     if (ccJsonPath) {
         config.setCcjsonPath(ccJsonPath);
     }

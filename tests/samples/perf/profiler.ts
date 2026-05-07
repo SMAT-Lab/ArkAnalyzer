@@ -581,11 +581,20 @@ async function runProfiledStage(
 }
 
 function applyCcJsonConfig(sceneConfig: ReturnType<typeof buildSceneConfigFromProject>, ccJsonPath?: string): void {
-    if (!ccJsonPath) {
+    const resolved = ccJsonPath?.trim();
+    if (!resolved) {
+        return;
+    }
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
         return;
     }
     sceneConfig.getOptions().supportFileExts = [...getCxxSourceFileExtensions()];
-    sceneConfig.setCcjsonPath(ccJsonPath);
+    sceneConfig.setCcjsonPath(resolved);
+    sceneConfig.buildConfig(
+        sceneConfig.getTargetProjectName(),
+        sceneConfig.getTargetProjectDirectory(),
+        sceneConfig.getSdksObj(),
+    );
 }
 
 function buildSceneConfigStage(projectPath: string, ccJsonPath: string | undefined): ReturnType<typeof buildSceneConfigFromProject> {
@@ -691,7 +700,7 @@ export async function profileArkAnalyzer(
 
     const scene = new Scene();
     const stage2 = await runProfiledStage('buildScene', () => {
-        scene.buildSceneFromFiles(sceneConfig);
+        scene.buildSceneFromProjectDir(sceneConfig);
     }, hooks);
     stages.push(stage2.metrics);
 

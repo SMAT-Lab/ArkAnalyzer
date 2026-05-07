@@ -236,11 +236,11 @@ describe('CfgTest', () => {
     });
 });
 
-const BASE_DIR = 'tests/resources/cfg';
+const TS_CFG_ROOT = path.resolve(__dirname, '../../../resources/cfg');
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
+    config.buildFromProjectDir(path.join(TS_CFG_ROOT, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;

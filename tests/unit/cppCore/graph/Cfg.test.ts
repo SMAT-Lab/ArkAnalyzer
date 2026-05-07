@@ -15,7 +15,6 @@
 
 import {
     BasicBlock,
-    FileUtils,
     Scene,
     SceneConfig,
     ArkNamespace,
@@ -23,9 +22,8 @@ import {
     LexicalEnvType,
     getCxxSourceFileExtensions,
 } from '../../../../src';
-import { Language } from '../../../../src/core/model/ArkFile';
 import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
-import { assert, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -91,12 +89,15 @@ import * as OVERWRITE from '../../../cppResources/cfg/overwrite/overwriteExpect'
 const { cxxIncludeDir, sysrootIncludeDir, configSiteDirs } = resolveSdkPaths();
 const isWin32 = process.platform === 'win32';
 const isLinux = process.platform === 'linux';
-const BASE_DIR = 'tests/cppResources/cfg';
+
+// Isolate from other test files in the same Vitest worker (prototype spy must not leak).
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 // ---- Build helpers ----
 
 function buildScene(folderName: string): Scene {
-    vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
     vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
     const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     const includeDirs: string[] = [cxxIncludeDir, ...configSiteDirs];
@@ -110,7 +111,7 @@ function buildScene(folderName: string): Scene {
         ensureCompileDb(projectDir, buildDir);
         config.setCcjsonPath(path.join(buildDir, 'compile_commands.json'));
     }
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
+    config.buildFromProjectDir(projectDir, includeDirs);
     const scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;

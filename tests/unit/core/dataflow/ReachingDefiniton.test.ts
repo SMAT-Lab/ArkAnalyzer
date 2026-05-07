@@ -73,11 +73,11 @@ describe('ReachingDefTest', () => {
     });
 });
 
-const BASE_DIR = 'tests/resources/reachingDef';
+const REACHING_DEF_ROOT = path.resolve(__dirname, '../../../resources/reachingDef');
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
+    config.buildFromProjectDir(path.join(REACHING_DEF_ROOT, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;

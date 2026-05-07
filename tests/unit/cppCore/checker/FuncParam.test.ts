@@ -27,11 +27,11 @@ describe('check func parm', () => {
     });
 });
 
-const BASE_DIR = 'tests/cppResources/check';
+const CHECK_PROJECT_ROOT = path.resolve(__dirname, '../../../cppResources/check');
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
+    config.buildFromProjectDir(path.join(CHECK_PROJECT_ROOT, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;

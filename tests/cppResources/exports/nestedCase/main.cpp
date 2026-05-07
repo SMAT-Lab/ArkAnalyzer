@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "NamespaceA.h"
+#include "namespaceA.h"
 
 using namespace SAME_NAMESPACE;
 

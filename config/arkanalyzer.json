@@ -14,7 +14,9 @@
     "cpp": {
       "enabled": false,
       "sourceExtensions": [".cc", ".cpp", ".cxx", ".c", ".c++"],
-      "headerExtensions": [".hpp", ".h", ".hxx", ".hh"]
+      "headerExtensions": [".hpp", ".h", ".hxx", ".hh"],
+      "maxParallelProcesses": -1,
+      "maxPendingAstResults": -1
     }
   },
   "enableLeadingComments": false,

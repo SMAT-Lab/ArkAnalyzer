@@ -149,14 +149,13 @@ private:
             size_t colonIndex = 0;
             for (size_t i = bracketPos - 1; i > 0; --i) {
                 if (colonIndex == 0 && demangleStr[i] == ':') {
-                    colonIndex = i; // Record the index of "::" after the class name
+                    colonIndex = i;
                 }
                 if (colonIndex != 0 && i + ONE < colonIndex && (demangleStr[i] == ' ' || demangleStr[i] == ':')) {
                     mangledName = demangleStr.substr(i + ONE, colonIndex - i - TWO);
                     break;
                 }
             }
-            // If no space is found, it indicates that the class name starts from the beginning of the string
             if (mangledName.empty() && colonIndex > 0) {
                 mangledName = demangleStr.substr(0, colonIndex - ONE);
             }
@@ -168,8 +167,8 @@ private:
     // case: "\\346\\227\\266\\351\\227\\264" to "时间"
     std::string DecodeUtfOctal(const std::string &input)
     {
-        std::string output;
-        output.reserve(input.size());
+        std::string decoded;
+        decoded.reserve(input.size());
         for (size_t i = 0; i < input.size();) {
             if (input[i] == '\\' && i + THREE < input.size() &&
                 input[i + ONE] >= OCTAL_MIN && input[i + ONE] <= OCTAL_MAX &&
@@ -178,14 +177,14 @@ private:
                 unsigned char byte = (input[i + ONE] - OCTAL_MIN) * BYTE64 +
                                      (input[i + TWO] - OCTAL_MIN) * BYTE8 +
                                      (input[i + THREE] - OCTAL_MIN);
-                output.push_back(static_cast<char>(byte));
-                i += OCTAL_SIZE; // utf-8编码的八进制表示长度为3
+                decoded.push_back(static_cast<char>(byte));
+                i += OCTAL_SIZE;
             } else {
-                output.push_back(input[i]);
+                decoded.push_back(input[i]);
                 ++i;
             }
         }
-        return output;
+        return decoded;
     }
 
     void UpdateNodeField(const char *ptr, size_t size)
@@ -208,7 +207,6 @@ private:
                 }
                 llvm::json::Value jsonValue(std::move(*obj));
                 std::string valueStr = llvm::formatv("{0}", jsonValue).str();
-                // Delete manually added {} before and after
                 buffer = valueStr.substr(1, valueStr.size() - TWO);
             }
         }
