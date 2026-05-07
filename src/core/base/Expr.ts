@@ -23,7 +23,8 @@ import {
     ArrayType,
     BigIntType,
     BooleanType,
-    ClassType, EnumValueType,
+    ClassType,
+    EnumValueType,
     FunctionType,
     GenericType,
     NullType,
@@ -570,13 +571,7 @@ export class ArkAwaitExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        const type = this.promise.getType();
-        if (type instanceof UnclearReferenceType) {
-            return type.getGenericTypes()[0];
-        } else if (type instanceof ClassType) {
-            return type.getRealGenericTypes()?.[0] ?? type;
-        }
-        return type;
+        return TypeInference.unwrapPromiseType(this.promise.getType());
     }
 
     public inferType(arkMethod: ArkMethod): ArkAwaitExpr {

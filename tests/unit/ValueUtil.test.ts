@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,6 +48,7 @@ describe("ValueUtil Test", () => {
 
 describe("ModelUtils Test", () => {
     let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({moduleName: "", name: "ohos", path: path.join(__dirname, "../resources/Sdk")})
     config.buildFromProjectDir(path.join(__dirname, "../resources/inferType"));
     let scene: Scene = new Scene();
     scene.buildSceneFromProjectDir(config);
@@ -60,5 +61,14 @@ describe("ModelUtils Test", () => {
         const namespace = ModelUtils.getNamespaceWithName('outer', cls!);
         assert.equal(namespace, outerNameSpace);
 
+    })
+
+    it('AwaitExpr Union Type case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'TestAbility.ets');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getClassWithName('TestRelease')?.getMethodWithName('onDestroy')?.getCfg()?.getStmts();
+        if (stmts) {
+            assert.equal(stmts[3].toString(), 'instanceinvoke %1.<@ohos/api/@internal/component/ets/@ohos.multimedia.image.d.ts: image.PixelMap.release()>()');
+        }
     })
 })
