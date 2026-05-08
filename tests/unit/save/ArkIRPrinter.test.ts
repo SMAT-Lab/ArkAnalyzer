@@ -187,6 +187,9 @@ const CASE1_EXPECT = `class %dflt {
       this = this: @save/basic.ts: %dflt
       %0 = new @save/basic.ts: %AC9$%dflt-listParameters
       %0 = instanceinvoke %0.<@save/basic.ts: %AC9$%dflt-listParameters.constructor()>()
+      %0.<@save/basic.ts: %AC9$%dflt-listParameters.x> = u
+      %0.<@save/basic.ts: %AC9$%dflt-listParameters.y> = v
+      %0.<@save/basic.ts: %AC9$%dflt-listParameters.z> = w
       return %0
   }
 
@@ -195,12 +198,17 @@ const CASE1_EXPECT = `class %dflt {
       this = this: @save/basic.ts: %dflt
       %0 = new @save/basic.ts: %AC11$%dflt-deleteTest
       %0 = instanceinvoke %0.<@save/basic.ts: %AC11$%dflt-deleteTest.constructor()>()
+      %0.<@save/basic.ts: %AC11$%dflt-deleteTest.a> = 42
+      %1 = newarray (number)[2]
+      %1[0] = 5
+      %1[1] = 100
+      %0.<@save/basic.ts: %AC11$%dflt-deleteTest.b> = %1
       x = %0
       bbb = x.<@save/basic.ts: %AC11$%dflt-deleteTest.b>
-      %1 = delete x.<@save/basic.ts: %AC11$%dflt-deleteTest.a>
-      %2 = delete bbb[0]
+      %2 = delete x.<@save/basic.ts: %AC11$%dflt-deleteTest.a>
+      %3 = delete bbb[0]
       instanceinvoke logger.<@%unk/%unk: .info()>(x)
-      %3 = delete x
+      %4 = delete x
       return
   }
 
@@ -218,14 +226,37 @@ const CASE1_EXPECT = `class %dflt {
       this = this: @save/basic.ts: %dflt
       %0 = new @save/basic.ts: %AC2$%dflt-%dflt
       %0 = instanceinvoke %0.<@save/basic.ts: %AC2$%dflt-%dflt.constructor()>()
+      %1 = new @save/basic.ts: %AC3$%dflt-%dflt
+      %1 = instanceinvoke %1.<@save/basic.ts: %AC3$%dflt-%dflt.constructor()>()
+      %2 = new @save/basic.ts: %AC4$%dflt-%dflt
+      %2 = instanceinvoke %2.<@save/basic.ts: %AC4$%dflt-%dflt.constructor()>()
+      %2.<@save/basic.ts: %AC4$%dflt-%dflt.type> = 'console'
+      %3 = new @save/basic.ts: %AC5$%dflt-%dflt
+      %3 = instanceinvoke %3.<@save/basic.ts: %AC5$%dflt-%dflt.constructor()>()
+      %3.<@save/basic.ts: %AC5$%dflt-%dflt.type> = 'pattern'
+      %3.<@save/basic.ts: %AC5$%dflt-%dflt.pattern> = '[%d] [%p] [%z] [ArkAnalyzer] - %m'
+      %2.<@save/basic.ts: %AC4$%dflt-%dflt.layout> = %3
+      %1.<@save/basic.ts: %AC3$%dflt-%dflt.console> = %2
+      %0.<@save/basic.ts: %AC2$%dflt-%dflt.appenders> = %1
+      %4 = new @save/basic.ts: %AC6$%dflt-%dflt
+      %4 = instanceinvoke %4.<@save/basic.ts: %AC6$%dflt-%dflt.constructor()>()
+      %5 = new @save/basic.ts: %AC7$%dflt-%dflt
+      %5 = instanceinvoke %5.<@save/basic.ts: %AC7$%dflt-%dflt.constructor()>()
+      %6 = newarray (string)[1]
+      %6[0] = 'console'
+      %5.<@save/basic.ts: %AC7$%dflt-%dflt.appenders> = %6
+      %5.<@save/basic.ts: %AC7$%dflt-%dflt.level> = 'info'
+      %5.<@save/basic.ts: %AC7$%dflt-%dflt.enableCallStack> = false
+      %4.<@save/basic.ts: %AC6$%dflt-%dflt.default> = %5
+      %0.<@save/basic.ts: %AC2$%dflt-%dflt.categories> = %4
       staticinvoke <@%unk/%unk: .configure()>(%0)
       logger = staticinvoke <@%unk/%unk: .getLogger()>()
       someClass = %AC8$%dflt-%dflt
-      %1 = new @save/basic.ts: %AC8$%dflt-%dflt
-      %1 = instanceinvoke %1.<@save/basic.ts: %AC8$%dflt-%dflt.constructor(Type)>('Hello, world')
-      m = %1
-      %2 = staticinvoke <@save/basic.ts: %dflt.yieldTest()>()
-      iterator = await %2
+      %7 = new @save/basic.ts: %AC8$%dflt-%dflt
+      %7 = instanceinvoke %7.<@save/basic.ts: %AC8$%dflt-%dflt.constructor(Type)>('Hello, world')
+      m = %7
+      %8 = staticinvoke <@save/basic.ts: %dflt.yieldTest()>()
+      iterator = await %8
       x = 1
       soo = 123
       staticinvoke <@save/basic.ts: %dflt.forLoopTest()>()
@@ -330,7 +361,8 @@ const CASE1_EXPECT = `class %dflt {
       %2 = new @built-in/lib.es5.d.ts: RegExp
       %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: RegExpConstructor.construct-signature(string, string)>('\\d{2}\\.\\d{2,}', 'i')
       lrcTimeRegex2 = %2
-      lyric = instanceinvoke text.<@built-in/lib.es5.d.ts: String.split(string|@built-in/lib.es5.d.ts: RegExp, number)>('\n')
+      lyric = instanceinvoke text.<@built-in/lib.es5.d.ts: String.split(string|@built-in/lib.es5.d.ts: RegExp, number)>('
+')
       return
   }
 
@@ -357,8 +389,14 @@ const CASE1_EXPECT = `class %dflt {
  */
 import {configure, getLogger} from 'log4js';
 object %AC2$%dflt-%dflt {
-  appenders: @save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-  categories: @save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit
+  appenders: @save/basic.ts: %AC3$%dflt-%dflt
+  categories: @save/basic.ts: %AC6$%dflt-%dflt
+
+  %instInit(): void {
+    label0:
+      this = this: @save/basic.ts: %AC2$%dflt-%dflt
+      return
+  }
 
   constructor(): @save/basic.ts: %AC2$%dflt-%dflt {
     label0:
@@ -366,118 +404,89 @@ object %AC2$%dflt-%dflt {
       instanceinvoke this.<@save/basic.ts: %AC2$%dflt-%dflt.%instInit()>()
       return this
   }
+}
+object %AC3$%dflt-%dflt {
+  console: @save/basic.ts: %AC4$%dflt-%dflt
 
   %instInit(): void {
     label0:
-      this = this: @save/basic.ts: %AC2$%dflt-%dflt
-      %0 = new @save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      %0 = instanceinvoke %0.<@save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit.constructor()>()
-      this.<@save/basic.ts: %AC2$%dflt-%dflt.appenders> = %0
-      %1 = new @save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit
-      %1 = instanceinvoke %1.<@save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit.constructor()>()
-      this.<@save/basic.ts: %AC2$%dflt-%dflt.categories> = %1
+      this = this: @save/basic.ts: %AC3$%dflt-%dflt
       return
   }
-}
-object %AC3$%AC2$%dflt-%dflt-%instInit {
-  console: @save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit
 
-  constructor(): @save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit {
+  constructor(): @save/basic.ts: %AC3$%dflt-%dflt {
     label0:
-      this = this: @save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      instanceinvoke this.<@save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit.%instInit()>()
+      this = this: @save/basic.ts: %AC3$%dflt-%dflt
+      instanceinvoke this.<@save/basic.ts: %AC3$%dflt-%dflt.%instInit()>()
       return this
   }
-
-  %instInit(): void {
-    label0:
-      this = this: @save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      %0 = new @save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit
-      %0 = instanceinvoke %0.<@save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit.constructor()>()
-      this.<@save/basic.ts: %AC3$%AC2$%dflt-%dflt-%instInit.console> = %0
-      return
-  }
 }
-object %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit {
+object %AC4$%dflt-%dflt {
   type: string
-  layout: @save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit
-
-  constructor(): @save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit {
-    label0:
-      this = this: @save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit
-      instanceinvoke this.<@save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit.%instInit()>()
-      return this
-  }
+  layout: @save/basic.ts: %AC5$%dflt-%dflt
 
   %instInit(): void {
     label0:
-      this = this: @save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit
-      this.<@save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit.type> = 'console'
-      %0 = new @save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit
-      %0 = instanceinvoke %0.<@save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit.constructor()>()
-      this.<@save/basic.ts: %AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit.layout> = %0
+      this = this: @save/basic.ts: %AC4$%dflt-%dflt
       return
   }
+
+  constructor(): @save/basic.ts: %AC4$%dflt-%dflt {
+    label0:
+      this = this: @save/basic.ts: %AC4$%dflt-%dflt
+      instanceinvoke this.<@save/basic.ts: %AC4$%dflt-%dflt.%instInit()>()
+      return this
+  }
 }
-object %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit {
+object %AC5$%dflt-%dflt {
   type: string
   pattern: string
 
-  constructor(): @save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit {
+  %instInit(): void {
     label0:
-      this = this: @save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit
-      instanceinvoke this.<@save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit.%instInit()>()
+      this = this: @save/basic.ts: %AC5$%dflt-%dflt
+      return
+  }
+
+  constructor(): @save/basic.ts: %AC5$%dflt-%dflt {
+    label0:
+      this = this: @save/basic.ts: %AC5$%dflt-%dflt
+      instanceinvoke this.<@save/basic.ts: %AC5$%dflt-%dflt.%instInit()>()
       return this
   }
+}
+object %AC6$%dflt-%dflt {
+  default: @save/basic.ts: %AC7$%dflt-%dflt
 
   %instInit(): void {
     label0:
-      this = this: @save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit
-      this.<@save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit.type> = 'pattern'
-      this.<@save/basic.ts: %AC5$%AC4$%AC3$%AC2$%dflt-%dflt-%instInit-%instInit-%instInit.pattern> = '[%d] [%p] [%z] [ArkAnalyzer] - %m'
+      this = this: @save/basic.ts: %AC6$%dflt-%dflt
       return
   }
-}
-object %AC6$%AC2$%dflt-%dflt-%instInit {
-  default: @save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit
 
-  constructor(): @save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit {
+  constructor(): @save/basic.ts: %AC6$%dflt-%dflt {
     label0:
-      this = this: @save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit
-      instanceinvoke this.<@save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit.%instInit()>()
+      this = this: @save/basic.ts: %AC6$%dflt-%dflt
+      instanceinvoke this.<@save/basic.ts: %AC6$%dflt-%dflt.%instInit()>()
       return this
   }
-
-  %instInit(): void {
-    label0:
-      this = this: @save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit
-      %0 = new @save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit
-      %0 = instanceinvoke %0.<@save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit.constructor()>()
-      this.<@save/basic.ts: %AC6$%AC2$%dflt-%dflt-%instInit.default> = %0
-      return
-  }
 }
-object %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit {
+object %AC7$%dflt-%dflt {
   appenders: string[]
   level: string
   enableCallStack: boolean
 
-  constructor(): @save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit {
-    label0:
-      this = this: @save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit
-      instanceinvoke this.<@save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit.%instInit()>()
-      return this
-  }
-
   %instInit(): void {
     label0:
-      this = this: @save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit
-      %0 = newarray (string)[1]
-      %0[0] = 'console'
-      this.<@save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit.appenders> = %0
-      this.<@save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit.level> = 'info'
-      this.<@save/basic.ts: %AC7$%AC6$%AC2$%dflt-%dflt-%instInit-%instInit.enableCallStack> = false
+      this = this: @save/basic.ts: %AC7$%dflt-%dflt
       return
+  }
+
+  constructor(): @save/basic.ts: %AC7$%dflt-%dflt {
+    label0:
+      this = this: @save/basic.ts: %AC7$%dflt-%dflt
+      instanceinvoke this.<@save/basic.ts: %AC7$%dflt-%dflt.%instInit()>()
+      return this
   }
 }
 class Person {
@@ -641,20 +650,17 @@ object %AC9$%dflt-listParameters {
   y: number
   z: string
 
+  %instInit(): void {
+    label0:
+      this = this: @save/basic.ts: %AC9$%dflt-listParameters
+      return
+  }
+
   constructor(): @save/basic.ts: %AC9$%dflt-listParameters {
     label0:
       this = this: @save/basic.ts: %AC9$%dflt-listParameters
       instanceinvoke this.<@save/basic.ts: %AC9$%dflt-listParameters.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @save/basic.ts: %AC9$%dflt-listParameters
-      this.<@save/basic.ts: %AC9$%dflt-listParameters.x> = u
-      this.<@save/basic.ts: %AC9$%dflt-listParameters.y> = v
-      this.<@save/basic.ts: %AC9$%dflt-listParameters.z> = w
-      return
   }
 }
 export class SecurityDoor extends Door implements Alarm, Alarm2 {
@@ -793,22 +799,17 @@ object %AC11$%dflt-deleteTest {
   a: number
   b: number[]
 
+  %instInit(): void {
+    label0:
+      this = this: @save/basic.ts: %AC11$%dflt-deleteTest
+      return
+  }
+
   constructor(): @save/basic.ts: %AC11$%dflt-deleteTest {
     label0:
       this = this: @save/basic.ts: %AC11$%dflt-deleteTest
       instanceinvoke this.<@save/basic.ts: %AC11$%dflt-deleteTest.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @save/basic.ts: %AC11$%dflt-deleteTest
-      this.<@save/basic.ts: %AC11$%dflt-deleteTest.a> = 42
-      %0 = newarray (number)[2]
-      %0[0] = 5
-      %0[1] = 100
-      this.<@save/basic.ts: %AC11$%dflt-deleteTest.b> = %0
-      return
   }
 }
 export {default};

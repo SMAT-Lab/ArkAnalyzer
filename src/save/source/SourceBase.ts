@@ -52,8 +52,12 @@ export abstract class SourceBase extends BasePrinter implements TransformerConte
         return this.printer;
     }
 
-    public transTemp2Code(temp: Local): string {
+    public transTemp2Code(temp: Local, _isLeftOp: boolean = false): string {
         return temp.getName();
+    }
+
+    public getTempCode(_tempName: string): string | undefined {
+        return undefined;
     }
 
     public isInBuilderMethod(): boolean {

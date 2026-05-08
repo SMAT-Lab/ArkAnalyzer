@@ -1066,6 +1066,7 @@ class ClassA {
       this = this: @type/objectType.ts: ClassA
       %0 = new @type/objectType.ts: %AC0$ClassA-%instInit
       %0 = instanceinvoke %0.<@type/objectType.ts: %AC0$ClassA-%instInit.constructor()>()
+      %0.<@type/objectType.ts: %AC0$ClassA-%instInit.a> = 1
       this.<@type/objectType.ts: ClassA.fieldA> = %0
       return
   }
@@ -1089,18 +1090,17 @@ class ClassA {
 object %AC0$ClassA-%instInit {
   a: number
 
+  %instInit(): void {
+    label0:
+      this = this: @type/objectType.ts: %AC0$ClassA-%instInit
+      return
+  }
+
   constructor(): @type/objectType.ts: %AC0$ClassA-%instInit {
     label0:
       this = this: @type/objectType.ts: %AC0$ClassA-%instInit
       instanceinvoke this.<@type/objectType.ts: %AC0$ClassA-%instInit.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @type/objectType.ts: %AC0$ClassA-%instInit
-      this.<@type/objectType.ts: %AC0$ClassA-%instInit.a> = 1
-      return
   }
 }
 `;

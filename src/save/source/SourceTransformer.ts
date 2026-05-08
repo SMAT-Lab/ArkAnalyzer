@@ -86,6 +86,8 @@ export interface TransformerContext {
 
     transTemp2Code(temp: Local, isLeftOp: boolean): string;
 
+    getTempCode(tempName: string): string | undefined;
+
     isInBuilderMethod(): boolean;
 }
 

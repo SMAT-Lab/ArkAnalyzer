@@ -20,7 +20,6 @@ import {
     ArkAssignStmt,
     ArkFile,
     ArkMethod,
-    ArkInstanceFieldRef,
     ArkStaticFieldRef,
     DEFAULT_ARK_CLASS_NAME,
     GlobalRef,
@@ -29,7 +28,6 @@ import {
     Logger,
     NAME_DELIMITER,
     NAME_PREFIX,
-    NumberType,
     Scene,
     Value,
 } from '../../src';
@@ -43,6 +41,7 @@ import {
     ExpressionStatements_Expect_IR,
     LiteralExpression_Expect_IR,
     NewExpression_Expect_IR,
+    ObjectLiteralExpression_Expect_IR,
     Operator_Expect_IR,
     PostfixAndPrefixUnaryExpression_Expected_IR,
     PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR,
@@ -61,6 +60,10 @@ import {
     SPREAD_PARAMETERS3_EXPECT_IR,
     UnaryExpression_Expect_IR,
     INCREMENT_EXPECT_IR,
+    ClassFieldLiteralHolder_InstInit_Expect_IR,
+    ClassFieldLiteralHolder_Constructor_Expect_IR,
+    ClassFieldLiteralHolder_StatInit_Expect_IR,
+    ObjectLiteralFromField_Expect_IR,
 } from '../resources/arkIRTransformer/expression/ExpressionExpectIR';
 import {
     THROW_STATIC_INVOKE_EXPECT_IR,
@@ -485,6 +488,29 @@ describe('expression Test', () => {
     });
 });
 
+describe('object literal Test', () => {
+    const scene = buildScene(path.join(BASE_DIR, 'expression'));
+
+    it('test object literal expression in method', async () => {
+        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ObjectLiteralExpression_Expect_IR.stmts,
+            DEFAULT_ARK_CLASS_NAME, 'createLiteralInMethod', false);
+    });
+
+    it('test object literal expression from field', async () => {
+        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ObjectLiteralFromField_Expect_IR.stmts,
+            DEFAULT_ARK_CLASS_NAME, 'createLiteralFromOtherClassField', false);
+    });
+
+    it('test object literal class field initializer', async () => {
+        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_InstInit_Expect_IR.stmts,
+            'ClassFieldLiteralHolder', '%instInit', false);
+        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_Constructor_Expect_IR.stmts,
+            'ClassFieldLiteralHolder', 'constructor', false);
+        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_StatInit_Expect_IR.stmts,
+            'ClassFieldLiteralHolder', '%statInit', false);
+    });
+});
+
 describe('statement Test', () => {
     const scene = buildScene(path.join(BASE_DIR, 'statement'));
 
@@ -787,16 +813,16 @@ describe('closure in anonymous class Test', () => {
     it('create anonymous class in anonymous function', async () => {
         const method = arkFile?.getClassWithName('%AC1$ClosureInClass-%AM0$%statInit')?.getInstanceInitMethod();
         assert.isDefined(method);
-        const stmt = method?.getCfg()?.getStmts()[1];
-        assert.isDefined(stmt);
-        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        expect(stmts!.length).toEqual(2);
     });
 
     it('create anonymous class in class method', async () => {
         const method = arkFile?.getClassWithName('%AC0$ClosureInClass-goo')?.getInstanceInitMethod();
         assert.isDefined(method);
-        const stmt = method?.getCfg()?.getStmts()[1];
-        assert.isDefined(stmt);
-        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        expect(stmts!.length).toEqual(2);
     });
 });

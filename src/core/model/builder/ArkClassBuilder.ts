@@ -343,11 +343,7 @@ function buildObjectLiteralExpression2ArkClass(
     const instanceFieldInitializerStmts: Stmt[] = [];
     clsNode.properties.forEach(property => {
         if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property) || ts.isSpreadAssignment(property)) {
-            const arkField = buildProperty2ArkField(property, sourceFile, cls);
-            if (ts.isPropertyAssignment(property)) {
-                getInitStmts(instanceIRTransformer, arkField, property.initializer);
-                arkField.getInitializer().forEach(stmt => instanceFieldInitializerStmts.push(stmt));
-            }
+            buildProperty2ArkField(property, sourceFile, cls);
         } else {
             let arkMethod = new ArkMethod();
             arkMethod.setDeclaringArkClass(cls);
@@ -551,49 +547,94 @@ function getInitStmts(
         isCurValueValid: boolean
     }
 ): void {
-    let initValue: Value;
-    let initPositions;
     const stmts: Stmt[] = [];
-    if (initNode) {
-        let initStmts: Stmt[] = [];
-        ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.tsNodeToValueAndStmts(initNode));
-        initStmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(initValue)) {
-            ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.generateAssignStmtForValue(initValue, initPositions));
-            initStmts.forEach(stmt => stmts.push(stmt));
-        }
-        if (enumFieldInfo !== undefined) {
-            if (initValue instanceof NumberConstant) {
-                enumFieldInfo.curValue = parseFloat(initValue.getValue()) + 1;
-                enumFieldInfo.isCurValueValid = true;
-            } else {
-                enumFieldInfo.lastFieldName = field.getName();
-                enumFieldInfo.isCurValueValid = false;
-            }
-        }
-    }
-    else if (enumFieldInfo !== undefined) {
-        if (enumFieldInfo.isCurValueValid) {
-            initValue = ValueUtil.getOrCreateNumberConst(enumFieldInfo.curValue);
-            enumFieldInfo.curValue += 1;
-        } else {
-            initValue = new ArkNormalBinopExpr(new Local(enumFieldInfo.lastFieldName), ValueUtil.getOrCreateNumberConst(1), NormalBinaryOperator.Addition);
-            enumFieldInfo.lastFieldName = field.getName();
-        }
-        initPositions = [FullPosition.DEFAULT];
-        field.setMetadata(ArkMetadataKind.ENUM_INIT_TYPE_USER, new EnumInitTypeUserMetadata(false));
-    } else {
+    const { initValue, initPositions } = processInitValue(transformer, field, initNode, enumFieldInfo, stmts);
+    if (!initValue) {
         return;
     }
+
     const fieldRef = new ArkInstanceFieldRef(transformer.getThisLocal(), field.getSignature());
     const fieldRefPositions = [FullPosition.DEFAULT, FullPosition.DEFAULT];
     const assignStmt = new ArkAssignStmt(fieldRef, initValue);
     assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
     stmts.push(assignStmt);
 
+    setFieldInitPositionInfo(field, stmts, initValue);
+}
+
+function processInitValue(
+    transformer: ArkIRTransformer,
+    field: ArkField,
+    initNode?: ts.Node,
+    enumFieldInfo?: {
+        lastFieldName: string,
+        curValue: number,
+        isCurValueValid: boolean
+    },
+    stmts?: Stmt[]
+): { initValue: Value | undefined, initPositions: FullPosition[] } {
+    let initValue: Value | undefined;
+    let initPositions: FullPosition[] = [];
+
+    if (initNode) {
+        let initStmts: Stmt[] = [];
+        ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.tsNodeToValueAndStmts(initNode));
+        initStmts.forEach(stmt => stmts?.push(stmt));
+        if (IRUtils.moreThanOneAddress(initValue!)) {
+            ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.generateAssignStmtForValue(initValue!, initPositions));
+            initStmts.forEach(stmt => stmts?.push(stmt));
+        }
+        if (enumFieldInfo !== undefined) {
+            updateEnumFieldInfoFromValue(field, initValue!, enumFieldInfo);
+        }
+    } else if (enumFieldInfo !== undefined) {
+        initValue = createEnumInitValue(field, enumFieldInfo);
+        initPositions = [FullPosition.DEFAULT];
+        field.setMetadata(ArkMetadataKind.ENUM_INIT_TYPE_USER, new EnumInitTypeUserMetadata(false));
+    }
+
+    return { initValue, initPositions };
+}
+
+function updateEnumFieldInfoFromValue(
+    field: ArkField,
+    initValue: Value,
+    enumFieldInfo: { lastFieldName: string, curValue: number, isCurValueValid: boolean }
+): void {
+    if (initValue instanceof NumberConstant) {
+        enumFieldInfo.curValue = parseFloat(initValue.getValue()) + 1;
+        enumFieldInfo.isCurValueValid = true;
+    } else {
+        enumFieldInfo.lastFieldName = field.getName();
+        enumFieldInfo.isCurValueValid = false;
+    }
+}
+
+function createEnumInitValue(
+    field: ArkField,
+    enumFieldInfo: { lastFieldName: string, curValue: number, isCurValueValid: boolean }
+): Value {
+    if (enumFieldInfo.isCurValueValid) {
+        const initValue = ValueUtil.getOrCreateNumberConst(enumFieldInfo.curValue);
+        enumFieldInfo.curValue += 1;
+        return initValue;
+    } else {
+        const initValue = new ArkNormalBinopExpr(
+            new Local(enumFieldInfo.lastFieldName),
+            ValueUtil.getOrCreateNumberConst(1),
+            NormalBinaryOperator.Addition
+        );
+        enumFieldInfo.lastFieldName = field.getName();
+        return initValue;
+    }
+}
+
+function setFieldInitPositionInfo(field: ArkField, stmts: Stmt[], initValue: Value): void {
     const fieldOriginPosition = field.getOriginFullPosition();
     for (const stmt of stmts) {
-        stmt.setOriginFullPosition(fieldOriginPosition);
+        if (!stmt.getOriginFullPosition()) {
+            stmt.setOriginFullPosition(fieldOriginPosition);
+        }
     }
     field.setInitializer(stmts);
     if (field.getType() instanceof UnknownType) {

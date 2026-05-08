@@ -95,7 +95,7 @@ class ArkIRTransformerTest {
     }
 
     public printOperandOriginalPositions(stmt: Stmt): void {
-        const operandOriginalPositions = [];
+        const operandOriginalPositions: any[] = [];
         for (const operand of stmt.getDefAndUses()) {
             const operandOriginalPosition = stmt.getOperandOriginalPosition(operand);
             if (operandOriginalPosition) {

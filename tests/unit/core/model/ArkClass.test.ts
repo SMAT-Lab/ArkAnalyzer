@@ -14,7 +14,19 @@
  */
 
 import { assert, describe, expect, it } from 'vitest';
-import { ArkClass, ArkMethod, ClassSignature, ClassType, CONSTRUCTOR_NAME, MethodSignature, Stmt, SUPER_NAME, THIS_NAME } from '../../../../src';
+import {
+    ArkAssignStmt,
+    ArkClass,
+    ArkMethod,
+    ClassSignature,
+    ClassType,
+    CONSTRUCTOR_NAME,
+    Local,
+    MethodSignature,
+    Stmt,
+    SUPER_NAME,
+    THIS_NAME,
+} from '../../../../src';
 import path from 'path';
 import { assertStmtsEqual, buildScene, fullPositionArray2String } from '../../common';
 import {
@@ -479,6 +491,75 @@ describe('ArkClass with Heritage Class Test', () => {
 
         const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
         assert.isUndefined(superLocal);
+    });
+});
+
+describe('Object Literal Generated ArkClass Test', () => {
+    const scene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+
+    it('object literal generates accurate ArkClass structure', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ObjectLiteralExpressionTest.ts');
+        assert.isDefined(arkFile);
+
+        const testMethod = arkFile?.getDefaultClass().getMethodWithName('createLiteralInMethod');
+        assert.isDefined(testMethod);
+
+        const objLocal = testMethod?.getBody()?.getLocals().get('literalObject');
+        assert.isDefined(objLocal);
+        assert.isTrue(objLocal!.getType() instanceof ClassType);
+
+        const objClassName = (objLocal!.getType() as ClassType).getClassSignature().getClassName();
+        const objClass = arkFile?.getClassWithName(objClassName);
+        assert.isDefined(objClass);
+        assert.isNotNull(objClass);
+
+        const fields = objClass!.getFields();
+        expect(fields.map((field) => field.getName())).toEqual(['leftValue', 'rightValue']);
+        expect(fields.map((field) => field.getType().toString())).toEqual(['number', 'number']);
+
+        const instInitStmts = objClass!.getInstanceInitMethod().getCfg()?.getStmts();
+        assert.isDefined(instInitStmts);
+        expect(instInitStmts?.length).toEqual(2);
+        expect(instInitStmts?.[0].toString()).toEqual(`this = this: @expression/ObjectLiteralExpressionTest.ts: ${objClassName}`);
+        expect(instInitStmts?.[1].toString()).toEqual('return');
+
+        const constructorStmts = objClass!.getMethodWithName(CONSTRUCTOR_NAME)?.getCfg()?.getStmts();
+        assert.isDefined(constructorStmts);
+        expect(constructorStmts?.length).toEqual(3);
+        expect(constructorStmts?.[1].toString()).toEqual(
+            `instanceinvoke this.<@expression/ObjectLiteralExpressionTest.ts: ${objClassName}.%instInit()>()`
+        );
+        expect(constructorStmts?.[2].toString()).toEqual('return this');
+    });
+
+    it('object literal with parameter field access generates accurate ArkClass structure', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ObjectLiteralExpressionTest.ts');
+        assert.isDefined(arkFile);
+
+        const fooMethod = arkFile?.getDefaultClass().getMethodWithName('createLiteralFromOtherClassField');
+        assert.isDefined(fooMethod);
+
+        const resLocal = fooMethod?.getBody()?.getLocals().get('targetObject');
+        assert.isDefined(resLocal);
+        assert.isTrue(resLocal!.getType() instanceof ClassType);
+
+        const objClassName = (resLocal!.getType() as ClassType).getClassSignature().getClassName();
+        const objClass = arkFile?.getClassWithName(objClassName);
+        assert.isDefined(objClass);
+        assert.isNotNull(objClass);
+
+        const fields = objClass!.getFields();
+        expect(fields.map((field) => field.getName())).toEqual(['targetValue']);
+        expect(fields.map((field) => field.getType().toString())).toEqual(['number']);
+
+        const stmts = fooMethod?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const fieldLoadStmt = stmts?.find((stmt) => stmt.toString().includes(': SourceFieldHolder.sourceValue>')) as ArkAssignStmt | undefined;
+        const fieldAssignStmt = stmts?.find((stmt) => stmt.toString().includes('.targetValue> =')) as ArkAssignStmt | undefined;
+        assert.isDefined(fieldLoadStmt);
+        assert.isDefined(fieldAssignStmt);
+        assert.isTrue(fieldLoadStmt?.getLeftOp() instanceof Local);
+        assert.equal(fieldAssignStmt?.getRightOp(), fieldLoadStmt?.getLeftOp());
     });
 });
 

@@ -55,6 +55,7 @@ export class SourceBody implements StmtPrinterContext {
     private method: ArkMethod;
     private cfgUtils: AbstractFlowGraph;
     private tempCodeMap: Map<string, string>;
+    private objectLiteralPropMap: Map<string, Map<string, string>>;
     private tempVisitor: Set<string>;
     private skipStmts: Set<Stmt>;
     private stmtReader: StmtReader;
@@ -68,6 +69,7 @@ export class SourceBody implements StmtPrinterContext {
         this.arkBody = method.getBody()!;
         this.cfgUtils = new AbstractFlowGraph(method.getCfg()!, this.arkBody.getTraps());
         this.tempCodeMap = new Map();
+        this.objectLiteralPropMap = new Map();
         this.tempVisitor = new Set();
         this.definedLocals = new Set();
         this.inBuilder = inBuilder;
@@ -126,11 +128,76 @@ export class SourceBody implements StmtPrinterContext {
         this.tempCodeMap.set(temp, code);
     }
 
+    public getTempCode(tempName: string): string | undefined {
+        return this.tempCodeMap.get(tempName);
+    }
+
+    public setObjectLiteralProp(objectLiteralLocalName: string, propName: string, rhsCode: string): void {
+        if (!this.objectLiteralPropMap.has(objectLiteralLocalName)) {
+            this.objectLiteralPropMap.set(objectLiteralLocalName, new Map());
+        }
+        this.objectLiteralPropMap.get(objectLiteralLocalName)!.set(propName, rhsCode);
+    }
+
+    private objectLiteralLocalToCode(objectLiteralShape: string, propsKey: string): string | null {
+        const props = this.objectLiteralPropMap.get(propsKey);
+        if (!props) {
+            return null;
+        }
+        const inner = objectLiteralShape.trim().slice(1, -1).trim(); // remove '{' and '}'
+        const keys = inner.length > 0 ? inner.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+        const parts: string[] = [];
+        const visited = new Set<string>();
+        const normalizeKey = (k: string): string => {
+            const kk = k.trim();
+            if ((kk.startsWith('\'') && kk.endsWith('\'')) || (kk.startsWith('"') && kk.endsWith('"'))) {
+                return kk.slice(1, -1);
+            }
+            return kk;
+        };
+        const normalizedToOriginal = new Map<string, string>();
+        for (const k of keys) {
+            normalizedToOriginal.set(normalizeKey(k), k);
+        }
+        for (const k of keys) {
+            const nk = normalizeKey(k);
+            visited.add(nk);
+            const rhs = props.get(k) ?? props.get(nk);
+            if (rhs !== undefined) {
+                parts.push(`${k}: ${rhs}`);
+            } else {
+                // quoted keys can't be shorthand in TS; fallback to explicit form
+                if (k !== nk) {
+                    parts.push(`${k}: ${nk}`);
+                } else {
+                    parts.push(k);
+                }
+            }
+        }
+        // append any extra props not present in the shorthand list
+        for (const [k, rhs] of props.entries()) {
+            if (visited.has(k)) {
+                continue;
+            }
+            const original = normalizedToOriginal.get(k);
+            parts.push(`${original ?? k}: ${rhs}`);
+        }
+        return `{${parts.join(', ')}}`;
+    }
+
     public transTemp2Code(temp: Local, isLeftOp: boolean = false): string {
         // if the temp local is not the left op of ArkAssignStmt, it should get the actual text from tempCodeMap
         if (!isLeftOp && this.tempCodeMap.has(temp.getName()) && PrinterUtils.isTemp(temp.getName())) {
             this.tempVisitor.add(temp.getName());
-            return this.tempCodeMap.get(temp.getName())!;
+            const raw = this.tempCodeMap.get(temp.getName())!;
+            if (raw.startsWith('{') && raw.endsWith('}')) {
+                const merged = this.objectLiteralLocalToCode(raw, temp.getName());
+                if (merged) {
+                    return merged;
+                }
+            }
+            return raw;
         }
 
         return temp.getName();

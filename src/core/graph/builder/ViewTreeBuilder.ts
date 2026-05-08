@@ -65,8 +65,6 @@ function backtraceLocalInitValue(value: Local): Local | Value {
         let rightOp = stmt.getRightOp();
         if (rightOp instanceof Local) {
             return backtraceLocalInitValue(rightOp);
-        } else if (rightOp instanceof ArkInstanceFieldRef && rightOp.getBase().getName().startsWith(TEMP_LOCAL_PREFIX)) {
-            return backtraceLocalInitValue(rightOp.getBase());
         } else if (rightOp instanceof ArkArrayRef) {
             return backtraceLocalInitValue(rightOp.getBase());
         }
@@ -146,6 +144,9 @@ class StateValuesUtils {
     private objectLiteralMapUsedStateValues(uses: Set<ArkField>, map: ObjectLiteralMap): void {
         for (const [_, value] of map) {
             if (value instanceof ArkInstanceFieldRef) {
+                // Field ref may come from intermediate objects (e.g. this.lastAppInfo?.message),
+                // ensure we trace its base to catch state-field origins.
+                this.parseValueUsesStateValues(value.getBase(), uses);
                 let srcField = this.declaringArkClass.getFieldWithName(value.getFieldName());
                 let decorators = srcField?.getStateDecorators();
                 if (srcField && decorators && decorators.length > 0) {
@@ -156,6 +157,8 @@ class StateValuesUtils {
             } else if (value instanceof ArkNormalBinopExpr || value instanceof ArkConditionExpr) {
                 this.parseValueUsesStateValues(value.getOp1(), uses);
                 this.parseValueUsesStateValues(value.getOp2(), uses);
+            } else {
+                this.parseValueUsesStateValues(value, uses);
             }
         }
     }
@@ -200,8 +203,27 @@ class StateValuesUtils {
             if (field && decorators && decorators.length > 0) {
                 uses.add(field);
             }
+        } else if (v instanceof ArkArrayRef) {
+            this.parseValueUsesStateValues(v.getBase(), uses, wholeMethod, visitor);
+            this.parseValueUsesStateValues(v.getIndex(), uses, wholeMethod, visitor);
         } else if (v instanceof ArkInstanceInvokeExpr) {
+            this.parseValueUsesStateValues(v.getBase(), uses, wholeMethod, visitor);
+            for (const arg of v.getArgs()) {
+                this.parseValueUsesStateValues(arg, uses, wholeMethod, visitor);
+            }
             this.parseMethodUsesStateValues(v.getMethodSignature(), uses, visitor);
+        } else if (v instanceof ArkStaticInvokeExpr) {
+            for (const arg of v.getArgs()) {
+                this.parseValueUsesStateValues(arg, uses, wholeMethod, visitor);
+            }
+        } else if (v instanceof ArkPtrInvokeExpr) {
+            this.parseValueUsesStateValues(v.getFuncPtrLocal(), uses, wholeMethod, visitor);
+            for (const arg of v.getArgs()) {
+                this.parseValueUsesStateValues(arg, uses, wholeMethod, visitor);
+            }
+        } else if (v instanceof ArkNormalBinopExpr || v instanceof ArkConditionExpr) {
+            this.parseValueUsesStateValues(v.getOp1(), uses, wholeMethod, visitor);
+            this.parseValueUsesStateValues(v.getOp2(), uses, wholeMethod, visitor);
         } else if (v instanceof Local) {
             if (v.getName() === 'this') {
                 return uses;

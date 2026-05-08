@@ -527,6 +527,210 @@ export const LiteralExpression_Expect_IR = {
     ],
 };
 
+export const ObjectLiteralExpression_Expect_IR = {
+    stmts: [
+        {
+            text: 'this = this: @expression/ObjectLiteralExpressionTest.ts: %dflt',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: 'leftSourceValue = 1',
+            originalText: 'let leftSourceValue = 1;',
+            originalPosition: [17, 5],
+            operandOriginalPositions: [[17, 9, 17, 24], [17, 27, 17, 28]],
+        },
+        {
+            text: 'rightSourceValue = 2',
+            originalText: 'let rightSourceValue = 2;',
+            originalPosition: [18, 5],
+            operandOriginalPositions: [[18, 9, 18, 25], [18, 28, 18, 29]],
+        },
+        {
+            text: '%0 = new @expression/ObjectLiteralExpressionTest.ts: %AC1$%dflt-createLiteralInMethod',
+            originalText: 'let literalObject = { leftValue: leftSourceValue, rightValue: rightSourceValue };',
+            originalPosition: [19, 5],
+            operandOriginalPositions: [[19, 25, 19, 85], [19, 25, 19, 85]],
+        },
+        {
+            text: '%0 = instanceinvoke %0.<@expression/ObjectLiteralExpressionTest.ts: %AC1$%dflt-createLiteralInMethod.constructor()>()',
+            originalText: 'let literalObject = { leftValue: leftSourceValue, rightValue: rightSourceValue };',
+            originalPosition: [19, 5],
+            operandOriginalPositions: [[19, 25, 19, 85], [19, 25, 19, 85], [19, 25, 19, 85]],
+        },
+        {
+            text: '%0.<@expression/ObjectLiteralExpressionTest.ts: %AC1$%dflt-createLiteralInMethod.leftValue> = leftSourceValue',
+            originalText: 'leftValue: leftSourceValue',
+            originalPosition: [19, 27],
+            operandOriginalPositions: [[19, 27, 19, 53], [19, 27, 19, 53], [19, 38, 19, 53]],
+        },
+        {
+            text: '%0.<@expression/ObjectLiteralExpressionTest.ts: %AC1$%dflt-createLiteralInMethod.rightValue> = rightSourceValue',
+            originalText: 'rightValue: rightSourceValue',
+            originalPosition: [19, 55],
+            operandOriginalPositions: [[19, 55, 19, 83], [19, 55, 19, 83], [19, 67, 19, 83]],
+        },
+        {
+            text: 'literalObject = %0',
+            originalText: 'let literalObject = { leftValue: leftSourceValue, rightValue: rightSourceValue };',
+            originalPosition: [19, 5],
+            operandOriginalPositions: [[19, 9, 19, 22], [19, 25, 19, 85]],
+        },
+        {
+            text: 'return',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [],
+        },
+    ],
+};
+
+export const ObjectLiteralFromField_Expect_IR = {
+    stmts: [
+        {
+            text: 'sourceFieldHolder = parameter0: @expression/ObjectLiteralExpressionTest.ts: SourceFieldHolder',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [[26, 43, 26, 60], [26, 43, 26, 60]],
+        },
+        {
+            text: 'this = this: @expression/ObjectLiteralExpressionTest.ts: %dflt',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: '%0 = new @expression/ObjectLiteralExpressionTest.ts: %AC2$%dflt-createLiteralFromOtherClassField',
+            originalText: 'let targetObject = {\n        targetValue: sourceFieldHolder.sourceValue,\n    };',
+            originalPosition: [27, 5],
+            operandOriginalPositions: [[27, 24, 29, 6], [27, 24, 29, 6]],
+        },
+        {
+            text: '%0 = instanceinvoke %0.<@expression/ObjectLiteralExpressionTest.ts: %AC2$%dflt-createLiteralFromOtherClassField.constructor()>()',
+            originalText: 'let targetObject = {\n        targetValue: sourceFieldHolder.sourceValue,\n    };',
+            originalPosition: [27, 5],
+            operandOriginalPositions: [[27, 24, 29, 6], [27, 24, 29, 6], [27, 24, 29, 6]],
+        },
+        {
+            text: '%1 = sourceFieldHolder.<@expression/ObjectLiteralExpressionTest.ts: SourceFieldHolder.sourceValue>',
+            originalText: 'targetValue: sourceFieldHolder.sourceValue',
+            originalPosition: [28, 9],
+            operandOriginalPositions: [[28, 22, 28, 51], [28, 22, 28, 51], [28, 22, 28, 39]],
+        },
+        {
+            text: '%0.<@expression/ObjectLiteralExpressionTest.ts: %AC2$%dflt-createLiteralFromOtherClassField.targetValue> = %1',
+            originalText: 'targetValue: sourceFieldHolder.sourceValue',
+            originalPosition: [28, 9],
+            operandOriginalPositions: [[28, 9, 28, 51], [28, 9, 28, 51], [28, 22, 28, 51]],
+        },
+        {
+            text: 'targetObject = %0',
+            originalText: 'let targetObject = {\n        targetValue: sourceFieldHolder.sourceValue,\n    };',
+            originalPosition: [27, 5],
+            operandOriginalPositions: [[27, 9, 27, 21], [27, 24, 29, 6]],
+        },
+        {
+            text: 'return',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [],
+        },
+    ],
+};
+
+export const ClassFieldLiteralHolder_StatInit_Expect_IR = {
+    stmts: [
+        {
+            text: 'this = this: @expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: 'return',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [],
+        },
+    ],
+};
+export const ClassFieldLiteralHolder_InstInit_Expect_IR = {
+    stmts: [
+        {
+            text: 'this = this: @expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: 'this.<@expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder.sourceValue> = 0',
+            originalText: 'sourceValue: number = 0;',
+            originalPosition: [33, 5],
+            operandOriginalPositions: [[-1, -1, -1, -1], [-1, -1, -1, -1], [33, 27, 33, 28]],
+        },
+        {
+            text: '%0 = new @expression/ObjectLiteralExpressionTest.ts: %AC0$ClassFieldLiteralHolder-%instInit',
+            originalText: 'literalObject = {\n        targetValue: this.sourceValue,\n    };',
+            originalPosition: [34, 5],
+            operandOriginalPositions: [[34, 21, 36, 6], [34, 21, 36, 6]],
+        },
+        {
+            text: '%0 = instanceinvoke %0.<@expression/ObjectLiteralExpressionTest.ts: %AC0$ClassFieldLiteralHolder-%instInit.constructor()>()',
+            originalText: 'literalObject = {\n        targetValue: this.sourceValue,\n    };',
+            originalPosition: [34, 5],
+            operandOriginalPositions: [[34, 21, 36, 6], [34, 21, 36, 6], [34, 21, 36, 6]],
+        },
+        {
+            text: '%1 = this.<@expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder.sourceValue>',
+            originalText: 'targetValue: this.sourceValue',
+            originalPosition: [35, 9],
+            operandOriginalPositions: [[35, 22, 35, 38], [35, 22, 35, 38], [35, 22, 35, 26]],
+        },
+        {
+            text: '%0.<@expression/ObjectLiteralExpressionTest.ts: %AC0$ClassFieldLiteralHolder-%instInit.targetValue> = %1',
+            originalText: 'targetValue: this.sourceValue',
+            originalPosition: [35, 9],
+            operandOriginalPositions: [[35, 9, 35, 38], [35, 9, 35, 38], [35, 22, 35, 38]],
+        },
+        {
+            text: 'this.<@expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder.literalObject> = %0',
+            originalText: 'literalObject = {\n        targetValue: this.sourceValue,\n    };',
+            originalPosition: [34, 5],
+            operandOriginalPositions: [[-1, -1, -1, -1], [-1, -1, -1, -1], [34, 21, 36, 6]],
+        },
+        {
+            text: 'return',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [],
+        },
+    ],
+};
+
+export const ClassFieldLiteralHolder_Constructor_Expect_IR = {
+    stmts: [
+        {
+            text: 'this = this: @expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: 'instanceinvoke this.<@expression/ObjectLiteralExpressionTest.ts: ClassFieldLiteralHolder.%instInit()>()',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null, null],
+        },
+        {
+            text: 'return this',
+            originalText: undefined,
+            originalPosition: [-1, -1],
+            operandOriginalPositions: [null],
+        },
+    ],
+};
+
 export const Operator_Expect_IR = {
     stmts: [{
         text: 'this = this: @expression/OperatorTest.ts: %dflt',
@@ -1127,16 +1331,23 @@ export const INCREMENT_EXPECT_IR = `incrementExpression(): void {
     arr[0] = arr[0] + 5
     %1 = new @expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression
     %1 = instanceinvoke %1.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.constructor()>()
+    %1.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.x> = 10
     obj = %1
     %2 = obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.x>
     obj.<@expression/IncrementExpressionTest.ts: %AC0$%dflt-incrementExpression.x> = %2 + 5
     %3 = new @expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression
     %3 = instanceinvoke %3.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.constructor()>()
+    %4 = new @expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression
+    %4 = instanceinvoke %4.<@expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression.constructor()>()
+    %5 = newarray (number)[1]
+    %5[0] = 10
+    %4.<@expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression.y> = %5
+    %3.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x> = %4
     obj1 = %3
-    %4 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x>
-    %5 = %4.<@expression/IncrementExpressionTest.ts: %AC2$%AC1$%dflt-incrementExpression-%instInit.y>
-    %6 = %5[0]
-    %5[0] = %6 + 5
+    %6 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x>
+    %7 = %6.<@expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression.y>
+    %8 = %7[0]
+    %7[0] = %8 + 5
     return
 }
 `;

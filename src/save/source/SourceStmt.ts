@@ -71,6 +71,8 @@ export interface StmtPrinterContext extends TransformerContext {
 
     setSkipStmt(stmt: Stmt): void;
 
+    setObjectLiteralProp(objectLiteralLocalNameOrTemp: string, propName: string, rhsCode: string): void;
+
     getLocals(): Map<string, Local>;
 
     defineLocal(local: Local): void;
@@ -178,6 +180,29 @@ export class SourceAssignStmt extends SourceStmt {
     public transfer2ts(): void {
         this.leftOp = (this.original as ArkAssignStmt).getLeftOp();
         this.rightOp = (this.original as ArkAssignStmt).getRightOp();
+
+        if (this.leftOp instanceof ArkInstanceFieldRef && this.leftOp.getBase() instanceof Local) {
+            const baseLocal = this.leftOp.getBase();
+            const baseName = baseLocal.getName();
+            const rhsCode = this.transformer.valueToString(this.rightOp);
+            // 1) Direct object-literal placeholder local like "{x, y}"
+            if (baseName.startsWith('{') && baseName.endsWith('}')) {
+                this.context.setObjectLiteralProp(baseName, this.leftOp.getFieldName(), rhsCode);
+                this.context.setSkipStmt(this.original);
+                this.setText('');
+                this.dumpType = AssignStmtDumpType.NORMAL;
+                return;
+            }
+            // 2) Temp local mapped to "{x, y}" via tempCodeMap
+            const baseTempCode = this.context.getTempCode(baseName);
+            if (baseTempCode && baseTempCode.startsWith('{') && baseTempCode.endsWith('}')) {
+                this.context.setObjectLiteralProp(baseName, this.leftOp.getFieldName(), rhsCode);
+                this.context.setSkipStmt(this.original);
+                this.setText('');
+                this.dumpType = AssignStmtDumpType.NORMAL;
+                return;
+            }
+        }
 
         if (this.rightOp instanceof ArkParameterRef) {
             this.setText('');
@@ -878,7 +903,10 @@ export class SourceTypeAliasStmt extends SourceStmt {
             } else if (typeObject instanceof ClassType) {
                 this.setText(`${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${this.transformer.typeToString(typeObject)};`);
             } else if (typeObject instanceof FunctionType) {
-                this.setText(`${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${typeObject.getMethodSignature().getMethodSubSignature().getMethodName()}${realGenericTypes};`);
+                const methodName = typeObject.getMethodSignature().getMethodSubSignature().getMethodName();
+                this.setText(
+                    `${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${methodName}${realGenericTypes};`
+                );
             } else {
                 this.setText(
                     `${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${this.transformer.typeToString(typeObject)}${realGenericTypes};`
