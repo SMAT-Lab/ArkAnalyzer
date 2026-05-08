@@ -1154,4 +1154,17 @@ export class TypeInference {
         const objectClass = scene.getSdkGlobal(Builtin.OBJECT);
         return fatherClass === objectClass;
     }
+
+    public static unwrapPromiseType(type: Type): Type {
+        if (type instanceof ClassType && type.getClassSignature().getClassName() === PROMISE) {
+            const innerType = type.getRealGenericTypes()?.[0];
+            return innerType ? TypeInference.unwrapPromiseType(innerType) : type;
+        } else if (type instanceof UnionType) {
+            const types = type.getTypes().map(t => TypeInference.unwrapPromiseType(t));
+            return new UnionType(types);
+        } else if (type instanceof UnclearReferenceType && type.getName() === PROMISE) {
+            return type.getGenericTypes()[0];
+        }
+        return type;
+    }
 }
