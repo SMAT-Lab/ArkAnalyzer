@@ -14,10 +14,11 @@
  */
 #pragma once
 
-#include "llvm/ADT/StringRef.h"
+#include <string>
 
 namespace llvm {
 class raw_ostream;
+class StringRef;
 }
 
 namespace ast_dumper::json {
@@ -26,7 +27,7 @@ namespace ast_dumper::json {
 void PrintJsonString(llvm::raw_ostream &os, llvm::StringRef sr);
 
 // Writes a JSON key (e.g., "key":).
-void writeKey(llvm::raw_ostream &os, llvm::StringRef key);
+void WriteKey(llvm::raw_ostream &os, llvm::StringRef key);
 
 // If a field has already been written, outputs ',' and sets WroteAnyField to true.
 void WriteCommaIf(bool &wroteAnyField, llvm::raw_ostream &os);

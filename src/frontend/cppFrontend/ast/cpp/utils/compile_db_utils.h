@@ -38,7 +38,39 @@ std::string GetBuildPathFromArgv(int argc, const char **argv);
 // Print basic checks for build dir + compile_commands.json + loadFromDirectory().
 void printBuildPathDiagnostics(llvm::StringRef BuildPath);
 
-// Add compiler line(-std=c++17)
+// Adds -std / -stdlib for the given source suffix.
 void insertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile);
+
+/**
+ * LibTooling does not run the full Clang driver: OHOS compile_commands carry --gcc-toolchain and
+ * libc++ paths that the real SDK clang expands, but the host tool misses them. Prepends
+ * -resource-dir (under the gcc-toolchain LLVM root) and manifest -I paths (SDK libc++ / config_site).
+ */
+void prependResourceDirAndManifestIncludes(ClangTool &Tool,
+                                           const std::vector<std::string> &manifestIncludeDirs);
+
+/** For FixedCompilationDatabase fallback: prepend -resource-dir when manifest paths include OHOS libc++. */
+void prependResourceDirFromManifestIncludes(std::vector<std::string> &compileArgs,
+                                            const std::vector<std::string> &manifestIncludeDirs);
+
+/**
+ * Combines prependResourceDirFromManifestIncludes with -stdlib=libc++ when manifest lists OHOS
+ * libc++ (path contains c++/v1). LibTooling on Linux otherwise mixes libc++ with host GCC libstdc++
+ * headers and fails parsing, producing incomplete AST JSON.
+ */
+void prependOhSdkHeaderCompileFlags(std::vector<std::string> &compileArgs,
+                                    const std::vector<std::string> &manifestIncludeDirs);
+
+/**
+ * When using FixedCompilationDatabase fallback on Linux hosts (no OHOS libc++ in the manifest),
+ * prepend -resource-dir (from the `clang` on PATH) and typical libstdc++/GCC system include paths.
+ * LibTooling does not run the full driver, so without this, <stddef.h> and friends often fail.
+ */
+void appendHostLinuxFallbackSystemIncludes(std::vector<std::string> &compileArgs,
+                                           const std::vector<std::string> &manifestIncludeDirs);
+
+/** Same as appendHostLinuxFallbackSystemIncludes but for JSON compile_commands (LibTooling adjuster). */
+void prependHostLinuxFallbackToClangTool(ClangTool &Tool,
+                                         const std::vector<std::string> &manifestIncludeDirs);
 
 } // namespace ast_dumper

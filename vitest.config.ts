@@ -41,6 +41,7 @@ if (!astJsonDumperAvailable) {
 
 export default defineConfig({
     test: {
+        pool: 'forks',
         setupFiles: ['./tests/unit/vitest.setup.ts'],
         include: ['tests/unit/**/*.test.ts'],
         exclude: [

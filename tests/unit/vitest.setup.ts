@@ -13,8 +13,19 @@
  * limitations under the License.
  */
 
-
+import path from 'path';
+import { beforeEach } from 'vitest';
 import ConsoleLogger, { LOG_LEVEL } from '../../src/utils/logger';
+
+// Keep cwd at repo root so `./tests/...` resolves correctly if anything leaves it elsewhere.
+const REPO_ROOT = path.resolve(__dirname, '../..');
+beforeEach(() => {
+    try {
+        process.chdir(REPO_ROOT);
+    } catch {
+        /* ignore */
+    }
+});
 
 const utLogEnabled = ['1', 'true', 'yes', 'on'].includes(
     process.env.V?.trim().toLowerCase() ?? '',

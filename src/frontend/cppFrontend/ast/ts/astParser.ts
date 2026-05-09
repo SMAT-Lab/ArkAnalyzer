@@ -13,15 +13,44 @@
  * limitations under the License.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 
+import type { Scene } from '../../../../Scene';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
-import { dumpAstJson } from './napi/napiApi';
-import { ClangPath, extractAllCppModifiers } from './astUtils';
+import { callCppAstParser } from './napi/napiApi';
+import { getCxxHeaderFileExtensionSet } from './const';
+import { extractAllCppModifiers, findCompileCommands } from './astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astParser');
+
+interface AstStreamRecord {
+    index: number;
+    exitCode: number;
+    payload: string;
+}
+export interface CppAstError {
+    filePath: string;
+    reason: Error;
+}
+
+export interface CppAstResult {
+    dumpErrors: CppAstError[];
+    exitCode: number;
+}
+
+export interface CppAstParams {
+    scene: Scene;
+    sources: string[];
+    projectDir: string;
+    includeDirs: string[];
+    // <= 1 means serial mode.
+    maxParallelProcesses: number;
+    // <= 0 means auto (2 * workerCount).
+    maxPendingAstResults: number;
+    // Invoked for each source after the JSON payload is decoded.
+    onSourceAst: (sourceFile: string, astRoot: CxxAstNode) => void;
+}
 
 export type GetParentFn = {
     (isNeedInner: true): CxxAstNode;
@@ -31,40 +60,109 @@ export type GetParentFn = {
 export class AstParser {
     private static currentAccess: string = '';
 
-    private static deleteFileSync(filePath: string): void {
-        try {
-            fs.unlinkSync(filePath);
-        } catch {
-            logger.warn('delete file failed:', filePath);
-        }
+    /**
+     * Optional include-root hint (e.g. main/cpp) for consumers building compile or include lists.
+     */
+    public static resolveProjectRootForSource(sourceFile: string): string | null {
+        return this.resolveProjectRoot(sourceFile);
     }
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
-        logger.info(`[Debug] Parsing File: ${sourceFile}`);
-        if (!fs.existsSync(sourceFile)) {
-            logger.warn('parse file is not exists');
-            return this.createEmptyNode();
+    /**
+     * Runs one sync manifest batch and consumes ASTM records incrementally via addon callback.
+     */
+    public static runCppAst(params: CppAstParams): CppAstResult {
+        const dumpErrors: CppAstError[] = [];
+        const { scene, sources, projectDir, includeDirs, maxParallelProcesses, maxPendingAstResults, onSourceAst } = params;
+        const manifest = this.buildCppAstManifest(
+            scene,
+            sources,
+            projectDir,
+            includeDirs,
+            maxParallelProcesses,
+            maxPendingAstResults,
+        );
+        let processed = 0;
+        const HEAP_DEBUG = process.env.ARKANALYZER_DEBUG_AST_MEM === '1';
+        const applyRecord = (rec: AstStreamRecord): void => {
+            const sourceFile = sources[rec.index];
+            try {
+                const astRoot = this.processAstJson(rec.payload, sourceFile);
+                onSourceAst(sourceFile, astRoot);
+            } catch (error) {
+                dumpErrors.push({ filePath: sourceFile, reason: error as Error });
+            }
+            processed++;
+            if (HEAP_DEBUG && (processed % 50 === 0 || processed === sources.length)) {
+                const m = process.memoryUsage();
+                logger.info(
+                    `[HEAP] processed=${processed}/${sources.length} ` +
+                        `heapUsed=${(m.heapUsed / 1024 / 1024).toFixed(1)}MB ` +
+                        `rss=${(m.rss / 1024 / 1024).toFixed(1)}MB ` +
+                        `external=${(m.external / 1024 / 1024).toFixed(1)}MB`
+                );
+            }
+        };
+        const exitCode = callCppAstParser(manifest, (record) => {
+            applyRecord({
+                index: record.index,
+                exitCode: record.exitCode,
+                payload: record.payload,
+            });
+        });
+        return { dumpErrors, exitCode };
+    }
+
+    private static buildCppAstManifest(
+        scene: Scene,
+        sources: string[],
+        projectDir: string,
+        includeDirs: string[],
+        maxParallelProcesses: number,
+        maxPendingAstResults: number,
+    ): string {
+        const sceneCc = scene.getCcjsonPath() ?? '';
+        const defaultCcAbs = sceneCc ? (path.isAbsolute(sceneCc) ? sceneCc : path.resolve(projectDir, sceneCc)) : '';
+        const ccJsonPaths = sources.map((f) => this.resolveCcJsonPath(f, sceneCc, projectDir));
+        const mergedIncludes = this.mergeIncludeDirs(sources, includeDirs);
+        const manifest = {
+            files: sources,
+            defaultCcJson: defaultCcAbs,
+            ccJsonPaths,
+            includeDirs: mergedIncludes,
+            maxParallelProcesses,
+            maxPendingAstResults,
+        };
+        return JSON.stringify(manifest);
+    }
+
+    private static resolveCcJsonPath(sourceFile: string, sceneCcjson: string, projectDir: string): string {
+        const ext = path.extname(sourceFile).toLowerCase();
+        const isHeader = getCxxHeaderFileExtensionSet().has(ext);
+        let found = '';
+        if (!isHeader) {
+            found = findCompileCommands(sourceFile);
         }
-
-        const rawAstPath = this.getAstOutputPath(sourceFile, cppAstPath);
-        const astPath = path.resolve(rawAstPath);
-        this.ensureOutputDir(path.dirname(astPath));
-        const workingDir = this.getWorkingDir(ccJsonPath);
-
-        const finalIncludeDirs = includeDirs ? [...includeDirs] : [];
-        const projectRoot = this.resolveProjectRoot(sourceFile);
-        if (projectRoot && !finalIncludeDirs.includes(projectRoot)) {
-            finalIncludeDirs.push(projectRoot);
+        const pick = found || sceneCcjson;
+        if (!pick) {
+            return '';
         }
+        return path.isAbsolute(pick) ? pick : path.resolve(projectDir, pick);
+    }
 
-        const status = dumpAstJson({
-            sourceFile,
-            outputFile: astPath,
-            ccJsonPath: ccJsonPath ?? undefined,
-            includeDirs: finalIncludeDirs,
-        }, workingDir, llvmPath);
-
-        return this.processAstFile(astPath, sourceFile, status);
+    private static mergeIncludeDirs(absoluteSources: string[], base: string[]): string[] {
+        const set = new Set<string>();
+        for (const d of base ?? []) {
+            if (d) {
+                set.add(path.isAbsolute(d) ? d : path.resolve(d));
+            }
+        }
+        for (const f of absoluteSources) {
+            const r = this.resolveProjectRootForSource(f);
+            if (r) {
+                set.add(r);
+            }
+        }
+        return Array.from(set);
     }
 
     private static resolveProjectRoot(sourceFile: string): string | null {
@@ -87,38 +185,12 @@ export class AstParser {
         return null;
     }
 
-    private static getWorkingDir(ccJsonPath: string | null): string {
-        let workingDir = process.cwd();
-        if (ccJsonPath && fs.existsSync(ccJsonPath)) {
-            const stats = fs.statSync(ccJsonPath);
-            if (stats.isFile()) {
-                workingDir = path.dirname(ccJsonPath);
-            } else {
-                workingDir = ccJsonPath;
-            }
-        }
-        return workingDir;
-    }
-
-    private static processAstFile(astPath: string, sourceFile: string, status: number): CxxAstNode {
-        try {
-            if (!fs.existsSync(astPath)) {
-                logger.error(`[Debug] AST file missing at: ${astPath}`);
-                return this.createEmptyNode();
-            }
-            const content = fs.readFileSync(astPath, 'utf-8');
-            if (!content || content.trim() === '') {
-                return this.createEmptyNode();
-            }
-            let tu = JSON.parse(content) as CxxAstNode;
-            tu = this.filter(sourceFile, tu) as CxxAstNode;
-            return tu;
-        } catch (e) {
-            logger.error('Failed to parse AST json:', e);
+    private static processAstJson(payload: string, sourceFile: string): CxxAstNode {
+        if (!payload.trim()) {
             return this.createEmptyNode();
-        } finally {
-            this.deleteFileSync(astPath);
         }
+        const decoded = JSON.parse(payload) as CxxAstNode;
+        return this.filter(sourceFile, decoded) as CxxAstNode;
     }
 
     private static createEmptyNode(): CxxAstNode {
@@ -250,17 +322,4 @@ export class AstParser {
         return code.slice(0, start).trimEnd() + ' ' + code.slice(end + 1).trimStart();
     }
 
-    private static getAstOutputPath(sourceFile: string, cppAstPath: string): string {
-        const fileName = `${path.parse(path.basename(sourceFile)).name}_AST.json`;
-        if (cppAstPath !== '') {
-            return path.join(cppAstPath, fileName);
-        }
-        return path.join(ClangPath.protectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'out', fileName);
-    }
-
-    private static ensureOutputDir(dir: string): void {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-    }
 }

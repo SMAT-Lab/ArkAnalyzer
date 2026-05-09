@@ -88,6 +88,10 @@ export interface LanguageOptions {
 export interface CppLanguageOptions extends LanguageOptions {
     sourceExtensions?: string[];
     headerExtensions?: string[];
+    /** Max concurrent C++ AST worker processes; `-1` means auto (same semantics as `CppFrontend`). */
+    maxParallelProcesses?: number;
+    /** Max AST results in flight before back-pressure; `-1` or omission uses defaults aligned with `CppFrontend`. */
+    maxPendingAstResults?: number;
 }
 
 export interface SceneLanguagesOptions {

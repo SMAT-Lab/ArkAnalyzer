@@ -17,7 +17,6 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
-
 namespace ast_dumper {
 
 HeaderFileCollector::HeaderFileCollector(clang::SourceManager &SM,
@@ -74,7 +73,7 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     if (expansion.isValid()) {
         clang::PresumedLoc PL = SM.getPresumedLoc(expansion);
         if (PL.isValid()) {
-            inc["loc"] = llvm::json::Object{{"file", std::string(PL.getFilename())}, {"line", (int64_t)PL.getLine()},
+            inc["loc"] = llvm::json::Object{{"file", PL.getFilename()}, {"line", (int64_t)PL.getLine()},
                 {"col",  (int64_t)PL.getColumn()}};
         }
     }

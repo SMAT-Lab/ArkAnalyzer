@@ -22,10 +22,10 @@ namespace ast_dumper::json {
 
 void PrintJsonString(llvm::raw_ostream &os, llvm::StringRef sr)
 {
-    os << llvm::formatv("{0}", llvm::json::Value(sr));
+    os << llvm::formatv("{0}", llvm::json::Value(sr.str()));
 }
 
-void writeKey(llvm::raw_ostream &os, llvm::StringRef key)
+void WriteKey(llvm::raw_ostream &os, llvm::StringRef key)
 {
     os << '"' << key << "\":";
 }

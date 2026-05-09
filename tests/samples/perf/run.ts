@@ -260,7 +260,18 @@ function runSingleRoundInChild(args: ChildRoundExecutionArgs): ProfilerResult {
     });
 
     if (run.status !== 0) {
-        throw new Error(`Round ${currentRound} failed in child process (exit code: ${run.status ?? -1})`);
+        const code = run.status === null ? 'null' : String(run.status);
+        const sig = run.signal ? ` signal=${run.signal}` : '';
+        const spawnErr = run.error ? ` spawnError=${run.error.message}` : '';
+        const note =
+            run.status === null && run.signal === 'SIGSEGV'
+                ? ' (child SIGSEGV: native fault, not a normal JS exception.)'
+                : run.status === null && run.signal === 'SIGKILL'
+                  ? ' (child SIGKILL: check dmesg for OOM killer.)'
+                  : '';
+        throw new Error(
+            `Round ${currentRound} failed in child process: exitCode=${code}${sig}${spawnErr}.${note}`,
+        );
     }
 
     if (!fs.existsSync(resultPath)) {

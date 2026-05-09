@@ -22,11 +22,14 @@
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/CompilationDatabase.h"
+#include "clang/Tooling/JSONCompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Support/raw_ostream.h"
 #include <llvm/Demangle/Demangle.h>
 #include "utils/source_utils.h"
@@ -36,10 +39,26 @@
 #include "utils/header_units.h"
 #include "utils/json_streaming.h"
 #include "utils/json_dumper_probe.h"
+#include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <deque>
+#include <fstream>
 #include <memory>
+#if defined(_WIN32)
+#include <windows.h>
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
+#include <mutex>
+#include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -141,7 +160,7 @@ public:
 
             if (!name.empty()) {
                 ast_dumper::json::WriteCommaIf(wroteAnyField, os);
-                ast_dumper::json::writeKey(os, "name");
+                ast_dumper::json::WriteKey(os, "name");
                 ast_dumper::json::PrintJsonString(os, name);
             }
         }
@@ -155,7 +174,7 @@ public:
             std::string code = ast_dumper::GetSourceTextByRange(sm, ctx.getLangOpts(), t->getSourceRange(), true);
             if (!code.empty()) {
                 ast_dumper::json::WriteCommaIf(wroteAnyField, os);
-                ast_dumper::json::writeKey(os, "code");
+                ast_dumper::json::WriteKey(os, "code");
                 ast_dumper::json::PrintJsonString(os, code);
             }
         }
@@ -210,7 +229,7 @@ public:
         DumperNodeCode(D, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::WriteCommaIf(wroteAnyField, os);
-        ast_dumper::json::writeKey(os, "inner");
+        ast_dumper::json::WriteKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -226,7 +245,6 @@ public:
                 if (!firstHU) os << ',';
                 firstHU = false;
 
-                // MSVC/LLVM: Value(Object&&) needs rvalue; copy then move.
                 llvm::json::Object tmp = kv.second;
                 os << llvm::formatv("{0}", llvm::json::Value(std::move(tmp)));
             }
@@ -261,7 +279,7 @@ public:
         DumperNodeCode(S, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::WriteCommaIf(wroteAnyField, os);
-        ast_dumper::json::writeKey(os, "inner");
+        ast_dumper::json::WriteKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -298,7 +316,7 @@ public:
         DumperNodeCode(Init, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::WriteCommaIf(wroteAnyField, os);
-        ast_dumper::json::writeKey(os, "inner");
+        ast_dumper::json::WriteKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -389,10 +407,10 @@ public:
             }
         }
 
-        std::error_code EC;
-        fileOS = std::make_unique<llvm::raw_fd_ostream>(outPath, EC, llvm::sys::fs::OF_Text);
-        if (EC) {
-            llvm::outs() << "Cannot open output file " << outPath << ": " << EC.message() << "\n";
+        std::error_code errorCode;
+        fileOS = std::make_unique<llvm::raw_fd_ostream>(outPath, errorCode, llvm::sys::fs::OF_Text);
+        if (errorCode) {
+            llvm::outs() << "Cannot open output file " << outPath << ": " << errorCode.message() << "\n";
             return nullptr;
         }
 
@@ -403,6 +421,538 @@ private:
     std::unique_ptr<llvm::raw_fd_ostream> fileOS;
     std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore;
 };
+
+// ---- N-API / manifest: stream JSON into memory (no file output) ----
+class JSONCaptureFrontendAction : public ASTFrontendAction {
+public:
+    explicit JSONCaptureFrontendAction(llvm::raw_ostream &sink)
+        : sink(sink), huStore(std::make_shared<ast_dumper::HeaderUnitsStore>()) {}
+
+    bool BeginSourceFileAction(CompilerInstance &CI) override
+    {
+        Preprocessor &PP = CI.getPreprocessor();
+        SourceManager &SM = CI.getSourceManager();
+        PP.addPPCallbacks(std::make_unique<ast_dumper::HeaderFileCollector>(SM, PP, huStore));
+        return true;
+    }
+
+    std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override
+    {
+        return std::make_unique<AstJsonConsumer>(sink, huStore);
+    }
+
+private:
+    llvm::raw_ostream &sink;
+    std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore;
+};
+
+class CaptureJsonActionFactory : public FrontendActionFactory {
+public:
+    explicit CaptureJsonActionFactory(llvm::raw_ostream &sink) : sink(sink) {}
+
+    std::unique_ptr<FrontendAction> create() override
+    {
+        return std::make_unique<JSONCaptureFrontendAction>(sink);
+    }
+
+private:
+    llvm::raw_ostream &sink;
+};
+
+// =============================================================================
+// Manifest batch (ParseCppAstWithManifest) — used by astJsonDumper.node
+// =============================================================================
+static constexpr int EXIT_OK = 0;
+static constexpr int EXIT_FAIL = 1;
+
+static constexpr llvm::StringLiteral JSON_FILES = "files";
+static constexpr llvm::StringLiteral JSON_INCLUDE_DIRS = "includeDirs";
+static constexpr llvm::StringLiteral JSON_DEFAULT_CC_JSON = "defaultCcJson";
+static constexpr llvm::StringLiteral JSON_CC_JSON_PATHS = "ccJsonPaths";
+static constexpr llvm::StringLiteral JSON_MAX_PARALLEL_PROCESSES = "maxParallelProcesses";
+static constexpr llvm::StringLiteral JSON_MAX_PENDING_AST_RESULTS = "maxPendingAstResults";
+
+using AstManifestCallback = bool (*)(void *userData, uint32_t fileIndex, uint32_t taskRc,
+                                     const char *payloadData, size_t payloadSize);
+
+struct FileTask {
+    uint32_t fileIndex = 0;
+    std::string sourceFile;
+    std::string ccForFile;
+};
+
+struct FileAstItem {
+    uint32_t fileIndex = 0;
+    uint32_t taskRc = 0;
+    std::string payload;
+};
+
+struct WorklistConfig {
+    const llvm::json::Array *filesArr = nullptr;
+    std::string defaultCcJson;
+    const llvm::json::Array *ccJsonArr = nullptr;
+    std::vector<std::string> includeDirs;
+    uint32_t maxParallelProcesses = 1;
+    uint32_t maxPendingAstResults = 0;
+};
+
+struct CallbackContext {
+    AstManifestCallback callback = nullptr;
+    void *userData = nullptr;
+};
+
+struct ParallelAstRunContext {
+    const std::vector<FileTask> &tasks;
+    const std::vector<std::string> &includeDirs;
+    const uint32_t maxPendingInQueue;
+
+    std::atomic<uint32_t> nextTaskIndex{0};
+    std::atomic<uint32_t> activeWorkers;
+    std::atomic<bool> stopRequested{false};
+    std::mutex queueMutex;
+    std::condition_variable queueCv;
+    std::deque<FileAstItem> queue;
+
+    ParallelAstRunContext(const std::vector<FileTask> &t, const std::vector<std::string> &inc,
+                          uint32_t maxQueue, uint32_t workers)
+        : tasks(t), includeDirs(inc), maxPendingInQueue(maxQueue), activeWorkers(workers) {}
+
+    ParallelAstRunContext(const ParallelAstRunContext &) = delete;
+    ParallelAstRunContext &operator=(const ParallelAstRunContext &) = delete;
+};
+
+static void LogManifestError(llvm::StringRef msg)
+{
+    llvm::errs() << "[ASTDumper][manifest] " << msg << "\n";
+}
+
+static long GetCurrentRssKb()
+{
+#if defined(_WIN32)
+    HANDLE hProcess = GetCurrentProcess();
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
+        return pmc.WorkingSetSize / sizeof(long);
+    }
+    return 0;
+#elif defined(__APPLE__)
+    struct rusage ru;
+    if (getrusage(RUSAGE_SELF, &ru) == 0) {
+        return ru.ru_maxrss;
+    }
+    return 0;
+#elif defined(__linux__)
+    struct rusage ru;
+    if (getrusage(RUSAGE_SELF, &ru) == 0) {
+        return ru.ru_maxrss;
+    }
+    return 0;
+#else
+    return 0;
+#endif
+}
+
+static std::mutex g_astMemLogMutex;
+
+static void LogAstMemStats(const char* tag, uint32_t qSize, uint32_t active, uint32_t nextIdx, uint32_t total)
+{
+    if (std::getenv("ARKANALYZER_DEBUG_AST_MEM") == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_astMemLogMutex);
+    long rss = GetCurrentRssKb();
+    llvm::errs() << "[AST-MEM] " << tag
+                 << " q=" << qSize
+                 << " active=" << active
+                 << " progress=" << nextIdx << "/" << total
+                 << " VmRSS=" << rss << "kB\n";
+}
+
+static void LogParseStep(const char* step, llvm::StringRef file, long before, long after)
+{
+    if (std::getenv("ARKANALYZER_DEBUG_AST_MEM") == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_astMemLogMutex);
+    llvm::errs() << "[AST-MEM] parse-step " << step
+                 << " file=" << file
+                 << " rssBefore=" << before << "kB"
+                 << " rssAfter=" << after << "kB"
+                 << " delta=" << (after - before) << "kB\n";
+}
+
+static bool IsCxxHeaderPath(llvm::StringRef path)
+{
+    return path.ends_with(".h") || path.ends_with(".hpp") || path.ends_with(".hh") ||
+           path.ends_with(".hxx");
+}
+
+static std::unique_ptr<FixedCompilationDatabase> genCompilationDatabase(const std::vector<std::string> &includeDirs,
+                                                                        bool asHeaderUnit)
+{
+    std::vector<std::string> compileLine;
+    ast_dumper::prependOhSdkHeaderCompileFlags(compileLine, includeDirs);
+    ast_dumper::appendHostLinuxFallbackSystemIncludes(compileLine, includeDirs);
+    if (asHeaderUnit) {
+        compileLine.emplace_back("-x");
+        compileLine.emplace_back("c++-header");
+    } else {
+        compileLine.emplace_back("-xc++");
+    }
+    compileLine.emplace_back("-std=c++17");
+    for (const std::string &dir : includeDirs) {
+        if (!dir.empty()) {
+            compileLine.emplace_back("-I" + dir);
+        }
+    }
+    return std::make_unique<FixedCompilationDatabase>(".", compileLine);
+}
+
+static std::unique_ptr<CompilationDatabase> LoadCompilationDatabase(
+    llvm::StringRef sourceFile,
+    llvm::StringRef ccForFile,
+    const std::vector<std::string> &includeDirs,
+    bool &useCompileCommandsJson,
+    llvm::StringRef logSourceFile)
+{
+    std::string err;
+    std::unique_ptr<CompilationDatabase> db;
+    useCompileCommandsJson = false;
+
+    if (!ccForFile.empty()) {
+        long rssBeforeDb = GetCurrentRssKb();
+        if (auto loaded = JSONCompilationDatabase::loadFromDirectory(ccForFile, err)) {
+            db = std::move(loaded);
+            useCompileCommandsJson = true;
+        } else {
+            err.clear();
+            if (auto loaded = JSONCompilationDatabase::loadFromFile(ccForFile,
+                                                                    err,
+                                                                    JSONCommandLineSyntax::AutoDetect)) {
+                db = std::move(loaded);
+                useCompileCommandsJson = true;
+            }
+        }
+        long rssAfterDb = GetCurrentRssKb();
+        LogParseStep("after-db-load", logSourceFile, rssBeforeDb, rssAfterDb);
+    }
+
+    if (db) {
+        std::vector<CompileCommand> cmds = db->getCompileCommands(sourceFile);
+        if (cmds.empty()) {
+            db.reset();
+            useCompileCommandsJson = false;
+        }
+    }
+
+    if (!db) {
+        long rssBeforeFallback = GetCurrentRssKb();
+        db = genCompilationDatabase(includeDirs, IsCxxHeaderPath(sourceFile));
+        long rssAfterFallback = GetCurrentRssKb();
+        LogParseStep("after-fallback-db", logSourceFile, rssBeforeFallback, rssAfterFallback);
+    }
+
+    return db;
+}
+
+static int RunClangTool(ClangTool &tool, llvm::StringRef sourceFile, std::string *capturedPayload)
+{
+    std::string buffer;
+    llvm::raw_string_ostream ss(buffer);
+    CaptureJsonActionFactory factory(ss);
+    long rssBeforeRun = GetCurrentRssKb();
+    int rc = tool.run(&factory);
+    ss.flush();
+    long rssAfterRun = GetCurrentRssKb();
+    LogParseStep("after-tool-run", sourceFile, rssBeforeRun, rssAfterRun);
+
+    if (capturedPayload != nullptr) {
+        *capturedPayload = std::move(buffer);
+    }
+    return rc;
+}
+
+static int ParseSingleFileAst(llvm::StringRef sourceFile, llvm::StringRef ccForFile,
+                              const std::vector<std::string> &includeDirs, std::string *capturedPayload)
+{
+    long rss0 = GetCurrentRssKb();
+    LogParseStep("entry", sourceFile, rss0, rss0);
+
+    bool useCompileCommandsJson = false;
+    std::unique_ptr<CompilationDatabase> db = LoadCompilationDatabase(
+        sourceFile, ccForFile, includeDirs, useCompileCommandsJson, sourceFile);
+
+    std::vector<std::string> sources;
+    sources.emplace_back(sourceFile.str());
+    long rssBeforeTool = GetCurrentRssKb();
+    ClangTool tool(*db, sources);
+    if (useCompileCommandsJson) {
+        ast_dumper::prependHostLinuxFallbackToClangTool(tool, includeDirs);
+    }
+    ast_dumper::insertArgumentAdjuster(tool, sourceFile);
+    if (useCompileCommandsJson) {
+        ast_dumper::prependResourceDirAndManifestIncludes(tool, includeDirs);
+    }
+    long rssAfterToolCreate = GetCurrentRssKb();
+    LogParseStep("after-tool-create", sourceFile, rssBeforeTool, rssAfterToolCreate);
+
+    int rc = RunClangTool(tool, sourceFile, capturedPayload);
+
+    long rssFinal = GetCurrentRssKb();
+    LogParseStep("exit", sourceFile, rssFinal, rssFinal);
+    return rc;
+}
+
+static bool ReadWorklistConfig(const llvm::json::Object &root, WorklistConfig &cfg)
+{
+    const llvm::json::Value *filesVal = root.get(JSON_FILES);
+    if (!filesVal) {
+        LogManifestError("missing \"files\"");
+        return false;
+    }
+    cfg.filesArr = filesVal->getAsArray();
+    if (!cfg.filesArr || cfg.filesArr->empty()) {
+        LogManifestError("\"files\" must be a non-empty array");
+        return false;
+    }
+
+    if (const llvm::json::Value *dv = root.get(JSON_DEFAULT_CC_JSON)) {
+        if (auto s = dv->getAsString()) {
+            cfg.defaultCcJson = s->str();
+        }
+    }
+    if (const llvm::json::Value *cv = root.get(JSON_CC_JSON_PATHS)) {
+        cfg.ccJsonArr = cv->getAsArray();
+    }
+
+    // 读取 JSON 中的 include 目录配置
+    const llvm::json::Value *incVal = root.get(JSON_INCLUDE_DIRS);
+    const llvm::json::Array *incArr = incVal ? incVal->getAsArray() : nullptr;
+
+    if (incArr) {
+        for (const llvm::json::Value &iv : *incArr) {
+            if (auto idir = iv.getAsString()) {
+                cfg.includeDirs.emplace_back(idir->str());
+            }
+        }
+    }
+
+    const llvm::json::Value *pv = root.get(JSON_MAX_PARALLEL_PROCESSES);
+    if (pv) {
+        if (auto p = pv->getAsInteger()) {
+            int64_t v = *p;
+            if (v <= 0) {
+                unsigned hc = std::thread::hardware_concurrency();
+                cfg.maxParallelProcesses = hc == 0 ? 1u : hc;
+            } else {
+                cfg.maxParallelProcesses = static_cast<uint32_t>(std::min<int64_t>(v, UINT32_MAX));
+            }
+        }
+    }
+    if (const llvm::json::Value *qv = root.get(JSON_MAX_PENDING_AST_RESULTS)) {
+        if (auto q = qv->getAsInteger()) {
+            cfg.maxPendingAstResults = static_cast<uint32_t>(std::max<int64_t>(0, *q));
+        }
+    }
+    return true;
+}
+
+static bool BuildFileTasks(const WorklistConfig &cfg, std::vector<FileTask> &tasks)
+{
+    tasks.clear();
+    tasks.reserve(cfg.filesArr->size());
+    uint32_t idx = 0;
+    for (const llvm::json::Value &fv : *cfg.filesArr) {
+        auto fopt = fv.getAsString();
+        if (!fopt || fopt->empty()) {
+            LogManifestError("\"files\" entries must be non-empty strings");
+            return false;
+        }
+        std::string sourceFile = fopt->str();
+        std::string ccForFile = cfg.defaultCcJson;
+        if (cfg.ccJsonArr && idx < cfg.ccJsonArr->size()) {
+            if (auto cs = (*cfg.ccJsonArr)[idx].getAsString(); cs && !cs->empty()) {
+                ccForFile = cs->str();
+            }
+        }
+        FileTask task;
+        task.fileIndex = idx;
+        task.sourceFile = std::move(sourceFile);
+        task.ccForFile = std::move(ccForFile);
+        tasks.push_back(std::move(task));
+        ++idx;
+    }
+    return true;
+}
+
+static void RunAstWorkerBody(ParallelAstRunContext &ctx)
+{
+    while (!ctx.stopRequested.load()) {
+        uint32_t i = ctx.nextTaskIndex.fetch_add(1, std::memory_order_relaxed);
+        if (i >= ctx.tasks.size()) {
+            break;
+        }
+        const FileTask &task = ctx.tasks[i];
+        std::string payload;
+        long rssBeforeParse = GetCurrentRssKb();
+        int rc = ParseSingleFileAst(task.sourceFile, task.ccForFile, ctx.includeDirs, &payload);
+        long rssAfterParse = GetCurrentRssKb();
+        LogParseStep("worker-after-parse", task.sourceFile, rssBeforeParse, rssAfterParse);
+        {
+            std::unique_lock<std::mutex> lock(ctx.queueMutex);
+            uint32_t qBeforeWait = static_cast<uint32_t>(ctx.queue.size());
+            uint32_t activeBefore = ctx.activeWorkers.load(std::memory_order_relaxed);
+            LogAstMemStats("worker-about-to-wait-full", qBeforeWait, activeBefore, i + 1,
+                           static_cast<uint32_t>(ctx.tasks.size()));
+            ctx.queueCv.wait(lock, [&]() {
+                return ctx.stopRequested.load() || ctx.queue.size() < ctx.maxPendingInQueue;
+            });
+            LogAstMemStats("worker-woke-from-wait", static_cast<uint32_t>(ctx.queue.size()),
+                           ctx.activeWorkers.load(std::memory_order_relaxed), i + 1,
+                           static_cast<uint32_t>(ctx.tasks.size()));
+            if (ctx.stopRequested.load()) {
+                break;
+            }
+            ctx.queue.push_back(
+                FileAstItem{task.fileIndex, static_cast<uint32_t>(rc), std::move(payload)});
+            LogAstMemStats("worker-pushed", static_cast<uint32_t>(ctx.queue.size()),
+                           ctx.activeWorkers.load(std::memory_order_relaxed),
+                           i + 1, static_cast<uint32_t>(ctx.tasks.size()));
+        }
+        ctx.queueCv.notify_one();
+    }
+    uint32_t remaining = ctx.activeWorkers.fetch_sub(1, std::memory_order_acq_rel) - 1;
+    LogAstMemStats("worker-exit", static_cast<uint32_t>(ctx.queue.size()), remaining,
+                   static_cast<uint32_t>(ctx.tasks.size()) - ctx.nextTaskIndex.load(std::memory_order_relaxed),
+                   static_cast<uint32_t>(ctx.tasks.size()));
+    ctx.queueCv.notify_all();
+}
+
+static bool DrainAstQueueWithCallback(ParallelAstRunContext &ctx, const CallbackContext &cb)
+{
+    bool callbackFailed = false;
+    while (ctx.activeWorkers.load(std::memory_order_acquire) != 0 || !ctx.queue.empty()) {
+        std::unique_lock<std::mutex> lock(ctx.queueMutex);
+        uint32_t qBeforeDrainWait = static_cast<uint32_t>(ctx.queue.size());
+        uint32_t activeBefore = ctx.activeWorkers.load(std::memory_order_acquire);
+        LogAstMemStats("drain-about-to-wait", qBeforeDrainWait, activeBefore, qBeforeDrainWait,
+                       static_cast<uint32_t>(ctx.tasks.size()));
+        ctx.queueCv.wait(lock, [&]() {
+            return !ctx.queue.empty() || ctx.activeWorkers.load(std::memory_order_acquire) == 0;
+        });
+        LogAstMemStats("drain-woke-from-wait", static_cast<uint32_t>(ctx.queue.size()),
+                       ctx.activeWorkers.load(std::memory_order_acquire), static_cast<uint32_t>(ctx.queue.size()),
+                       static_cast<uint32_t>(ctx.tasks.size()));
+        while (!ctx.queue.empty()) {
+            FileAstItem rec = std::move(ctx.queue.front());
+            ctx.queue.pop_front();
+            uint32_t qNow = static_cast<uint32_t>(ctx.queue.size());
+            lock.unlock();
+            LogAstMemStats("drain-popped", qNow, ctx.activeWorkers.load(std::memory_order_relaxed),
+                           rec.fileIndex + 1, static_cast<uint32_t>(ctx.tasks.size()));
+            const bool keepGoing =
+                cb.callback(cb.userData, rec.fileIndex, rec.taskRc, rec.payload.data(),
+                            rec.payload.size());
+            if (!keepGoing) {
+                ctx.stopRequested.store(true);
+                LogAstMemStats("stop-requested-by-cb", qNow, ctx.activeWorkers.load(std::memory_order_relaxed),
+                               rec.fileIndex + 1, static_cast<uint32_t>(ctx.tasks.size()));
+                callbackFailed = true;
+            }
+            LogAstMemStats("drain-after-cb", qNow, ctx.activeWorkers.load(std::memory_order_relaxed),
+                           rec.fileIndex + 1, static_cast<uint32_t>(ctx.tasks.size()));
+            lock.lock();
+            // 关键修复：drain 消费后必须唤醒可能在等“队列有空间”的 worker
+            ctx.queueCv.notify_one();
+        }
+    }
+    return callbackFailed;
+}
+
+static int RunTasksWithCallback(const std::vector<FileTask> &tasks,
+                                const std::vector<std::string> &includeDirs,
+                                uint32_t maxParallelProcesses, uint32_t maxPendingAstResults,
+                                const CallbackContext &cb)
+{
+    if (cb.callback == nullptr) {
+        LogManifestError("callback is null");
+        return EXIT_FAIL;
+    }
+    if (tasks.empty()) {
+        return EXIT_OK;
+    }
+
+    const uint32_t workerCount =
+        std::min(maxParallelProcesses, static_cast<uint32_t>(tasks.size()));
+    const uint32_t effectiveWorkers = std::max(1u, workerCount);
+    const uint32_t maxQueueSize =
+        maxPendingAstResults > 0 ? maxPendingAstResults : std::max(1u, effectiveWorkers * 2u);
+
+    LogAstMemStats("batch-start", 0, effectiveWorkers, 0, static_cast<uint32_t>(tasks.size()));
+    ParallelAstRunContext runCtx(tasks, includeDirs, maxQueueSize, effectiveWorkers);
+    std::vector<std::thread> workers;
+    workers.reserve(effectiveWorkers);
+    for (uint32_t w = 0; w < effectiveWorkers; ++w) {
+        workers.emplace_back([&runCtx]() { RunAstWorkerBody(runCtx); });
+    }
+
+    const bool callbackFailed = DrainAstQueueWithCallback(runCtx, cb);
+
+    for (auto &t : workers) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+    return callbackFailed ? EXIT_FAIL : EXIT_OK;
+}
+
+static int RunWorklistWithManifest(const llvm::json::Object &root, AstManifestCallback callback,
+                                   void *callbackUserData)
+{
+    WorklistConfig worklist;
+    if (!ReadWorklistConfig(root, worklist)) {
+        return EXIT_FAIL;
+    }
+    std::vector<FileTask> tasks;
+    if (!BuildFileTasks(worklist, tasks)) {
+        return EXIT_FAIL;
+    }
+    CallbackContext cbCtx{callback, callbackUserData};
+    return RunTasksWithCallback(tasks, worklist.includeDirs, worklist.maxParallelProcesses,
+                                worklist.maxPendingAstResults, cbCtx);
+}
+
+static std::optional<llvm::json::Object> ParseManifest(llvm::StringRef manifest)
+{
+    if (manifest.empty()) {
+        LogManifestError("empty manifest");
+        return std::nullopt;
+    }
+    llvm::Expected<llvm::json::Value> parsed = llvm::json::parse(manifest);
+    if (!parsed) {
+        llvm::consumeError(parsed.takeError());
+        LogManifestError("manifest JSON parse error");
+        return std::nullopt;
+    }
+    llvm::json::Object *obj = parsed->getAsObject();
+    if (!obj) {
+        LogManifestError("manifest must be a JSON object");
+        return std::nullopt;
+    }
+    return std::move(*obj);
+}
+
+extern "C" int ParseCppAstWithManifest(const char *manifest, size_t manifestLength,
+                                       AstManifestCallback callback, void *callbackUserData)
+{
+    const llvm::StringRef slice(manifest == nullptr ? "" : manifest,
+                                manifest == nullptr ? 0 : manifestLength);
+    std::optional<llvm::json::Object> obj = ParseManifest(slice);
+    if (!obj) {
+        return EXIT_FAIL;
+    }
+    return RunWorklistWithManifest(*obj, callback, callbackUserData);
+}
 
 int RunAstJsonDump(int argc, const char **argv)
 {

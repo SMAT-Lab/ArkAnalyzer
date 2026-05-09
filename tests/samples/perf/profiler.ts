@@ -700,7 +700,7 @@ export async function profileArkAnalyzer(
 
     const scene = new Scene();
     const stage2 = await runProfiledStage('buildScene', () => {
-        scene.buildSceneFromFiles(sceneConfig);
+        scene.buildSceneFromProjectDir(sceneConfig);
     }, hooks);
     stages.push(stage2.metrics);
 
