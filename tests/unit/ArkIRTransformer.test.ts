@@ -63,6 +63,13 @@ import {
     INCREMENT_EXPECT_IR,
 } from '../resources/arkIRTransformer/expression/ExpressionExpectIR';
 import {
+    THROW_STATIC_INVOKE_EXPECT_IR,
+    THROW_NEW_EXPRESSION_EXPECT_IR,
+    THROW_FIELD_REF_EXPECT_IR,
+    THROW_SIMPLE_VALUE_EXPECT_IR,
+    THROW_NESTED_CALL_EXPECT_IR,
+} from '../resources/arkIRTransformer/statement/ThrowStatementExpectIR';
+import {
     CompoundAssignment_Expect_IR,
     Declaration_Expect_IR,
     Destructuring_Expect_IR,
@@ -475,6 +482,30 @@ describe('expression Test', () => {
 
     it('test increment expression', async () => {
         testMethodIR(scene, 'IncrementExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'incrementExpression', INCREMENT_EXPECT_IR);
+    });
+});
+
+describe('statement Test', () => {
+    const scene = buildScene(path.join(BASE_DIR, 'statement'));
+
+    it('test throw staticinvoke expression', async () => {
+        testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwError', THROW_STATIC_INVOKE_EXPECT_IR);
+    });
+
+    it('test throw new expression', async () => {
+        testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwErrorInstance', THROW_NEW_EXPRESSION_EXPECT_IR);
+    });
+
+    it('test throw field access expression', async () => {
+        testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwComplexExpression', THROW_FIELD_REF_EXPECT_IR);
+    });
+
+    it('test throw simple value', async () => {
+        testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwSimpleValue', THROW_SIMPLE_VALUE_EXPECT_IR);
+    });
+
+    it('test throw nested function call', async () => {
+        testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwNestedCall', THROW_NESTED_CALL_EXPECT_IR);
     });
 });
 

@@ -13,3 +13,12 @@
  * limitations under the License.
  */
 
+export class TestClass {
+    private static foo(): void {
+        throw TestClass.getError();
+    }
+
+    private static getError(): Error {
+        return new Error(`error`);
+    }
+}
