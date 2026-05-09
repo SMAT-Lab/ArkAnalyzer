@@ -1,5 +1,8 @@
 # 方舟分析器：面向ArkTS语言的静态程序分析框架
 
+## 什么是 ArkAnalyzer？
+ArkAnalyzer 是针对基于 ArkTS 语言开发的鸿蒙原生应用的静态代码分析框架，支持 ArkTS、TypeScript、JavaScript、C/C++ 作为输入，通过将它们转换为统一的三地址码（ArkAnalyzer-IR, ArkIR）中间表示，构建 Scene 数据结构对代码结构进行抽象，并进行 Scene 实现一系列静态分析。
+
 ## ArkAnalyzer 环境配置
 1. 从 [Download Visual Studio Code](https://code.visualstudio.com/download) 下载 VS Code 并安装，或安装其他 IDE。
 2. 从 [Download Node.js](https://nodejs.org/en/download/current) 下载 Node.js 并安装（自带 npm）。
@@ -88,17 +91,30 @@ npx arkanalyzer ir ./myapp -f json -o ./out
 ## ArkAnalyzer 文档
 
 1. ArkAnalyzer 快速入门文档，请参考：[链接](docs/QuickStart.md)。
-2. ArkAnalyzer API文档，请参考：[链接](docs/api_docs/globals.md)。
-3. 程序分析 SIG 说明：[简体中文](docs/sig_programanalysis.md) · [English](docs/sig_programanalysis.en.md)。
+2. 完整使用说明请参考：[ArkAnalyzer 使用文档](docs/README.md)
+3. ArkAnalyzer API文档，请参考：[链接](docs/api_docs/globals.md)。
+4. 程序分析 SIG 说明：[简体中文](docs/sig_programanalysis.md) · [English](docs/sig_programanalysis.en.md)。
 
-## ArkAnalyzer 代码上库
-遵守openharmony-sig代码上库规范, 操作方法请参考：[链接](docs/HowToCreatePR.md#中文)
 
-## ArkAnalyzer 调试
-将调试配置文件`.vscode/launch.json`中`args`参数数组修改为想要调试的文件路径，然后启动调试。
+## 支持的使用场景（分语言）
 
-## 添加自验证测试用例
-新增测试代码统一放至`tests`目录下，对应的样例代码和其他资源文件统一放至`tests\resources`,按测试场景创建不同文件夹。
+ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中间表示），下游分析（[CallGraph](docs/analysis/CallGraph.md)、[Def-Use Chain](docs/analysis/Def-Use%20Chain.md)、[IFDS](docs/analysis/IFDS.md)、[ViewTree](docs/analysis/ViewTree.md) 等）对所有语言透明可用。各语言成熟度差异主要在 **前端解析覆盖度** 与 **类型推导精度**，详见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。
+
+| 语言 | `Language` 枚举值 | IR 转换 | 类型推导 | 调用图 (CHA / RTA) | Def-Use / IFDS | ViewTree | 备注 |
+|------|------------------|---------|---------|--------------------|----------------|----------|------|
+| ArkTS 1.1 / 1.2 | `ARKTS1_1` / `ARKTS1_2` | ✅ 完整 | ✅ 完整（含装饰器） | ✅ | ✅ | ✅ | HarmonyOS 主语言；唯一支持 ArkUI 视图树的语言 |
+| TypeScript | `TYPESCRIPT` | ✅ 完整 | ✅ 完整 | ✅ | ✅ | — | 通用 TS 工程；含命名空间、泛型、装饰器、`type`/`interface` 等全部 TS 4.x 语法 |
+| JavaScript | `JAVASCRIPT` | ✅ 基础 | ⚠ 受限（缺类型注解时退化为 `UnknownType`） | ✅ | ✅ | — | 适合用于动态调用关系勾画；精确分析建议先用 TS 注解 |
+| C / C++ | `CXX` | ✅（cppFrontend） | ⚠ 部分 | ✅ | ✅ | — | 依赖 `cppAstPath` / `ccjsonPath`；含 `VIRTUAL`、`INLINE`、`CONSTEXPR`、`MUTABLE` 等修饰符；用于鸿蒙 native 模块 |
+| ABC（ArkCompiler bytecode） | `ABC` | ⚠ 实验 | — | — | — | — | 直接读取编译产物，主要用于 IR 验证 |
+
+**典型场景**：
+
+- **HarmonyOS / ArkTS 应用**：ArkUI 视图树分析（[ViewTree](docs/analysis/ViewTree.md)）+ 状态依赖追踪 + `@State` 副作用检查；多 module 工程通过 [`Scene.buildScene4HarmonyProject()`](docs/components/Scene.md#51-构建-scene) 自动识别。
+- **TS / JS 库或服务端项目**：[CallGraph](docs/analysis/CallGraph.md)（CHA / RTA）+ [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [IFDS](docs/analysis/IFDS.md)（taint / 未初始化变量 / 除零等定制 checker）。
+- **TS / ArkTS 与 C/C++ 混合工程**：通过 `ArkClass.getTs2cxxFuncMap()` 把 TS 侧 `napi_*` 调用与 C/C++ 实现关联，做跨语言可达性分析。
+
+更细粒度的语言能力矩阵与 IR 差异说明请参见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。
 
 ## UT 日志开关
 Vitest 单测默认静默运行，不输出详细 UT 日志。
@@ -109,5 +125,11 @@ Vitest 单测默认静默运行，不输出详细 UT 日志。
 V=1 npx vitest run
 ```
 
-## ArkAnalyzer Issues
-请参考[连接](docs/HowToHandleIssues.md)提交Issues。
+## 参与贡献
+
+如在使用过程中遇到问题，可参考 [Issue 提交指南](docs/contributing/HowToHandleIssues.md) 提交Issues
+欢迎参与项目共建，提交 PR 请遵循 openharmony-sig 代码仓规范，具体流程请参考：[PR 提交流程说明](docs/contributing/HowToCreatePR.md#中文) 提交 PR
+
+## 版本演进
+项目版本演进及历史变更记录请参考：[CHANGELOG](CHANGELOG.md)
+
