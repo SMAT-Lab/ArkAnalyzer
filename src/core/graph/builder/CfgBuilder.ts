@@ -34,6 +34,7 @@ import { TrapBuilder } from './TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../model/ArkBaseModel';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+import { cloneText } from '../../common/StringUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CfgBuilder');
 
@@ -317,7 +318,7 @@ export class CfgBuilder {
         this.judgeLastType(ifstm, lastStatement);
         let ifexit: StatementBuilder = new StatementBuilder('ifExit', '', c, scopeID);
         this.exits.push(ifexit);
-        ifstm.condition = c.expression.getText(this.sourceFile);
+        ifstm.condition = cloneText(c.expression.getText(this.sourceFile));
         ifstm.code = 'if (' + ifstm.condition + ')';
         if (ts.isBlock(c.thenStatement)) {
             this.walkAST(ifstm, ifexit, [...c.thenStatement.statements]);
@@ -351,7 +352,7 @@ export class CfgBuilder {
         this.exits.push(loopExit);
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
-        loopstm.condition = c.expression.getText(this.sourceFile);
+        loopstm.condition = cloneText(c.expression.getText(this.sourceFile));
         loopstm.code = 'while (' + loopstm.condition + ')';
         if (ts.isBlock(c.statement)) {
             this.walkAST(loopstm, loopstm, [...c.statement.statements]);
@@ -382,11 +383,11 @@ export class CfgBuilder {
         loopstm.code = 'for (';
         if (ts.isForStatement(c)) {
             loopstm.code +=
-                c.initializer?.getText(this.sourceFile) + '; ' + c.condition?.getText(this.sourceFile) + '; ' + c.incrementor?.getText(this.sourceFile);
+                cloneText(c.initializer?.getText(this.sourceFile) ?? '') + '; ' + cloneText(c.condition?.getText(this.sourceFile) ?? '') + '; ' + cloneText(c.incrementor?.getText(this.sourceFile) ?? '');
         } else if (ts.isForOfStatement(c)) {
-            loopstm.code += c.initializer?.getText(this.sourceFile) + ' of ' + c.expression.getText(this.sourceFile);
+            loopstm.code += cloneText(c.initializer?.getText(this.sourceFile) ?? '') + ' of ' + cloneText(c.expression.getText(this.sourceFile));
         } else {
-            loopstm.code += c.initializer?.getText(this.sourceFile) + ' in ' + c.expression.getText(this.sourceFile);
+            loopstm.code += cloneText(c.initializer?.getText(this.sourceFile) ?? '') + ' in ' + cloneText(c.expression.getText(this.sourceFile));
         }
         loopstm.code += ')';
         if (ts.isBlock(c.statement)) {
@@ -414,7 +415,7 @@ export class CfgBuilder {
         this.exits.push(loopExit);
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
-        loopstm.condition = c.expression.getText(this.sourceFile);
+        loopstm.condition = cloneText(c.expression.getText(this.sourceFile));
         loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
         loopstm.hasDoWhileBody = false;
@@ -455,7 +456,7 @@ export class CfgBuilder {
             const clause = c.caseBlock.clauses[i];
             let casestm: StatementBuilder;
             if (ts.isCaseClause(clause)) {
-                casestm = new StatementBuilder('statement', 'case ' + clause.expression.getText(this.sourceFile) + ':', clause, scopeID);
+                casestm = new StatementBuilder('statement', 'case ' + cloneText(clause.expression.getText(this.sourceFile)) + ':', clause, scopeID);
             } else {
                 casestm = new StatementBuilder('statement', 'default:', clause, scopeID);
             }
@@ -502,7 +503,7 @@ export class CfgBuilder {
         if (c.catchClause) {
             let text = 'catch';
             if (c.catchClause.variableDeclaration) {
-                text += '(' + c.catchClause.variableDeclaration.getText(this.sourceFile) + ')';
+                text += '(' + cloneText(c.catchClause.variableDeclaration.getText(this.sourceFile)) + ')';
             }
             let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, c, scopeID);
             let catchExit = new StatementBuilder('catch exit', '', c, scopeID);
@@ -518,7 +519,7 @@ export class CfgBuilder {
             trystm.catchStatement = catchStatement;
             catchStatement.lasts.add(trystm);
             if (c.catchClause.variableDeclaration) {
-                trystm.catchError = c.catchClause.variableDeclaration.getText(this.sourceFile);
+                trystm.catchError = cloneText(c.catchClause.variableDeclaration.getText(this.sourceFile));
             } else {
                 trystm.catchError = 'Error';
             }
@@ -550,19 +551,19 @@ export class CfgBuilder {
         for (let i = 0; i < nodes.length; i++) {
             let c = nodes[i];
             if (ts.isVariableStatement(c) || ts.isExpressionStatement(c) || ts.isThrowStatement(c) || ts.isTypeAliasDeclaration(c) || ts.isParameter(c)) {
-                let s = new StatementBuilder('statement', c.getText(this.sourceFile), c, scope.id);
+                let s = new StatementBuilder('statement', cloneText(c.getText(this.sourceFile)), c, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
             } else if (!this.declaringMethod.isDefaultArkMethod() && ts.isFunctionDeclaration(c)) {
-                let s = new StatementBuilder('functionDeclarationStatement', c.getText(this.sourceFile), c, scope.id);
+                let s = new StatementBuilder('functionDeclarationStatement', cloneText(c.getText(this.sourceFile)), c, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
             } else if (!this.declaringMethod.isDefaultArkMethod() && ts.isClassDeclaration(c)) {
-                let s = new StatementBuilder('classDeclarationStatement', c.getText(this.sourceFile), c, scope.id);
+                let s = new StatementBuilder('classDeclarationStatement', cloneText(c.getText(this.sourceFile)), c, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
             } else if (ts.isReturnStatement(c)) {
-                let s = new StatementBuilder('returnStatement', c.getText(this.sourceFile), c, scope.id);
+                let s = new StatementBuilder('returnStatement', cloneText(c.getText(this.sourceFile)), c, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
@@ -594,7 +595,7 @@ export class CfgBuilder {
                 lastStatement = this.ASTNodeTryStatement(c, lastStatement, scope.id);
             } else if (ts.isExportAssignment(c)) {
                 if (ts.isNewExpression(c.expression) || ts.isObjectLiteralExpression(c.expression)) {
-                    let s = new StatementBuilder('statement', c.getText(this.sourceFile), c, scope.id);
+                    let s = new StatementBuilder('statement', cloneText(c.getText(this.sourceFile)), c, scope.id);
                     this.judgeLastType(s, lastStatement);
                     lastStatement = s;
                 }
@@ -978,7 +979,7 @@ export class CfgBuilder {
     }
 
     buildStatementBuilder4ArrowFunction(stmt: ts.Node): void {
-        let s = new StatementBuilder('statement', stmt.getText(this.sourceFile), stmt, 0);
+        let s = new StatementBuilder('statement', cloneText(stmt.getText(this.sourceFile)), stmt, 0);
         this.entry.next = s;
         s.lasts = new Set([this.entry]);
         s.next = this.exit;
@@ -1049,7 +1050,7 @@ export class CfgBuilder {
     private handleBuilder(stmts: ts.Node[]): void {
         let lastStmt = this.entry;
         for (const stmt of stmts) {
-            const stmtBuilder = new StatementBuilder('statement', stmt.getText(this.sourceFile), stmt, 0);
+            const stmtBuilder = new StatementBuilder('statement', cloneText(stmt.getText(this.sourceFile)), stmt, 0);
             lastStmt.next = stmtBuilder;
             stmtBuilder.lasts.add(lastStmt);
             lastStmt = stmtBuilder;

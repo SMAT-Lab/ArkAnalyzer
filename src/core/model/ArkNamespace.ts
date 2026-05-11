@@ -24,12 +24,13 @@ import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { NAME_DELIMITER } from '../common/Const';
 import { SdkUtils } from '../common/SdkUtils';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 /**
  * @category core/model
  */
 export class ArkNamespace extends ArkBaseModel implements ArkExport {
-    private sourceCodes: string[] = [''];
+    private sourceCodes?: string[];
     /** The full positions of this namespace (can have multiple positions for merged namespaces). */
     private originFullPositions!: FullPosition[];
 
@@ -104,30 +105,50 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getCode(): string {
-        return this.sourceCodes[0];
+        const codes = this.getCodes();
+        return codes.length > 0 ? codes[0] : '';
     }
 
-    public setCode(sourceCode: string): void {
-        this.sourceCodes[0] = sourceCode;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCode - The source code (ignored).
+     */
+    public setCode(_sourceCode: string): void {
+        
     }
 
-    /*
-     * Get multiple sourceCodes when the arkNamespace is merged from multiple namespace with the same name
+    /**
+     * Returns the source texts of this namespace extracted from the declaring ArkFile
+     * using the namespace's origin positions. Implements lazy loading with caching.
+     * A namespace may have multiple source segments (for merged namespaces).
+     * @returns An array of source texts extracted from each origin position.
      */
     public getCodes(): string[] {
-        return this.sourceCodes;
+        if (this.sourceCodes !== undefined) {
+            return this.sourceCodes;
+        }
+        const fileCode = this.getDeclaringArkFile().getCode();
+        const codes = this.originFullPositions
+            .map(position => extractSourceTextByFullPosition(fileCode, position))
+            .filter((code): code is string => code !== undefined);
+        this.sourceCodes = codes;
+        return codes;
     }
 
-    /*
-     * Set multiple sourceCodes when the arkNamespace is merged from multiple namespace with the same name
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCodes - The source codes array (ignored).
      */
-    public setCodes(sourceCodes: string[]): void {
-        this.sourceCodes = [];
-        this.sourceCodes.push(...sourceCodes);
+    public setCodes(_sourceCodes: string[]): void {
+        
     }
 
-    public addCode(sourceCode: string): void {
-        this.sourceCodes.push(sourceCode);
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCode - The source code (ignored).
+     */
+    public addCode(_sourceCode: string): void {
+        
     }
 
     /**

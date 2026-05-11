@@ -23,12 +23,10 @@ import { buildExportInfo } from '../../../../core/model/builder/ArkExportBuilder
 
 export function buildGenericImportInfo(includeInfo: CxxIncludeInfo, includeNode: CxxAstNode, sourceFile: CxxAstNode, arkFile: ArkFile): ImportInfo {
     const originFullPosition = FullPosition.cxxBuildFromNode(includeNode, sourceFile);
-    const tsSourceCode = includeInfo.code;
     const importFrom: string = normalize(includeInfo.fileName ?? includeInfo.includeName ?? '');
     let importClauseName = `#include "${includeInfo.includeName}"`;
     let importInfo = new ImportInfo();
     importInfo.build(importClauseName, ImportType.NONE_IMPORT, importFrom, originFullPosition, 0);
-    importInfo.setTsSourceCode(tsSourceCode);
     IRUtils.setComments(importInfo, includeNode, sourceFile, arkFile.getScene().getOptions());
     return importInfo;
 }
@@ -39,11 +37,9 @@ export function buildUsingNamespaceImportInfo(node: CxxAstNode, sourceFile: CxxA
         return null;
     }
     const importClauseName = node.nominatedNamespace.name;
-    const sourceCode = `using namespace ${importClauseName}`;
     const importFrom: string = '';
     let importInfo = new ImportInfo();
     importInfo.build(importClauseName, ImportType.NAMESPACE_IMPORT, importFrom, originFullPosition, 0);
-    importInfo.setTsSourceCode(sourceCode);
     IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
     // scenario in cpp file: namespace xxx { Func() {} }; using namespace xxx;
     const namespaceInCpp = arkFile.getNamespaceWithName(importClauseName);

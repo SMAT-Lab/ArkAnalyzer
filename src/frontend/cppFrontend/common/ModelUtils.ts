@@ -201,7 +201,6 @@ function processIncludeRef(fromInfo: ImportInfo, headerFile: ArkFile): ExportInf
         .build();
     // 2.Add the exportInfo of the header file to the importInfoMaps of the current file, and set lazyImportInfo
     const declFile = fromInfo.getDeclaringArkFile();
-    let includeClauseName = fromInfo.getImportClauseName();
     for (const exportInfo of headerFile.getExportInfos()) {
         let headerRealIm = new ImportInfo();
         // if there is "using namespace xxx" in declFile or the indirectly referenced file, we should keep the original import type
@@ -213,8 +212,7 @@ function processIncludeRef(fromInfo: ImportInfo, headerFile: ArkFile): ExportInf
         } else {
             importTypeTag = ImportType.NAMED_IMPORTS_IMPORT;
         }
-headerRealIm.build(curClauseName, importTypeTag, headerFile.getFilePath(), exportInfo.getOriginFullPosition(), 0);
-        headerRealIm.setTsSourceCode(includeClauseName);
+        headerRealIm.build(curClauseName, importTypeTag, headerFile.getFilePath(), exportInfo.getOriginFullPosition(), 0);
         headerRealIm.setDeclaringArkFile(declFile);
         if (shouldAddCxxHeaderImport(headerRealIm)) {
             declFile.addImportInfo(headerRealIm);

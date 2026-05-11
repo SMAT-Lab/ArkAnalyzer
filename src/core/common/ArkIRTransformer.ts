@@ -44,6 +44,7 @@ import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
 import { CONSTRUCTOR_NAME, DEFAULT, PROMISE } from './TSConst';
 import { buildGenericType, buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
+import { cloneText } from './StringUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
 import { ImportInfo, ImportType } from '../model/ArkImport';
 import { AbstractTypeExpr } from '../base/TypeExpr';
@@ -199,7 +200,7 @@ export class ArkIRTransformer {
         let stmts: Stmt[] = [];
         let fieldName: string;
         if (ts.isIdentifier(paramNode.name)) {
-            fieldName = paramNode.name.text;
+            fieldName = cloneText(paramNode.name.text);
         } else if (ts.isObjectBindingPattern(paramNode.name)) {
             // TODO
             return stmts;
@@ -256,7 +257,7 @@ export class ArkIRTransformer {
 
         let paramName: string;
         if (ts.isIdentifier(paramNode.name)) {
-            paramName = paramNode.name.text;
+            paramName = cloneText(paramNode.name.text);
         } else if (ts.isObjectBindingPattern(paramNode.name)) {
             // TODO
             return stmts;
@@ -408,7 +409,7 @@ export class ArkIRTransformer {
     }
 
     private typeAliasDeclarationToStmts(typeAliasDeclaration: ts.TypeAliasDeclaration): Stmt[] {
-        const aliasName = typeAliasDeclaration.name.text;
+        const aliasName = cloneText(typeAliasDeclaration.name.text);
         const rightOp = typeAliasDeclaration.type;
         let rightType = this.arkValueTransformer.resolveTypeNode(rightOp);
         if (rightType instanceof AbstractTypeExpr) {
@@ -453,7 +454,7 @@ export class ArkIRTransformer {
         if (ts.isImportTypeNode(rightOp)) {
             expr = this.resolveImportTypeNode(rightOp);
         } else if (ts.isTypeQueryNode(rightOp)) {
-            const localName = rightOp.exprName.getText(this.sourceFile);
+            const localName = cloneText(rightOp.exprName.getText(this.sourceFile));
             const originalLocal = Array.from(this.arkValueTransformer.getLocals()).find(local => local.getName() === localName);
             if (originalLocal === undefined || rightType instanceof UnclearReferenceType) {
                 expr = new AliasTypeExpr(new Local(localName, rightType), true);
@@ -495,13 +496,13 @@ export class ArkIRTransformer {
 
         if (ts.isLiteralTypeNode(importTypeNode.argument)) {
             if (ts.isStringLiteral(importTypeNode.argument.literal)) {
-                importFrom = importTypeNode.argument.literal.text;
+                importFrom = cloneText(importTypeNode.argument.literal.text);
             }
         }
 
         const importQualifier = importTypeNode.qualifier;
         if (importQualifier !== undefined) {
-            importClauseName = importQualifier.getText(this.sourceFile);
+            importClauseName = cloneText(importQualifier.getText(this.sourceFile));
         }
 
         let importInfo = new ImportInfo();
@@ -805,7 +806,6 @@ export class ArkIRTransformer {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
                 stmt.setOriginFullPosition(FullPosition.buildFromNode(node, this.sourceFile));
-                stmt.setOriginalText(node.getText(this.sourceFile));
             }
         }
     }

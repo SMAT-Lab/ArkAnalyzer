@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import fs from 'fs';
 import { ModuleScene, Scene } from '../../Scene';
 import { ArkExport, ExportInfo } from './ArkExport';
 import { ImportInfo } from './ArkImport';
@@ -23,6 +24,9 @@ import { ALL } from '../common/TSConst';
 import { NAME_DELIMITER } from '../common/Const';
 import { ts } from '../../index';
 import { SdkUtils } from '../common/SdkUtils';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFile');
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -60,7 +64,8 @@ export class ArkFile {
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
-    private code: string = '';
+    /** Cached source text of this file, lazily loaded from the file system. */
+    private sourceCode?: string;
 
     private defaultClass!: ArkClass;
 
@@ -156,15 +161,33 @@ export class ArkFile {
     }
 
     public setCode(code: string): void {
-        this.code = code;
+        this.sourceCode = code;
     }
 
     /**
      * Returns the codes of file as a **string.**
-     * @returns the codes of file.
+     * Implements lazy loading: if `sourceCode` is not cached, reads from the file system and caches it.
+     * @returns the codes of file, or undefined if the file cannot be read.
      */
     public getCode(): string {
-        return this.code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        try {
+            const sourceText = fs.readFileSync(this.absoluteFilePath, 'utf8');
+            this.sourceCode = sourceText;
+            return this.sourceCode;
+        } catch (error) {
+            logger.warn(`Failed to read file for lazy loading source text: ${error}`);
+            return '';
+        }
+    }
+
+    /**
+     * Clears the cached source text, forcing re-read from file system on next getCode call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public addArkClass(arkClass: ArkClass, originName?: string): void {

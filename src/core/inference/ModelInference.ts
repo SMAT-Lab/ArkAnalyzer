@@ -377,7 +377,10 @@ export class StmtInference extends ArkModelInference {
             }
             invokeExpr.setArgs([stmt.getRightOp()]);
             const invokeStmt = new ArkInvokeStmt(invokeExpr);
-            invokeStmt.setOriginalText(stmt.getOriginalText() ?? '');
+            const originFullPosition = stmt.getOriginFullPosition();
+            if (originFullPosition) {
+                invokeStmt.setOriginFullPosition(originFullPosition);
+            }
             invokeStmt.setOperandOriginalPositions(stmt.getOperandOriginalPositions() ?? []);
             invokeStmt.setCfg(stmt.getCfg());
             if (stmt.getOriginFullPosition()) {

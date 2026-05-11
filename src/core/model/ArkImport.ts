@@ -20,6 +20,7 @@ import { findExportInfo } from '../common/ModelUtils';
 import { findExportInfo as findCxxExportInfo } from '../../frontend/cppFrontend/common/ModelUtils';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 /**
  * Shift amount for import type encoding in ImportInfo tags field.
@@ -68,7 +69,7 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
     /** The full position of the specific import item within the import statement.
      *  Undefined when this import info has no item (e.g., namespace import). */
     private itemOriginFullPosition?: FullPosition;
-    private tsSourceCode?: string;
+    private sourceCode?: string;
     private lazyExportInfo?: ExportInfo | null;
 
     constructor() {
@@ -297,12 +298,35 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
         return this.itemOriginFullPosition;
     }
 
-    public setTsSourceCode(tsSourceCode: string): void {
-        this.tsSourceCode = tsSourceCode;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _tsSourceCode - The source code (ignored).
+     */
+    public setTsSourceCode(_tsSourceCode: string): void {
     }
 
+    /**
+     * Returns the source text of the import extracted from the declaring ArkFile
+     * using the import's origin position. Implements lazy loading with caching.
+     * @returns The source text of the import, or empty string if unavailable.
+     */
     public getTsSourceCode(): string {
-        return this.tsSourceCode ?? '';
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+            return code;
+        }
+        return '';
+    }
+
+    /**
+     * Clears the cached source text, forcing re-extraction on next getTsSourceCode call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public getFrom(): string | undefined {

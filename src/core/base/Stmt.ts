@@ -19,6 +19,7 @@ import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } fro
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
 import { Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
 import { IRUtils } from '../common/IRUtils';
@@ -32,6 +33,7 @@ import { AbstractTypeExpr } from './TypeExpr';
 export abstract class Stmt {
     protected text?: string; // just for debug
     protected originalText?: string;
+    protected sourceCode?: string;
     /** The full position (start/end line/col) of this statement in the source file.
      *  Undefined when this statement is automatically generated during IR construction. */
     protected originFullPosition?: FullPosition;
@@ -312,12 +314,39 @@ export abstract class Stmt {
         this.text = text;
     }
 
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param originalText - The source text (ignored).
+     */
     public setOriginalText(originalText: string): void {
-        this.originalText = originalText;
+        
+    }
+    /**
+     * Returns the source text of this statement extracted from the declaring ArkFile
+     * using the statement's origin position. Implements lazy loading with caching.
+     * @returns The source text, or undefined if the statement was automatically generated
+     *          during IR construction or if the extraction fails.
+     */
+    public getOriginalText(): string | undefined {
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        if (!this.originFullPosition) {
+            return undefined;
+        }
+        const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
+        const code = extractSourceTextByFullPosition(arkFile?.getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+        }
+        return code;
     }
 
-    public getOriginalText(): string | undefined {
-        return this.originalText;
+    /**
+     * Clears the cached source text, forcing re-extraction on next getOriginalText call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public setOperandOriginalPositions(operandOriginalPositions: FullPosition[]): void {

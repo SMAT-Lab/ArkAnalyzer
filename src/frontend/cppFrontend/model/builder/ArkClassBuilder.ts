@@ -53,7 +53,6 @@ export function buildNormalArkClassFromArkMethod(clsNode: CxxAstNode, cls: ArkCl
 export function buildNormalArkClassFromArkFile(clsNode: CxxAstNode, arkFile: ArkFile, cls: ArkClass,
                                                sourceFile: CxxAstNode, declaring?: ArkMethod | ArkClass): void {
     cls.setDeclaringArkFile(arkFile);
-    cls.setCode(clsNode.code);
     cls.setOriginFullPosition(FullPosition.cxxBuildFromNode(clsNode, sourceFile));
     buildNormalArkClass(clsNode, cls, sourceFile, declaring);
     arkFile.addArkClass(cls);
@@ -68,7 +67,6 @@ export function buildNormalArkClassFromArkNamespace(
 ): void {
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
-    cls.setCode(clsNode.code);
     cls.setOriginFullPosition(FullPosition.cxxBuildFromNode(clsNode, sourceFile));
     buildNormalArkClass(clsNode, cls, sourceFile, declaring);
     arkNamespace.addArkClass(cls);
@@ -425,11 +423,9 @@ function getInitStmts(
     assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
     stmts.push(assignStmt);
 
-    const fieldSourceCode = field.getCode();
     const fieldOriginPosition = field.getOriginFullPosition();
     for (const stmt of stmts) {
         stmt.setOriginFullPosition(fieldOriginPosition);
-        stmt.setOriginalText(fieldSourceCode);
     }
     field.setInitializer(stmts);
     if (field.getType() instanceof UnknownType) {

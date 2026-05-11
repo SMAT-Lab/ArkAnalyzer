@@ -17,6 +17,7 @@ import ts from 'ohos-typescript';
 import { SceneOptions } from '../../../Config';
 import { Stmt } from '../../base/Stmt';
 import { ArkBaseModel } from '../ArkBaseModel';
+import { cloneText } from '../../common/StringUtils';
 import { FullPosition } from '../../base/Position';
 import { ArkMetadataKind, CommentItem, CommentsMetadata, JSDocMetadata, JSDocParamItem, JSDocReturnItem, JSDocTagItem, JSDocThrowItem } from '../ArkMetadata';
 
@@ -60,7 +61,7 @@ export class ArkMetadataBuilder {
 
         for (const range of commentRanges) {
             comments.push({
-                content: sourceFile.text.substring(range.pos, range.end).replace(/\r\n/g, '\n'),
+                content: cloneText(sourceFile.text.substring(range.pos, range.end)).replace(/\r\n/g, '\n'),
                 position: getPosition(range.pos, range.end),
             });
         }
@@ -74,7 +75,7 @@ export class ArkMetadataBuilder {
         }
         const commentRanges = ts.getLeadingCommentRanges(sourceFile.text, node.pos) || [];
         const jsDocContents = commentRanges
-            .map(range => sourceFile.text.substring(range.pos, range.end).replace(/\r\n/g, '\n'))
+            .map(range => cloneText(sourceFile.text.substring(range.pos, range.end)).replace(/\r\n/g, '\n'))
             .filter(content => content.startsWith('/**'));
         if (jsDocContents.length === 0) {
             return [];

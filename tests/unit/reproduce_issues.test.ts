@@ -37,6 +37,7 @@ import { ArkBody } from '../../src/core/model/ArkBody';
 import { Local } from '../../src/core/base/Local';
 import { NamespaceSignature } from '../../src/core/model/ArkSignature';
 import { Cfg } from '../../src/core/graph/Cfg';
+import { FullPosition } from '../../src/core/base/Position';
 
 describe('ArkAnalyzer Core Bug Reproduction', () => {
 
@@ -118,12 +119,15 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const ns1 = new ArkNamespace();
         const nsSig1 = new NamespaceSignature('sub', fileSig);
         ns1.setSignature(nsSig1);
+        ns1.setOriginFullPositions([FullPosition.DEFAULT]);
 
         const ns2 = new ArkNamespace();
         const nsSig2 = new NamespaceSignature('sub', fileSig);
         ns2.setSignature(nsSig2);
+        ns2.setOriginFullPositions([FullPosition.DEFAULT]);
 
         const parent = new ArkNamespace();
+        parent.setOriginFullPositions([FullPosition.DEFAULT]);
         parent.addNamespace(ns1);
         parent.addNamespace(ns2);
 
@@ -145,6 +149,7 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const nsSig = new NamespaceSignature('MySpace', fileSig);
         ns.setSignature(nsSig);
         ns.setDeclaringArkFile(file);
+        ns.setOriginFullPositions([FullPosition.DEFAULT]);
         const clsSig = new ClassSignature('InnerClass', fileSig);
         const cls = new ArkClass();
         cls.setSignature(clsSig);

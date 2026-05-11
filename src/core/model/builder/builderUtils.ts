@@ -59,11 +59,13 @@ import { FullPosition } from '../../base/Position';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
 
+import { cloneText } from '../../common/StringUtils';
+
 export function handleQualifiedName(node: ts.QualifiedName): string {
-    let right = (node.right as ts.Identifier).text;
+    let right = cloneText((node.right as ts.Identifier).text);
     let left: string = '';
     if (node.left.kind === ts.SyntaxKind.Identifier) {
-        left = (node.left as ts.Identifier).text;
+        left = cloneText((node.left as ts.Identifier).text);
     } else if (node.left.kind === ts.SyntaxKind.QualifiedName) {
         left = handleQualifiedName(node.left as ts.QualifiedName);
     }
@@ -72,12 +74,12 @@ export function handleQualifiedName(node: ts.QualifiedName): string {
 }
 
 export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression): string {
-    let right = (node.name as ts.Identifier).text;
+    let right = cloneText((node.name as ts.Identifier).text);
     let left: string = '';
     if (ts.SyntaxKind[node.expression.kind] === 'Identifier') {
-        left = (node.expression as ts.Identifier).text;
+        left = cloneText((node.expression as ts.Identifier).text);
     } else if (ts.isStringLiteral(node.expression)) {
-        left = node.expression.text;
+        left = cloneText(node.expression.text);
     } else if (ts.isPropertyAccessExpression(node.expression)) {
         left = handlePropertyAccessExpression(node.expression as ts.PropertyAccessExpression);
     }
@@ -90,7 +92,7 @@ export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<D
     ts.getAllDecorators(node).forEach(decoratorNode => {
         let decorator = parseDecorator(decoratorNode);
         if (decorator) {
-            decorator.setContent(decoratorNode.expression.getText(sourceFile));
+            decorator.setContent(cloneText(decoratorNode.expression.getText(sourceFile)));
             decorators.add(decorator);
         }
     });
@@ -104,18 +106,18 @@ export function parseDecorator(node: ts.Decorator): Decorator | undefined {
 
     let expression = node.expression;
     if (ts.isIdentifier(expression)) {
-        return new Decorator(expression.text);
+        return new Decorator(cloneText(expression.text));
     }
     if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression)) {
         return undefined;
     }
 
-    let decorator = new Decorator(expression.expression.text);
+    let decorator = new Decorator(cloneText(expression.expression.text));
 
     if (expression.arguments.length > 0) {
         const arg = expression.arguments[0];
         if (ts.isArrowFunction(arg) && ts.isIdentifier(arg.body)) {
-            decorator.setParam(arg.body.text);
+            decorator.setParam(cloneText(arg.body.text));
         }
     }
 
@@ -140,13 +142,13 @@ export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClau
         heritageClause.types.forEach(type => {
             let heritageClauseName: string = '';
             if (type.typeArguments) {
-                heritageClauseName = type.getText();
+                heritageClauseName = cloneText(type.getText());
             } else if (ts.isIdentifier(type.expression)) {
-                heritageClauseName = (type.expression as ts.Identifier).text;
+                heritageClauseName = cloneText((type.expression as ts.Identifier).text);
             } else if (ts.isPropertyAccessExpression(type.expression)) {
                 heritageClauseName = handlePropertyAccessExpression(type.expression);
             } else {
-                heritageClauseName = type.getText();
+                heritageClauseName = cloneText(type.getText());
             }
             heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
         });
@@ -192,7 +194,7 @@ function buildObjectBindingPatternParam(methodParameter: MethodParameter, paramN
         let paraElement = new ObjectBindingPatternParameter();
         if (element.propertyName) {
             if (ts.isIdentifier(element.propertyName)) {
-                paraElement.setPropertyName(element.propertyName.text);
+                paraElement.setPropertyName(cloneText(element.propertyName.text));
             } else {
                 logger.warn('New propertyName of ObjectBindingPattern found, please contact developers to support this!');
             }
@@ -200,7 +202,7 @@ function buildObjectBindingPatternParam(methodParameter: MethodParameter, paramN
 
         if (element.name) {
             if (ts.isIdentifier(element.name)) {
-                paraElement.setName(element.name.text);
+                paraElement.setName(cloneText(element.name.text));
             } else {
                 logger.warn('New name of ObjectBindingPattern found, please contact developers to support this!');
             }
@@ -221,7 +223,7 @@ function buildObjectBindingPatternParam(methodParameter: MethodParameter, paramN
 function buildBindingElementOfBindingPatternParam(element: ts.BindingElement, paraElement: ArrayBindingPatternParameter): void {
     if (element.propertyName) {
         if (ts.isIdentifier(element.propertyName)) {
-            paraElement.setPropertyName(element.propertyName.text);
+            paraElement.setPropertyName(cloneText(element.propertyName.text));
         } else {
             logger.warn('New propertyName of ArrayBindingPattern found, please contact developers to support this!');
         }
@@ -229,7 +231,7 @@ function buildBindingElementOfBindingPatternParam(element: ts.BindingElement, pa
 
     if (element.name) {
         if (ts.isIdentifier(element.name)) {
-            paraElement.setName(element.name.text);
+            paraElement.setName(cloneText(element.name.text));
         } else {
             logger.warn('New name of ArrayBindingPattern found, please contact developers to support this!');
         }
@@ -271,8 +273,8 @@ export function buildParameters(
 
         // name
         if (ts.isIdentifier(parameter.name)) {
-            methodParameter.setName(parameter.name.text);
-            paramsPosition.set(parameter.name.text, FullPosition.buildFromNode(parameter.name, sourceFile));
+            methodParameter.setName(cloneText(parameter.name.text));
+            paramsPosition.set(cloneText(parameter.name.text), FullPosition.buildFromNode(parameter.name, sourceFile));
         } else if (ts.isObjectBindingPattern(parameter.name)) {
             buildObjectBindingPatternParam(methodParameter, parameter.name);
             paramsPosition.set('ObjectBindingPattern', FullPosition.buildFromNode(parameter.name, sourceFile));
@@ -399,7 +401,7 @@ export function tsNode2Type(
             let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
             return new UnclearReferenceType(parameterTypeStr, genericTypes);
         } else {
-            let parameterTypeStr = referenceNodeName.text;
+            let parameterTypeStr = cloneText(referenceNodeName.text);
             if (parameterTypeStr === Builtin.OBJECT) {
                 return Builtin.OBJECT_CLASS_TYPE;
             }
@@ -450,7 +452,7 @@ export function tsNode2Type(
         buildArkMethodFromArkClass(typeNode, cls, mtd, sourceFile);
         return new FunctionType(mtd.getSignature());
     } else if (ts.isTypeParameterDeclaration(typeNode)) {
-        const name = typeNode.name.text;
+        const name = cloneText(typeNode.name.text);
         let defaultType;
         if (typeNode.default) {
             defaultType = tsNode2Type(typeNode.default, sourceFile, arkInstance);
@@ -557,8 +559,8 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
     const exprNameNode = typeQueryNode.exprName;
     let opValue: Value;
     if (ts.isQualifiedName(exprNameNode)) {
-        if (exprNameNode.left.getText(sourceFile) === THIS_NAME) {
-            const fieldName = exprNameNode.right.getText(sourceFile);
+        if (cloneText(exprNameNode.left.getText(sourceFile)) === THIS_NAME) {
+            const fieldName = cloneText(exprNameNode.right.getText(sourceFile));
             if (arkInstance instanceof ArkMethod) {
                 const fieldSignature =
                     arkInstance.getDeclaringArkClass().getFieldWithName(fieldName)?.getSignature() ??
@@ -584,11 +586,11 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
                 opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             }
         } else {
-            const exprName = exprNameNode.getText(sourceFile);
+            const exprName = cloneText(exprNameNode.getText(sourceFile));
             opValue = new Local(exprName, UnknownType.getInstance());
         }
     } else {
-        const exprName = exprNameNode.escapedText.toString();
+        const exprName = cloneText(exprNameNode.escapedText.toString());
         opValue = new Local(exprName, UnknownType.getInstance());
     }
 

@@ -62,6 +62,7 @@ import {
     VoidType,
 } from '../base/Type';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
+import { cloneText } from './StringUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from './TSConst';
 import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
 import { Value } from '../base/Value';
@@ -203,7 +204,7 @@ export class ArkValueTransformer {
         }
 
         return {
-            value: new Local(node.getText(this.sourceFile)),
+            value: new Local(cloneText(node.getText(this.sourceFile))),
             valueOriginalPositions: [FullPosition.buildFromNode(node, this.sourceFile)],
             stmts: [],
         };
@@ -433,7 +434,7 @@ export class ArkValueTransformer {
 
     private etsComponentExpressionToValueAndStmts(etsComponentExpression: ts.EtsComponentExpression): ValueAndStmts {
         const stmts: Stmt[] = [];
-        const componentName = (etsComponentExpression.expression as ts.Identifier).text;
+        const componentName = cloneText((etsComponentExpression.expression as ts.Identifier).text);
         const {
             argValues: argValues,
             argPositions: argPositions,
@@ -619,7 +620,7 @@ export class ArkValueTransformer {
     } {
         const stmts: Stmt[] = [];
         if (ts.isNoSubstitutionTemplateLiteral(templateLiteral)) {
-            const templateLiteralString = templateLiteral.getText(this.sourceFile);
+            const templateLiteralString = cloneText(templateLiteral.getText(this.sourceFile));
             return {
                 stmts: [],
                 stringTextValues: [ValueUtil.createStringConst(templateLiteralString)],
@@ -629,7 +630,7 @@ export class ArkValueTransformer {
             };
         }
         const head = templateLiteral.head;
-        const stringTextValues: Value[] = [ValueUtil.createStringConst(head.rawText || '')];
+        const stringTextValues: Value[] = [ValueUtil.createStringConst(cloneText(head.rawText || ''))];
         const placeholderValues: Value[] = [];
         const stringTextPositions: FullPosition[] = [FullPosition.buildFromNode(head, this.sourceFile)];
         const placeholderPositions: FullPosition[] = [];
@@ -651,7 +652,7 @@ export class ArkValueTransformer {
             placeholderValues.push(exprValue);
             placeholderPositions.push(exprPositions[0]);
             stringTextPositions.push(FullPosition.buildFromNode(templateSpan.literal, this.sourceFile));
-            stringTextValues.push(ValueUtil.createStringConst(templateSpan.literal.rawText || ''));
+            stringTextValues.push(ValueUtil.createStringConst(cloneText(templateSpan.literal.rawText || '')));
         }
         return {
             stmts,
@@ -669,9 +670,9 @@ export class ArkValueTransformer {
             identifierValue = ValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(identifier.text);
+                identifierValue = this.addNewLocal(cloneText(identifier.text));
             } else {
-                identifierValue = this.getOrCreateLocal(identifier.text);
+                identifierValue = this.getOrCreateLocal(cloneText(identifier.text));
             }
         }
         return {
@@ -712,7 +713,7 @@ export class ArkValueTransformer {
         if (baseValue instanceof Local && baseValue.getName() === Builtin.OBJECT) {
             this.locals.delete(baseValue.getName());
             const fieldSignature = new FieldSignature(
-                propertyAccessExpression.name.getText(this.sourceFile),
+                cloneText(propertyAccessExpression.name.getText(this.sourceFile)),
                 Builtin.OBJECT_CLASS_SIGNATURE,
                 UnknownType.getInstance(),
                 true,
@@ -728,12 +729,12 @@ export class ArkValueTransformer {
         let fieldSignature: FieldSignature;
         if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
             fieldSignature = new FieldSignature(
-                propertyAccessExpression.name.getText(this.sourceFile),
+                cloneText(propertyAccessExpression.name.getText(this.sourceFile)),
                 (baseValue.getType() as ClassType).getClassSignature(),
                 UnknownType.getInstance(),
             );
         } else {
-            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(propertyAccessExpression.name.getText(this.sourceFile));
+            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(cloneText(propertyAccessExpression.name.getText(this.sourceFile)));
         }
         const fieldRef = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
 
@@ -949,7 +950,7 @@ export class ArkValueTransformer {
     ): ValueAndStmts {
         const stmts = [...currStmts];
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(
-            functionNameNode.argumentExpression.getText(),
+            cloneText(functionNameNode.argumentExpression.getText()),
         );
         stmts.pop();
         const invokeExpr = new ArkInstanceInvokeExpr(calleeValue.getBase(), methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
@@ -1009,7 +1010,7 @@ export class ArkValueTransformer {
 
         let builderMethodIndexes: Set<number> | undefined;
         if (ts.isIdentifier(callExpression.expression)) {
-            const callerName = callExpression.expression.text;
+            const callerName = cloneText(callExpression.expression.text);
             if (callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) {
                 builderMethodIndexes = new Set<number>([1]);
             }
@@ -1082,9 +1083,9 @@ export class ArkValueTransformer {
     private newExpressionToValueAndStmts(newExpression: ts.NewExpression): ValueAndStmts {
         let className = '';
         if (ts.isClassExpression(newExpression.expression) && newExpression.expression.name) {
-            className = newExpression.expression.name.text;
+            className = cloneText(newExpression.expression.name.text);
         } else {
-            className = newExpression.expression.getText(this.sourceFile);
+            className = cloneText(newExpression.expression.getText(this.sourceFile));
         }
         if (className === Builtin.ARRAY) {
             return this.newArrayExpressionToValueAndStmts(newExpression);
@@ -1683,7 +1684,7 @@ export class ArkValueTransformer {
                     ({ value: targetLocal, stmts: stmtsInsideRest } = this.arrayDestructuringToValueAndStmts(
                         nodeInsideRest, isConst));
                 } else {
-                    const elementName = nodeInsideRest.getText(this.sourceFile);
+                    const elementName = cloneText(nodeInsideRest.getText(this.sourceFile));
                     targetLocal = ts.isBindingElement(element) ? this.addNewLocal(elementName) : this.getOrCreateLocal(
                         elementName);
                 }
@@ -1702,7 +1703,7 @@ export class ArkValueTransformer {
             } else {
                 const arrayRef = new ArkArrayRef(arrayTempLocal, ValueUtil.getOrCreateNumberConst(i));
                 const arrayRefPositions = [wholePosition, wholePosition, FullPosition.DEFAULT];
-                const itemName = element.getText(this.sourceFile);
+                const itemName = cloneText(element.getText(this.sourceFile));
                 const targetLocal = isArrayBindingPattern ? this.addNewLocal(itemName) : this.getOrCreateLocal(
                     itemName);
                 isArrayBindingPattern && targetLocal.setConstFlag(isConst);
@@ -1728,13 +1729,13 @@ export class ArkValueTransformer {
             let fieldName = '';
             let targetName = '';
             if (ts.isBindingElement(element)) {
-                fieldName = element.propertyName ? element.propertyName.getText(this.sourceFile) : element.name.getText(this.sourceFile);
-                targetName = element.name.getText(this.sourceFile);
+                fieldName = element.propertyName ? cloneText(element.propertyName.getText(this.sourceFile)) : cloneText(element.name.getText(this.sourceFile));
+                targetName = cloneText(element.name.getText(this.sourceFile));
             } else if (ts.isPropertyAssignment(element)) {
-                fieldName = element.name.getText(this.sourceFile);
-                targetName = element.initializer.getText(this.sourceFile);
+                fieldName = cloneText(element.name.getText(this.sourceFile));
+                targetName = cloneText(element.initializer.getText(this.sourceFile));
             } else if (ts.isShorthandPropertyAssignment(element)) {
-                fieldName = element.name.getText(this.sourceFile);
+                fieldName = cloneText(element.name.getText(this.sourceFile));
                 targetName = fieldName;
             } else {
                 continue;
@@ -1777,7 +1778,7 @@ export class ArkValueTransformer {
         opStmts1.forEach(stmt => stmts.push(stmt));
 
         if (operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword) {
-            const instanceOfExpr = new ArkInstanceOfExpr(opValue1, new UnclearReferenceType(binaryExpression.right.getText(this.sourceFile)));
+            const instanceOfExpr = new ArkInstanceOfExpr(opValue1, new UnclearReferenceType(cloneText(binaryExpression.right.getText(this.sourceFile))));
             const instanceOfExprPositions = [binaryExpressionPosition, ...opPositions1];
             const {
                 value: instanceofRes,
@@ -1943,19 +1944,19 @@ export class ArkValueTransformer {
         let constant: Constant | null = null;
         switch (syntaxKind) {
             case ts.SyntaxKind.NumericLiteral:
-                constant = ValueUtil.getOrCreateNumberConst((literalNode as ts.NumericLiteral).getText(this.sourceFile));
+                constant = ValueUtil.getOrCreateNumberConst(cloneText((literalNode as ts.NumericLiteral).getText(this.sourceFile)));
                 break;
             case ts.SyntaxKind.BigIntLiteral:
-                constant = ValueUtil.createBigIntConst(BigInt((literalNode as ts.BigIntLiteral).text.slice(0, -1)));
+                constant = ValueUtil.createBigIntConst(BigInt(cloneText((literalNode as ts.BigIntLiteral).text).slice(0, -1)));
                 break;
             case ts.SyntaxKind.StringLiteral:
-                constant = ValueUtil.createStringConst((literalNode as ts.StringLiteral).text);
+                constant = ValueUtil.createStringConst(cloneText((literalNode as ts.StringLiteral).text));
                 break;
             case ts.SyntaxKind.RegularExpressionLiteral:
-                constant = new Constant((literalNode as ts.RegularExpressionLiteral).text, Builtin.REGEXP_CLASS_TYPE);
+                constant = new Constant(cloneText((literalNode as ts.RegularExpressionLiteral).text), Builtin.REGEXP_CLASS_TYPE);
                 break;
             case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-                constant = ValueUtil.createStringConst((literalNode as ts.NoSubstitutionTemplateLiteral).text);
+                constant = ValueUtil.createStringConst(cloneText((literalNode as ts.NoSubstitutionTemplateLiteral).text));
                 break;
             case ts.SyntaxKind.NullKeyword:
                 constant = ValueUtil.getNullConstant();
@@ -2105,8 +2106,8 @@ export class ArkValueTransformer {
         const exprNameNode = typeQueryNode.exprName;
         let opValue: Value;
         if (ts.isQualifiedName(exprNameNode)) {
-            if (exprNameNode.left.getText(this.sourceFile) === THIS_NAME) {
-                const fieldName = exprNameNode.right.getText(this.sourceFile);
+            if (cloneText(exprNameNode.left.getText(this.sourceFile)) === THIS_NAME) {
+                const fieldName = cloneText(exprNameNode.right.getText(this.sourceFile));
                 const fieldSignature =
                     this.declaringMethod.getDeclaringArkClass().getFieldWithName(fieldName)?.getSignature() ??
                     ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
@@ -2114,11 +2115,11 @@ export class ArkValueTransformer {
                     this.locals.get(THIS_NAME) ?? new Local(THIS_NAME, new ClassType(this.declaringMethod.getDeclaringArkClass().getSignature(), genericTypes));
                 opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             } else {
-                const exprName = exprNameNode.getText(this.sourceFile);
+                const exprName = cloneText(exprNameNode.getText(this.sourceFile));
                 opValue = new Local(exprName, UnknownType.getInstance());
             }
         } else {
-            const exprName = exprNameNode.escapedText.toString();
+            const exprName = cloneText(exprNameNode.escapedText.toString());
             opValue = this.locals.get(exprName) ?? this.globals?.get(exprName) ?? new Local(exprName, UnknownType.getInstance());
         }
 
@@ -2157,17 +2158,17 @@ export class ArkValueTransformer {
             case ts.SyntaxKind.FalseKeyword:
                 return LiteralType.FALSE;
             case ts.SyntaxKind.NumericLiteral:
-                return new LiteralType(parseFloat((literal as ts.NumericLiteral).text));
+                return new LiteralType(parseFloat(cloneText((literal as ts.NumericLiteral).text)));
             case ts.SyntaxKind.PrefixUnaryExpression:
-                return new LiteralType(parseFloat(literal.getText(sourceFile)));
+                return new LiteralType(parseFloat(cloneText(literal.getText(sourceFile))));
             default:
         }
-        return new LiteralType(literal.getText(sourceFile));
+        return new LiteralType(cloneText(literal.getText(sourceFile)));
     }
 
     private resolveTemplateLiteralTypeNode(templateLiteralTypeNode: ts.TemplateLiteralTypeNode): Type {
         let stringLiterals: string[] = [''];
-        const headString = templateLiteralTypeNode.head.rawText || '';
+        const headString = cloneText(templateLiteralTypeNode.head.rawText || '');
         let newStringLiterals: string[] = [];
         for (const stringLiteral of stringLiterals) {
             newStringLiterals.push(stringLiteral + headString);
@@ -2190,7 +2191,7 @@ export class ArkValueTransformer {
                 );
             }
 
-            const templateSpanString = templateSpan.literal.rawText || '';
+            const templateSpanString = cloneText(templateSpan.literal.rawText || '');
             for (const stringLiteral of stringLiterals) {
                 for (const unfoldTemplateTypeStr of unfoldTemplateTypeStrs) {
                     newStringLiterals.push(stringLiteral + unfoldTemplateTypeStr + templateSpanString);
@@ -2211,8 +2212,8 @@ export class ArkValueTransformer {
     }
 
     private resolveTypeReferenceNode(typeReferenceNode: ts.TypeReferenceNode): Type {
-        const typeReferenceFullName = ts.isIdentifier(typeReferenceNode.typeName) ? typeReferenceNode.typeName.text :
-            typeReferenceNode.typeName.getText(this.sourceFile);
+        const typeReferenceFullName = ts.isIdentifier(typeReferenceNode.typeName) ? cloneText(typeReferenceNode.typeName.text) :
+            cloneText(typeReferenceNode.typeName.getText(this.sourceFile));
         if (typeReferenceFullName === Builtin.OBJECT) {
             return Builtin.OBJECT_CLASS_TYPE;
         }

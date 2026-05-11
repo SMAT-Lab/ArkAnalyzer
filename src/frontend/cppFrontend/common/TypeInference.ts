@@ -492,7 +492,7 @@ export class TypeInference {
         const leftOp = stmt.getLeftOp();
         if (leftType && !this.isUnclearType(leftType)) {
             this.setValueType(leftOp, leftType);
-            if (leftOp instanceof Local && stmt.getOriginalText()?.startsWith(leftOp.getName())) {
+            if (leftOp instanceof Local) {
                 let localDef = ModelUtils.findDeclaredLocal(leftOp, arkMethod);
                 if (localDef && this.isUnclearType(localDef.getType())) {
                     localDef.setType(leftType);

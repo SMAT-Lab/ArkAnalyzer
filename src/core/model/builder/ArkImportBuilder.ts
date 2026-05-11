@@ -19,6 +19,7 @@ import { ImportInfo, ImportType } from '../ArkImport';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../ArkFile';
 import { ModifierType } from '../ArkBaseModel';
+import { cloneText } from '../../common/StringUtils';
 
 export function buildImportInfo(node: ts.ImportEqualsDeclaration | ts.ImportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ImportInfo[] {
     if (ts.isImportDeclaration(node)) {
@@ -31,12 +32,11 @@ export function buildImportInfo(node: ts.ImportEqualsDeclaration | ts.ImportDecl
 
 function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ImportInfo[] {
     const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
-    const tsSourceCode = node.getText(sourceFile);
 
     let importInfos: ImportInfo[] = [];
     let importFrom: string = '';
     if (ts.isStringLiteral(node.moduleSpecifier)) {
-        importFrom = node.moduleSpecifier.text;
+        importFrom = cloneText(node.moduleSpecifier.text);
     }
     let modifiers = 0;
     // just like: import '../xxx'
@@ -44,7 +44,6 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         let importClauseName = '';
         let importInfo = new ImportInfo();
         importInfo.build(importClauseName, ImportType.NONE_IMPORT, importFrom, originFullPosition, modifiers);
-        importInfo.setTsSourceCode(tsSourceCode);
         IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
         importInfos.push(importInfo);
         return importInfos;
@@ -57,11 +56,10 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
     }
     //just like: import zs from 'xxx'
     if (node.importClause.name && ts.isIdentifier(node.importClause.name)) {
-        let importClauseName = node.importClause.name.text;
+        let importClauseName = cloneText(node.importClause.name.text);
         const itemPos = FullPosition.buildFromNode(node.importClause.name, sourceFile);
         let importInfo = new ImportInfo();
         importInfo.build(importClauseName, ImportType.IDENTIFIER_IMPORT, importFrom, originFullPosition, modifiers, undefined, itemPos);
-        importInfo.setTsSourceCode(tsSourceCode);
         IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
         importInfos.push(importInfo);
     }
@@ -84,13 +82,13 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
             if (element.isTypeOnly) {
                 modifier |= ModifierType.TYPE;
             }
-            let importClauseName = element.name.text;
+            let importClauseName = cloneText(element.name.text);
             const itemPos = FullPosition.buildFromNode(element, sourceFile);
             let importInfo = new ImportInfo();
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                 importInfo.build(
                     importClauseName, ImportType.NAMED_IMPORTS_IMPORT, importFrom,
-                    originFullPosition, modifier, element.propertyName.text, itemPos
+                    originFullPosition, modifier, cloneText(element.propertyName.text), itemPos
                 );
             } else {
                 importInfo.build(
@@ -98,7 +96,6 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
                     originFullPosition, modifier, undefined, itemPos
                 );
             }
-            importInfo.setTsSourceCode(tsSourceCode);
             IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
             importInfos.push(importInfo);
         });
@@ -107,12 +104,11 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
     // just like: import * as ts from 'ohos-typescript'
     if (ts.isNamespaceImport(node.importClause.namedBindings)) {
         if (node.importClause.namedBindings.name && ts.isIdentifier(node.importClause.namedBindings.name)) {
-            let importClauseName = node.importClause.namedBindings.name.text;
+            let importClauseName = cloneText(node.importClause.namedBindings.name.text);
             let importInfo = new ImportInfo();
             let nameBeforeAs = '*';
             const itemPos = FullPosition.buildFromNode(node.importClause.namedBindings.name, sourceFile);
             importInfo.build(importClauseName, ImportType.NAMESPACE_IMPORT, importFrom, originFullPosition, modifiers, nameBeforeAs, itemPos);
-            importInfo.setTsSourceCode(tsSourceCode);
             IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
             importInfos.push(importInfo);
         }
@@ -123,7 +119,6 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
 
 function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ImportInfo[] {
     const originFullPosition = FullPosition.buildFromNode(node, sourceFile);
-    const tsSourceCode = node.getText(sourceFile);
 
     let importInfos: ImportInfo[] = [];
     let modifiers = 0;
@@ -136,11 +131,10 @@ function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sour
         node.moduleReference.expression &&
         ts.isStringLiteral(node.moduleReference.expression)
     ) {
-        let importFrom = node.moduleReference.expression.text;
-        let importClauseName = node.name.text;
+        let importFrom = cloneText(node.moduleReference.expression.text);
+        let importClauseName = cloneText(node.name.text);
         let importInfo = new ImportInfo();
         importInfo.build(importClauseName, ImportType.EQUALS_IMPORT, importFrom, originFullPosition, modifiers);
-        importInfo.setTsSourceCode(tsSourceCode);
         IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
         importInfos.push(importInfo);
     }

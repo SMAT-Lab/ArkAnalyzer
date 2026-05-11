@@ -46,7 +46,12 @@ function applyArkFile(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode)
     arkFile.setFilePath(sourceFile);
     arkFile.setProjectDir(projectDir);
     arkFile.setFileSignature(new FileSignature(projectName, path.relative(projectDir, sourceFile)));
-    arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+    const sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+    const options = scene.getOptions();
+    const eagerLoad = options.saveSourceCodeByDefault ?? false;
+    if (eagerLoad && scene.getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
     genDefaultArkClass(arkFile, astRoot);
     buildArkFile(arkFile, astRoot);
 }
