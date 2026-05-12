@@ -18,13 +18,9 @@ import { FullPosition } from '../base/Position';
 /**
  * Deep copy a string to avoid sharing the original text reference from TypeScript AST nodes.
  * This ensures that model objects do not implicitly depend on AST node lifecycles.
- *
- * String(text) does NOT create a new string when text is already a string (ES spec §21.1.1.1),
- * so we force a new allocation via concatenation + slice, which causes V8 to flatten and
- * allocate an independent SeqString buffer.
  */
 export function cloneText(text: string): string {
-    return text.length > 0 ? (' ' + text).slice(1) : '';
+    return text.length > 0 ? Buffer.from(text, 'utf8').toString('utf8') : '';
 }
 
 /**
