@@ -39,9 +39,17 @@ Stmt
 | `getCfg(): Cfg` | 返回所在 CFG（仅三地址码 Stmt 有值） |
 | `isBranch(): boolean` | 是否为分支（仅 `ArkIfStmt` 为 `true`） |
 | `getExpectedSuccessorCount(): number` | 期望后继块数：`ArkIfStmt`=2、`ArkReturn(Void)Stmt`=0、其余=1 |
-| `getOriginPositionInfo(): LineColPosition` | 在源文件中的行列位置 |
+| `getOriginFullPosition(): FullPosition \| undefined` | 获取源码完整位置（含起始/结束行列） |
+| `setOriginFullPosition(position: FullPosition)` | 设置源码完整位置 |
+| `getOperandOriginalPositions(): FullPosition[] \| undefined` | 获取所有操作数的源码位置数组 |
+| `setOperandOriginalPositions(positions: FullPosition[])` | 设置所有操作数的源码位置数组 |
+| `getOperandOriginalPosition(index): FullPosition \| undefined` | 获取指定操作数的源码位置 |
 | `replaceUse(old, new) / replaceDef(old, new)` | 替换 use/def，常用于 IR 优化与脱糖 |
 | `toString()` | 返回该 Stmt 的 ArkIR 文本形式 |
+| `getOriginPositionInfo(): LineColPosition` | ⚠️ **已废弃**，建议使用 `getOriginFullPosition()` 获取完整的源码位置信息 |
+| `setOriginPositionInfo(position: LineColPosition)` | ⚠️ **已废弃**，建议使用 `setOriginFullPosition()` 设置完整的源码位置信息 |
+
+> **位置信息说明**：`originFullPosition`（`FullPosition`）存储完整的源码位置（起始/结束行列），而废弃的 `getOriginPositionInfo()` 返回的 `LineColPosition` 仅包含起始行列。所有位置相关废弃接口已统一迁移至 `FullPosition` 版本，提供更完整的源码位置信息（起始/结束行列）。`operandOriginalPositions` 数组记录各操作数在源码中的位置，用于精确定位分析。
 
 ### 2.1 ArkAssignStmt - 赋值语句
 
@@ -215,8 +223,6 @@ declare type C = typeof c
 > - `Stmt.getInvokeExpr()` 同时覆盖 `ArkInvokeStmt` 与"右值是 invokeExpr 的 ArkAssignStmt"两种情形——[CallGraph](../analysis/CallGraph.md) 即基于此抓取每个调用点。
 
 ## 4. 使用示例
-
-下例演示如何遍历某方法的所有 Stmt，按类型分别打印：
 
 ```typescript
 // 摘自 tests/samples/CfgTest.ts 的扩展

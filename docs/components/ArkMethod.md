@@ -10,7 +10,7 @@
 2. **方法体托管** —— 持有一个可选的 [`ArkBody`](./ArkBody.md)，里面装着 [CFG](./CFG.md) 与所有 ArkIR Stmt。`abstract`、`declare`、接口签名等无实现的方法 `getBody()` 返回 `undefined`。
 3. **元数据** —— 修饰符（继承自 [`ArkBaseModel`](../../src/core/model/ArkBaseModel.ts)）、泛型、源码位置、`isGenerated`、外层方法（嵌套函数用）、ViewTree（ArkUI 组件方法用）等。
 
-## 2. ArkIR
+## 2. 方法类型
 
 ### 2.1 普通方法
 
@@ -197,36 +197,32 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private outerMethod?: ArkMethod;                    // 嵌套方法定位外层
     private genericTypes?: GenericType[];
 
-    private methodDeclareSignatures?: MethodSignature[]; // 重载的 declare 签名（多个）
-    private methodDeclareLineCols?: LineCol[];
+    private declareSignatures?: MethodSignature[];      // 重载的 declare 签名（多个）
+    private declareOriginFullPositions?: FullPosition[];// declare 签名的完整位置（起始/结束行列）
 
-    private methodSignature?: MethodSignature;          // implementation 签名（唯一）
-    private lineCol?: LineCol;
+    private implSignature?: MethodSignature;            // implementation 签名（唯一）
+    private implOriginFullPosition?: FullPosition;      // implementation 的完整位置（起始/结束行列）
 
     private body?: ArkBody;                             // 方法体
     private viewTree?: ViewTree;                        // ArkUI 组件方法的视图树
 
     private bodyBuilder?: BodyBuilder;
     private CxxBodyBuilder?: CxxBodyBuilder;            // C/C++ 专用
-
-    private isGeneratedFlag: boolean = false;           // 是否由 IR 转换器自动生成（如 %instInit）
-    private asteriskToken: boolean = false;             // generator function 的 *
-    private questionToken: boolean = false;             // 接口可选方法 foo?():void
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `declaringArkClass` | 反向定位所属类。任何方法都属于一个类——独立函数挂在 `ArkFile` 的 `%dflt` 默认类上 |
-| `outerMethod` | 嵌套函数 / 匿名函数的外层方法；用于跨层闭包变量分析 |
-| `methodDeclareSignatures` | TS 重载的 declare 签名列表（如多签名 + 1 实现的形式） |
-| `methodSignature` | 真正实现的签名；与所有 declare 签名不冲突。**至少有一个**：纯 declare/接口方法只有 declare 签名，独立函数等只有 implementation |
-| `body` | 方法体；为空表示抽象/declare/接口方法 |
-| `viewTree` | ArkUI `build()` / `@Builder` 等方法构建得到的 [ViewTree](../analysis/ViewTree.md) |
-| `bodyBuilder` | 延迟构建 `ArkBody` 的器件；构建完成后会被释放 |
-| `isGeneratedFlag` | `%instInit` / `%statInit` / 默认导出的合成桥接方法等设置为 true |
-| `asteriskToken` | `function* gen() {}` 的标记 |
-| `questionToken` | `interface I { foo?(): void }` 的可选标记 |
+| 字段                        | 说明                                                                                     |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `declaringArkClass`       | 反向定位所属类。任何方法都属于一个类——独立函数挂在 `ArkFile` 的 `%dflt` 默认类上                                    |
+| `outerMethod`             | 嵌套函数 / 匿名函数的外层方法；用于跨层闭包变量分析                                                            |
+| `methodDeclareSignatures` | TS 重载的 declare 签名列表（如多签名 + 1 实现的形式）                                                    |
+| `methodSignature`         | 真正实现的签名；与所有 declare 签名不冲突。**至少有一个**：纯 declare/接口方法只有 declare 签名，独立函数等只有 implementation |
+| `body`                    | 方法体；为空表示抽象/declare/接口方法                                                                |
+| `viewTree`                | ArkUI `build()` / `@Builder` 等方法构建得到的 [ViewTree](../analysis/ViewTree.md)              |
+| `bodyBuilder`             | 延迟构建 `ArkBody` 的器件；构建完成后会被释放                                                           |
+| `isGeneratedFlag`         | `%instInit` / `%statInit` / 默认导出的合成桥接方法等设置为 true                                       |
+| `asteriskToken`           | `function* gen() {}` 的标记                                                               |
+| `questionToken`           | `interface I { foo?(): void }` 的可选标记                                                   |
 
 `MethodSignature`（[src/core/model/ArkSignature.ts](../../src/core/model/ArkSignature.ts)）包含两层：
 
@@ -237,78 +233,95 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
 特殊方法名常量（来自 [src/core/common/Const.ts](../../src/core/common/Const.ts) 与 `TSConst.ts`）：
 
-| 常量 | 值 | 含义 |
-|------|----|------|
-| `DEFAULT_ARK_METHOD_NAME` | `%dflt` | 默认方法名（每个类都有一个，承载顶层/类作用域语句） |
-| `INSTANCE_INIT_METHOD_NAME` | `%instInit` | 实例初始化方法 |
-| `STATIC_INIT_METHOD_NAME` | `%statInit` | 静态初始化 / 枚举初始化方法 |
-| `ANONYMOUS_METHOD_PREFIX` | `%AM` | 匿名方法名前缀，后跟序号 + `$外层` |
-| `CONSTRUCTOR_NAME` | `constructor` | TS 构造器名 |
+| 常量                          | 值             | 含义                         |
+| --------------------------- | ------------- | -------------------------- |
+| `DEFAULT_ARK_METHOD_NAME`   | `%dflt`       | 默认方法名（每个类都有一个，承载顶层/类作用域语句） |
+| `INSTANCE_INIT_METHOD_NAME` | `%instInit`   | 实例初始化方法                    |
+| `STATIC_INIT_METHOD_NAME`   | `%statInit`   | 静态初始化 / 枚举初始化方法            |
+| `ANONYMOUS_METHOD_PREFIX`   | `%AM`         | 匿名方法名前缀，后跟序号 + `$外层`       |
+| `CONSTRUCTOR_NAME`          | `constructor` | TS 构造器名                    |
 
 ## 4. 主要接口
 
 ### 标识与签名
 
-| 方法 | 说明 |
-|------|------|
-| `getName(): string` | 实现签名的方法名（无实现时为第一个 declare 签名的名字） |
-| `getSignature(): MethodSignature` | 实现签名；若无实现则回退到第一个 declare 签名 |
-| `getImplementationSignature(): MethodSignature \| null` | 仅 implementation 签名 |
-| `getDeclareSignatures(): MethodSignature[] \| null` | 所有 declare 签名（重载） |
-| `getDeclareSignatureIndex(target): number` | 按签名查询其 declare 索引 |
-| `setImplementationSignature(s) / setDeclareSignatures(s) / setDeclareSignatureWithIndex(s, i)` | 写入对应签名 |
-| `getSubSignature(): MethodSubSignature` | 等价 `getSignature().getMethodSubSignature()` |
-| `getParameters(): MethodParameter[]` | 形参表 |
-| `getReturnType(): Type` | 返回类型 |
-| `matchMethodSignature(args): MethodSignature` | 按实参列表挑选最匹配的重载签名 |
+| 方法                                                                                             | 说明                                          |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `getName(): string`                                                                            | 实现签名的方法名（无实现时为第一个 declare 签名的名字）            |
+| `getSignature(): MethodSignature`                                                              | 实现签名；若无实现则回退到第一个 declare 签名                 |
+| `getImplementationSignature(): MethodSignature \| null`                                        | 仅 implementation 签名                         |
+| `getDeclareSignatures(): MethodSignature[] \| null`                                            | 所有 declare 签名（重载）                           |
+| `getDeclareSignatureIndex(target): number`                                                     | 按签名查询其 declare 索引                           |
+| `setImplementationSignature(s) / setDeclareSignatures(s) / setDeclareSignatureWithIndex(s, i)` | 写入对应签名                                      |
+| `getSubSignature(): MethodSubSignature`                                                        | 等价 `getSignature().getMethodSubSignature()` |
+| `getParameters(): MethodParameter[]`                                                           | 形参表                                         |
+| `getReturnType(): Type`                                                                        | 返回类型                                        |
+| `matchMethodSignature(args): MethodSignature`                                                  | 按实参列表挑选最匹配的重载签名                             |
 
 ### 方法体与 IR
 
-| 方法 | 说明 |
-|------|------|
-| `getBody(): ArkBody \| undefined` | 方法体（含 CFG / locals / traps / aliases） |
-| `setBody(body)` | 写入方法体（IR 转换器使用） |
-| `getCfg(): Cfg \| undefined` | 等价 `getBody()?.getCfg()` |
-| `getOriginalCfg(): Cfg \| undefined` | 已废弃，恒返回 `undefined` |
-| `getParameterRefs(): ArkParameterRef[] \| null` | 起始块里所有 `parameterN` 引用 |
-| `getParameterInstances(): Value[]` | 起始块里 `param = parameterN: T` 的左值（命名后的 Local） |
-| `getThisInstance(): Value \| null` | 起始块里 `this = this: ...` 的左值（即命名后的 `this` Local） |
-| `getReturnValues(): Value[]` | 所有 `ArkReturnStmt.getOp()`（不含 void return） |
-| `getReturnStmt(): Stmt[]` / `getReturnVoidStmt(): ArkReturnVoidStmt[]` | return / return void 语句 |
-| `buildBody()` | 触发 BodyBuilder 实际构建 ArkBody（延迟到 `buildClassDone` 之后） |
-| `freeBodyBuilder() / freeCxxBodyBuilder()` | 构建完毕后释放 builder，省内存 |
-| `getBodyBuilder() / getCxxBodyBuilder()` | 取 builder（C/C++ 特殊处理） |
-| `getFunctionLocal(name): Local \| null` | 在 locals 中找一个类型为函数（含 C++ 函数指针）的同名 Local |
+| 方法                                                                     | 说明                                                   |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| `getBody(): ArkBody \| undefined`                                      | 方法体（含 CFG / locals / traps / aliases）                |
+| `setBody(body)`                                                        | 写入方法体（IR 转换器使用）                                      |
+| `getCfg(): Cfg \| undefined`                                           | 等价 `getBody()?.getCfg()`                             |
+| `getParameterRefs(): ArkParameterRef[] \| null`                        | 起始块里所有 `parameterN` 引用                               |
+| `getParameterInstances(): Value[]`                                     | 起始块里 `param = parameterN: T` 的左值（命名后的 Local）         |
+| `getThisInstance(): Value \| null`                                     | 起始块里 `this = this: ...` 的左值（即命名后的 `this` Local）      |
+| `getReturnValues(): Value[]`                                           | 所有 `ArkReturnStmt.getOp()`（不含 void return）           |
+| `getReturnStmt(): Stmt[]` / `getReturnVoidStmt(): ArkReturnVoidStmt[]` | return / return void 语句                              |
+| `buildBody()`                                                          | 触发 BodyBuilder 实际构建 ArkBody（延迟到 `buildClassDone` 之后） |
+| `freeBodyBuilder() / freeCxxBodyBuilder()`                             | 构建完毕后释放 builder，省内存                                  |
+| `getBodyBuilder() / getCxxBodyBuilder()`                               | 取 builder（C/C++ 特殊处理）                                |
+| `getFunctionLocal(name): Local \| null`                                | 在 locals 中找一个类型为函数（含 C++ 函数指针）的同名 Local              |
 
 ### 元信息
 
-| 方法 | 说明 |
-|------|------|
-| `getDeclaringArkClass() / setDeclaringArkClass(c)` | 反向引用所属类 |
-| `getDeclaringArkFile(): ArkFile` | 等价 `getDeclaringArkClass().getDeclaringArkFile()` |
-| `getOuterMethod() / setOuterMethod(m)` | 嵌套关系 |
-| `getLanguage(): Language` | 所属文件的语言种类 |
-| `getCode() / setCode(s)` | 源码片段 |
-| `getLine() / getColumn() / getLineCol()` | implementation 的源码位置 |
-| `getDeclareLines() / getDeclareColumns() / getDeclareLineCols()` | 所有 declare 签名的源码位置（数组） |
-| `setLine / setColumn / setLineCol / setDeclareLineCols / setDeclareLinesAndCols` | 写入位置信息 |
-| `getGenericTypes() / setGenericTypes(t)` / `isGenericsMethod()` | 泛型参数 |
-| `isDefaultArkMethod(): boolean` | 是否 `%dflt` |
-| `isAnonymousMethod(): boolean` | 是否 `%AM` 开头的匿名方法 |
-| `isGenerated() / setIsGeneratedFlag(b)` | 是否 IR 自动生成（`%instInit`/`%statInit` 等） |
-| `getAsteriskToken() / setAsteriskToken(b)` | generator `*` |
-| `getQuestionToken() / setQuestionToken(b)` | 接口可选方法 `?` |
-| `getViewTree() / setViewTree(vt) / hasViewTree()` | ArkUI 视图树（详见 [ViewTree.md](../analysis/ViewTree.md)） |
-| `validate(): ArkError` | 检查签名/位置一致性、必填字段 |
-| `isPublic(): boolean` | 类成员方法默认 public（非匿名 / 非 generated / 非 constructor） |
+| 方法                                                              | 说明                                                                   |
+| --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `getDeclaringArkClass() / setDeclaringArkClass(c)`              | 反向引用所属类                                                              |
+| `getDeclaringArkFile(): ArkFile`                                | 等价 `getDeclaringArkClass().getDeclaringArkFile()`                    |
+| `getOuterMethod() / setOuterMethod(m)`                          | 嵌套关系                                                                 |
+| `getLanguage(): Language`                                       | 所属文件的语言种类                                                            |
+| `getCode() / setCode(s)`                                        | 源码片段                                                                 |
+| `getGenericTypes() / setGenericTypes(t)` / `isGenericsMethod()` | 泛型参数                                                                 |
+| `isDefaultArkMethod(): boolean`                                 | 是否 `%dflt`                                                           |
+| `isAnonymousMethod(): boolean`                                  | 是否 `%AM` 开头的匿名方法                                                     |
+| `isGenerated() / setIsGeneratedFlag(b)`                         | 通过 `BaseModelTag.GENERATED` 管理，是否 IR 自动生成（`%instInit`/`%statInit` 等） |
+| `getAsteriskToken() / setAsteriskToken(b)`                      | 通过 `BaseModelTag.ASTERISK_TOKEN` 管理，generator `*`                    |
+| `getQuestionToken() / setQuestionToken(b)`                      | 通过 `BaseModelTag.QUESTION_TOKEN` 管理，接口可选方法 `?`                       |
+| `getViewTree() / setViewTree(vt) / hasViewTree()`               | ArkUI 视图树（详见 [ViewTree.md](../analysis/ViewTree.md)）                 |
+| `validate(): ArkError`                                          | 检查签名/位置一致性、必填字段                                                      |
+| `isPublic(): boolean`                                           | 类成员方法默认 public（非匿名 / 非 generated / 非 constructor）                    |
 
-### 修饰符（继承自 ArkBaseModel）
+### 修饰符
 
-| 方法 | 说明 |
-|------|------|
-| `containsModifier(m: ModifierType)` | 是否含某修饰符 |
-| `addModifier(m) / removeModifier(m)` | 添 / 删 |
-| `isStatic() / isAsync() / isAbstract() / isOverride() / isExport() / isDefault()` | 常用判断 |
+| 方法                                                                                | 说明      |
+| --------------------------------------------------------------------------------- | ------- |
+| `containsModifier(m: ModifierType)`                                               | 是否含某修饰符 |
+| `addModifier(m) / removeModifier(m)`                                              | 添 / 删   |
+| `isStatic() / isAsync() / isAbstract() / isOverride() / isExport() / isDefault()` | 常用判断    |
+
+### 已废弃接口
+
+以下接口已废弃，建议使用新的替代接口：
+
+| 方法                                                   | 说明                                       |
+| ---------------------------------------------------- | ---------------------------------------- |
+| `getOriginalCfg(): Cfg \| undefined`                   | ⚠️ **已废弃**，恒返回 `undefined`，建议使用 `getCfg()` 替代 |
+| `getDeclareLines(): number[] \| null`                 | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstLine())` |
+| `getDeclareColumns(): number[] \| null`               | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstCol())` |
+| `setDeclareLinesAndCols(lines, columns): void`        | ⚠️ **已废弃**，建议使用 `setDeclareOriginFullPositions()` |
+| `setDeclareLineCols(lineCols): void`                  | ⚠️ **已废弃**，建议使用 `setDeclareOriginFullPositions()` |
+| `getDeclareLineCols(): LineCol[] \| null`             | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map()` |
+| `getLine(): number \| null`                           | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()?.getFirstLine()` |
+| `setLine(line): void`                                 | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
+| `getColumn(): number \| null`                         | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()?.getFirstCol()` |
+| `setColumn(column): void`                             | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
+| `getLineCol(): LineCol \| null`                       | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()` |
+| `setLineCol(lineCol): void`                           | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
+
+> 所有位置相关废弃接口已统一迁移至 `FullPosition` 版本，提供更完整的源码位置信息（起始/结束行列）。
 
 ## 5. 使用示例
 
@@ -366,3 +379,4 @@ for (const arkFile of scene.getFiles()) {
 ```
 
 > 完整可运行示例可参考：[tests/samples/CfgTest.ts](../../tests/samples/CfgTest.ts) 及 [tests/samples/SceneTest.ts](../../tests/samples/SceneTest.ts)。
+

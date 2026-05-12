@@ -494,6 +494,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.body?.getCfg();
     }
 
+    /**
+     * @deprecated This method is deprecated and always returns undefined.
+     * Use getCfg() instead to get the control flow graph of this method.
+     */
     public getOriginalCfg(): Cfg | undefined {
         return undefined;
     }
