@@ -36,7 +36,7 @@ describe('generateModuleMap Test', () => {
 
 
         expect(moduleMap).toBeInstanceOf(Map);
-        expect(moduleMap.size).equal(4);
+        expect(moduleMap.size).equal(6);
         // Check that module paths are valid
         for (const [moduleName, modulePath] of moduleMap.entries()) {
             expect(moduleName).toBeDefined();
