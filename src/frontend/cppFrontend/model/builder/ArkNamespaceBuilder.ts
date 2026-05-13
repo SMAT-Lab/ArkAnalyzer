@@ -88,9 +88,6 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     );
     ns.setSignature(namespaceSignature);
 
-    // TODO: whether needed?
-    ns.setCode(node.code);
-
     // set line and column
     ns.setOriginFullPositions([FullPosition.cxxBuildFromNode(node, sourceFile)]);
 

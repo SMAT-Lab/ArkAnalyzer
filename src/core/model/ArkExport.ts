@@ -21,6 +21,7 @@ import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseM
 import { ArkError } from '../common/ArkError';
 import { ArkMetadataKind, CommentsMetadata } from './ArkMetadata';
 import { ArkNamespace } from './ArkNamespace';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 export type ExportSignature = NamespaceSignature | ClassSignature | MethodSignature | LocalSignature;
 
@@ -76,7 +77,7 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
 
     /** The full position (start/end line/col) of this export in the source file. */
     private originFullPosition!: FullPosition;
-    private tsSourceCode?: string;
+    private sourceCode?: string;
     private declaringArkFile!: ArkFile;
     private declaringArkNamespace?: ArkNamespace;
     private constructor() {
@@ -145,8 +146,28 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
         return this.originFullPosition;
     }
 
+    /**
+     * Returns the source text of the export extracted from the declaring ArkFile
+     * using the export's origin position. Implements lazy loading with caching.
+     * @returns The source text of the export, or empty string if unavailable.
+     */
     public getTsSourceCode(): string {
-        return this.tsSourceCode ?? '';
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+            return code;
+        }
+        return '';
+    }
+
+    /**
+     * Clears the cached source text, forcing re-extraction on next getTsSourceCode call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public getDeclaringArkFile(): ArkFile {
@@ -203,16 +224,27 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
             return this;
         }
 
-        public tsSourceCode(tsSourceCode: string): ArkExportBuilder {
-            this.exportInfo.tsSourceCode = tsSourceCode;
+        /**
+         * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+         * @param _tsSourceCode - The source code (ignored).
+         */
+        public tsSourceCode(_tsSourceCode: string): ArkExportBuilder {
             return this;
         }
 
+        /**
+         * Sets the declaring ArkFile of this export.
+         * @param value - The ArkFile to set.
+         */
         public declaringArkFile(value: ArkFile): ArkExportBuilder {
             this.exportInfo.declaringArkFile = value;
             return this;
         }
 
+        /**
+         * Sets the declaring ArkNamespace of this export.
+         * @param value - The ArkNamespace to set.
+         */
         public declaringArkNamespace(value: ArkNamespace): ArkExportBuilder {
             this.exportInfo.declaringArkNamespace = value;
             return this;

@@ -1018,7 +1018,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
                 stmt.setOriginFullPosition(FullPosition.cxxBuildFromNode(node, this.cxxSourceFile));
-                stmt.setOriginalText(node.code);
             }
         }
     }

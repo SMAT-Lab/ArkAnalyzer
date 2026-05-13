@@ -34,6 +34,7 @@ import { BasicBlock } from '../../../../core/graph/BasicBlock';
 import { Local } from '../../../../core/base/Local';
 import { Value } from '../../../../core/base/Value';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../../core/common/Const';
+import { FullPosition } from '../../../../core/base/Position';
 import { IRUtils } from '../../common/IRUtils';
 import {
     buildNestedMethodName,
@@ -46,7 +47,6 @@ import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../../core/common
 import { ArkSignatureBuilder } from '../../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { CxxAstNode } from '../../ast';
-import { FullPosition } from '../../../../core/base/Position';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -126,7 +126,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
     // After processing the template parameters, proceed to the corresponding functions below
     methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
-    mtd.setCode(methodNode.code);
     mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
@@ -305,7 +304,6 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
-    defaultConstructor.setCode(arkClass.getName());
     defaultConstructor.setIsGeneratedFlag(false);
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));

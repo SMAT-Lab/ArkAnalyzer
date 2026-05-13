@@ -659,7 +659,7 @@ export class IRInference {
         }
         if (TypeInference.isUnclearType(baseType)) {
             const declaringStmt = base.getDeclaringStmt();
-            if (!declaringStmt || !declaringStmt.getOriginalText() || declaringStmt.getOriginalText()?.startsWith(base.getName())) {
+            if (!declaringStmt) {
                 baseType = ModelUtils.findDeclaredLocal(base, arkMethod)?.getType() ?? TypeInference.inferBaseType(base.getName(), arkClass);
             }
         }

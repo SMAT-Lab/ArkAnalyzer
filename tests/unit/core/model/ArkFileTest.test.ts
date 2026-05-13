@@ -73,3 +73,42 @@ describe('File Test', () => {
         checkLanguageOfModelWithinFile(scene, fileNames[2], Language.TYPESCRIPT);
     });
 });
+
+describe('ArkFile Source Code Test', () => {
+    const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
+    const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+
+    it('test getCode for method.ts', async () => {
+        assert.isDefined(arkFile);
+        const code = arkFile!.getCode();
+        assert.isDefined(code);
+        const expectedCodeStart = `/*
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */`;
+        expect(code!.substring(0, expectedCodeStart.length)).eq(expectedCodeStart);
+    });
+
+    it('test getCode ends with expected content', async () => {
+        assert.isDefined(arkFile);
+        const code = arkFile!.getCode();
+        assert.isDefined(code);
+        const expectedCodeEnd = `function constructor(): void {}
+
+namespace ConstructorTest {
+    export function constructor(): void {}
+}
+`;
+        expect(code!.endsWith(expectedCodeEnd)).eq(true);
+    });
+});

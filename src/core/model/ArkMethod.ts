@@ -33,6 +33,7 @@ import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
 
@@ -53,7 +54,6 @@ export const arkMethodNodeKind = [
  * @category core/model
  */
 export class ArkMethod extends ArkBaseModel implements ArkExport {
-    private code?: string;
     private declaringArkClass!: ArkClass;
     // used for the nested function to locate its outer function
     private outerMethod?: ArkMethod;
@@ -68,6 +68,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     /** The full position of the method implementation.
      *  Undefined when the method has no implementation (e.g., interface method). */
     private implOriginFullPosition?: FullPosition;
+    private sourceCode?: string;
 
     private body?: ArkBody;
     private viewTree?: ViewTree;
@@ -96,15 +97,38 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * Returns the codes of method as a **string.**
-     * @returns the codes of method.
+     * Returns the source text of the method extracted from the declaring ArkFile
+     * using the method's origin position. Implements lazy loading with caching.
+     * Returns implementation position's source if available, otherwise returns
+     * first declaration position's source.
+     * @returns The source text of the method, or undefined if unavailable.
      */
     public getCode(): string | undefined {
-        return this.code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        if (this.implOriginFullPosition !== undefined) {
+            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.implOriginFullPosition);
+            if (code !== undefined) {
+                this.sourceCode = code;
+            }
+            return code;
+        }
+        if (this.declareOriginFullPositions && this.declareOriginFullPositions.length > 0) {
+            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.declareOriginFullPositions[0]);
+            if (code !== undefined) {
+                this.sourceCode = code;
+            }
+            return code;
+        }
+        return undefined;
     }
 
-    public setCode(code: string): void {
-        this.code = code;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _code - The source code (ignored).
+     */
+    public setCode(_code: string): void {
     }
 
     /**
@@ -667,32 +691,32 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
     public validate(): ArkError {
         const declareSignatures = this.getDeclareSignatures();
-        const declareLineCols = this.getDeclareLineCols();
+        const declarePositions = this.getDeclareOriginFullPositions();
         const signature = this.getImplementationSignature();
-        const lineCol = this.getLineCol();
+        const originFullPosition = this.getImplOriginFullPosition();
 
         if (declareSignatures === null && signature === null) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_UNDEFINED,
-                errMsg: 'methodDeclareSignatures and methodSignature are both undefined.',
+                errMsg: 'declareSignatures and methodSignature are both undefined.',
             };
         }
-        if ((declareSignatures === null) !== (declareLineCols === null)) {
+        if ((declareSignatures === null) !== (declarePositions === null)) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodDeclareSignatures and methodDeclareLineCols are not matched.',
+                errMsg: 'declareSignatures and declareOriginFullPositions are not matched.',
             };
         }
-        if (declareSignatures !== null && declareLineCols !== null && declareSignatures.length !== declareLineCols.length) {
+        if (declareSignatures !== null && declarePositions !== null && declareSignatures.length !== declarePositions.length) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodDeclareSignatures and methodDeclareLineCols are not matched.',
+                errMsg: 'declareSignatures and declareOriginFullPositions are not matched.',
             };
         }
-        if ((signature === null) !== (lineCol === null)) {
+        if ((signature === null) !== (originFullPosition === undefined)) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodSignature and lineCol are not matched.',
+                errMsg: 'methodSignature and originFullPosition are not matched.',
             };
         }
         return this.validateFields(['declaringArkClass']);

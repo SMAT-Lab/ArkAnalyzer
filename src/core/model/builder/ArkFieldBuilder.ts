@@ -19,6 +19,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { buildDecorators, buildGenericType, buildModifiers, handlePropertyAccessExpression, tsNode2Type } from './builderUtils';
+import { cloneText } from '../../common/StringUtils';
 import { FieldSignature } from '../ArkSignature';
 import { ClassType, Type, UnknownType } from '../../base/Type';
 import { FullPosition } from '../../base/Position';
@@ -36,27 +37,26 @@ export function buildProperty2ArkField(
 ): ArkField {
     let field = new ArkField();
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setCode(member.getText(sourceFile));
     field.setDeclaringArkClass(cls);
     field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
-    let fieldName = member.getText(sourceFile);
+    let fieldName = cloneText(member.getText(sourceFile));
     if (member.name && ts.isComputedPropertyName(member.name)) {
         if (ts.isIdentifier(member.name.expression)) {
-            fieldName = member.name.expression.text;
+            fieldName = cloneText(member.name.expression.text);
         } else if (ts.isPropertyAccessExpression(member.name.expression)) {
             fieldName = handlePropertyAccessExpression(member.name.expression);
         } else {
-            logger.warn(`Other property expression type found: ${member.name.expression.getText()}!`);
+            logger.warn(`Other property expression type found: ${cloneText(member.name.expression.getText())}!`);
         }
     } else if (member.name && (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name))) {
-        fieldName = member.name.text;
+        fieldName = cloneText(member.name.text);
     } else if (member.name && ts.isPrivateIdentifier(member.name)) {
-        let propertyName = member.name.text;
+        let propertyName = cloneText(member.name.text);
         fieldName = propertyName.substring(1);
         field.addModifier(ModifierType.PRIVATE);
     } else {
-        logger.warn(`Other type of property name found: ${member.getText()}!`);
+        logger.warn(`Other type of property name found: ${cloneText(member.getText())}!`);
     }
 
     let fieldType: Type = UnknownType.getInstance();
@@ -89,7 +89,6 @@ export function buildProperty2ArkField(
 
 export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile, cls: ArkClass): void {
     const field = new ArkField();
-    field.setCode(member.getText(sourceFile));
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setDeclaringArkClass(cls);
 
@@ -100,7 +99,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
         field.addModifier(modifier);
     }
 
-    const fieldName = '[' + member.parameters[0].getText(sourceFile) + ']';
+    const fieldName = '[' + cloneText(member.parameters[0].getText(sourceFile)) + ']';
     const fieldType = buildGenericType(tsNode2Type(member.type, sourceFile, field), field);
     const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, true);
     field.setSignature(fieldSignature);
@@ -113,21 +112,20 @@ export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mth
     let field = new ArkField();
     field.setDeclaringArkClass(cls);
 
-    field.setCode(member.getText(sourceFile));
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
-    let fieldName = member.getText(sourceFile);
+    let fieldName = cloneText(member.getText(sourceFile));
     if (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name)) {
-        fieldName = member.name.text;
+        fieldName = cloneText(member.name.text);
     } else if (ts.isComputedPropertyName(member.name)) {
         if (ts.isIdentifier(member.name.expression)) {
-            let propertyName = member.name.expression.text;
+            let propertyName = cloneText(member.name.expression.text);
             fieldName = propertyName;
         } else if (ts.isPropertyAccessExpression(member.name.expression)) {
             fieldName = handlePropertyAccessExpression(member.name.expression);
         } else if (ts.isLiteralExpression(member.name.expression)) {
-            fieldName = member.name.expression.text;
+            fieldName = cloneText(member.name.expression.text);
         } else {
             logger.warn('Other type of computed property name found!');
         }

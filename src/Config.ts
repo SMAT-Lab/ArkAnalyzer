@@ -113,6 +113,8 @@ export type SceneOptionsValue =
 export interface SceneOptions {
     supportFileExts?: string[];
     ignoreFileNames?: string[];
+    /** Whether to save source code text in ArkFile by default during IR construction. */
+    saveSourceCodeByDefault?: boolean;
     enableLeadingComments?: boolean;
     enableTrailingComments?: boolean;
     enableJSDoc?: boolean;

@@ -21,6 +21,7 @@ import { Type } from '../base/Type';
 import { ArkBaseModel, BaseModelTag, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { Language } from './ArkFile';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 export enum FieldCategory {
     PROPERTY_DECLARATION = 0,
@@ -50,13 +51,12 @@ export const FIELD_CATEGORY_MASK = 0xF << FIELD_CATEGORY_SHIFT;
  * @category core/model
  */
 export class ArkField extends ArkBaseModel {
-    private code: string = '';
-
     private declaringClass!: ArkClass;
 
     private fieldSignature!: FieldSignature;
     /** The full position (start/end line/col) of this field in the source file. */
     private originFullPosition!: FullPosition;
+    private sourceCode?: string;
 
     private initializer: Stmt[] = [];
 
@@ -80,15 +80,35 @@ export class ArkField extends ArkBaseModel {
     }
 
     /**
-     * Returns the codes of field as a **string.**
-     * @returns the codes of field.
+     * Returns the source text of the field extracted from the declaring ArkFile
+     * using the field's origin position. Implements lazy loading with caching.
+     * @returns The source text of the field, or empty string if unavailable.
      */
     public getCode(): string {
-        return this.code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        const code = extractSourceTextByFullPosition(this.getDeclaringArkClass().getDeclaringArkFile().getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+            return code;
+        }
+        return '';
     }
 
-    public setCode(code: string): void {
-        this.code = code;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _code - The source code (ignored).
+     */
+    public setCode(_code: string): void {
+        
+    }
+
+    /**
+     * Clears the cached source text, forcing re-extraction on next getCode call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public getCategory(): FieldCategory {

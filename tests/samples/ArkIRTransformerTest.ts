@@ -208,5 +208,5 @@ class ArkIRTransformerTest {
 }
 
 const arkIRTransformerTest = new ArkIRTransformerTest();
-arkIRTransformerTest.printCfg();
+arkIRTransformerTest.printIR();
 

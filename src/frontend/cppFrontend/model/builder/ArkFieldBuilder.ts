@@ -27,7 +27,6 @@ import { CxxAstNode } from '../../ast';
 export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNode, cls: ArkClass): ArkField {
     let field = new ArkField();
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setCode(member.code);
     field.setDeclaringArkClass(cls);
     field.setOriginFullPosition(FullPosition.cxxBuildFromNode(member, sourceFile));
 

@@ -37,6 +37,7 @@ import { FullPosition } from '../../base/Position';
 import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
 import { FileSignature } from '../ArkSignature';
 import { ARKTS_STATIC_MARK } from '../../common/Const';
+import { cloneText } from '../../common/StringUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -72,13 +73,19 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     const fileSignature = new FileSignature(projectName, path.relative(projectDir, absoluteFilePath));
     arkFile.setFileSignature(fileSignature);
 
+    let sourceText: string;
     try {
-        arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+        sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
         logger.error('Failed to read file: ${error}');
         return;
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), arkFile.getCode(), ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const options = arkFile.getScene().getOptions();
+    const eagerLoad = options.saveSourceCodeByDefault ?? false;
+    if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
+    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     // save ast source file, if enabled ast and file is from the project (not from sdk)
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
@@ -149,7 +156,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
         } else if (ts.isTypeAliasDeclaration(child) && isExported(child.modifiers)) {
             buildExportTypeAliasDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
         } else if (ts.isExpressionStatement(child) && ts.isStringLiteral(child.expression)) {
-            child.expression.text.trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
+            cloneText(child.expression.text).trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
         } else {
             logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
         }

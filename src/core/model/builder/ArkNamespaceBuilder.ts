@@ -20,6 +20,7 @@ import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
 import { ArkNamespace } from '../ArkNamespace';
 import { buildDecorators, buildModifiers } from './builderUtils';
+import { cloneText } from '../../common/StringUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { buildExportAssignment, buildExportDeclaration, buildExportInfo, buildExportVariableStatement, isExported } from './ArkExportBuilder';
 import { ArkClass } from '../ArkClass';
@@ -43,16 +44,13 @@ export function buildArkNamespace(node: ts.ModuleDeclaration, declaringInstance:
         ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
     }
     ns.setDeclaringInstance(declaringInstance);
-    const namespaceName = node.name.text;
+    const namespaceName = cloneText(node.name.text);
     const namespaceSignature = new NamespaceSignature(
         namespaceName,
         ns.getDeclaringArkFile().getFileSignature(),
         ns.getDeclaringArkNamespace()?.getSignature() || null
     );
     ns.setSignature(namespaceSignature);
-
-    // TODO: whether needed?
-    ns.setCode(node.getText(sourceFile));
 
     // set line and column
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
@@ -172,9 +170,6 @@ export function mergeNameSpaces(arkNamespaces: ArkNamespace[]): ArkNamespace[] {
             classes.forEach(cls => {
                 prevNamespace.addArkClass(cls);
             });
-            const preSourceCodes = prevNamespace.getCodes();
-            const currSourceCodes = currNamespace.getCodes();
-            prevNamespace.setCodes([...preSourceCodes, ...currSourceCodes]);
             const prevLineColPairs = prevNamespace.getOriginFullPositions();
             const currLineColPairs = currNamespace.getOriginFullPositions();
             prevNamespace.setOriginFullPositions([...prevLineColPairs, ...currLineColPairs]);
