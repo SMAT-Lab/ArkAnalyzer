@@ -16,16 +16,50 @@
 
 ---
 
-## [Unreleased]
+## [1.0.90] - 2026-04-27
 
 ### 新增
-- 文档体系完善：补全 [核心组件 10 篇](docs/components/) 与 [静态分析 5 篇](docs/analysis/) 全部正文内容。
-- 新增 [`docs/MultiLanguageSupport.md`](docs/MultiLanguageSupport.md)：多语言能力矩阵与各语言相对 ArkTS 的 IR 差异说明。
-- 根 `README.md` / `README.en.md` 补全"支持的使用场景（分语言）"小节。
-- CHANGELOG 启用 Keep a Changelog 格式，并回溯整理已发布版本条目。
+- **C++ addon 模块化发布**：将 C++ addon 拆分为平台可选依赖包（`optionalDependencies`），按操作系统与架构动态安装（[`feat(publish): split cpp addon into platform optional packages`](https://github.com/openharmony-sig/arkanalyzer/commit/6c20d64d)）。
+- 性能优化：CPU 热点函数 `flattenReducer` 优化（`feat(perf): opt cpu hot function flattenReducer`）。
 
 ### 变更
-- ArkIR 文本块在所有文档中统一使用 ` ```typescript ` 围栏，便于阅读与代码高亮。
+- 内存优化：为 `ValueUtil` 常量引入 LRU 缓存（`perf: optimize memory with LRU cache for ValueUtil constants`）。
+- C++ 构建流程：当 Node 环境缺失时自动跳过 C++ 构建步骤（`Skip C++ build when no Node environment`）。
+
+---
+
+## [1.0.89] - 2026-04-25
+
+### 新增
+- 性能分析增强：
+  - RSS峰值报告完善与基准对比功能（`feat(perf): finalize rss peak report updates`）。
+  - 支持自定义项目的 `PROJECT_BASELINE` 配置（`feat(perf): make PROJECT_BASELINE optional for custom project analysis`）。
+  - 基准 JSON 中移除 GC 详细信息（`feat(perf):baseline json remove gc detail.`）。
+
+### 变更
+- 核心代码重构：字符串性能优化与代码清理（`refactor(core): clean code and string performance optimization`）。
+
+### 修复
+- 性能测试稳定性：使用子进程隔离测试轮次并采用最大 RSS峰值（`fix(perf): isolate rounds by child process and use max rss peak`）。
+- SDK方法构建器内存泄漏：释放 SDK 方法构建器并添加泄漏检查文档（`fix(scene): release sdk method builders and add leak checker doc`）。
+- 冗余引用字段初始化问题（`fix(core): avoid redundant reference field initialization`）。
+
+---
+
+## [1.0.88] - 2026-04-18
+
+### 新增
+- **JSDoc 解析支持**：AST 层支持解析 JSDoc 注释（`feat(IR) add parse ast jsdoc`）。
+- 性能分析工具：
+  - Heap采样热点函数分析与 ArkStmt 统计（`feat(perf): add heap sampling hot functions analysis and arkStmtCount statistics`）。
+  - CPU profiling 脚本与重复文件检查加速（`perf: add CPU profiling script and speed up repeat-file checks`）。
+
+### 修复
+- C++ 构建流程：修复 cpp ast dumper 构建脚本、CMake链接与构建指南（`fix(build): cpp ast dumper build script, CMake link, and build guide`）。
+- TypeScript依赖移除（`Bugfix: remove typescript depends`）。
+- HomeCheck测试用例修复（`fix homecheck test case 1 fail`）。
+- Promise内嵌问题修复（`fix Promise embed`）。
+- CI流程修复（`fix ci`）。
 
 ---
 
@@ -176,7 +210,10 @@
 
 > 1.0.0 之前的开发版本未维护变更日志，请参考 [git 提交历史](https://github.com/openharmony-sig/arkanalyzer/commits) 了解早期变化（项目起始于 2023 年 11 月）。
 
-[Unreleased]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.87...HEAD
+[Unreleased]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.90...HEAD
+[1.0.90]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.89...v1.0.90
+[1.0.89]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.88...v1.0.89
+[1.0.88]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.87...v1.0.88
 [1.0.87]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.86...v1.0.87
 [1.0.86]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.8...v1.0.86
 [1.0.8]: https://github.com/openharmony-sig/arkanalyzer/compare/v1.0.5...v1.0.8

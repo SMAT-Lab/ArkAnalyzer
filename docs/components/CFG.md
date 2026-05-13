@@ -9,7 +9,7 @@ ArkAnalyzer 中每个 `ArkMethod` 经过 IR 转换后都会生成一个唯一的
 - **常规控制流边（successor / predecessor）**：顺序执行、分支跳转、循环回边等。
 - **异常控制流边（exceptionalSuccessor / exceptionalPredecessor）**：`try` 块到 `catch` 块的边，仅在 `try/catch/finally` 结构中出现。
 
-## 2. ArkIR
+## 2. 控制流结构
 
 CFG 的文本形式以 `label<id>:` 标签开头标识每个基本块，块内顺序列出 Stmt，块尾常以 `goto`、`if … goto labelT labelF`、`return`、`throw` 中之一结尾。下面以五种典型控制结构展示其 ArkIR 形态。
 

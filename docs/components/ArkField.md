@@ -6,7 +6,7 @@
 
 > 注意区分 `ArkField`（**字段定义**）与 `ArkInstanceFieldRef` / `ArkStaticFieldRef`（**字段读写引用**，详见 [IRBasics §4.2/§4.3](./IRBasics.md#4-ref---引用)）。前者描述"这个类有哪些字段"，后者出现在 IR Stmt 里，用于实际访问字段。
 
-## 2. ArkIR
+## 2. 字段类型
 
 ### 2.1 普通字段（`PROPERTY_DECLARATION`）
 
@@ -169,12 +169,9 @@ class Box {
 // src/core/model/ArkField.ts
 export class ArkField extends ArkBaseModel {
     private code: string = '';                  // 源码片段（用于诊断 / 转写）
-    private category!: FieldCategory;           // 字段种类（9 种）
     private declaringClass!: ArkClass;          // 所属类
-    private questionToken: boolean = false;     // foo?: T 中的 ?
-    private exclamationToken: boolean = false;  // foo!: T 中的 !
     private fieldSignature!: FieldSignature;    // 全局唯一签名（含名字、类型、staticFlag）
-    private originPosition?: LineColPosition;   // 源码位置
+    private originFullPosition!: FullPosition;  // 源码完整位置（起始/结束行列）
     private initializer: Stmt[] = [];           // 字段初始化语句序列
 }
 ```
@@ -223,25 +220,26 @@ export class FieldSignature {
 
 ## 4. 主要接口
 
-### ArkField（继承自 ArkBaseModel）
+### 基本接口
 
 | 方法 | 说明 |
 |------|------|
 | `getName(): string` | 返回 `fieldSignature.getFieldName()` |
 | `getType(): Type` | 返回 `fieldSignature.getType()` |
 | `getSignature(): FieldSignature` / `setSignature(s)` | 全局唯一签名 |
-| `getCategory(): FieldCategory` / `setCategory(c)` | 9 种字段类型之一 |
+| `getCategory(): FieldCategory` / `setCategory(c)` | 通过 tag 系统获取/设置字段种类（9 种类型） |
 | `getDeclaringArkClass(): ArkClass` / `setDeclaringArkClass(c)` | 反向定位所属类 |
 | `getInitializer(): Stmt[]` / `setInitializer(stmts)` | 初始化语句（会被搬到 `%instInit` / `%statInit`） |
-| `getQuestionToken() / setQuestionToken(b)` | `foo?: T` 中的可选标记 |
-| `getExclamationToken() / setExclamationToken(b)` | `foo!: T` 中的"definite assignment"标记 |
+| `getQuestionToken() / setQuestionToken(b)` | 通过 `BaseModelTag.QUESTION_TOKEN` 管理 `foo?: T` 中的可选标记 |
+| `getExclamationToken() / setExclamationToken(b)` | 通过 `BaseModelTag.EXCLAMATION_TOKEN` 管理 `foo!: T` 中的"definite assignment"标记 |
 | `getCode(): string` / `setCode(s)` | 字段对应的源码片段 |
-| `getOriginPosition(): LineColPosition` | 源码行列位置 |
+| `getOriginFullPosition(): FullPosition` | 源码完整位置（起始/结束行列） |
+| `setOriginFullPosition(position: FullPosition)` | 设置源码完整位置 |
 | `getLanguage(): Language` | 字段所属文件的语言种类（继承自类） |
-| `validate(): ArkError` | 必要字段完整性检查（`category`、`declaringClass`、`fieldSignature`） |
+| `validate(): ArkError` | 必要字段完整性检查（`declaringClass`、`fieldSignature`） |
 | `isPublic(): boolean` | 是否为 public（无显式修饰时类/接口/对象字段默认 true） |
 
-继承自 `ArkBaseModel` 的修饰符 API：
+### 修饰符
 
 | 方法 | 说明 |
 |------|------|
@@ -261,6 +259,16 @@ export class FieldSignature {
 | `getDeclaringSignature(): BaseSignature` | 所属 `ClassSignature` 或 `NamespaceSignature` |
 | `getBaseName(): string` | 所属类名（或命名空间名） |
 | `toString(): string` | `<@Pkg/File: Class.field>`，静态字段加 `[static]` |
+
+### 已废弃接口
+
+以下接口自 **1.0.91** 版本起废弃，建议使用新的替代接口：
+
+| 方法 | 说明 |
+|------|------|
+| `getOriginPosition(): LineColPosition` | ⚠️ **废弃于 1.0.91**，建议使用 `getOriginFullPosition()` |
+| `setOriginPosition(position: LineColPosition)` | ⚠️ **废弃于 1.0.91**，建议使用 `setOriginFullPosition()` |
+| `isExported(): boolean` | ⚠️ **废弃于 1.0.91**，建议使用 `isExport()` 替代 |
 
 ## 5. 使用示例
 

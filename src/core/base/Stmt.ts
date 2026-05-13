@@ -250,7 +250,7 @@ export abstract class Stmt {
     }
 
     /**
-     * @deprecated Use setOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use setOriginFullPosition() instead.
      * @param originPositionInfo - The LineColPosition to set.
      */
     public setOriginPositionInfo(originPositionInfo: LineColPosition): void {
@@ -269,7 +269,7 @@ export abstract class Stmt {
      * and the latter (i.e., column number) indicates the position of the statement in the line.
      * The position is described as `LineColPosition(lineNo,colNum)` in ArkAnalyzer,
      * and its default value is LineColPosition(-1,-1).
-     * @deprecated Use getOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use getOriginFullPosition() instead.
      * @returns The original location of the statement as LineColPosition.
      * @example
      * 1. Get the stmt position info to make some condition judgements.

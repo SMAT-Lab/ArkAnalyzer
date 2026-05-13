@@ -152,7 +152,7 @@ export class ArkField extends ArkBaseModel {
     }
 
     /**
-     * @deprecated Use setOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use setOriginFullPosition() instead.
      * @param position - The LineColPosition to set.
      */
     public setOriginPosition(position: LineColPosition): void {
@@ -165,7 +165,7 @@ export class ArkField extends ArkBaseModel {
     }
 
     /**
-     * @deprecated Use getOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use getOriginFullPosition() instead.
      * @returns The original position of the field at source code.
      */
     public getOriginPosition(): LineColPosition {

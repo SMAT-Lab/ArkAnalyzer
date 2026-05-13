@@ -6,7 +6,7 @@
 
 可以把 `ArkBody` 视作 ArkIR 的"方法级根结点"——下游分析（[Def-Use Chain](../analysis/Def-Use%20Chain.md) / [CallGraph](../analysis/CallGraph.md) / [IFDS](../analysis/IFDS.md) 等）几乎都从某个 `ArkBody` 出发。
 
-## 2. ArkIR
+## 2. ArkIR 视角
 
 `ArkBody` 本身没有独立的文本形式——它通过其内部 `Cfg` 的所有 BasicBlock 与 Stmt 间接呈现 ArkIR。下面把"源码 → ArkBody 持有的内容"对应起来：
 
