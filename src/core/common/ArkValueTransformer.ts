@@ -211,13 +211,13 @@ export class ArkValueTransformer {
 
     private tsNodeToSingleAddressValueAndStmts(node: ts.Node): ValueAndStmts {
         const allStmts: Stmt[] = [];
-        let { value, valueOriginalPositions, stmts } = this.tsNodeToValueAndStmts(node);
+        const { value, valueOriginalPositions, stmts } = this.tsNodeToValueAndStmts(node);
         stmts.forEach(stmt => allStmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(value)) {
-            ({ value, valueOriginalPositions, stmts } = this.arkIRTransformer.generateAssignStmtForValue(value, valueOriginalPositions));
-            stmts.forEach(stmt => allStmts.push(stmt));
-        }
-        return { value, valueOriginalPositions, stmts: allStmts };
+        
+        const { value: processedValue, positions: processedPositions } = 
+            this.arkIRTransformer.handleExpressionValueWithTempVarIfNeeded(value, valueOriginalPositions, allStmts);
+        
+        return { value: processedValue, valueOriginalPositions: processedPositions, stmts: allStmts };
     }
 
     private thisExpressionToValueAndStmts(thisExpression: ts.ThisExpression): ValueAndStmts {
