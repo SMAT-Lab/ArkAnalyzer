@@ -108,7 +108,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getDeclareOriginFullPositions().map(p => p.getFirstLine()) instead.
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map(p => p.getFirstLine()) instead.
      * @returns null or the lines of the method's declarations with number type.
      */
     public getDeclareLines(): number[] | null {
@@ -123,7 +123,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getDeclareOriginFullPositions().map(p => p.getFirstCol()) instead.
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map(p => p.getFirstCol()) instead.
      * @returns null or the columns of the method's declarations with number type.
      */
     public getDeclareColumns(): number[] | null {
@@ -138,7 +138,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use setDeclareOriginFullPositions() instead.
+     * @deprecated Since version 1.0.91. Use setDeclareOriginFullPositions() instead.
      * @param lines - the number of lines.
      * @param columns - the number of columns.
      */
@@ -150,7 +150,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use setDeclareOriginFullPositions() instead.
+     * @deprecated Since version 1.0.91. Use setDeclareOriginFullPositions() instead.
      * @param lineCols - the encoded lines and columns with LineCol type.
      */
     public setDeclareLineCols(lineCols: LineCol[]): void {
@@ -162,7 +162,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getDeclareOriginFullPositions().map() instead.
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map() instead.
      * @returns null or the encoded lines and columns of the method's declarations with LineCol type.
      */
     public getDeclareLineCols(): LineCol[] | null {
@@ -189,7 +189,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getImplOriginFullPosition()?.getFirstLine() instead.
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition()?.getFirstLine() instead.
      * @returns null or the number of the line.
      */
     public getLine(): number | null {
@@ -200,7 +200,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use setImplOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param line - the line number of the method implementation.
      */
     public setLine(line: number): void {
@@ -215,7 +215,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getImplOriginFullPosition()?.getFirstCol() instead.
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition()?.getFirstCol() instead.
      * @returns null or the number of the column.
      */
     public getColumn(): number | null {
@@ -226,7 +226,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use setImplOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param column - the column number of the method implementation.
      */
     public setColumn(column: number): void {
@@ -241,7 +241,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use getImplOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition() instead.
      * @returns null or the encoded line and column of the method's implementation with LineCol type.
      */
     public getLineCol(): LineCol | null {
@@ -252,7 +252,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated Use setImplOriginFullPosition() instead.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param lineCol - the encoded line and column with LineCol type.
      */
     public setLineCol(lineCol: LineCol): void {
@@ -495,7 +495,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * @deprecated This method is deprecated and always returns undefined.
+     * @deprecated Since version 1.0.91. This method always returns undefined.
      * Use getCfg() instead to get the control flow graph of this method.
      */
     public getOriginalCfg(): Cfg | undefined {

@@ -262,11 +262,13 @@ export class FieldSignature {
 
 ### 已废弃接口
 
+以下接口自 **1.0.91** 版本起废弃，建议使用新的替代接口：
+
 | 方法 | 说明 |
 |------|------|
-| `getOriginPosition(): LineColPosition` | ⚠️ **已废弃**，建议使用 `getOriginFullPosition()` |
-| `setOriginPosition(position: LineColPosition)` | ⚠️ **已废弃**，建议使用 `setOriginFullPosition()` |
-| `isExported(): boolean` | ⚠️ **已废弃**，建议使用 `isExport()` 替代 |
+| `getOriginPosition(): LineColPosition` | ⚠️ **废弃于 1.0.91**，建议使用 `getOriginFullPosition()` |
+| `setOriginPosition(position: LineColPosition)` | ⚠️ **废弃于 1.0.91**，建议使用 `setOriginFullPosition()` |
+| `isExported(): boolean` | ⚠️ **废弃于 1.0.91**，建议使用 `isExport()` 替代 |
 
 ## 5. 使用示例
 

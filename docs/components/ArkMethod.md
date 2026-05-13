@@ -304,22 +304,22 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
 ### 已废弃接口
 
-以下接口已废弃，建议使用新的替代接口：
+以下接口自 **1.0.91** 版本起废弃，建议使用新的替代接口：
 
 | 方法                                                   | 说明                                       |
 | ---------------------------------------------------- | ---------------------------------------- |
-| `getOriginalCfg(): Cfg \| undefined`                   | ⚠️ **已废弃**，恒返回 `undefined`，建议使用 `getCfg()` 替代 |
-| `getDeclareLines(): number[] \| null`                 | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstLine())` |
-| `getDeclareColumns(): number[] \| null`               | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstCol())` |
-| `setDeclareLinesAndCols(lines, columns): void`        | ⚠️ **已废弃**，建议使用 `setDeclareOriginFullPositions()` |
-| `setDeclareLineCols(lineCols): void`                  | ⚠️ **已废弃**，建议使用 `setDeclareOriginFullPositions()` |
-| `getDeclareLineCols(): LineCol[] \| null`             | ⚠️ **已废弃**，建议使用 `getDeclareOriginFullPositions().map()` |
-| `getLine(): number \| null`                           | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()?.getFirstLine()` |
-| `setLine(line): void`                                 | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
-| `getColumn(): number \| null`                         | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()?.getFirstCol()` |
-| `setColumn(column): void`                             | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
-| `getLineCol(): LineCol \| null`                       | ⚠️ **已废弃**，建议使用 `getImplOriginFullPosition()` |
-| `setLineCol(lineCol): void`                           | ⚠️ **已废弃**，建议使用 `setImplOriginFullPosition()` |
+| `getOriginalCfg(): Cfg \| undefined`                   | ⚠️ **废弃于 1.0.91**，恒返回 `undefined`，建议使用 `getCfg()` 替代 |
+| `getDeclareLines(): number[] \| null`                 | ⚠️ **废弃于 1.0.91**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstLine())` |
+| `getDeclareColumns(): number[] \| null`               | ⚠️ **废弃于 1.0.91**，建议使用 `getDeclareOriginFullPositions().map(p => p.getFirstCol())` |
+| `setDeclareLinesAndCols(lines, columns): void`        | ⚠️ **废弃于 1.0.91**，建议使用 `setDeclareOriginFullPositions()` |
+| `setDeclareLineCols(lineCols): void`                  | ⚠️ **废弃于 1.0.91**，建议使用 `setDeclareOriginFullPositions()` |
+| `getDeclareLineCols(): LineCol[] \| null`             | ⚠️ **废弃于 1.0.91**，建议使用 `getDeclareOriginFullPositions().map()` |
+| `getLine(): number \| null`                           | ⚠️ **废弃于 1.0.91**，建议使用 `getImplOriginFullPosition()?.getFirstLine()` |
+| `setLine(line): void`                                 | ⚠️ **废弃于 1.0.91**，建议使用 `setImplOriginFullPosition()` |
+| `getColumn(): number \| null`                         | ⚠️ **废弃于 1.0.91**，建议使用 `getImplOriginFullPosition()?.getFirstCol()` |
+| `setColumn(column): void`                             | ⚠️ **废弃于 1.0.91**，建议使用 `setImplOriginFullPosition()` |
+| `getLineCol(): LineCol \| null`                       | ⚠️ **废弃于 1.0.91**，建议使用 `getImplOriginFullPosition()` |
+| `setLineCol(lineCol): void`                           | ⚠️ **废弃于 1.0.91**，建议使用 `setImplOriginFullPosition()` |
 
 > 所有位置相关废弃接口已统一迁移至 `FullPosition` 版本，提供更完整的源码位置信息（起始/结束行列）。
 

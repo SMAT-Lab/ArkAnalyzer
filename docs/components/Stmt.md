@@ -46,8 +46,8 @@ Stmt
 | `getOperandOriginalPosition(index): FullPosition \| undefined` | 获取指定操作数的源码位置 |
 | `replaceUse(old, new) / replaceDef(old, new)` | 替换 use/def，常用于 IR 优化与脱糖 |
 | `toString()` | 返回该 Stmt 的 ArkIR 文本形式 |
-| `getOriginPositionInfo(): LineColPosition` | ⚠️ **已废弃**，建议使用 `getOriginFullPosition()` 获取完整的源码位置信息 |
-| `setOriginPositionInfo(position: LineColPosition)` | ⚠️ **已废弃**，建议使用 `setOriginFullPosition()` 设置完整的源码位置信息 |
+| `getOriginPositionInfo(): LineColPosition` | ⚠️ **废弃于 1.0.91**，建议使用 `getOriginFullPosition()` 获取完整的源码位置信息 |
+| `setOriginPositionInfo(position: LineColPosition)` | ⚠️ **废弃于 1.0.91**，建议使用 `setOriginFullPosition()` 设置完整的源码位置信息 |
 
 > **位置信息说明**：`originFullPosition`（`FullPosition`）存储完整的源码位置（起始/结束行列），而废弃的 `getOriginPositionInfo()` 返回的 `LineColPosition` 仅包含起始行列。所有位置相关废弃接口已统一迁移至 `FullPosition` 版本，提供更完整的源码位置信息（起始/结束行列）。`operandOriginalPositions` 数组记录各操作数在源码中的位置，用于精确定位分析。
 

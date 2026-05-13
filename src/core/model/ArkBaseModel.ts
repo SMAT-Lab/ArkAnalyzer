@@ -295,7 +295,7 @@ export abstract class ArkBaseModel {
         return this.containsModifier(ModifierType.PURE_VIRTUAL);
     }
 
-    /** @deprecated Use {@link isExport} instead. */
+    /** @deprecated Since version 1.0.91. Use {@link isExport} instead. */
     public isExported(): boolean {
         return this.isExport();
     }
