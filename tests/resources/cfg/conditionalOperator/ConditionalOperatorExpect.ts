@@ -476,3 +476,240 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE8 = {
         },
     ],
 };
+
+export const CONDITIONAL_OPERATOR_EXPECT_CASE9 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @conditionalOperator/ConditionalOperatorSample.ts: %dflt',
+                'i = 0',
+                'if i > 0',
+            ],
+            preds: [
+            ],
+            succes: [
+                9,
+                8,
+            ],
+        },
+        {
+            id: 9,
+            stmts: [
+                'if i < 1',
+            ],
+            preds: [
+                0,
+            ],
+            succes: [
+                1,
+                2,
+            ],
+        },
+        {
+            id: 1,
+            stmts: [
+                'i = 1',
+            ],
+            preds: [
+                9,
+            ],
+            succes: [
+                5,
+            ],
+        },
+        {
+            id: 5,
+            stmts: [
+                'if i < 5',
+            ],
+            preds: [
+                1,
+                3,
+                4,
+            ],
+            succes: [
+                15,
+                14,
+            ],
+        },
+        {
+            id: 15,
+            stmts: [
+                'if i > 0',
+            ],
+            preds: [
+                5,
+            ],
+            succes: [
+                12,
+                13,
+            ],
+        },
+        {
+            id: 12,
+            stmts: [
+                'i = 4',
+            ],
+            preds: [
+                15,
+            ],
+            succes: [
+                7,
+            ],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = 5',
+                'return',
+            ],
+            preds: [
+                6,
+                13,
+            ],
+            succes: [
+            ],
+        },
+        {
+            id: 13,
+            stmts: [
+                'if i !== 1',
+            ],
+            preds: [
+                15,
+            ],
+            succes: [
+                6,
+                7,
+            ],
+        },
+        {
+            id: 6,
+            stmts: [
+                'i = 4',
+            ],
+            preds: [
+                13,
+            ],
+            succes: [
+                7,
+            ],
+        },
+        {
+            id: 14,
+            stmts: [
+                'if i !== 1',
+            ],
+            preds: [
+                5,
+            ],
+            succes: [
+                6,
+                7,
+            ],
+        },
+        {
+            id: 2,
+            stmts: [
+                'if i < 3',
+            ],
+            preds: [
+                9,
+            ],
+            succes: [
+                10,
+                11,
+            ],
+        },
+        {
+            id: 10,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [
+                2,
+            ],
+            succes: [
+                5,
+            ],
+        },
+        {
+            id: 11,
+            stmts: [
+                'if i > 10',
+            ],
+            preds: [
+                2,
+            ],
+            succes: [
+                3,
+                4,
+            ],
+        },
+        {
+            id: 3,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [
+                11,
+                17,
+            ],
+            succes: [
+                5,
+            ],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = 3',
+            ],
+            preds: [
+                11,
+                17,
+            ],
+            succes: [
+                5,
+            ],
+        },
+        {
+            id: 8,
+            stmts: [
+                'if i < 3',
+            ],
+            preds: [
+                0,
+            ],
+            succes: [
+                16,
+                17,
+            ],
+        },
+        {
+            id: 16,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [
+                8,
+            ],
+            succes: [
+                5,
+            ],
+        },
+        {
+            id: 17,
+            stmts: [
+                'if i > 10',
+            ],
+            preds: [
+                8,
+            ],
+            succes: [
+                3,
+                4,
+            ],
+        },
+    ],
+};

@@ -16,7 +16,7 @@
 import * as ts from 'ohos-typescript';
 import { ParameterDeclaration } from 'ohos-typescript';
 import { Local } from '../../base/Local';
-import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
+import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
 import { BasicBlock } from '../BasicBlock';
 import { Cfg } from '../Cfg';
 import { ArkClass } from '../../model/ArkClass';
@@ -30,6 +30,7 @@ import { GlobalRef } from '../../base/Ref';
 import { LoopBuilder } from './LoopBuilder';
 import { SwitchBuilder } from './SwitchBuilder';
 import { ConditionBuilder } from './ConditionBuilder';
+import { IfBuilder } from './IfBuilder';
 import { TrapBuilder } from './TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../model/ArkBaseModel';
@@ -75,7 +76,7 @@ export class StatementBuilder {
     }
 }
 
-class ConditionStatementBuilder extends StatementBuilder {
+export class ConditionStatementBuilder extends StatementBuilder {
     nextT: StatementBuilder | null;
     nextF: StatementBuilder | null;
     loopBlock: BlockBuilder | null;
@@ -1153,6 +1154,7 @@ export class CfgBuilder {
         const trapBuilder = new TrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, arkIRTransformer, basicBlockSet);
         const traps = trapBuilder.buildTraps();
 
+        this.mergeLoopInitialBlocks(basicBlockSet);
         this.removeEmptyBlocks(basicBlockSet);
 
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet);
@@ -1163,6 +1165,46 @@ export class CfgBuilder {
             aliasTypeMap: arkIRTransformer.getAliasTypeMap(),
             traps,
         };
+    }
+
+    /**
+     * Merge basic blocks for loop initialization that meet specific criteria.
+     */
+    private mergeLoopInitialBlocks(basicBlockSet: Set<BasicBlock>): void {
+        for (const bb of basicBlockSet) {
+            const predecessors = bb.getPredecessors();
+            const successors = bb.getSuccessors();
+            const stmts = bb.getStmts();
+
+            if (
+                !(
+                    predecessors.length === 1 &&
+                    predecessors[0].getSuccessors().length === 1 &&
+                    stmts.length === 1 &&
+                    (bb.getExceptionalPredecessorBlocks()?.length ?? 0) === 0 &&
+                    (bb.getExceptionalSuccessorBlocks()?.length ?? 0) === 0 &&
+                    (predecessors[0].getExceptionalSuccessorBlocks()?.length ?? 0) === 0 &&
+                    stmts[0] instanceof ArkAssignStmt &&
+                    successors.length === 1
+                )
+            ) {
+                continue;
+            }
+            if (successors[0].getStmts().length === 1 && !(successors[0].getStmts()[0] instanceof ArkIfStmt)) {
+                continue;
+            }
+
+            const predecessor = predecessors[0];
+            predecessor.removeSuccessorBlock(bb);
+            predecessor.addStmt(stmts[0]);
+            successors.forEach(successor => predecessor.addSuccessorBlock(successor));
+
+            for (const successor of successors) {
+                successor.removePredecessorBlock(bb);
+                predecessors.forEach(pred => successor.addPredecessorBlock(pred));
+            }
+            basicBlockSet.delete(bb);
+        }
     }
 
     private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
@@ -1313,6 +1355,8 @@ export class CfgBuilder {
             basicBlockSet,
             ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
         );
+        const ifBuilder = new IfBuilder();
+        ifBuilder.rebuildIf(basicBlockSet, blockBuilderToCfgBlock);
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>): Cfg {

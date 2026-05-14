@@ -106,11 +106,15 @@ const SourceBasicTest_CASE7_EXPECT = `function dealColor(rRGB: number, gRGB: num
   let min = Math.min(Math.min(rRGB, gRGB), bRGB);
   let bHSB: number = max / 255;
   let hHSB: number = 0;
-  if (max === rRGB && gRGB >= bRGB != 0) {
-    hHSB = (60 * (gRGB - bRGB)) / (max - min) + 0;
+  if (max === rRGB) {
+    if (gRGB >= bRGB) {
+      hHSB = (60 * (gRGB - bRGB)) / (max - min) + 0;
+    }
   }
-  if (max === rRGB && gRGB < bRGB != 0) {
-    hHSB = (60 * (gRGB - bRGB)) / (max - min) + 360;
+  if (max === rRGB) {
+    if (gRGB < bRGB) {
+      hHSB = (60 * (gRGB - bRGB)) / (max - min) + 360;
+    }
   }
   if (max === gRGB) {
     hHSB = (60 * (bRGB - rRGB)) / (max - min) + 120;

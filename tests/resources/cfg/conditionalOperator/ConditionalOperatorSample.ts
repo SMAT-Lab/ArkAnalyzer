@@ -68,3 +68,18 @@ function case8(): void {
     }
     i = 6;
 }
+
+function case9(): void {
+    let i = 0;
+    if (i > 0 && i < 1) {
+        i = 1;
+    } else if (i < 3 || i > 10) {
+        i = 2;
+    } else {
+        i = 3;
+    }
+    if ((i < 5 && i > 0) || i !== 1) {
+        i = 4;
+    }
+    i = 5;
+}

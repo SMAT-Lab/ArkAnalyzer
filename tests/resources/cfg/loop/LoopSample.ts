@@ -53,3 +53,13 @@ function testWhile(): void {
         console.log(item);
     }
 }
+
+function case3(): void {
+    let i = 1;
+    while (i > 0 && i < 100) {
+        i += 2;
+        while (i < 1 || i > 10) {
+            i /= 2;
+        }
+    }
+}

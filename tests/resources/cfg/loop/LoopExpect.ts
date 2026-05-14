@@ -41,7 +41,7 @@ export const LOOP_EXPECT_CASE1 = {
                 '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
                 'if %5 != true',
             ],
-            preds: [0, 2],
+            preds: [2, 0],
             succes: [2, 3],
         },
         {
@@ -97,7 +97,7 @@ export const LOOP_EXPECT_CASE2 = {
                 '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
                 'if %5 != true',
             ],
-            preds: [0, 2],
+            preds: [2, 0],
             succes: [2, 3],
         },
         {
@@ -129,7 +129,7 @@ export const LOOP_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @loop/LoopSample.ts: %dflt',
-                'i = 0',
+                'i = 1',
             ],
             preds: [
             ],
@@ -140,39 +140,101 @@ export const LOOP_EXPECT_CASE3 = {
         {
             id: 1,
             stmts: [
-                'if i > 1',
+                'if i > 0',
             ],
             preds: [
                 0,
+                8,
+            ],
+            succes: [
+                6,
+                5,
+            ],
+        },
+        {
+            id: 6,
+            stmts: [
+                'if i < 100',
+            ],
+            preds: [
                 1,
             ],
             succes: [
-                1,
                 2,
+                5,
             ],
         },
         {
             id: 2,
             stmts: [
-                'i = i + 1',
-                'if i > 100',
+                'i = i + 2',
             ],
             preds: [
-                1,
-                2,
+                6,
             ],
             succes: [
-                2,
                 3,
             ],
         },
         {
             id: 3,
             stmts: [
-                'return',
+                'if i < 1',
             ],
             preds: [
                 2,
+                4,
+            ],
+            succes: [
+                7,
+                8,
+            ],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = i / 2',
+            ],
+            preds: [
+                3,
+            ],
+            succes: [
+                3,
+            ],
+        },
+        {
+            id: 8,
+            stmts: [
+                'if i > 10',
+            ],
+            preds: [
+                3,
+            ],
+            succes: [
+                4,
+                1,
+            ],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = i / 2',
+            ],
+            preds: [
+                8,
+            ],
+            succes: [
+                3,
+            ],
+        },
+        {
+            id: 5,
+            stmts: [
+                'return',
+            ],
+            preds: [
+                1,
+                6,
             ],
             succes: [
             ],

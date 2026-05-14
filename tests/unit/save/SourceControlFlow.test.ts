@@ -59,33 +59,40 @@ namespace Case1 {
     for (; i < lyric.length; i = i + 1) {
       let lineTime = lyric[i].match(lrcLineRegex);
       let lineText = lyric[i].replace(lrcLineRegex, '');
-      if (lineTime && lineText != 0) {
-        let j: number = 0;
-        while (j < lineTime.length) {
-          let min = Number(String(lineTime.j.match(lrcTimeRegex1)).slice(1));
-          let sec = Number.parseFloat(String(lineTime.j.match(lrcTimeRegex2)));
-          let timeInSeconds: number = (min * 60 + sec) * 1000;
-          lrc.push({lineStartTime: timeInSeconds, lineDuration: 0, lineWords: lineText, words: []});
-          j = j + 1;
+      if (lineTime != 0) {
+        if (lineText != 0) {
+          let j: number = 0;
+          while (j < lineTime.length) {
+            let min = Number(String(lineTime.j.match(lrcTimeRegex1)).slice(1));
+            let sec = Number.parseFloat(String(lineTime.j.match(lrcTimeRegex2)));
+            let timeInSeconds: number = (min * 60 + sec) * 1000;
+            lrc.push({lineStartTime: timeInSeconds, lineDuration: 0, lineWords: lineText, words: []});
+            j = j + 1;
+          }
         }
       }
     }
-    if (lrc && lrc.length > 0 != 0) {
-      lrc.sort((a: any, b: any): number => {
+    if (lrc != 0) {
+      if (lrc.length > 0) {
+        lrc.sort((a: any, b: any): number => {
       return a.lineStartTime - b.lineStartTime;
     });
-      let i: number = 0;
-      for (; i < lrc.length; i = i + 1) {
-        if (i === lrc.length - 1) {
-          lrc[i].lineDuration = Number.MAX_VALUE;
-        } else {
-          lrc[i].lineDuration = lrc[i + 1].lineStartTime - lrc[i].lineStartTime;
+        let i: number = 0;
+        for (; i < lrc.length; i = i + 1) {
+          if (i === lrc.length - 1) {
+            lrc[i].lineDuration = Number.MAX_VALUE;
+          } else {
+            lrc[i].lineDuration = lrc[i + 1].lineStartTime - lrc[i].lineStartTime;
+          }
         }
+      } else {
+        console.error('Failed to parse the lyrics.');
       }
+      return lrc;
     } else {
       console.error('Failed to parse the lyrics.');
+      return lrc;
     }
-    return lrc;
   }
 }
 `;
