@@ -28,6 +28,7 @@ import {
     buildTypeParameters,
     handlePropertyAccessExpression,
 } from './builderUtils';
+import { cloneText } from '../../common/StringUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../base/Ref';
 import { ArkBody } from '../ArkBody';
@@ -74,7 +75,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     mtd.setImplementationSignature(methodSignature);
-    mtd.setLineCol(0);
+    mtd.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const defaultMethodNode = node ? node : sourceFile;
 
@@ -101,7 +102,6 @@ export function buildArkMethodFromArkClass(
     // All MethodLikeNode except FunctionTypeNode have questionToken.
     !ts.isFunctionTypeNode(methodNode) && mtd.setQuestionToken(methodNode.questionToken !== undefined);
 
-    mtd.setCode(methodNode.getText(sourceFile));
     mtd.setModifiers(buildModifiers(methodNode));
     mtd.setDecorators(buildDecorators(methodNode, sourceFile));
 
@@ -123,17 +123,15 @@ export function buildArkMethodFromArkClass(
     }
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, methodNode.getStart(sourceFile));
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(line + 1);
-        mtd.setColumn(character + 1);
+        mtd.setImplOriginFullPosition(FullPosition.buildFromNode(methodNode, sourceFile));
         let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         bodyBuilder.setParamsPositions(paramsPosition);
         mtd.setBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
+        mtd.setDeclareOriginFullPositions([FullPosition.buildFromNode(methodNode, sourceFile)]);
     }
 
     if (mtd.hasBuilderDecorator()) {
@@ -149,16 +147,16 @@ export function buildArkMethodFromArkClass(
 function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): string {
     let name: string = '';
     if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
-        name = node.name ? node.name.text : buildAnonymousMethodName(node, declaringClass);
+        name = node.name ? cloneText(node.name.text) : buildAnonymousMethodName(node, declaringClass);
     } else if (ts.isFunctionTypeNode(node)) {
         //TODO: check name type
-        name = node.name ? node.name.getText(sourceFile) : buildAnonymousMethodName(node, declaringClass);
+        name = node.name ? cloneText(node.name.getText(sourceFile)) : buildAnonymousMethodName(node, declaringClass);
     } else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
         if (ts.isIdentifier(node.name)) {
-            name = (node.name as ts.Identifier).text;
+            name = cloneText((node.name as ts.Identifier).text);
         } else if (ts.isComputedPropertyName(node.name)) {
             if (ts.isIdentifier(node.name.expression)) {
-                name = node.name.expression.text;
+                name = cloneText(node.name.expression.text);
             } else if (ts.isPropertyAccessExpression(node.name.expression)) {
                 name = handlePropertyAccessExpression(node.name.expression);
             } else {
@@ -176,9 +174,9 @@ function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceF
     } else if (ts.isCallSignatureDeclaration(node)) {
         name = CALL_SIGNATURE_NAME;
     } else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = GETTER_PREFIX + node.name.text;
+        name = GETTER_PREFIX + cloneText(node.name.text);
     } else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = SETTER_PREFIX + node.name.text;
+        name = SETTER_PREFIX + cloneText(node.name.text);
     } else if (ts.isArrowFunction(node)) {
         name = buildAnonymousMethodName(node, declaringClass);
     }
@@ -372,9 +370,8 @@ export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClas
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
-    defaultConstructor.setCode('');
     defaultConstructor.setIsGeneratedFlag(true);
-    defaultConstructor.setLineCol(0);
+    defaultConstructor.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
     const thisDefStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature())));
@@ -515,26 +512,33 @@ export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMeth
         return;
     }
     const presentDeclareSignatures = presentMethod.getDeclareSignatures();
-    const presentDeclareLineCols = presentMethod.getDeclareLineCols();
+    const presentDeclarePositions = presentMethod.getDeclareOriginFullPositions();
     const presentImplSignature = presentMethod.getImplementationSignature();
     const newDeclareSignature = method.getDeclareSignatures();
-    const newDeclareLineCols = method.getDeclareLineCols();
+    const newDeclarePositions = method.getDeclareOriginFullPositions();
     const newImplSignature = method.getImplementationSignature();
 
     if (presentDeclareSignatures !== null && presentImplSignature === null) {
         if (newDeclareSignature === null || presentMethod.getDeclareSignatureIndex(newDeclareSignature[0]) >= 0) {
             method.setDeclareSignatures(presentDeclareSignatures);
-            method.setDeclareLineCols(presentDeclareLineCols as number[]);
+            if (presentDeclarePositions) {
+                method.setDeclareOriginFullPositions(presentDeclarePositions);
+            }
         } else {
             method.setDeclareSignatures(presentDeclareSignatures.concat(newDeclareSignature));
-            method.setDeclareLineCols((presentDeclareLineCols as number[]).concat(newDeclareLineCols as number[]));
+            if (presentDeclarePositions && newDeclarePositions) {
+                method.setDeclareOriginFullPositions([...presentDeclarePositions, ...newDeclarePositions]);
+            }
         }
         return;
     }
     if (presentDeclareSignatures === null && presentImplSignature !== null) {
         if (newImplSignature === null) {
             method.setImplementationSignature(presentImplSignature);
-            method.setLineCol(presentMethod.getLineCol() as number);
+            const position = presentMethod.getImplOriginFullPosition();
+            if (position) {
+                method.setImplOriginFullPosition(position);
+            }
         }
         return;
     }

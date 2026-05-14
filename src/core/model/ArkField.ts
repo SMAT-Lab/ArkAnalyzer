@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 import { Stmt } from '../base/Stmt';
 import { ArkClass, ClassCategory } from './ArkClass';
 import { FieldSignature } from './ArkSignature';
 import { Type } from '../base/Type';
-import { ArkBaseModel, ModifierType } from './ArkBaseModel';
+import { ArkBaseModel, BaseModelTag, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { Language } from './ArkFile';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 export enum FieldCategory {
     PROPERTY_DECLARATION = 0,
@@ -35,18 +36,27 @@ export enum FieldCategory {
 }
 
 /**
+ * Shift amount for field category encoding in ArkField tags field.
+ * Uses CLASS_SPECIFIC_TAG_SHIFT as the base offset for class-specific properties.
+ */
+export const FIELD_CATEGORY_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
+
+/**
+ * Mask for extracting field category from ArkField tags field.
+ * Covers 4 bits for up to 16 field category values.
+ */
+export const FIELD_CATEGORY_MASK = 0xF << FIELD_CATEGORY_SHIFT;
+
+/**
  * @category core/model
  */
 export class ArkField extends ArkBaseModel {
-    private code: string = '';
-    private category!: FieldCategory;
-
     private declaringClass!: ArkClass;
-    private questionToken: boolean = false;
-    private exclamationToken: boolean = false;
 
     private fieldSignature!: FieldSignature;
-    private originPosition?: LineColPosition;
+    /** The full position (start/end line/col) of this field in the source file. */
+    private originFullPosition!: FullPosition;
+    private sourceCode?: string;
 
     private initializer: Stmt[] = [];
 
@@ -70,23 +80,43 @@ export class ArkField extends ArkBaseModel {
     }
 
     /**
-     * Returns the codes of field as a **string.**
-     * @returns the codes of field.
+     * Returns the source text of the field extracted from the declaring ArkFile
+     * using the field's origin position. Implements lazy loading with caching.
+     * @returns The source text of the field, or empty string if unavailable.
      */
     public getCode(): string {
-        return this.code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        const code = extractSourceTextByFullPosition(this.getDeclaringArkClass().getDeclaringArkFile().getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+            return code;
+        }
+        return '';
     }
 
-    public setCode(code: string): void {
-        this.code = code;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _code - The source code (ignored).
+     */
+    public setCode(_code: string): void {
+        
+    }
+
+    /**
+     * Clears the cached source text, forcing re-extraction on next getCode call.
+     */
+    public clearSourceCode(): void {
+        this.sourceCode = undefined;
     }
 
     public getCategory(): FieldCategory {
-        return this.category;
+        return this.getTagValue(FIELD_CATEGORY_MASK, FIELD_CATEGORY_SHIFT) as FieldCategory;
     }
 
     public setCategory(category: FieldCategory): void {
-        this.category = category;
+        this.setTagValue(FIELD_CATEGORY_MASK, FIELD_CATEGORY_SHIFT, category);
     }
 
     public getName(): string {
@@ -118,35 +148,68 @@ export class ArkField extends ArkBaseModel {
     }
 
     public setQuestionToken(questionToken: boolean): void {
-        this.questionToken = questionToken;
+        if (questionToken) {
+            this.addTag(BaseModelTag.QUESTION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.QUESTION_TOKEN);
+        }
     }
 
     public setExclamationToken(exclamationToken: boolean): void {
-        this.exclamationToken = exclamationToken;
+        if (exclamationToken) {
+            this.addTag(BaseModelTag.EXCLAMATION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.EXCLAMATION_TOKEN);
+        }
     }
 
     public getQuestionToken(): boolean {
-        return this.questionToken;
+        return this.containsTag(BaseModelTag.QUESTION_TOKEN);
     }
 
     public getExclamationToken(): boolean {
-        return this.exclamationToken;
-    }
-
-    public setOriginPosition(position: LineColPosition): void {
-        this.originPosition = position;
+        return this.containsTag(BaseModelTag.EXCLAMATION_TOKEN);
     }
 
     /**
-     * Returns the original position of the field at source code.
+     * @deprecated Since version 1.0.91. Use setOriginFullPosition() instead.
+     * @param position - The LineColPosition to set.
+     */
+    public setOriginPosition(position: LineColPosition): void {
+        this.originFullPosition = new FullPosition(
+            position.getLineNo(),
+            position.getColNo(),
+            position.getLineNo(),
+            position.getColNo()
+        );
+    }
+
+    /**
+     * @deprecated Since version 1.0.91. Use getOriginFullPosition() instead.
      * @returns The original position of the field at source code.
      */
     public getOriginPosition(): LineColPosition {
-        return this.originPosition ?? LineColPosition.DEFAULT;
+        return new LineColPosition(this.originFullPosition.getFirstLine(), this.originFullPosition.getFirstCol());
+    }
+
+    /**
+     * Sets the full position of this field in the source file.
+     * @param position - The full position in the source code to set.
+     */
+    public setOriginFullPosition(position: FullPosition): void {
+        this.originFullPosition = position;
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this field in the source file.
+     * @returns The full position of this field in the source code.
+     */
+    public getOriginFullPosition(): FullPosition {
+        return this.originFullPosition;
     }
 
     public validate(): ArkError {
-        return this.validateFields(['category', 'declaringClass', 'fieldSignature']);
+        return this.validateFields(['declaringClass', 'fieldSignature']);
     }
 
     // For class field, it is default public if there is not any access modify

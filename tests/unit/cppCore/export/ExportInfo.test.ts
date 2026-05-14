@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import path from 'path';
 import {
     ArkClass,
@@ -39,49 +39,20 @@ import {
 } from '../../../cppResources/exports/crossFileCase/expectedIR';
 import { assertBlocksEqual, testBlocksClass } from '../../common';
 import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../cppResources/exports/nestedCase/expectIR';
+import { ensureCompileDb, resolveSdkPaths } from '../cppBuildUtils';
 
-const BASE_DIR = 'tests/cppResources/exports';
-const is_system_win32 = process.platform === 'win32';
-const devecoPaths = resolveDevecoPaths();
-const deveco_c = devecoPaths.devecoC;
-const deveco_include = devecoPaths.devecoInclude;
+const EXPORTS_PROJECT_ROOT = path.resolve(__dirname, '../../../cppResources/exports');
+const isWin32 = process.platform === 'win32';
+const { cxxIncludeDir, configSiteDirs } = resolveSdkPaths();
 
-function resolveDevecoPaths(): { devecoC: string; devecoInclude: string } {
-    const sdkHome = process.env.OHOS_SDK_HOME;
-    if (!sdkHome || sdkHome.length === 0) {
-        return {
-            devecoC: process.env.DEVECO_C ?? '',
-            devecoInclude: process.env.DEVECO_INCLUDE ?? '',
-        };
+function buildScene(folderName: string, extraIncludeDirs: string[] = [], ccJsonPath?: string): Scene {
+    const mergedIncludeDirs = [cxxIncludeDir, ...configSiteDirs, ...extraIncludeDirs];
+    const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+    config.buildFromProjectDir(path.join(EXPORTS_PROJECT_ROOT, folderName), mergedIncludeDirs);
+    if (ccJsonPath) {
+        config.setCcjsonPath(ccJsonPath);
     }
-
-    const sdkRoot = path.join(sdkHome, 'openharmony');
-    const devecoC = path.join(sdkRoot, 'native', 'llvm', 'include', 'libcxx-ohos', 'include', 'c++', 'v1');
-    const devecoInclude = process.platform === 'darwin'
-        ? path.join(
-            process.env.OHOS_XCODE_HOME ?? '/Applications/Xcode.app',
-            'Contents',
-            'Developer',
-            'Platforms',
-            'MacOSX.platform',
-            'Developer',
-            'SDKs',
-            'MacOSX.sdk',
-            'usr',
-            'include'
-        )
-        : path.join(sdkRoot, 'native', 'llvm', 'lib', 'clang', '15.0.4', 'include');
-    return {
-        devecoC,
-        devecoInclude,
-    };
-}
-
-function buildScene(folderName: string, includeDirs: string[]): Scene {
-    const mergedIncludeDirs = [...includeDirs, deveco_c, deveco_include];
-    const config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName), mergedIncludeDirs);
-    let projectScene: Scene = new Scene();
+    const projectScene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();
     return projectScene;
@@ -96,6 +67,7 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
     assert.isDefined(arkExport);
     assert.isNotNull(arkExport);
     assert.isTrue(arkExport instanceof expectIR.arkExport.type);
+
     if (expectIR.arkExport.type === ArkClass) {
         assert.equal((arkExport as ArkClass).getSignature().toString(), expectIR.arkExport.classSignature);
         if (expectIR.arkExport.classDeclareSignature) {
@@ -109,13 +81,13 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
         assert.equal((arkExport as ArkMethod).getDeclareSignatures()?.[0].toString(), expectIR.arkExport.methodDeclareSignature);
         assert.equal((arkExport as ArkMethod).getSignature().toString(), expectIR.arkExport.methodSignature);
     } else if (expectIR.arkExport.type === ArkNamespace) {
-        assert.equal((arkExport! as ArkNamespace).getSignature().toString(), expectIR.arkExport.namespaceSignature);
+        assert.equal((arkExport as ArkNamespace).getSignature().toString(), expectIR.arkExport.namespaceSignature);
     }
 }
 
 describe('export Test', () => {
     it('function implement in header file case1', () => {
-        const projectScene = buildScene('funcImplementInHeaderFile/sameDir', [deveco_c, deveco_include]);
+        const projectScene = buildScene('funcImplementInHeaderFile/sameDir');
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
@@ -138,7 +110,7 @@ describe('export Test', () => {
     });
 
     it('function implement in header file case2', () => {
-        const projectScene = buildScene('funcImplementInHeaderFile/diffDir', [deveco_c, deveco_include]);
+        const projectScene = buildScene('funcImplementInHeaderFile/diffDir');
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
@@ -161,14 +133,14 @@ describe('export Test', () => {
     });
 
     it('function implement in cpp file case', () => {
-        const projectScene = buildScene('funcImplementInCpp', [deveco_c, deveco_include]);
+        const projectScene = buildScene('funcImplementInCpp');
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
         assert.equal(file1?.getImportInfos().length, 7);
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
-        if (stmts && is_system_win32) {
+        if (stmts && isWin32) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
                 '@funcImplementInCpp/include/test.h: %dflt.FuncDoSomething(int, int)'
@@ -196,7 +168,7 @@ describe('export Test', () => {
 
     it('Indirect referencing header file case', () => {
         const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/indirectRef/include');
-        const projectScene = buildScene('indirectRef', [deveco_c, deveco_include, customizedIncludePath]);
+        const projectScene = buildScene('indirectRef', [customizedIncludePath]);
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
@@ -251,7 +223,15 @@ describe('export Test', () => {
 
 describe('cross file case', () => {
     const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/crossFileCase/include');
-    const projectScene = buildScene('crossFileCase', [deveco_c, deveco_include, customizedIncludePath]);
+    const projectDir = path.resolve(__dirname, '../../../cppResources/exports/crossFileCase');
+    const buildDir = path.resolve(__dirname, '../../../../output/cppResources/exports/crossFileCase/build-ohos-db');
+    const ccJsonPath = path.resolve(__dirname, '../../../../output/cppResources/exports/crossFileCase/build-ohos-db/compile_commands.json');
+    let projectScene: Scene;
+
+    beforeAll(() => {
+        ensureCompileDb(projectDir, buildDir);
+        projectScene = buildScene('crossFileCase', [customizedIncludePath], ccJsonPath);
+    });
 
     it('cross file case1', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'include/myHeader.h');
@@ -301,8 +281,7 @@ describe('cross file case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'include/namespace.h');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getExportInfos().length, 1);
-        let exportInfo: ExportInfo | undefined;
-        exportInfo = file?.getExportInfoBy(NAMESPACE_EXPORT_INFO.exportClauseName);
+        const exportInfo = file?.getExportInfoBy(NAMESPACE_EXPORT_INFO.exportClauseName);
         compareExportInfo(exportInfo, NAMESPACE_EXPORT_INFO);
     });
 
@@ -334,12 +313,19 @@ describe('cross file case', () => {
         assert.isDefined(blocks);
         assertBlocksEqual(blocks!, MAIN_CASE.blocks);
     });
-
 });
 
 describe('nested case', () => {
     const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'cppResources/exports/nestedCase/include');
-    const projectScene = buildScene('nestedCase', [deveco_c, deveco_include, customizedIncludePath]);
+    const projectDir = path.resolve(__dirname, '../../../cppResources/exports/nestedCase');
+    const buildDir = path.resolve(__dirname, '../../../../output/cppResources/exports/nestedCase/build-ohos-db');
+    const ccJsonPath = path.resolve(__dirname, '../../../../output/cppResources/exports/nestedCase/build-ohos-db/compile_commands.json');
+    let projectScene: Scene;
+
+    beforeAll(() => {
+        ensureCompileDb(projectDir, buildDir);
+        projectScene = buildScene('nestedCase', [customizedIncludePath], ccJsonPath);
+    });
 
     it('namespaceB.h', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'include/namespaceB.h');

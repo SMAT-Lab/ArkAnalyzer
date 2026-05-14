@@ -33,10 +33,11 @@ import {
 import { buildArkNamespace, mergeNameSpaces } from './ArkNamespaceBuilder';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
-import { LineColPosition } from '../../base/Position';
+import { FullPosition } from '../../base/Position';
 import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
 import { FileSignature } from '../ArkSignature';
 import { ARKTS_STATIC_MARK } from '../../common/Const';
+import { cloneText } from '../../common/StringUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -72,13 +73,19 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     const fileSignature = new FileSignature(projectName, path.relative(projectDir, absoluteFilePath));
     arkFile.setFileSignature(fileSignature);
 
+    let sourceText: string;
     try {
-        arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+        sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
         logger.error('Failed to read file: ${error}');
         return;
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), arkFile.getCode(), ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const options = arkFile.getScene().getOptions();
+    const eagerLoad = options.saveSourceCodeByDefault ?? false;
+    if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
+    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     // save ast source file, if enabled ast and file is from the project (not from sdk)
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
@@ -105,7 +112,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             buildArkNamespace(child, arkFile, ns, astRoot);
             namespaces.push(ns);
             if (ns.isExported()) {
-                arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNode(child, astRoot)));
+                arkFile.addExportInfo(buildExportInfo(ns, arkFile, FullPosition.buildFromNode(child, astRoot)));
             }
         } else if (ts.isClassDeclaration(child) || ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child) || ts.isStructDeclaration(child)) {
             let cls: ArkClass = new ArkClass();
@@ -113,7 +120,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
 
             if (cls.isExported()) {
-                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNode(child, astRoot)));
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, FullPosition.buildFromNode(child, astRoot)));
             }
         }
         // TODO: Check
@@ -124,7 +131,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd, astRoot);
 
             if (mthd.isExported()) {
-                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNode(child, astRoot)));
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, FullPosition.buildFromNode(child, astRoot)));
             }
         } else if (ts.isFunctionDeclaration(child)) {
             let mthd: ArkMethod = new ArkMethod();
@@ -132,7 +139,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd, astRoot);
 
             if (mthd.isExported()) {
-                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNode(child, astRoot)));
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, FullPosition.buildFromNode(child, astRoot)));
             }
         } else if (ts.isImportEqualsDeclaration(child) || ts.isImportDeclaration(child)) {
             let importInfos = buildImportInfo(child, astRoot, arkFile);
@@ -149,7 +156,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
         } else if (ts.isTypeAliasDeclaration(child) && isExported(child.modifiers)) {
             buildExportTypeAliasDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
         } else if (ts.isExpressionStatement(child) && ts.isStringLiteral(child.expression)) {
-            child.expression.text.trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
+            cloneText(child.expression.text).trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
         } else {
             logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
         }
@@ -159,8 +166,10 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
     mergedNameSpaces.forEach(mergedNameSpace => {
         arkFile.addNamespace(mergedNameSpace);
         if (mergedNameSpace.isExport()) {
-            const linCol = new LineColPosition(mergedNameSpace.getLine(), mergedNameSpace.getColumn());
-            arkFile.addExportInfo(buildExportInfo(mergedNameSpace, arkFile, linCol));
+            const positions = mergedNameSpace.getOriginFullPositions();
+            if (positions.length > 0) {
+                arkFile.addExportInfo(buildExportInfo(mergedNameSpace, arkFile, positions[0]));
+            }
         }
     });
 }

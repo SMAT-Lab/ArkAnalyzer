@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
 import {
@@ -102,3 +102,62 @@ function assertNamespaceEqual(namespace: ArkNamespace, expectNamespace: any): vo
     const nestedNamespaces = namespace!.getNamespaces();
     assertNamespacesEqual(nestedNamespaces, expectNamespace.nestedNamespaces);
 }
+
+describe('ArkNamespace Source Code and Position Test', () => {
+    const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
+    const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+
+    it('test getOriginFullPositions for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        
+        const positions = namespace!.getOriginFullPositions();
+        expect(positions.length).eq(1);
+        expect(positions[0].getFirstLine()).eq(212);
+        expect(positions[0].getFirstCol()).eq(1);
+        expect(positions[0].getLastLine()).eq(214);
+        expect(positions[0].getLastCol()).eq(2);
+    });
+
+    it('test getLine for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        expect(namespace!.getLine()).eq(212);
+    });
+
+    it('test getColumn for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        expect(namespace!.getColumn()).eq(1);
+    });
+
+    it('test getCode for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        const expectedCode = `namespace ConstructorTest {
+    export function constructor(): void {}
+}`;
+        expect(namespace!.getCode()).eq(expectedCode);
+    });
+
+    it('test getCodes for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        const codes = namespace!.getCodes();
+        expect(codes.length).eq(1);
+        const expectedCode = `namespace ConstructorTest {
+    export function constructor(): void {}
+}`;
+        expect(codes[0]).eq(expectedCode);
+    });
+
+    it('test getLineColPairs for ConstructorTest namespace', async () => {
+        const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
+        assert.isDefined(namespace);
+        
+        const lineColPairs = namespace!.getLineColPairs();
+        expect(lineColPairs.length).eq(1);
+        expect(lineColPairs[0][0]).eq(212);
+        expect(lineColPairs[0][1]).eq(1);
+    });
+});

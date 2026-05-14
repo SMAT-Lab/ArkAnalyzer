@@ -24,10 +24,11 @@ import { Local } from '../base/Local';
 import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
 import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
-import { getColNo, getLineNo, LineCol, setCol, setLine } from '../base/Position';
-import { ArkBaseModel } from './ArkBaseModel';
+import { FullPosition, INVALID_LINE } from '../base/Position';
+import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { ModelUtils } from '../common/ModelUtils';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
@@ -43,6 +44,18 @@ export enum ClassCategory {
     UNION = 6,
 }
 
+/**
+ * Shift amount for class category encoding in ArkClass tags field.
+ * Uses CLASS_SPECIFIC_TAG_SHIFT as the base offset for class-specific properties.
+ */
+export const CLASS_CATEGORY_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
+
+/**
+ * Mask for extracting class category from ArkClass tags field.
+ * Covers 3 bits for up to 8 class category values.
+ */
+export const CLASS_CATEGORY_MASK = 0x7 << CLASS_CATEGORY_SHIFT;
+
 export interface heritageClassWithInfo {
     baseClass: ArkClass | undefined | null;
     isVirtual: boolean;
@@ -53,9 +66,10 @@ export interface heritageClassWithInfo {
  * @category core/model
  */
 export class ArkClass extends ArkBaseModel implements ArkExport {
-    private category!: ClassCategory;
-    private code?: string;
-    private lineCol: LineCol = 0;
+    private sourceCode?: string;
+    /** The full position (start/end line/col) of this class in the source file.
+     *  Undefined when this class is an automatically generated default class during IR construction. */
+    private originFullPosition?: FullPosition;
 
     private declaringArkFile!: ArkFile;
     private declaringArkNamespace: ArkNamespace | undefined;
@@ -111,47 +125,96 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * Returns the codes of class as a **string.**
-     * @returns the codes of class.
+     * Returns the source text of the class extracted from the declaring ArkFile
+     * using the class's origin position.
+     * @returns the source text of the class, or undefined if unavailable.
      */
     public getCode(): string | undefined {
-        return this.code;
-    }
-
-    public setCode(code: string): void {
-        this.code = code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        if (code !== undefined) {
+            this.sourceCode = code;
+        }
+        return code;
     }
 
     /**
-     * Returns the line position of this class.
-     * @returns The line position of this class.
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _code - The source code (ignored).
+     */
+    public setCode(_code: string): void {
+    }
+
+    /**
+     * Returns the full position (start/end line/col) of this class in the source file.
+     * @returns The full position of this class in the source code, or undefined if this class
+     *          is an automatically generated default class during IR construction.
+     */
+    public getOriginFullPosition(): FullPosition | undefined {
+        return this.originFullPosition;
+    }
+
+    /**
+     * Sets the full position of this class in the source file.
+     * @param position - The full position in the source code to set.
+     */
+    public setOriginFullPosition(position: FullPosition): void {
+        this.originFullPosition = position;
+    }
+
+    /**
+     * @deprecated Use getOriginFullPosition()?.getFirstLine() instead.
+     * @returns The line number of this class in the source code, or INVALID_LINE if this class
+     *          is an automatically generated default class during IR construction.
      */
     public getLine(): number {
-        return getLineNo(this.lineCol);
-    }
-
-    public setLine(line: number): void {
-        this.lineCol = setLine(this.lineCol, line);
+        return this.originFullPosition?.getFirstLine() ?? INVALID_LINE;
     }
 
     /**
-     * Returns the column position of this class.
-     * @returns The column position of this class.
+     * @deprecated Use setOriginFullPosition() instead.
+     * @param line - The line number in the source code to set.
      */
-    public getColumn(): number {
-        return getColNo(this.lineCol);
+    public setLine(line: number): void {
+        if (this.originFullPosition) {
+            const firstCol = this.originFullPosition.getFirstCol();
+            const lastLine = this.originFullPosition.getLastLine();
+            const lastCol = this.originFullPosition.getLastCol();
+            this.originFullPosition = new FullPosition(line, firstCol, lastLine, lastCol);
+        }
     }
 
+    /**
+     * @deprecated Use getOriginFullPosition()?.getFirstCol() instead.
+     * @returns The column number of this class in the source code, or INVALID_LINE if this class
+     *          is an automatically generated default class during IR construction.
+     */
+    public getColumn(): number {
+        return this.originFullPosition?.getFirstCol() ?? INVALID_LINE;
+    }
+
+    /**
+     * @deprecated Use setOriginFullPosition() instead.
+     * @param column - The column number in the source code to set.
+     */
     public setColumn(column: number): void {
-        this.lineCol = setCol(this.lineCol, column);
+        if (this.originFullPosition) {
+            const firstLine = this.originFullPosition.getFirstLine();
+            const lastLine = this.originFullPosition.getLastLine();
+            const lastCol = this.originFullPosition.getLastCol();
+            this.originFullPosition = new FullPosition(firstLine, column, lastLine, lastCol);
+        }
     }
 
     public getCategory(): ClassCategory {
-        return this.category ?? ClassCategory.CLASS;
+        const value = this.getTagValue(CLASS_CATEGORY_MASK, CLASS_CATEGORY_SHIFT);
+        return value !== 0 ? (value as ClassCategory) : ClassCategory.CLASS;
     }
 
     public setCategory(category: ClassCategory): void {
-        this.category = category;
+        this.setTagValue(CLASS_CATEGORY_MASK, CLASS_CATEGORY_SHIFT, category);
     }
 
     /**
@@ -298,7 +361,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getImplementedInterfaceNames(): string[] {
-        if (this.category === ClassCategory.INTERFACE) {
+        if (this.getCategory() === ClassCategory.INTERFACE) {
             return [];
         }
         return Array.from(this.heritageClasses.keys()).slice(1);
@@ -609,7 +672,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.viewTree !== undefined;
     }
 
-    public getStaticFields(classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
+    public getStaticFields(_classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
         return Array.from(this.staticFields.values());
     }
 
@@ -667,7 +730,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public validate(): ArkError {
-        return this.validateFields(['declaringArkFile', 'category', 'classSignature']);
+        return this.validateFields(['declaringArkFile', 'classSignature']);
     }
 
     public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {

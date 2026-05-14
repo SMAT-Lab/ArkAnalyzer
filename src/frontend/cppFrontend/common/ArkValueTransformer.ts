@@ -376,7 +376,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         );
         return {
             value: new Local('undefined'),
-            valueOriginalPositions: [new FullPosition(0, 0, 0, 0)],
+            valueOriginalPositions: [FullPosition.DEFAULT],
             stmts: [],
         };
     }

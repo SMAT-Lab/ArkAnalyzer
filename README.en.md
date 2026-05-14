@@ -2,6 +2,9 @@
 
 [简体中文](./README.md) 
 
+## What is ArkAnalyzer?
+ArkAnalyzer is a static code analysis framework for HarmonyOS native applications developed in ArkTS. It supports ArkTS, TypeScript, JavaScript, and C/C++ as inputs. By converting these languages into a unified three-address-code intermediate representation (ArkAnalyzer-IR, or ArkIR), ArkAnalyzer builds a Scene data structure that abstracts the code and implements a series of static analyses on top of the Scene.
+
 ## Development environment setup
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/download) or another IDE.
@@ -10,7 +13,18 @@
 ```shell
 npm install
 ```
-4. [Optional] Generate the latest API documentation under `docs/api_docs`:
+4. [Optional] Use Docker dev environment (x86_64 Linux):
+```shell
+# Build image
+docker build --platform linux/amd64 -f Dockerfile.dev -t arkanalyzer:dev-amd64 .
+
+# Start container (mount SDK and source; code changes on host take effect immediately)
+docker run --platform linux/amd64 -it \
+  -v /path/to/command-line-tools:/workspace/command-line-tools \
+  -v $(pwd):/workspace/arkanalyzer \
+  arkanalyzer:dev-amd64
+```
+5. [Optional] Generate the latest API documentation under `docs/api_docs`:
 ```shell
 npm run gendoc
 ```
@@ -80,21 +94,45 @@ For detailed option semantics and examples, see [skills/arkanalyzer/skills/cg.md
 ## Documentation
 
 1. Quick start: [QuickStart.md](docs/QuickStart.md).
-2. API reference: [globals.md](docs/api_docs/globals.md).
-3. Program Analysis SIG: [English](docs/sig_programanalysis.en.md).
+2. Full user manual: [ArkAnalyzer Documentation](docs/README.md).
+3. API reference: [globals.md](docs/api_docs/globals.md).
+4. Program Analysis SIG: [English](docs/sig_programanalysis.en.md).
+
+
+## Supported Use Cases (by Language)
+
+ArkAnalyzer compiles every supported source language into a unified **ArkIR** (three-address intermediate representation), so downstream analyses ([CallGraph](docs/analysis/CallGraph.md), [Def-Use Chain](docs/analysis/Def-Use%20Chain.md), [IFDS](docs/analysis/IFDS.md), [ViewTree](docs/analysis/ViewTree.md), …) work uniformly across languages. Maturity differences are mostly in **frontend coverage** and **type-inference precision**; see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md) for the detailed matrix.
+
+| Language | `Language` enum | IR lowering | Type inference | Call graph (CHA / RTA) | Def-Use / IFDS | ViewTree | Notes |
+|----------|-----------------|-------------|----------------|------------------------|----------------|----------|-------|
+| ArkTS 1.1 / 1.2 | `ARKTS1_1` / `ARKTS1_2` | ✅ full | ✅ full (incl. decorators) | ✅ | ✅ | ✅ | HarmonyOS first-class; the only language with ArkUI view-tree analysis |
+| TypeScript | `TYPESCRIPT` | ✅ full | ✅ full | ✅ | ✅ | — | Vanilla TS projects; namespaces, generics, decorators, `type`/`interface`, etc. |
+| JavaScript | `JAVASCRIPT` | ✅ basic | ⚠ limited (falls back to `UnknownType` without annotations) | ✅ | ✅ | — | Good for sketching dynamic call relations; for precision, prefer TS annotations |
+| C / C++ | `CXX` | ✅ (cppFrontend) | ⚠ partial | ✅ | ✅ | — | Requires `cppAstPath` / `ccjsonPath`; supports `VIRTUAL`, `INLINE`, `CONSTEXPR`, `MUTABLE`, …; targets HarmonyOS native modules |
+| ABC (ArkCompiler bytecode) | `ABC` | ⚠ experimental | — | — | — | — | Direct bytecode read, mainly for IR validation |
+
+**Typical scenarios**:
+
+- **HarmonyOS / ArkTS applications**: ArkUI view-tree analysis ([ViewTree](docs/analysis/ViewTree.md)) + state-dependency tracking + `@State` side-effect checks; multi-module projects are auto-detected via [`Scene.buildScene4HarmonyProject()`](docs/components/Scene.md#51-构建-scene).
+- **TS / JS libraries or server-side projects**: [CallGraph](docs/analysis/CallGraph.md) (CHA / RTA) + [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [IFDS](docs/analysis/IFDS.md) (custom checkers for taint, undefined-variable, divide-by-zero, …).
+- **Mixed TS/ArkTS + C/C++ projects**: use `ArkClass.getTs2cxxFuncMap()` to bridge TS-side `napi_*` calls to their C/C++ implementations for cross-language reachability.
+
+For a finer-grained capability matrix and IR differences across languages, see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md).
+
+## UT log switch
+Vitest unit tests run quietly by default, without verbose UT logs.
+
+When troubleshooting, set `V=1` to enable verbose logs (both console output and file log at `output/ArkAnalyzerUT.log`):
+
+```shell
+V=1 npx vitest run
+```
 
 ## Contributing
 
-Follow the OpenHarmony-SIG contribution workflow: [HowToCreatePR.md (English)](docs/HowToCreatePR.md#english).
+If you run into problems while using ArkAnalyzer, please follow the [Issue Submission Guide](docs/contributing/HowToHandleIssues.md) to open an issue.
+Contributions are welcome — when submitting a PR, please follow the openharmony-sig repository conventions. See the [PR Submission Guide](docs/contributing/HowToCreatePR.md#english) for the full process.
 
-## Debugging
+## Release History
+For version history and change logs, see: [CHANGELOG](CHANGELOG.md)
 
-Set the `args` array in `.vscode/launch.json` to the file path you want to debug, then start debugging.
-
-## Adding test cases
-
-Place new tests under `tests/`. Sample code and other resources go under `tests/resources/`, organized in folders per scenario.
-
-## Issues
-
-See [HowToHandleIssues.md](docs/HowToHandleIssues.md) to file issues.

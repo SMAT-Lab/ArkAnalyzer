@@ -46,6 +46,7 @@ import {
 } from './Const';
 import { ArkThisRef } from '../base/Ref';
 import { COMPONENT } from './EtsConst';
+import { FullPosition } from '../base/Position';
 import { CallGraph, CallGraphNode } from '../../callgraph/model/CallGraph';
 
 const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
@@ -144,7 +145,7 @@ export class DummyMainCreater {
         const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(this.dummyMethodName ?? DUMMY_METHOD);
         const methodSignature = new MethodSignature(this.dummyMain.getDeclaringArkClass().getSignature(), methodSubSignature);
         this.dummyMain.setImplementationSignature(methodSignature);
-        this.dummyMain.setLineCol(0);
+        this.dummyMain.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
         this.dummyMain.setIsGeneratedFlag(true);
         checkAndUpdateMethod(this.dummyMain, dummyMainClass);
         dummyMainClass.addMethod(this.dummyMain);

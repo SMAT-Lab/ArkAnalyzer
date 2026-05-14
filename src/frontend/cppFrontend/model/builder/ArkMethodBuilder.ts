@@ -34,6 +34,7 @@ import { BasicBlock } from '../../../../core/graph/BasicBlock';
 import { Local } from '../../../../core/base/Local';
 import { Value } from '../../../../core/base/Value';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../../core/common/Const';
+import { FullPosition } from '../../../../core/base/Position';
 import { IRUtils } from '../../common/IRUtils';
 import {
     buildNestedMethodName,
@@ -45,7 +46,7 @@ import { buildGenericType } from '../../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
-import { CxxAstNode, getNodeStartLineAndCol } from '../../ast';
+import { CxxAstNode } from '../../ast';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -77,7 +78,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     mtd.setImplementationSignature(methodSignature);
-    mtd.setLineCol(0);
+    mtd.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     const defaultMethodNode = node ? node : sourceFile;
 
@@ -125,7 +126,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
     // After processing the template parameters, proceed to the corresponding functions below
     methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
-    mtd.setCode(methodNode.code);
     mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
@@ -148,16 +148,14 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const nodePos = getNodeStartLineAndCol(methodNode);
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(nodePos.line);
-        mtd.setColumn(nodePos.col);
+        mtd.setImplOriginFullPosition(FullPosition.cxxBuildFromNode(methodNode, sourceFile));
         let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         mtd.setCxxBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
+        mtd.setDeclareOriginFullPositions([FullPosition.cxxBuildFromNode(methodNode, sourceFile)]);
     }
 
     checkAndUpdateCxxMethod(mtd, declaringClass);
@@ -306,7 +304,6 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
-    defaultConstructor.setCode(arkClass.getName());
     defaultConstructor.setIsGeneratedFlag(false);
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));

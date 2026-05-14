@@ -24,7 +24,6 @@ import { PrinterUtils } from '../base/PrinterUtils';
 import { Stmt } from '../../core/base/Stmt';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { ArkMetadataKind, CommentsMetadata } from '../../core/model/ArkMetadata';
-import { getLineNo } from '../../core/base/Position';
 import { MethodSignature } from '../../core/model/ArkSignature';
 import { LEXICAL_ENV_NAME_PREFIX } from '../../core/common/Const';
 
@@ -68,12 +67,10 @@ export class SourceMethod extends SourceBase {
     }
 
     public getLine(): number {
-        let line = this.method.getLine();
-        if (line === null && this.method.getDeclareLineCols()) {
-            line = getLineNo(this.method.getDeclareLineCols()![0]);
-        }
-        if (line === null) {
-            line = 0;
+        const implPosition = this.method.getImplOriginFullPosition();
+        let line = implPosition?.getFirstLine() ?? 0;
+        if (line === 0 && this.method.getDeclareOriginFullPositions()) {
+            line = this.method.getDeclareOriginFullPositions()![0].getFirstLine();
         }
         if (line > 0) {
             return line;
@@ -87,8 +84,8 @@ export class SourceMethod extends SourceBase {
                 .forEach(stmt => stmts.push(stmt));
         }
         for (const stmt of stmts) {
-            if (stmt.getOriginPositionInfo().getLineNo() > 0) {
-                return stmt.getOriginPositionInfo().getLineNo();
+            if (stmt.getOriginFullPosition()?.getFirstLine() ?? 0 > 0) {
+                return stmt.getOriginFullPosition()?.getFirstLine() ?? 0;
             }
         }
 

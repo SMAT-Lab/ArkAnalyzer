@@ -94,6 +94,7 @@ import {
     VoidType,
 } from '../..';
 import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
+import { ImportType } from '../../core/model/ArkImport';
 import {
     AliasTypeSignatureDto,
     ArkFileDto,
@@ -220,9 +221,22 @@ export function serializeMethodParameter(parameter: MethodParameter): MethodPara
 }
 
 export function serializeImportInfo(importInfo: ImportInfo): ImportInfoDto {
+    const importTypeTag = importInfo.getImportTypeTag();
+    let importTypeStr = '';
+    if (importTypeTag === ImportType.TYPE_ALIAS_IMPORT) {
+        importTypeStr = 'TypeAlias';
+    } else if (importTypeTag === ImportType.EQUALS_IMPORT) {
+        importTypeStr = 'EqualsImport';
+    } else if (importTypeTag === ImportType.NAMESPACE_IMPORT) {
+        importTypeStr = 'NamespaceImport';
+    } else if (importTypeTag === ImportType.NAMED_IMPORTS_IMPORT) {
+        importTypeStr = 'NamedImports';
+    } else if (importTypeTag === ImportType.IDENTIFIER_IMPORT) {
+        importTypeStr = 'Identifier';
+    }
     return {
         importName: importInfo.getImportClauseName(),
-        importType: importInfo.getImportType(),
+        importType: importTypeStr,
         importFrom: importInfo.getFrom(),
         nameBeforeAs: importInfo.getNameBeforeAs(),
         modifiers: importInfo.getModifiers(),

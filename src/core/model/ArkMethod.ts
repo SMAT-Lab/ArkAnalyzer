@@ -25,14 +25,15 @@ import { MethodSignature, MethodSubSignature } from './ArkSignature';
 import { BodyBuilder } from './builder/BodyBuilder';
 import { ArkExport, ExportType } from './ArkExport';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../common/Const';
-import { getColNo, getLineNo, LineCol, setCol, setLine } from '../base/Position';
-import { ArkBaseModel, ModifierType } from './ArkBaseModel';
+import { FullPosition, getColNo, getLineNo, INVALID_LINE, LineCol, setLineCol } from '../base/Position';
+import { ArkBaseModel, BaseModelTag, ModifierType } from './ArkBaseModel';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
 import { Local } from '../base/Local';
 import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
 
@@ -53,18 +54,21 @@ export const arkMethodNodeKind = [
  * @category core/model
  */
 export class ArkMethod extends ArkBaseModel implements ArkExport {
-    private code?: string;
     private declaringArkClass!: ArkClass;
     // used for the nested function to locate its outer function
     private outerMethod?: ArkMethod;
 
     private genericTypes?: GenericType[];
 
-    private methodDeclareSignatures?: MethodSignature[];
-    private methodDeclareLineCols?: LineCol[];
+    private declareSignatures?: MethodSignature[];
+    /** The full positions of the method declarations (for interface/abstract methods with separate declarations). */
+    private declareOriginFullPositions?: FullPosition[];
 
-    private methodSignature?: MethodSignature;
-    private lineCol?: LineCol;
+    private implSignature?: MethodSignature;
+    /** The full position of the method implementation.
+     *  Undefined when the method has no implementation (e.g., interface method). */
+    private implOriginFullPosition?: FullPosition;
+    private sourceCode?: string;
 
     private body?: ArkBody;
     private viewTree?: ViewTree;
@@ -72,10 +76,6 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private bodyBuilder?: BodyBuilder;
     // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
     private CxxBodyBuilder?: CxxBodyBuilder;
-
-    private isGeneratedFlag: boolean = false;
-    private asteriskToken: boolean = false;
-    private questionToken: boolean = false;
 
     constructor() {
         super();
@@ -97,147 +97,210 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * Returns the codes of method as a **string.**
-     * @returns the codes of method.
+     * Returns the source text of the method extracted from the declaring ArkFile
+     * using the method's origin position. Implements lazy loading with caching.
+     * Returns implementation position's source if available, otherwise returns
+     * first declaration position's source.
+     * @returns The source text of the method, or undefined if unavailable.
      */
     public getCode(): string | undefined {
-        return this.code;
-    }
-
-    public setCode(code: string): void {
-        this.code = code;
+        if (this.sourceCode !== undefined) {
+            return this.sourceCode;
+        }
+        if (this.implOriginFullPosition !== undefined) {
+            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.implOriginFullPosition);
+            if (code !== undefined) {
+                this.sourceCode = code;
+            }
+            return code;
+        }
+        if (this.declareOriginFullPositions && this.declareOriginFullPositions.length > 0) {
+            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.declareOriginFullPositions[0]);
+            if (code !== undefined) {
+                this.sourceCode = code;
+            }
+            return code;
+        }
+        return undefined;
     }
 
     /**
-     * Get all lines of the method's declarations or null if the method has no seperated declaration.
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _code - The source code (ignored).
+     */
+    public setCode(_code: string): void {
+    }
+
+    /**
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map(p => p.getFirstLine()) instead.
      * @returns null or the lines of the method's declarations with number type.
      */
     public getDeclareLines(): number[] | null {
-        if (this.methodDeclareLineCols === undefined) {
+        if (this.declareOriginFullPositions === undefined) {
             return null;
         }
         let lines: number[] = [];
-        this.methodDeclareLineCols.forEach(lineCol => {
-            lines.push(getLineNo(lineCol));
+        this.declareOriginFullPositions.forEach(position => {
+            lines.push(position.getFirstLine());
         });
         return lines;
     }
 
     /**
-     * Get all columns of the method's declarations or null if the method has no seperated declaration.
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map(p => p.getFirstCol()) instead.
      * @returns null or the columns of the method's declarations with number type.
      */
     public getDeclareColumns(): number[] | null {
-        if (this.methodDeclareLineCols === undefined) {
+        if (this.declareOriginFullPositions === undefined) {
             return null;
         }
         let columns: number[] = [];
-        this.methodDeclareLineCols.forEach(lineCol => {
-            columns.push(getColNo(lineCol));
+        this.declareOriginFullPositions.forEach(position => {
+            columns.push(position.getFirstCol());
         });
         return columns;
     }
 
     /**
-     * Set lines and columns of the declarations with number type inputs and then encoded them to LineCol type.
-     * The length of lines and columns should be the same otherwise they cannot be encoded together.
+     * @deprecated Since version 1.0.91. Use setDeclareOriginFullPositions() instead.
      * @param lines - the number of lines.
      * @param columns - the number of columns.
-     * @returns
      */
     public setDeclareLinesAndCols(lines: number[], columns: number[]): void {
         if (lines?.length !== columns?.length) {
             return;
         }
-        this.methodDeclareLineCols = [];
-        lines.forEach((line, index) => {
-            let lineCol: LineCol = 0;
-            lineCol = setLine(lineCol, line);
-            lineCol = setCol(lineCol, columns[index]);
-            (this.methodDeclareLineCols as LineCol[]).push(lineCol);
+        this.declareOriginFullPositions = lines.map((line, index) => new FullPosition(line, columns[index], line, columns[index]));
+    }
+
+    /**
+     * @deprecated Since version 1.0.91. Use setDeclareOriginFullPositions() instead.
+     * @param lineCols - the encoded lines and columns with LineCol type.
+     */
+    public setDeclareLineCols(lineCols: LineCol[]): void {
+        this.declareOriginFullPositions = lineCols.map(lineCol => {
+            const line = getLineNo(lineCol);
+            const col = getColNo(lineCol);
+            return new FullPosition(line, col, line, col);
         });
     }
 
     /**
-     * Set lineCols of the declarations directly with LineCol type input.
-     * @param lineCols - the encoded lines and columns with LineCol type.
-     * @returns
-     */
-    public setDeclareLineCols(lineCols: LineCol[]): void {
-        this.methodDeclareLineCols = lineCols;
-    }
-
-    /**
-     * Get encoded lines and columns of the method's declarations or null if the method has no seperated declaration.
+     * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map() instead.
      * @returns null or the encoded lines and columns of the method's declarations with LineCol type.
      */
     public getDeclareLineCols(): LineCol[] | null {
-        return this.methodDeclareLineCols ?? null;
+        if (!this.declareOriginFullPositions) {
+            return null;
+        }
+        return this.declareOriginFullPositions.map(position => setLineCol(position.getFirstLine(), position.getFirstCol()));
     }
 
     /**
-     * Get line of the method's implementation or null if the method has no implementation.
+     * Returns the full positions of the method declarations in the source file.
+     * @returns An array of full positions in the source code, or null if the method has no separate declarations.
+     */
+    public getDeclareOriginFullPositions(): FullPosition[] | null {
+        return this.declareOriginFullPositions ? [...this.declareOriginFullPositions] : null;
+    }
+
+    /**
+     * Sets the full positions of the method declarations in the source file.
+     * @param positions - An array of full positions in the source code to set.
+     */
+    public setDeclareOriginFullPositions(positions: FullPosition[]): void {
+        this.declareOriginFullPositions = [...positions];
+    }
+
+    /**
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition()?.getFirstLine() instead.
      * @returns null or the number of the line.
      */
     public getLine(): number | null {
-        if (this.lineCol === undefined) {
+        if (this.implOriginFullPosition === undefined) {
             return null;
         }
-        return getLineNo(this.lineCol);
+        return this.implOriginFullPosition.getFirstLine();
     }
 
     /**
-     * Set line of the implementation with line number input.
-     * The line number will be encoded together with the original column number.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param line - the line number of the method implementation.
-     * @returns
      */
     public setLine(line: number): void {
-        if (this.lineCol === undefined) {
-            this.lineCol = 0;
+        if (this.implOriginFullPosition) {
+            const firstCol = this.implOriginFullPosition.getFirstCol();
+            const lastLine = this.implOriginFullPosition.getLastLine();
+            const lastCol = this.implOriginFullPosition.getLastCol();
+            this.implOriginFullPosition = new FullPosition(line, firstCol, lastLine, lastCol);
+        } else {
+            this.implOriginFullPosition = new FullPosition(line, INVALID_LINE, INVALID_LINE, INVALID_LINE);
         }
-        this.lineCol = setLine(this.lineCol, line);
     }
 
     /**
-     * Get column of the method's implementation or null if the method has no implementation.
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition()?.getFirstCol() instead.
      * @returns null or the number of the column.
      */
     public getColumn(): number | null {
-        if (this.lineCol === undefined) {
+        if (this.implOriginFullPosition === undefined) {
             return null;
         }
-        return getColNo(this.lineCol);
+        return this.implOriginFullPosition.getFirstCol();
     }
 
     /**
-     * Set column of the implementation with column number input.
-     * The column number will be encoded together with the original line number.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param column - the column number of the method implementation.
-     * @returns
      */
     public setColumn(column: number): void {
-        if (this.lineCol === undefined) {
-            this.lineCol = 0;
+        if (this.implOriginFullPosition) {
+            const firstLine = this.implOriginFullPosition.getFirstLine();
+            const lastLine = this.implOriginFullPosition.getLastLine();
+            const lastCol = this.implOriginFullPosition.getLastCol();
+            this.implOriginFullPosition = new FullPosition(firstLine, column, lastLine, lastCol);
+        } else {
+            this.implOriginFullPosition = new FullPosition(INVALID_LINE, column, INVALID_LINE, INVALID_LINE);
         }
-        this.lineCol = setCol(this.lineCol, column);
     }
 
     /**
-     * Get encoded line and column of the method's implementation or null if the method has no implementation.
+     * @deprecated Since version 1.0.91. Use getImplOriginFullPosition() instead.
      * @returns null or the encoded line and column of the method's implementation with LineCol type.
      */
     public getLineCol(): LineCol | null {
-        return this.lineCol ?? null;
+        if (this.implOriginFullPosition === undefined) {
+            return null;
+        }
+        return setLineCol(this.implOriginFullPosition.getFirstLine(), this.implOriginFullPosition.getFirstCol());
     }
 
     /**
-     * Set lineCol of the implementation directly with LineCol type input.
+     * @deprecated Since version 1.0.91. Use setImplOriginFullPosition() instead.
      * @param lineCol - the encoded line and column with LineCol type.
-     * @returns
      */
     public setLineCol(lineCol: LineCol): void {
-        this.lineCol = lineCol;
+        const line = getLineNo(lineCol);
+        const col = getColNo(lineCol);
+        this.implOriginFullPosition = new FullPosition(line, col, line, col);
+    }
+
+    /**
+     * Returns the full position of the method implementation in the source file.
+     * @returns The full position in the source code, or undefined if the method has no implementation
+     *          (e.g., interface/abstract methods with separate declarations) or was automatically
+     *          generated during IR construction.
+     */
+    public getImplOriginFullPosition(): FullPosition | undefined {
+        return this.implOriginFullPosition;
+    }
+
+    /**
+     * Sets the full position of the method implementation in the source file.
+     * @param position - The full position in the source code to set.
+     */
+    public setImplOriginFullPosition(position: FullPosition): void {
+        this.implOriginFullPosition = position;
     }
 
     /**
@@ -278,7 +341,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns null or the method declare signatures.
      */
     public getDeclareSignatures(): MethodSignature[] | null {
-        return this.methodDeclareSignatures ?? null;
+        return this.declareSignatures ?? null;
     }
 
     /**
@@ -288,7 +351,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns -1 or the index of the matched signature.
      */
     public getDeclareSignatureIndex(targetSignature: MethodSignature): number {
-        let declareSignatures = this.methodDeclareSignatures;
+        let declareSignatures = this.declareSignatures;
         if (declareSignatures === undefined) {
             return -1;
         }
@@ -306,7 +369,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns null or the method implementation signature.
      */
     public getImplementationSignature(): MethodSignature | null {
-        return this.methodSignature ?? null;
+        return this.implSignature ?? null;
     }
 
     /**
@@ -325,20 +388,19 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      ```
      */
     public getSignature(): MethodSignature {
-        return this.methodSignature ?? (this.methodDeclareSignatures as MethodSignature[])[0];
+        return this.implSignature ?? (this.declareSignatures as MethodSignature[])[0];
     }
 
     /**
      * Set signatures of all declarations.
      * It will reset the declaration signatures if they are already defined before.
      * @param signatures - one signature or a list of signatures.
-     * @returns
      */
     public setDeclareSignatures(signatures: MethodSignature | MethodSignature[]): void {
         if (Array.isArray(signatures)) {
-            this.methodDeclareSignatures = signatures;
+            this.declareSignatures = signatures;
         } else {
-            this.methodDeclareSignatures = [signatures];
+            this.declareSignatures = [signatures];
         }
     }
 
@@ -347,23 +409,21 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * Will do nothing if the index doesn't exist.
      * @param signature - new signature want to set.
      * @param index - index of signature want to set.
-     * @returns
      */
     public setDeclareSignatureWithIndex(signature: MethodSignature, index: number): void {
-        if (this.methodDeclareSignatures === undefined || this.methodDeclareSignatures.length <= index) {
+        if (this.declareSignatures === undefined || this.declareSignatures.length <= index) {
             return;
         }
-        this.methodDeclareSignatures[index] = signature;
+        this.declareSignatures[index] = signature;
     }
 
     /**
      * Set signature of implementation.
      * It will reset the implementation signature if it is already defined before.
      * @param signature - signature of implementation.
-     * @returns
      */
     public setImplementationSignature(signature: MethodSignature): void {
-        this.methodSignature = signature;
+        this.implSignature = signature;
     }
 
     public getSubSignature(): MethodSubSignature {
@@ -458,6 +518,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.body?.getCfg();
     }
 
+    /**
+     * @deprecated Since version 1.0.91. This method always returns undefined.
+     * Use getCfg() instead to get the control flow graph of this method.
+     */
     public getOriginalCfg(): Cfg | undefined {
         return undefined;
     }
@@ -602,56 +666,64 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public isGenerated(): boolean {
-        return this.isGeneratedFlag;
+        return this.containsTag(BaseModelTag.GENERATED);
     }
 
     public setIsGeneratedFlag(isGeneratedFlag: boolean): void {
-        this.isGeneratedFlag = isGeneratedFlag;
+        if (isGeneratedFlag) {
+            this.addTag(BaseModelTag.GENERATED);
+        } else {
+            this.removeTag(BaseModelTag.GENERATED);
+        }
     }
 
     public getAsteriskToken(): boolean {
-        return this.asteriskToken;
+        return this.containsTag(BaseModelTag.ASTERISK_TOKEN);
     }
 
     public setAsteriskToken(asteriskToken: boolean): void {
-        this.asteriskToken = asteriskToken;
+        if (asteriskToken) {
+            this.addTag(BaseModelTag.ASTERISK_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.ASTERISK_TOKEN);
+        }
     }
 
     public validate(): ArkError {
         const declareSignatures = this.getDeclareSignatures();
-        const declareLineCols = this.getDeclareLineCols();
+        const declarePositions = this.getDeclareOriginFullPositions();
         const signature = this.getImplementationSignature();
-        const lineCol = this.getLineCol();
+        const originFullPosition = this.getImplOriginFullPosition();
 
         if (declareSignatures === null && signature === null) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_UNDEFINED,
-                errMsg: 'methodDeclareSignatures and methodSignature are both undefined.',
+                errMsg: 'declareSignatures and methodSignature are both undefined.',
             };
         }
-        if ((declareSignatures === null) !== (declareLineCols === null)) {
+        if ((declareSignatures === null) !== (declarePositions === null)) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodDeclareSignatures and methodDeclareLineCols are not matched.',
+                errMsg: 'declareSignatures and declareOriginFullPositions are not matched.',
             };
         }
-        if (declareSignatures !== null && declareLineCols !== null && declareSignatures.length !== declareLineCols.length) {
+        if (declareSignatures !== null && declarePositions !== null && declareSignatures.length !== declarePositions.length) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodDeclareSignatures and methodDeclareLineCols are not matched.',
+                errMsg: 'declareSignatures and declareOriginFullPositions are not matched.',
             };
         }
-        if ((signature === null) !== (lineCol === null)) {
+        if ((signature === null) !== (originFullPosition === undefined)) {
             return {
                 errCode: ArkErrorCode.METHOD_SIGNATURE_LINE_UNMATCHED,
-                errMsg: 'methodSignature and lineCol are not matched.',
+                errMsg: 'methodSignature and originFullPosition are not matched.',
             };
         }
         return this.validateFields(['declaringArkClass']);
     }
 
     public matchMethodSignature(args: Value[]): MethodSignature {
-        const signatures = this.methodDeclareSignatures?.filter(f => {
+        const signatures = this.declareSignatures?.filter((f: MethodSignature) => {
             const parameters = f.getMethodSubSignature().getParameters();
             const max = parameters.length;
             let min = 0;
@@ -661,7 +733,13 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             return args.length >= min && args.length <= max;
         });
         return (
-            signatures?.find(p => ModelUtils.isMatched(p.getMethodSubSignature().getParameters(), args, this.getDeclaringArkFile().getScene())) ??
+            signatures?.find((p: MethodSignature) =>
+                ModelUtils.isMatched(
+                    p.getMethodSubSignature().getParameters(),
+                    args,
+                    this.getDeclaringArkFile().getScene()
+                )
+            ) ??
             signatures?.[0] ??
             this.getSignature()
         );
@@ -689,11 +767,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public setQuestionToken(questionToken: boolean): void {
-        this.questionToken = questionToken;
+        if (questionToken) {
+            this.addTag(BaseModelTag.QUESTION_TOKEN);
+        } else {
+            this.removeTag(BaseModelTag.QUESTION_TOKEN);
+        }
     }
 
     public getQuestionToken(): boolean {
-        return this.questionToken;
+        return this.containsTag(BaseModelTag.QUESTION_TOKEN);
     }
 
     // For class method, if there is no public/private/protected access modifier, it is actually public

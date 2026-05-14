@@ -32,7 +32,8 @@ export class ArkIRNamespacePrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        return this.ns.getLine();
+        const positions = this.ns.getOriginFullPositions();
+        return positions.length > 0 ? positions[0].getFirstLine() : 0;
     }
 
     public dump(): string {

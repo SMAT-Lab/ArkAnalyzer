@@ -439,7 +439,7 @@ export class TypeInference {
         const leftOp = stmt.getLeftOp();
         if (leftType && !this.isUnclearType(leftType)) {
             this.setValueType(leftOp, leftType);
-            if (leftOp instanceof Local && stmt.getOriginalText()?.startsWith(leftOp.getName())) {
+            if (leftOp instanceof Local) {
                 let localDef = ModelUtils.findDeclaredLocal(leftOp, arkMethod);
                 if (localDef && this.isUnclearType(localDef.getType())) {
                     localDef.setType(leftType);
@@ -1153,5 +1153,18 @@ export class TypeInference {
         }
         const objectClass = scene.getSdkGlobal(Builtin.OBJECT);
         return fatherClass === objectClass;
+    }
+
+    public static unwrapPromiseType(type: Type): Type {
+        if (type instanceof ClassType && type.getClassSignature().getClassName() === PROMISE) {
+            const innerType = type.getRealGenericTypes()?.[0];
+            return innerType ? TypeInference.unwrapPromiseType(innerType) : type;
+        } else if (type instanceof UnionType) {
+            const types = type.getTypes().map(t => TypeInference.unwrapPromiseType(t));
+            return new UnionType(types);
+        } else if (type instanceof UnclearReferenceType && type.getName() === PROMISE) {
+            return type.getGenericTypes()[0];
+        }
+        return type;
     }
 }

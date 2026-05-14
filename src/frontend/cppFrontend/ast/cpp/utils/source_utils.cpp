@@ -17,7 +17,7 @@
 #include "clang/Lex/Lexer.h"
 
 namespace ast_dumper {
-
+    
 bool IsFromMainFileIncludingExpansion(const clang::SourceManager &sm, clang::SourceLocation loc)
 {
     if (loc.isInvalid()) {
@@ -40,7 +40,8 @@ std::string GetSourceTextByRange(const clang::SourceManager &sm,
     if (cr.isInvalid()) {
         return "";
     }
-    return clang::Lexer::getSourceText(cr, sm, lo).str();
+    llvm::StringRef text = clang::Lexer::getSourceText(cr, sm, lo);
+    return text.str();
 }
 
 } // namespace ast_dumper

@@ -20,7 +20,7 @@ import { FileUtils } from './FileUtils';
 import { transfer2UnixPath } from './pathTransfer';
 import fs from 'fs';
 import Logger, { LOG_MODULE_TYPE } from './logger';
-import { LRUCache, clearLRUCache } from './LRUCacheDecorator';
+import { clearLRUCache, LRUCache } from './LRUCacheDecorator';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleUtils');
 const jsExt = '.js';
@@ -141,7 +141,10 @@ export class ModuleUtils {
 
     private static addDependModule(ohPkgFile: string, content: { [k: string]: unknown },
                                    ret: Map<string, ModulePath>, moduleName: string, override: boolean, projectDir: string): void {
-
+        // skip duplicate module
+        if (!override && ret.has(moduleName)) {
+            return;
+        }
         if (Object.keys(content).length === 0) {
             return;
         }
@@ -150,21 +153,19 @@ export class ModuleUtils {
             return;
         }
         const modulePath = path.dirname(ohPkgFileRealPath);
-        // deep first
-        this.OH_PACKAGE_DEPENDENCY_KEYS.forEach((dependencyKey) => this.processDependency(content[dependencyKey], modulePath, ret, override, projectDir));
+        if (moduleName) {
+            let entry = content.types as string || content.main as string;
+            if (!entry) {
+                entry = '';
+            } else if (entry.endsWith(jsExt)) {
+                entry = entry.substring(0, entry.length - jsExt.length);
+            }
+            const main = this.getFileRealPath(path.resolve(modulePath, entry));
+            ret.set(moduleName, new ModulePath(modulePath, main));
+        }
 
-        // skip empty or duplicate module
-        if (!moduleName || (!override && ret.has(moduleName))) {
-            return;
-        }
-        let entry = content.types as string || content.main as string;
-        if (!entry) {
-            entry = '';
-        } else if (entry.endsWith(jsExt)) {
-            entry = entry.substring(0, entry.length - jsExt.length);
-        }
-        const main = this.getFileRealPath(path.resolve(modulePath, entry));
-        ret.set(moduleName, new ModulePath(modulePath, main));
+        // process dependency items
+        this.OH_PACKAGE_DEPENDENCY_KEYS.forEach((dependencyKey) => this.processDependency(content[dependencyKey], modulePath, ret, override, projectDir));
 
     }
 

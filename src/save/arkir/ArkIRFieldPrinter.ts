@@ -30,7 +30,7 @@ export class ArkIRFieldPrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        return this.field.getOriginPosition().getLineNo();
+        return this.field.getOriginFullPosition().getFirstLine();
     }
     public dump(): string {
         this.printer.clear();

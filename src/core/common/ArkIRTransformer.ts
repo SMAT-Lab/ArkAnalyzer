@@ -39,13 +39,14 @@ import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
-import { FullPosition, LineColPosition } from '../base/Position';
+import { FullPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
 import { CONSTRUCTOR_NAME, DEFAULT, PROMISE } from './TSConst';
 import { buildGenericType, buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
+import { cloneText } from './StringUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
-import { ImportInfo } from '../model/ArkImport';
+import { ImportInfo, ImportType } from '../model/ArkImport';
 import { AbstractTypeExpr } from '../base/TypeExpr';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { ArkClass } from '../model/ArkClass';
@@ -199,7 +200,7 @@ export class ArkIRTransformer {
         let stmts: Stmt[] = [];
         let fieldName: string;
         if (ts.isIdentifier(paramNode.name)) {
-            fieldName = paramNode.name.text;
+            fieldName = cloneText(paramNode.name.text);
         } else if (ts.isObjectBindingPattern(paramNode.name)) {
             // TODO
             return stmts;
@@ -256,7 +257,7 @@ export class ArkIRTransformer {
 
         let paramName: string;
         if (ts.isIdentifier(paramNode.name)) {
-            paramName = paramNode.name.text;
+            paramName = cloneText(paramNode.name.text);
         } else if (ts.isObjectBindingPattern(paramNode.name)) {
             // TODO
             return stmts;
@@ -290,20 +291,35 @@ export class ArkIRTransformer {
         return stmts;
     }
 
+    public handleExpressionValueWithTempVarIfNeeded(
+        value: Value,
+        positions: FullPosition[],
+        stmts: Stmt[]
+    ): { value: Value; positions: FullPosition[] } {
+        if (IRUtils.moreThanOneAddress(value)) {
+            const { value: tempValue, valueOriginalPositions: tempPositions, stmts: tempStmts } = 
+                this.generateAssignStmtForValue(value, positions);
+            tempStmts.forEach(stmt => stmts.push(stmt));
+            return { value: tempValue, positions: tempPositions };
+        }
+        return { value, positions };
+    }
+
     private returnStatementToStmts(returnStatement: ts.ReturnStatement): Stmt[] {
         const stmts: Stmt[] = [];
         if (returnStatement.expression) {
-            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(returnStatement.expression);
+            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = 
+                this.tsNodeToValueAndStmts(returnStatement.expression);
             exprStmts.forEach(stmt => stmts.push(stmt));
-            if (IRUtils.moreThanOneAddress(exprValue)) {
-                ({ value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.generateAssignStmtForValue(exprValue, exprPositions));
-                exprStmts.forEach(stmt => stmts.push(stmt));
-            }
-            const returnStmt = new ArkReturnStmt(exprValue);
-            returnStmt.setOperandOriginalPositions(exprPositions);
+            
+            const { value: processedValue, positions: processedPositions } = 
+                this.handleExpressionValueWithTempVarIfNeeded(exprValue, exprPositions, stmts);
+            
+            const returnStmt = new ArkReturnStmt(processedValue);
+            returnStmt.setOperandOriginalPositions(processedPositions);
             stmts.push(returnStmt);
             if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
-                this.declaringMethod.getSubSignature().setReturnType(exprValue.getType());
+                this.declaringMethod.getSubSignature().setReturnType(processedValue.getType());
             }
             return stmts;
         }
@@ -393,7 +409,7 @@ export class ArkIRTransformer {
     }
 
     private typeAliasDeclarationToStmts(typeAliasDeclaration: ts.TypeAliasDeclaration): Stmt[] {
-        const aliasName = typeAliasDeclaration.name.text;
+        const aliasName = cloneText(typeAliasDeclaration.name.text);
         const rightOp = typeAliasDeclaration.type;
         let rightType = this.arkValueTransformer.resolveTypeNode(rightOp);
         if (rightType instanceof AbstractTypeExpr) {
@@ -438,7 +454,7 @@ export class ArkIRTransformer {
         if (ts.isImportTypeNode(rightOp)) {
             expr = this.resolveImportTypeNode(rightOp);
         } else if (ts.isTypeQueryNode(rightOp)) {
-            const localName = rightOp.exprName.getText(this.sourceFile);
+            const localName = cloneText(rightOp.exprName.getText(this.sourceFile));
             const originalLocal = Array.from(this.arkValueTransformer.getLocals()).find(local => local.getName() === localName);
             if (originalLocal === undefined || rightType instanceof UnclearReferenceType) {
                 expr = new AliasTypeExpr(new Local(localName, rightType), true);
@@ -475,23 +491,22 @@ export class ArkIRTransformer {
     }
 
     private resolveImportTypeNode(importTypeNode: ts.ImportTypeNode): AliasTypeExpr {
-        const importType = 'typeAliasDefine';
         let importFrom = '';
         let importClauseName = '';
 
         if (ts.isLiteralTypeNode(importTypeNode.argument)) {
             if (ts.isStringLiteral(importTypeNode.argument.literal)) {
-                importFrom = importTypeNode.argument.literal.text;
+                importFrom = cloneText(importTypeNode.argument.literal.text);
             }
         }
 
         const importQualifier = importTypeNode.qualifier;
         if (importQualifier !== undefined) {
-            importClauseName = importQualifier.getText(this.sourceFile);
+            importClauseName = cloneText(importQualifier.getText(this.sourceFile));
         }
 
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importType, importFrom, LineColPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
+        importInfo.build(importClauseName, ImportType.TYPE_ALIAS_IMPORT, importFrom, FullPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
         importInfo.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
 
         return new AliasTypeExpr(importInfo, importTypeNode.isTypeOf);
@@ -737,10 +752,15 @@ export class ArkIRTransformer {
 
     private throwStatementToStmts(throwStatement: ts.ThrowStatement): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.tsNodeToValueAndStmts(throwStatement.expression);
+        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = 
+            this.tsNodeToValueAndStmts(throwStatement.expression);
         throwStmts.forEach(stmt => stmts.push(stmt));
-        const throwStmt = new ArkThrowStmt(throwValue);
-        throwStmt.setOperandOriginalPositions(throwValuePositions);
+        
+        const { value: processedValue, positions: processedPositions } = 
+            this.handleExpressionValueWithTempVarIfNeeded(throwValue, throwValuePositions, stmts);
+        
+        const throwStmt = new ArkThrowStmt(processedValue);
+        throwStmt.setOperandOriginalPositions(processedPositions);
         stmts.push(throwStmt);
         return stmts;
     }
@@ -785,8 +805,7 @@ export class ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.buildFromNode(node, this.sourceFile));
-                stmt.setOriginalText(node.getText(this.sourceFile));
+                stmt.setOriginFullPosition(FullPosition.buildFromNode(node, this.sourceFile));
             }
         }
     }

@@ -19,6 +19,8 @@
   "main": "index.ets",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "@model1": "../model1"
+  }
 }
 

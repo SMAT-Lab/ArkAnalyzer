@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { ArkField } from '../../../../src/core/model/ArkField';
 import { Decorator } from '../../../../src/core/base/Decorator';
 import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
+import { buildScene } from '../../common';
+import path from 'path';
 
 describe("ArkField Test", () => {
     it('test getDecorators', async () => {
@@ -31,3 +33,36 @@ describe("ArkField Test", () => {
         expect(field.getDecorators().length).eq(1);
     })
 })
+
+describe('ArkField Source Code and Position Test', () => {
+    const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
+    const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+    const globalTestClass = arkFile?.getClassWithName('GlobalTest');
+
+    it('test getOriginFullPosition for f field', async () => {
+        const field = globalTestClass?.getFieldWithName('f');
+        assert.isDefined(field);
+        
+        const position = field!.getOriginFullPosition();
+        assert.isDefined(position);
+        expect(position!.getFirstLine()).eq(198);
+        expect(position!.getFirstCol()).eq(5);
+        expect(position!.getLastLine()).eq(200);
+        expect(position!.getLastCol()).eq(7);
+    });
+
+    it('test getCode for f field', async () => {
+        const field = globalTestClass?.getFieldWithName('f');
+        assert.isDefined(field);
+        
+        const expectedCode = `f = (): void => {
+        console.log(GLOBAL_NUM);
+    };`;
+        expect(field!.getCode()).eq(expectedCode);
+    });
+
+    it('test getOriginFullPosition for goo field', async () => {
+        const field = globalTestClass?.getStaticFieldWithName('a');
+        assert.isNull(field);
+    });
+});

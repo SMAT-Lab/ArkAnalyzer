@@ -106,7 +106,10 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                 this.outcomes.push(new Outcome(rightOp, ass));
                 logger.info('undefined base');
                 logger.info(srcStmt.toString());
-                logger.info(srcStmt.getOriginPositionInfo().toString());
+                const position = srcStmt.getOriginFullPosition();
+                if (position) {
+                    logger.info(`(${position.getFirstLine()},${position.getFirstCol()})`);
+                }
             }
         } else if (dataFact instanceof ArkInstanceFieldRef && rightOp === dataFact.getBase()) {
             const field = new ArkInstanceFieldRef(srcStmt.getLeftOp() as Local, dataFact.getFieldSignature());

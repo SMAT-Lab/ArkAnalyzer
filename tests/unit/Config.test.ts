@@ -13,8 +13,52 @@
  * limitations under the License.
  */
 
-import { SceneConfig } from '../../src/Config';
-import { assert, describe, it } from 'vitest';
+import { SceneConfig, type SceneLanguagesOptions } from '../../src/Config';
+import { assert, describe, expect, it } from 'vitest';
+
+describe('SceneConfig options test', () => {
+    it('enable cpp', () => {
+        const config = new SceneConfig({
+            supportFileExts: ['.ets', '.ts'],
+            languages: {
+                cpp: {
+                    enabled: true,
+                    sourceExtensions: ['.cxx'],
+                    headerExtensions: ['.h'],
+                },
+            } as SceneLanguagesOptions,
+        });
+        const options = config.getOptions();
+        expect(options.languages?.cpp?.enabled).toEqual(true);
+        expect(options.languages?.cpp?.headerExtensions).toEqual(['.h']);
+        expect(options.languages?.cpp?.sourceExtensions).toEqual(['.cxx']);
+        expect(options.supportFileExts).toEqual(['.ets', '.ts', '.cxx', '.h']);
+    });
+
+    it('enable arkts and cpp', () => {
+        const config = new SceneConfig({
+            supportFileExts: ['.ts'],
+            languages: {
+                arkts: {
+                    enabled: true,
+                    extensions: ['.ets', '.ts'],
+                },
+                cpp: {
+                    enabled: true,
+                    sourceExtensions: ['.cc'],
+                    headerExtensions: ['.h'],
+                },
+            } as SceneLanguagesOptions,
+        });
+        const options = config.getOptions();
+        expect(options.languages?.arkts?.enabled).toEqual(true);
+        expect(options.languages?.arkts?.extensions).toEqual(['.ets', '.ts']);
+        expect(options.languages?.cpp?.enabled).toEqual(true);
+        expect(options.languages?.cpp?.headerExtensions).toEqual(['.h']);
+        expect(options.languages?.cpp?.sourceExtensions).toEqual(['.cc']);
+        expect(options.supportFileExts).toEqual(['.ts', '.ets', '.cc', '.h']);
+    });
+});
 
 describe('SceneConfig Test', () => {
     it('true case', () => {

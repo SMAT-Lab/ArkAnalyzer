@@ -24,7 +24,7 @@ const LOW_BITS_MASK = 0xffff;
 const HIGH_BITS_MASK = 0xffff0000;
 const MIN_NUMBER = 0;
 const MAX_NUMBER = 0xffff;
-const INVALID_LINE = -1;
+export const INVALID_LINE = -1;
 
 export type LineCol = number;
 
@@ -139,6 +139,7 @@ export class FullPosition {
         return getColNo(this.last);
     }
 
+
     public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): FullPosition {
         const { line: startLine, character: startCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
         const { line: endLine, character: endCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getEnd());
@@ -173,3 +174,4 @@ export class FullPosition {
         );
     }
 }
+

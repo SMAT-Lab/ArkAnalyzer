@@ -31,7 +31,7 @@ export class ArkIRClassPrinter extends BasePrinter {
     }
 
     public getLine(): number {
-        return this.cls.getLine();
+        return this.cls.getOriginFullPosition()?.getFirstLine() ?? 0;
     }
 
     public dump(): string {

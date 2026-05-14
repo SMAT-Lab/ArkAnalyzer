@@ -19,18 +19,20 @@ import { ArkFile, Language } from './ArkFile';
 import { ArkMethod } from './ArkMethod';
 import { AliasClassSignature, ClassSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
-import { getColNo, getLineNo, LineCol, setCol, setLine, setLineCol } from '../base/Position';
+import { FullPosition } from '../base/Position';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { NAME_DELIMITER } from '../common/Const';
 import { SdkUtils } from '../common/SdkUtils';
+import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 /**
  * @category core/model
  */
 export class ArkNamespace extends ArkBaseModel implements ArkExport {
-    private sourceCodes: string[] = [''];
-    private lineCols: LineCol[] = [];
+    private sourceCodes?: string[];
+    /** The full positions of this namespace (can have multiple positions for merged namespaces). */
+    private originFullPositions!: FullPosition[];
 
     private declaringArkFile!: ArkFile;
     private declaringArkNamespace: ArkNamespace | null = null;
@@ -103,61 +105,132 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getCode(): string {
-        return this.sourceCodes[0];
+        const codes = this.getCodes();
+        return codes.length > 0 ? codes[0] : '';
     }
 
-    public setCode(sourceCode: string): void {
-        this.sourceCodes[0] = sourceCode;
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCode - The source code (ignored).
+     */
+    public setCode(_sourceCode: string): void {
+        
     }
 
-    /*
-     * Get multiple sourceCodes when the arkNamespace is merged from multiple namespace with the same name
+    /**
+     * Returns the source texts of this namespace extracted from the declaring ArkFile
+     * using the namespace's origin positions. Implements lazy loading with caching.
+     * A namespace may have multiple source segments (for merged namespaces).
+     * @returns An array of source texts extracted from each origin position.
      */
     public getCodes(): string[] {
-        return this.sourceCodes;
+        if (this.sourceCodes !== undefined) {
+            return this.sourceCodes;
+        }
+        const fileCode = this.getDeclaringArkFile().getCode();
+        const codes = this.originFullPositions
+            .map(position => extractSourceTextByFullPosition(fileCode, position))
+            .filter((code): code is string => code !== undefined);
+        this.sourceCodes = codes;
+        return codes;
     }
 
-    /*
-     * Set multiple sourceCodes when the arkNamespace is merged from multiple namespace with the same name
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCodes - The source codes array (ignored).
      */
-    public setCodes(sourceCodes: string[]): void {
-        this.sourceCodes = [];
-        this.sourceCodes.push(...sourceCodes);
+    public setCodes(_sourceCodes: string[]): void {
+        
     }
 
-    public addCode(sourceCode: string): void {
-        this.sourceCodes.push(sourceCode);
+    /**
+     * @deprecated Source text is now stored on ArkFile only. This method has no effect.
+     * @param _sourceCode - The source code (ignored).
+     */
+    public addCode(_sourceCode: string): void {
+        
     }
 
+    /**
+     * @deprecated Use getOriginFullPositions()[0]?.getFirstLine() instead.
+     * @returns The line number of the first namespace position.
+     */
     public getLine(): number {
-        return getLineNo(this.lineCols[0]);
+        return this.originFullPositions[0]?.getFirstLine() ?? 0;
     }
 
+    /**
+     * @deprecated Use setOriginFullPositions() instead.
+     * @param line - The line number to set.
+     */
     public setLine(line: number): void {
-        this.lineCols[0] = setLine(this.lineCols[0], line);
+        if (this.originFullPositions && this.originFullPositions.length > 0) {
+            const firstCol = this.originFullPositions[0].getFirstCol();
+            const lastLine = this.originFullPositions[0].getLastLine();
+            const lastCol = this.originFullPositions[0].getLastCol();
+            this.originFullPositions[0] = new FullPosition(line, firstCol, lastLine, lastCol);
+        }
     }
 
+    /**
+     * @deprecated Use getOriginFullPositions()[0]?.getFirstCol() instead.
+     * @returns The column number of the first namespace position.
+     */
     public getColumn(): number {
-        return getColNo(this.lineCols[0]);
+        return this.originFullPositions[0]?.getFirstCol() ?? 0;
     }
 
+    /**
+     * @deprecated Use setOriginFullPositions() instead.
+     * @param column - The column number to set.
+     */
     public setColumn(column: number): void {
-        this.lineCols[0] = setCol(this.lineCols[0], column);
+        if (this.originFullPositions && this.originFullPositions.length > 0) {
+            const firstLine = this.originFullPositions[0].getFirstLine();
+            const lastLine = this.originFullPositions[0].getLastLine();
+            const lastCol = this.originFullPositions[0].getLastCol();
+            this.originFullPositions[0] = new FullPosition(firstLine, column, lastLine, lastCol);
+        }
     }
 
+    /**
+     * @deprecated Use getOriginFullPositions().map() instead.
+     * @returns The line/column pairs of all namespace positions.
+     */
     public getLineColPairs(): [number, number][] {
         const lineColPairs: [number, number][] = [];
-        this.lineCols.forEach(lineCol => {
-            lineColPairs.push([getLineNo(lineCol), getColNo(lineCol)]);
+        this.originFullPositions?.forEach(position => {
+            lineColPairs.push([position.getFirstLine(), position.getFirstCol()]);
         });
         return lineColPairs;
     }
 
+    /**
+     * @deprecated Use setOriginFullPositions() instead.
+     * @param lineColPairs - The line/column pairs to set.
+     */
     public setLineCols(lineColPairs: [number, number][]): void {
-        this.lineCols = [];
+        this.originFullPositions = [];
         lineColPairs.forEach(lineColPair => {
-            this.lineCols.push(setLineCol(lineColPair[0], lineColPair[1]));
+            this.originFullPositions.push(new FullPosition(lineColPair[0], lineColPair[1], lineColPair[0], lineColPair[1]));
         });
+    }
+
+    /**
+     * Returns the full positions of this namespace in the source file.
+     * A namespace can have multiple positions when merged from multiple namespaces with the same name.
+     * @returns An array of full positions in the source code.
+     */
+    public getOriginFullPositions(): FullPosition[] {
+        return this.originFullPositions ?? [];
+    }
+
+    /**
+     * Sets the full positions of this namespace in the source file.
+     * @param positions - An array of full positions in the source code to set.
+     */
+    public setOriginFullPositions(positions: FullPosition[]): void {
+        this.originFullPositions = [...positions];
     }
 
     public getDeclaringInstance(): ArkNamespace | ArkFile {

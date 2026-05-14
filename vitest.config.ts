@@ -18,38 +18,31 @@ import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast';
 
 const astJsonDumperAvailable = isAstJsonDumperAvailable();
 const sdkHome = process.env.OHOS_SDK_HOME?.trim();
-
-function isDevecoIncludeEnvConfigured(): boolean {
-    const c = process.env.DEVECO_C?.trim() ?? '';
-    const inc = process.env.DEVECO_INCLUDE?.trim() ?? '';
-    const sys = process.env.DEVECO_SYSROOT_INCLUDE?.trim() ?? '';
-    return c.length > 0 && inc.length > 0 && sys.length > 0;
-}
-
-const devecoIncludeEnvConfigured = isDevecoIncludeEnvConfigured();
 const skipCoreCppTests = !astJsonDumperAvailable;
 
-// These two need OHOS include roots: either OHOS_SDK_HOME or all of DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE.
-const skipOhosSdkHomeDependentTests =
-    astJsonDumperAvailable && !sdkHome && !devecoIncludeEnvConfigured;
-
-if (!astJsonDumperAvailable) {
-    console.warn(
-        '[vitest] astJsonDumper.node not found — skipping tests/unit/cppCore (build per src/frontend/cppFrontend/ast/README.md).',
-    );
-} else if (!sdkHome && !devecoIncludeEnvConfigured) {
-    console.warn(
-        '[vitest] OHOS_SDK_HOME and DEVECO_C / DEVECO_INCLUDE / DEVECO_SYSROOT_INCLUDE are unset — skipping Cfg.test.ts and ExportInfo.test.ts only.'
-    );
-}
-
+// These tests rely on OHOS SDK headers and are skipped when OHOS_SDK_HOME is missing.
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
     'tests/unit/cppCore/graph/Cfg.test.ts',
     'tests/unit/cppCore/export/ExportInfo.test.ts',
 ] as const;
 
+const skipOhosSdkHomeDependentTests =
+    astJsonDumperAvailable && !sdkHome;
+
+if (!astJsonDumperAvailable) {
+    console.warn(
+        '[vitest] reason=astJsonDumper.node missing; impact=skip tests/unit/cppCore; action=build addon per src/frontend/cppFrontend/ast/README.md.',
+    );
+} else if (!sdkHome) {
+    console.warn(
+        `[vitest] reason=OHOS_SDK_HOME unset; impact=skip OHOS SDK-dependent tests (${OHOS_SDK_HOME_DEPENDENT_TEST_FILES.join(', ')}); action=export OHOS_SDK_HOME to your SDK root.`,
+    );
+}
+
 export default defineConfig({
     test: {
+        pool: 'forks',
+        setupFiles: ['./tests/unit/vitest.setup.ts'],
         include: ['tests/unit/**/*.test.ts'],
         exclude: [
             '**/node_modules/**',

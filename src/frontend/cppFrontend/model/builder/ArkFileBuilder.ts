@@ -15,7 +15,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { ArkFile } from '../../../../core/model/ArkFile';
+import { ArkFile, Language } from '../../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../../core/model/ArkNamespace';
 import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
@@ -25,7 +25,7 @@ import { ArkClass } from '../../../../core/model/ArkClass';
 import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
 import { FileSignature, ClassSignature } from '../../../../core/model/ArkSignature';
-import { LineColPosition } from '../../../../core/base/Position';
+import { FullPosition } from '../../../../core/base/Position';
 import { buildGenericImportInfo, buildUsingNamespaceImportInfo } from './ArkImportBuilder';
 import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
@@ -35,86 +35,107 @@ import { ArkExport } from '../../../../core/model/ArkExport';
 import { Scene } from '../../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { DEFAULT_ARK_CLASS_NAME } from '../../../../core/common/Const';
+import { FrontendParseFailure } from '../../../FrontendBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
-interface ModuleInfo {
-    moduleName?: string;
-    name: string;
-    path?: string;
-}
-export const classMap : Map<string, ArkClass> = new Map<string, ArkClass>();
-function extractOhosSdkPath(mapData: Map<string, ModuleInfo>): string {
-    for (const [key, value] of mapData.entries()) {
-        if (key !== 'ohosSdk') {
-            continue;
-        }
-        const sdkPath = Object.prototype.hasOwnProperty.call(value, 'path') ? value.path : '';
-        if (typeof sdkPath === 'string' && sdkPath) {
-            return sdkPath;
-        }
+function applyArkFile(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode): void {
+    const scene = arkFile.getScene();
+    const projectDir = scene.getRealProjectDir();
+    const projectName = scene.getProjectName();
+    arkFile.setFilePath(sourceFile);
+    arkFile.setProjectDir(projectDir);
+    arkFile.setFileSignature(new FileSignature(projectName, path.relative(projectDir, sourceFile)));
+    const sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+    const options = scene.getOptions();
+    const eagerLoad = options.saveSourceCodeByDefault ?? false;
+    if (eagerLoad && scene.getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
     }
-    return '';
+    genDefaultArkClass(arkFile, astRoot);
+    buildArkFile(arkFile, astRoot);
 }
 
-function findLLVMPath(inputPath: string): string {
-    if (!inputPath || !inputPath.trim() || !path.isAbsolute(inputPath)) {
-        return '';
-    }
-
-    const normalized = path.normalize(inputPath);
-    const parts = normalized.split(path.sep);
-
-    const devEcoIndex = parts.findIndex(p => p.trim() === 'DevEco Studio');
-    if (devEcoIndex === -1) {
-        return '';
-    }
-
-    const basePath = path.join(...parts.slice(0, devEcoIndex + 1));
-
-    // Prioritize finding LLVM path in environment variables
-    const envPathList = (process.env.PATH || '').split(';');
-    const llvmEnvPath = envPathList.find(p => p.includes('clang+llvm-19.1.7-x86_64-pc-windows-msvc') && fs.existsSync(p)) || '';
-
-    const llvmBinCandidates = [
-        llvmEnvPath,
-        path.join(basePath, 'sdk', 'default', 'openharmony', 'native', 'clang+llvm-19.1.7-x86_64-pc-windows-msvc', 'bin'),
-        path.join(basePath, 'sdk', 'default', 'openharmony', 'native', 'llvm', 'bin'),
-    ];
-
-    for (const candidate of llvmBinCandidates) {
-        if (fs.existsSync(candidate)) {
-            return candidate;
-        }
-    }
-
-    return '';
+export interface CppStreamBuildResult {
+    arkFiles: ArkFile[];
+    failedFiles: FrontendParseFailure[];
 }
 
 /**
- * Entry of building ArkFile instance
- *
- * @param absoluteFilePath
- * @param projectDir
- * @param arkFile
- * @param projectName
- * @param includeDirs
- * @returns
+ * C++ AST manifest pipeline: addon emits per-TU records, consumed synchronously per record.
  */
-export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string, includeDirs: string[] = []): void {
-    let scene: Scene = arkFile.getScene();
-    arkFile.setFilePath(absoluteFilePath);
-    arkFile.setProjectDir(projectDir);
+export function prepareArkFiles(
+    scene: Scene,
+    absoluteSourceFiles: string[],
+    maxParallelProcesses: number = 1,
+    maxPendingAstResults: number = 2,
+): CppStreamBuildResult {
+    const arkFiles: ArkFile[] = [];
+    const failedFiles: FrontendParseFailure[] = [];
+    const sources = absoluteSourceFiles.map((f) => path.resolve(f));
+    if (sources.length === 0) {
+        return { arkFiles, failedFiles };
+    }
+    const projectDir = scene.getRealProjectDir();
+    const includeDirs = scene.getIncludeDirs();
+    const result = AstParser.runCppAst({
+        scene,
+        sources,
+        projectDir,
+        includeDirs,
+        maxParallelProcesses,
+        maxPendingAstResults,
+        onSourceAst: (sourceFile, astRoot) => {
+            const target = new ArkFile(Language.CXX);
+            target.setScene(scene);
+            try {
+                applyArkFile(target, sourceFile, astRoot);
+                arkFiles.push(target);
+            } catch (err) {
+                failedFiles.push({ filePath: sourceFile, reason: err });
+            }
+        },
+    });
 
-    const fileSignature = new FileSignature(projectName, path.relative(projectDir, absoluteFilePath));
-    arkFile.setFileSignature(fileSignature);
-    arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
-    let llvmPath = findLLVMPath(sdkPath);
-    const jsonObject = AstParser.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
-    genDefaultArkClass(arkFile, jsonObject);
-    buildArkFile(arkFile, jsonObject);
+    for (const e of result.dumpErrors) {
+        failedFiles.push({ filePath: e.filePath, reason: e.reason });
+    }
+
+    return { arkFiles, failedFiles };
 }
+
+export function prepareArkFile(
+    scene: Scene,
+    absoluteFilePath: string,
+    targetArkFile: ArkFile,
+): void {
+    const sourceFile = path.resolve(absoluteFilePath);
+    const projectDir = scene.getRealProjectDir();
+    const includeDirs = scene.getIncludeDirs();
+    const result = AstParser.runCppAst({
+        scene,
+        sources: [sourceFile],
+        projectDir,
+        includeDirs,
+        maxParallelProcesses: 1,
+        maxPendingAstResults: 2,
+        onSourceAst: (source, astRoot) => {
+            try {
+                applyArkFile(targetArkFile, source, astRoot);
+            } catch (err) {
+                logger.warn(`Failed to apply C++ AST to ArkFile: ${source}`, err as Error);
+            }
+        },
+    });
+    for (const e of result.dumpErrors) {
+        logger.warn(`C++ AST dump error for ${e.filePath}`, e.reason);
+    }
+    if (result.exitCode !== 0) {
+        logger.warn(`C++ single-file AST parse not completed successfully: ${sourceFile}`);
+    }
+}
+
+export const classMap: Map<string, ArkClass> = new Map<string, ArkClass>();
 
 export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
     let cls: ArkClass = new ArkClass();
@@ -122,7 +143,7 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : 'class';
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
-    addExportInfoOnCondition(classNode, cls, arkFile);
+    addExportInfoOnCondition(classNode, cls, arkFile, astRoot);
     if (classNode.id) {
         classMap.set(classNode.id, cls);
     }
@@ -167,16 +188,16 @@ function buildImportInfoFromUsing(usingNode: CxxAstNode, astRoot: CxxAstNode, ar
     }
 }
 
-function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {
+function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CxxAstNode): void {
     if (currNode.loc?.file?.endsWith('.h')) {
-        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode)));
+        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, FullPosition.cxxBuildFromNode(currNode, astRoot)));
     }
 }
 
 function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
     let mtd = new ArkMethod();
     buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
-    addExportInfoOnCondition(mtdNode, mtd, arkFile);
+    addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
 }
 
 /**
@@ -222,7 +243,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 ns.setDeclaringArkFile(arkFile);
                 buildArkNamespace(child, arkFile, ns, astRoot);
                 arkFile.addNamespace(ns);
-                addExportInfoOnCondition(child, ns, arkFile);
+                addExportInfoOnCondition(child, ns, arkFile, astRoot);
                 break;
             case astKind.CXXMethodDecl:
             case astKind.CXXConstructorDecl:
