@@ -98,11 +98,11 @@ npx arkanalyzer ir ./myapp -f json -o ./out
 
 ## 支持的使用场景（分语言）
 
-ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中间表示），下游分析（[CallGraph](docs/analysis/CallGraph.md)、[Def-Use Chain](docs/analysis/Def-Use%20Chain.md)、[IFDS](docs/analysis/IFDS.md)、[ViewTree](docs/analysis/ViewTree.md) 等）对所有语言透明可用。各语言成熟度差异主要在 **前端解析覆盖度** 与 **类型推导精度**，详见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。
+ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中间表示），下游分析（[CallGraph](docs/analysis/CallGraph.md)、[Def-Use Chain](docs/analysis/Def-Use%20Chain.md)、[数据流分析](docs/analysis/DataFlow.md)、[ViewTree](docs/analysis/ViewTree.md) 等）对所有语言透明可用。各语言成熟度差异主要在 **前端解析覆盖度** 与 **类型推导精度**，详见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。
 
-| 语言 | `Language` 枚举值 | IR 转换 | 类型推导 | 调用图 (CHA / RTA) | Def-Use / IFDS | ViewTree | 备注 |
+| 语言 | `Language` 枚举值 | IR 转换 | 类型推导 | 调用图 (CHA / RTA) | Def-Use / 过程内数据流 | ViewTree | 备注 |
 |------|------------------|---------|---------|--------------------|----------------|----------|------|
-| ArkTS 1.1 / 1.2 | `ARKTS1_1` / `ARKTS1_2` | ✅ 完整 | ✅ 完整（含装饰器） | ✅ | ✅ | ✅ | HarmonyOS 主语言；唯一支持 ArkUI 视图树的语言 |
+| ArkTS | `ARKTS1_1` | ✅ 完整 | ✅ 完整（含装饰器） | ✅ | ✅ | ✅ | HarmonyOS 主语言；唯一支持 ArkUI 视图树的语言 |
 | TypeScript | `TYPESCRIPT` | ✅ 完整 | ✅ 完整 | ✅ | ✅ | — | 通用 TS 工程；含命名空间、泛型、装饰器、`type`/`interface` 等全部 TS 4.x 语法 |
 | JavaScript | `JAVASCRIPT` | ✅ 基础 | ⚠ 受限（缺类型注解时退化为 `UnknownType`） | ✅ | ✅ | — | 适合用于动态调用关系勾画；精确分析建议先用 TS 注解 |
 | C / C++ | `CXX` | ✅（cppFrontend） | ⚠ 部分 | ✅ | ✅ | — | 依赖 `cppAstPath` / `ccjsonPath`；含 `VIRTUAL`、`INLINE`、`CONSTEXPR`、`MUTABLE` 等修饰符；用于鸿蒙 native 模块 |
@@ -111,7 +111,7 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 **典型场景**：
 
 - **HarmonyOS / ArkTS 应用**：ArkUI 视图树分析（[ViewTree](docs/analysis/ViewTree.md)）+ 状态依赖追踪 + `@State` 副作用检查；多 module 工程通过 [`Scene.buildScene4HarmonyProject()`](docs/components/Scene.md#51-构建-scene) 自动识别。
-- **TS / JS 库或服务端项目**：[CallGraph](docs/analysis/CallGraph.md)（CHA / RTA）+ [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [IFDS](docs/analysis/IFDS.md)（taint / 未初始化变量 / 除零等定制 checker）。
+- **TS / JS 库或服务端项目**：[CallGraph](docs/analysis/CallGraph.md)（CHA / RTA）+ [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [数据流分析](docs/analysis/DataFlow.md)（`MFPDataFlowSolver`、到达定值或自建数据流问题）。
 - **TS / ArkTS 与 C/C++ 混合工程**：通过 `ArkClass.getTs2cxxFuncMap()` 把 TS 侧 `napi_*` 调用与 C/C++ 实现关联，做跨语言可达性分析。
 
 更细粒度的语言能力矩阵与 IR 差异说明请参见 [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md)。

@@ -2,17 +2,33 @@
 
 [TOC]
 
+> **提示**：部分 Markdown 预览器不会解析 `[TOC]` 自动生成目录（例如 GitHub 网页预览）。可使用编辑器自带的大纲视图，或直接浏览下文各级标题。
+
 ## 1. ArkAnalyzer 简介
 
-ArkAnalyzer 是针对基于 ArkTS 语言开发的鸿蒙原生应用的静态代码分析框架。下图展示了其基本工作原理，对于输入的 ArkTS 项目，ArkAnalyzer 会先为其生成一个抽象语法树（AST），接着遍历这颗语法树并生成一个 Scene数据结构。这个 Scene 数据结构对代码结构进行了抽象，用户可通过该数据结构快速获取 ArkTS 项目中某个具体的类、函数或者属性。接下来，ArkAnalyzer 为每一个函数生成一个控制流程图（CFG），用户可基于此图进行控制流相关的分析。基于 CFG，ArkAnalyzer 进一步实现方法调用图的生成（CallGraph），并基于此支持用户实现数据流分析。
+ArkAnalyzer 面向基于 **ArkTS** 的鸿蒙原生应用（以及其它前端支持的源码），提供静态代码分析基础设施：**输入**一个工程目录或标准化配置，**输出**可供程序访问的中间模型与分析结果。
 
-![ArkAnalyzer 基本工作原理](./images/1-arkanalyzer-workflow.png)
+典型的工程流程如下（详见插图）。
+
+1. **解析**：从源码构造抽象语法树（AST）。
+2. **Scene**：遍历 AST，生成 **Scene**——项目在内存中的结构化视图（文件、类、方法、命名空间等），并完成类型推导。
+3. **CFG**：对每个方法构造控制流图（CFG），刻画执行路径与基本块。
+4. **调用图**：在 CFG 等基础上构建调用图（Call Graph），刻画调用关系。
+5. **其它分析**：在此之上可实现类型检查、Def-Use、指针分析等高阶静态程序分析及可视化导出。
+
+ArkAnalyzer 基本工作原理
+
+**术语速览**
+
+- **Scene**：整个工程的「结构化快照」，便于按文件 / 类 / 方法遍历与查询。
+- **CFG（控制流图）**：单个方法内部的控制流结构（基本块与跳转）。
+- **调用图（Call Graph/CG）**：方法之间的调用关系图，常用于过程间分析的输入。
 
 ### 1.1 Scene 数据结构
 
-Scene 是 ArkAnalyzer 的核心数据结构，它是对整个项目的抽象表示。Scene 包含了项目中所有的文件、类、方法、命名空间等信息，是进行静态分析的基础。
+Scene 是 ArkAnalyzer 的核心数据结构，是对整个项目的抽象表示；包含文件、类、方法、命名空间等元数据，是绝大多数静态分析的起点。
 
-![Scene结构](./images/3-scene-struct-model.png)
+Scene结构
 **Scene 的主要作用**：
 
 - **项目结构抽象**：将整个项目的代码结构组织成层次化的数据结构
@@ -20,19 +36,19 @@ Scene 是 ArkAnalyzer 的核心数据结构，它是对整个项目的抽象表�
 - **统一访问接口**：通过 Scene 可以快速访问项目中的任意文件、类、方法等
 
 ### 1.2 多语言支持
+
 除了 ArkTS 之外，ArkAnalyzer 还支持 TypeScript、JavaScript 以及 C/C++ 作为输入。通过将不同语言统一转换为三地址码形式的中间表示（ArkAnalyzer-IR，简称 ArkIR），ArkAnalyzer 构建统一的 Scene 数据结构，并在此基础上形成一系列静态分析能力。
 
 各语言的具体支持范围与功能细节请参考 [ArkAnalyzer 各语言支持详细说明](./MultiLanguageSupport.md) 。
 
 ### 1.3 应用场景
 
-作为底层程序分析框架，ArkAnalyzer 已在多个面向 OpenHarmony 应用的分析项目中得到实际落地和验证，能够支撑不同场景下的程序分析需求，典型应用包括：
+作为底层程序分析框架，ArkAnalyzer 已在多个面向 OpenHarmony 应用的分析项目中得到验证，典型应用包括：
 
-• [HomeFlow](https://gitcode.com/openharmony-sig/homeflow)：面向 OpenHarmony 应用的深度数据流分析工具，基于IFDS框架实现，主要提供资源泄露分析和数据泄露检测能力。
+- [HomeFlow](https://gitcode.com/openharmony-sig/homeflow)：面向 OpenHarmony 应用的深度数据流分析工具（常见实现基于 IFDS 思路），侧重资源泄露与数据泄露等场景。
+- [HomeCheck](https://gitcode.com/openharmony-sig/homecheck)：面向 OpenHarmony 应用的缺陷扫描工具；作为程序分析引擎集成于 DevEco Studio 的 CodeLinter。
 
-• [HomeCheck](https://gitcode.com/openharmony-sig/homecheck)：面向 OpenHarmony 应用代码缺陷扫描的自动化程序分析工具，已作为核心程序分析引擎集成至鸿蒙官方 IDE DevEco Studio，作为代码扫描工具 CodeLinter 的重要组成部分服务广大鸿蒙开发者。
-
-在实际使用中，ArkAnalyzer 支持通过 npm 依赖 或 源码引用 两种方式进行集成。具体集成方法可参考 [ArkAnalyzer 集成说明](./QuickStart.md#26-集成-arkanalyzer)
+在实际使用中，可通过 **npm 依赖**或**源码路径映射**集成 ArkAnalyzer；详见下文 **「集成 ArkAnalyzer」**（第 2.6 节）。
 
 ## 2. 环境配置
 
@@ -79,6 +95,7 @@ node -r ts-node/register tests/samples/CfgTest.ts
 ```
 
 这个测试用例会：
+
 1. 构建一个示例项目的Scene
 2. 执行类型推导
 3. 遍历所有方法，打印每个方法的控制流图（基本块和语句）
@@ -140,52 +157,38 @@ for (const arkFile of scene.getFiles()) {
 
 更多测试用例请查看 `tests/samples/` 目录。
 
+**推荐阅读顺序（初学者）**
+
+1. 运行本节 `CfgTest`，建立对 CFG 输出的直观印象。
+2. 阅读第 3 节，掌握 Scene 构建与项目遍历。
+3. 按需跳到第 4 节各小节（CFG、类型、Def-Use、调用图、数据流、ViewTree）。
+
 ### 2.6 集成 ArkAnalyzer
+
 如果需要在自己的项目中使用 ArkAnalyzer，可以通过 npm 依赖或源码引用两种方式进行集成。
+
 1. **通过 npm 依赖引入**
-
-   在项目的 `package.json` 中，通过 `dependencies` 字段添加 ArkAnalyzer 依赖：
-
-   ```json
-   {
-       "dependencies": {
-           "arkanalyzer": "^1.0.87"  //版本号根据实际情况修改，最新版本可在 npm 上查询
-       }
-   }
-   ```
-
+  在项目的 `package.json` 中，通过 `dependencies` 字段添加 ArkAnalyzer 依赖：
+   发布版本以 [npm 上的 `arkanalyzer](https://www.npmjs.com/package/arkanalyzer)` 为准；若需特定补丁号，请将上述版本区间改为实际可用版本。
    在项目根目录下执行以下命令以安装依赖：
-
-   ```shell
-   npm install arkanalyzer
-   ```
-
 2. **通过源码方式引入**
-
-   如果需要基于源码进行开发或调试，也可以将 `arkanalyzer` 以源码形式引入项目，例如作为子模块或本地依赖。在 `tsconfig.json` 中添加以下配置：
-
-   ```json
-   {
-       "compilerOptions": {
-           "paths": {
-               "arkanalyzer": ["../arkanalyzer/src/index.ts"]
-           }
-       }
-   }
-   ```
-
+  如果需要基于源码进行开发或调试，也可以将 `arkanalyzer` 以源码形式引入项目，例如作为子模块或本地依赖。在 `tsconfig.json` 中添加以下配置：
    完成配置后，即可在项目中以 `import { ... } from 'arkanalyzer'` 形式直接引用相关接口——与 npm 安装方式完全一致。
 
-> **示例代码的 import 约定**：以下 §3、§4、§5 的所有示例统一使用 `from 'arkanalyzer'`。若你以源码方式集成，请按上述 `paths` 配置或将其替换为相对路径（如 `from '../arkanalyzer/src/index'`）。
+> **示例代码的 import 约定**：以下第 3、4、5 节的示例统一使用 `from 'arkanalyzer'`。若以源码方式集成，请配置上文中的 `paths`，或改写为相对路径（例如 `from '../arkanalyzer/src/index'`）。
 
 ## 3. Scene 结构使用样例
 
 ### 3.1 基本功能 - 构建 Scene
 
 #### 步骤1：创建配置
-ArkAnalyzer的分析对象支持指定目录（适合简单测试）或指定鸿蒙应用工程。如果指定鸿蒙工程，ArkAnalyzer会额外读取工程配置信息，这里需要首先构建如下的JSON指定工程目录和SDK目录信息：
+
+分析对象可以是 **普通源码目录**（适合学习与小型示例），也可以是 **鸿蒙 / OpenHarmony 应用工程**。前者可直接用 API 指向目录；后者通常需要通过 JSON **声明工程根路径与 SDK 路径**，以便解析模块与依赖。
+
+若为鸿蒙工程，请先准备类似下方的配置文件：
 
 **配置文件示例** (`config.json`):
+
 ```json
 {
   "targetProjectName": "MyProject",
@@ -285,8 +288,13 @@ for (const arkFile of scene.getFiles()) {
 **详细说明**：更多遍历和分析示例请参考 [Scene 结构详细文档](./components/Scene.md)
 
 ## 4. ArkAnalyzer 静态分析使用样例
+
+下列示例默认你已按 **第 3.1 节** 完成 `Scene` 构建，并在分析前调用 `scene.inferTypes()`。为便于复制运行，多数代码块仍写出完整前置步骤；若已在工程中封装 Scene 初始化，可自行省略重复片段。
+
 ### 4.1 控制流图（CFG）
-通过 ArkMethod 的getBody()方法获取方法体，再通过getCfg()方法可以获取方法的CFG，示例如下所示。
+
+通过 `ArkMethod.getBody()` 取得方法体，再调用 `getCfg()` 即可得到 CFG，例如：
+
 ```typescript
 import { Scene, SceneConfig, DEFAULT_ARK_METHOD_NAME } from 'arkanalyzer';
 
@@ -295,7 +303,7 @@ const config = new SceneConfig();
 config.buildFromProjectDir('path/to/your/project');
 const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
-scene.inferTypes()
+scene.inferTypes();
 
 for (const method of scene.getMethods()) {
     if (method.getName() === DEFAULT_ARK_METHOD_NAME) {
@@ -366,8 +374,8 @@ for (const method of scene.getMethods()) {
     });
 }
 ```
-**详细说明**：类型推导的详细说明请参考 [类型推导和分析文档](./analysis/TypeInference.md)
 
+**详细说明**：类型推导的详细说明请参考 [类型推导和分析文档](./analysis/TypeInference.md)
 
 ### 4.3 定义-使用链分析
 
@@ -379,7 +387,7 @@ const config = new SceneConfig();
 config.buildFromProjectDir('path/to/your/project');
 const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
-scene.inferTypes()
+scene.inferTypes();
 
 for (const method of scene.getMethods()) {
     if (method.getName() === DEFAULT_ARK_METHOD_NAME) {
@@ -411,9 +419,10 @@ for (const method of scene.getMethods()) {
 
 **详细说明**：定义-使用链的详细说明请参考 [Def-Use Chain 构建和分析文档](./analysis/Def-Use%20Chain.md)
 
-
-
 ### 4.4 调用图（CG）构建
+
+调用图质量高度依赖 **入口方法集合**。下文「从 `main` 起步」仅便于演示最小工程；真实鸿蒙应用中入口常为 Ability、`UIAbility`、`@Entry` 等与页面生命周期相关的符号，请按实际工程裁剪入口或直接使用下一小节的「全项目 CHA」。详见 [调用图文档](./analysis/CallGraph.md)。
+
 1. 从入口点 `main` 方法构建
 
 ```typescript
@@ -424,7 +433,7 @@ const config = new SceneConfig();
 config.buildFromProjectDir('path/to/your/project');
 const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
-scene.inferTypes()
+scene.inferTypes();
 
 // 1. 确定入口点
 const entryPoints: MethodSignature[] = [];
@@ -471,7 +480,7 @@ for (const node of callGraph.getNodesIter()) {
 callGraph.dump('out/cg.dot');
 ```
 
-2. 构建完整项目的调用图
+1. 构建完整项目的调用图
 
 ```typescript
 import { Scene, SceneConfig, CallGraph, CallGraphBuilder } from 'arkanalyzer';
@@ -492,48 +501,46 @@ callGraph.dump('out/cg.dot');
 
 **详细说明**：调用图构建的详细说明请参考 [调用图构建和分析文档](./analysis/CallGraph.md)
 
+### 4.5 数据流分析（到达定值）
 
-
-### 4.5 数据流分析（IFDS）
-
-ArkAnalyzer 提供基于 IFDS 框架的过程间数据流分析能力。用户先定义具体的数据流问题，再使用求解器执行分析。下面以内置的未定义变量检测为例说明其基本使用方式。
+当前主线对外导出 **过程内** 数据流框架（`GenericDataFlow`、`MFPDataFlowSolver`）及内置 **到达定值（Reaching Definitions）**：在每个方法上基于 CFG 语句结点计算定义的可达集合（保守近似）。完整概念与扩展方式见 [数据流分析文档](./analysis/DataFlow.md)；若你从旧文档跳转而来，亦可参阅 [IFDS（兼容说明）](./analysis/IFDS.md)。
 
 ```typescript
-import { Scene, SceneConfig, ModelUtils } from 'arkanalyzer';
-import { UndefinedVariableChecker, UndefinedVariableSolver } from 'arkanalyzer';
+import {
+    Scene,
+    SceneConfig,
+    DEFAULT_ARK_METHOD_NAME,
+    ReachingDefProblem,
+    MFPDataFlowSolver,
+} from 'arkanalyzer';
 
 const config = new SceneConfig();
-config.buildFromProjectDir('tests/resources/ifds/UndefinedVariable');
-
+config.buildFromProjectDir('tests/resources/reachingDef/loop');
 const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
+scene.inferTypes();
 
-// 获取待分析的方法
-// 这里以测试资源中的第一个文件为例，取其默认类的默认方法作为起点
-const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName('u4', defaultMethod!);
-
-if (method) {
-    const blocks = [...method.getCfg()!.getBlocks()];
-    // 跳过参数赋值语句，从方法体的实际入口语句开始分析
-    const entryStmt = blocks[0].getStmts()[method.getParameters().length];
-
-    // 1. 创建具体的数据流问题
-    const problem = new UndefinedVariableChecker(entryStmt, method);
-
-    // 2. 创建求解器并执行分析
-    const solver = new UndefinedVariableSolver(problem, scene);
-    solver.solve();
-
-    // 3. 输出分析结果
-    for (const outcome of problem.getOutcomes()) {
-        const position = outcome.stmt.getOriginPositionInfo();
-        console.log(`未定义变量错误: 行${position.getLineNo()}, 列${position.getColNo()}`);
-        console.log(`  语句: ${outcome.stmt.toString()}`);
+for (const method of scene.getMethods()) {
+    if (method.getName() === DEFAULT_ARK_METHOD_NAME) {
+        continue;
     }
+    const body = method.getBody();
+    if (!body?.getCfg()) {
+        continue;
+    }
+
+    const problem = new ReachingDefProblem(method);
+    const solver = new MFPDataFlowSolver();
+    const solution = solver.calculateMopSolutionForwards(problem);
+
+    console.log(`方法: ${method.getName()}`);
+    solution.out.forEach((defs, nodeId) => {
+        console.log(`  语句结点 ${nodeId}，出口到达定值数量: ${defs.count()}`);
+    });
 }
 ```
-**详细说明**：数据流分析的详细说明请参考 [IFDS 文档](./analysis/IFDS.md)
+
+**详细说明**：参见 [数据流分析（过程内）](./analysis/DataFlow.md) 与示例 `[tests/samples/ReachingDefTest.ts](../tests/samples/ReachingDefTest.ts)`。
 
 ### 4.6 ArkUI ViewTree 分析
 
@@ -541,6 +548,7 @@ if (method) {
 
 ```typescript
 import { Scene, SceneConfig } from 'arkanalyzer';
+import type { ViewTreeNode } from 'arkanalyzer';
 
 const scene = new Scene();
 // ... 构建scene和类型推导 ...
@@ -583,8 +591,7 @@ for (const arkFile of scene.getFiles()) {
     }
 }
 
-// 辅助函数：计算节点深度
-function getDepth(node: { parent: any }): number {
+function getDepth(node: ViewTreeNode): number {
     let depth = 0;
     let current = node.parent;
     while (current) {
@@ -596,7 +603,6 @@ function getDepth(node: { parent: any }): number {
 ```
 
 **详细说明**：ViewTree 的详细说明请参考 [ViewTree 文档](./analysis/ViewTree.md)
-
 
 ## 5. 输出和可视化
 
@@ -641,6 +647,7 @@ for (const arkFile of scene.getFiles()) {
 ### 6.1 默认类和默认方法
 
 ArkAnalyzer 会为每个文件和命名空间创建默认类和默认方法：
+
 - 默认类名：`%dflt` (对应常量 `DEFAULT_ARK_CLASS_NAME`)
 - 默认方法名：`%dflt` (对应常量 `DEFAULT_ARK_METHOD_NAME`)
 
@@ -680,7 +687,8 @@ scene.inferTypes();  // 在分析前执行类型推导
 - **[文档总目录](./README.md)**：完整的核心组件、静态分析、项目级说明索引
 - **[Scene 详细文档](./components/Scene.md)**：深入了解 ArkAnalyzer 的 Scene 结构、各层组件、构建过程与查询接口
 - **[多语言支持说明](./MultiLanguageSupport.md)**：ArkTS / TypeScript / JavaScript / C/C++ 各前端能力差异
-- **[API 文档](./api_docs/globals.md)**：自动生成的完整 API 参考
+- **[数据流分析（过程内）](./analysis/DataFlow.md)**：`MFPDataFlowSolver`、到达定值与自定义数据流问题
+- **[API 文档](./api_docs/globals.md)**：自动生成的完整 API 参考（运行 `npm run gendoc` 更新）
 
 ### 7.2 示例代码
 
@@ -691,8 +699,7 @@ scene.inferTypes();  // 在分析前执行类型推导
   - `DefUseChainTest.ts` - 定义-使用链分析
   - `TypeInferenceTest.ts` - 类型推导
   - `CallGraphTest.ts` - 调用图构建
-  - `ReachingDefTest.ts` - 数据流分析
-  - `UndefinedVariableTest.ts` - 未定义变量检测
+  - `ReachingDefTest.ts` - 过程内数据流（到达定值）
 
 ### 7.3 相关链接
 
@@ -702,8 +709,6 @@ scene.inferTypes();  // 在分析前执行类型推导
 
 ## 8. 下一步
 
-现在您已经了解了ArkAnalyzer的基本使用方法，可以：
-
-**查看示例代码**：研究 `tests/samples/` 目录下的测试用例
+建议在本仓库中打开 `tests/samples/`，对照第 4 节章节顺序逐个运行或调试；遇到 API 细节时再查阅 `[docs/analysis/](./analysis/)` 专题文档或 `npm run gendoc` 生成的 API 索引。
 
 祝您使用愉快！
