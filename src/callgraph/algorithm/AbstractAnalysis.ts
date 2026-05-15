@@ -124,25 +124,22 @@ export abstract class AbstractAnalysis {
 
     public projectStart(displayGeneratedMethod: boolean): void {
         this.cg.startStat();
-        try {
-            this.cgBuilder.buildCGNodes(this.scene.getMethods());
+        this.cgBuilder.buildCGNodes(this.scene.getMethods());
 
-            for (let n of this.cg.getNodesIter()) {
-                let cgNode = n as CallGraphNode;
+        for (let n of this.cg.getNodesIter()) {
+            let cgNode = n as CallGraphNode;
 
-                if (cgNode.isSdkMethod()) {
-                    continue;
-                }
-
-                this.preProcessMethod(cgNode.getID());
-
-                this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
+            if (cgNode.isSdkMethod()) {
+                continue;
             }
 
-            this.cgBuilder.setEntries();
-        } finally {
-            this.cg.endStat();
+            this.preProcessMethod(cgNode.getID());
+
+            this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
         }
+
+        this.cgBuilder.setEntries();
+        this.cg.endStat();
     }
 
     protected processCallSite(method: FuncID, cs: CallSite, displayGeneratedMethod: boolean, isProject: boolean = false): void {
