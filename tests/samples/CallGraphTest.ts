@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { SceneConfig, Scene, DEFAULT_ARK_CLASS_NAME, CallGraph, CallGraphBuilder, MethodSignature } from '../../src';
+import { SceneConfig, Scene, DEFAULT_ARK_CLASS_NAME, CallGraph, CallGraphBuilder, MethodSignature, RapidTypeAnalysis, DummyMainCreater } from '../../src';
+const mode: 'rta' | 'cha' = 'rta';
 
 let config: SceneConfig = new SceneConfig();
 function runDir(): void {
@@ -37,7 +38,7 @@ function runDir(): void {
 
     let callGraph = new CallGraph(projectScene);
     let callGraphBuilder = new CallGraphBuilder(callGraph, projectScene);
-    if (true) {
+    if (mode === 'cha') {
         callGraphBuilder.buildClassHierarchyCallGraph(entryPoints, false);
     } else {
         callGraphBuilder.buildRapidTypeCallGraph(entryPoints, false);
@@ -52,16 +53,29 @@ function run4Project(): void {
     projectScene.buildScene4HarmonyProject();
     projectScene.inferTypes();
 
-    let callGraph = new CallGraph(projectScene);
-    let callGraphBuilder = new CallGraphBuilder(callGraph, projectScene);
+    let cg = new CallGraph(projectScene, true);
+    const callGraphBuilder = new CallGraphBuilder(cg, projectScene);
+    if (mode === 'rta') {
+        callGraphBuilder.buildCGNodes(projectScene.getMethods());
 
-    callGraphBuilder.buildCHA4WholeProject(true);
+        const dummyMainCreater = new DummyMainCreater(projectScene);
+        dummyMainCreater.createDummyMain();
+        const entryMethod = dummyMainCreater.getDummyMain();
 
-    console.log(callGraph.getStat());
-    console.log('entry count: ', callGraph.getEntries().length);
+        const dummyMainMethodNode = cg.getCallGraphNodeByMethod(entryMethod.getSignature());
+        cg.setEntries([dummyMainMethodNode.getID()]);
+
+        const rta = new RapidTypeAnalysis(projectScene, cg, callGraphBuilder, true);
+        rta.start(true);
+    } else {
+        callGraphBuilder.buildCHA4WholeProject(true);
+    }
+
+    console.log(cg.getStat());
+    console.log('entry count: ', cg.getEntries().length);
 }
 
-if (false) {
+if (true) {
     run4Project();
 } else {
     runDir();

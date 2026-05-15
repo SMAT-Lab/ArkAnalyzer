@@ -102,6 +102,7 @@ export abstract class AbstractAnalysis {
     }
 
     public start(displayGeneratedMethod: boolean): void {
+        this.cg.startStat();
         this.init();
         while (!this.workList.isEmpty()) {
             const method = this.workList.pop() as FuncID;
@@ -118,24 +119,30 @@ export abstract class AbstractAnalysis {
 
             this.processMethod(method, displayGeneratedMethod, false);
         }
+        this.cg.endStat();
     }
 
     public projectStart(displayGeneratedMethod: boolean): void {
-        this.cgBuilder.buildCGNodes(this.scene.getMethods());
+        this.cg.startStat();
+        try {
+            this.cgBuilder.buildCGNodes(this.scene.getMethods());
 
-        for (let n of this.cg.getNodesIter()) {
-            let cgNode = n as CallGraphNode;
+            for (let n of this.cg.getNodesIter()) {
+                let cgNode = n as CallGraphNode;
 
-            if (cgNode.isSdkMethod()) {
-                continue;
+                if (cgNode.isSdkMethod()) {
+                    continue;
+                }
+
+                this.preProcessMethod(cgNode.getID());
+
+                this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
             }
 
-            this.preProcessMethod(cgNode.getID());
-
-            this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
+            this.cgBuilder.setEntries();
+        } finally {
+            this.cg.endStat();
         }
-
-        this.cgBuilder.setEntries();
     }
 
     protected processCallSite(method: FuncID, cs: CallSite, displayGeneratedMethod: boolean, isProject: boolean = false): void {

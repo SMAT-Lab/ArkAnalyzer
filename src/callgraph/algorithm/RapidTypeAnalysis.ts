@@ -30,11 +30,18 @@ import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME } from '../../core/comm
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 
+interface VirtualDispatchRows {
+    classSignatures: ClassSignature[];
+    calleeNodeIDs: FuncID[];
+    isSdkClasses: boolean[];
+}
+
 export class RapidTypeAnalysis extends AbstractAnalysis {
     // TODO: signature duplicated check
     private instancedClasses: Set<ClassSignature> = new Set();
     // TODO: Set duplicated check
     private ignoredCalls: Map<ClassSignature, Set<{ caller: NodeID; callee: NodeID; callStmt: Stmt }>> = new Map();
+    private virtualDispatchIndex: Map<ClassSignature, Map<string, VirtualDispatchRows>> = new Map();
     private enableThisPrune: boolean;
 
     constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder, enableThisPrune: boolean = false) {
@@ -114,37 +121,70 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                 return resolveResult;
             }
 
-            // TODO: super class method should be placed at the end
-            this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
-                let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
-
-                if (
-                    possibleCalleeMethod && possibleCalleeMethod.isGenerated() &&
-                    arkClass.getSignature().toString() !== declareClass.getSignature().toString()
-                ) {
-                    // remove the generated method in extended classes
-                    return;
-                }
-
-                if (!(possibleCalleeMethod && !possibleCalleeMethod.isAbstract())) {
-                    return;
-                }
-
-                let calleeNode = this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature());
-
-                const isSdkClass = this.scene.hasSdkFile(arkClass.getSignature().getDeclaringFileSignature());
-                const isInstanced = this.instancedClasses.has(arkClass.getSignature());
-                if (isSdkClass || isInstanced) {
+            const virtualDispatchRows = this.getOrBuildVirtualDispatchRows(declareClass, methodName);
+            for (let i = 0; i < virtualDispatchRows.classSignatures.length; i++) {
+                const classSignature = virtualDispatchRows.classSignatures[i];
+                if (virtualDispatchRows.isSdkClasses[i] || this.instancedClasses.has(classSignature)) {
                     resolveResult.push(
-                        this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, calleeNode.getID(), callerMethod)
+                        this.cg.getCallSiteManager().newCallSite(
+                            invokeStmt,
+                            undefined,
+                            virtualDispatchRows.calleeNodeIDs[i],
+                            callerMethod
+                        )
                     );
                 } else {
-                    this.addIgnoredCalls(arkClass.getSignature(), callerMethod, calleeNode.getID(), invokeStmt);
+                    this.addIgnoredCalls(classSignature, callerMethod, virtualDispatchRows.calleeNodeIDs[i], invokeStmt);
                 }
-            });
+            }
         }
 
         return resolveResult;
+    }
+
+    private getOrBuildVirtualDispatchRows(declareClass: ArkClass, methodName: string): VirtualDispatchRows {
+        const declareSig = declareClass.getSignature();
+        let methodIndex = this.virtualDispatchIndex.get(declareSig);
+        if (!methodIndex) {
+            methodIndex = new Map<string, VirtualDispatchRows>();
+            this.virtualDispatchIndex.set(declareSig, methodIndex);
+        }
+
+        const cachedRows = methodIndex.get(methodName);
+        if (cachedRows) {
+            return cachedRows;
+        }
+
+        const rows: VirtualDispatchRows = {
+            classSignatures: [],
+            calleeNodeIDs: [],
+            isSdkClasses: [],
+        };
+        for (const arkClass of this.getClassHierarchy(declareClass)) {
+            const possibleCalleeMethod = arkClass.getMethodWithName(methodName);
+            if (!possibleCalleeMethod) {
+                continue;
+            }
+
+            const classSignature = arkClass.getSignature();
+            if (
+                possibleCalleeMethod.isGenerated() &&
+                classSignature !== declareSig
+            ) {
+                continue;
+            }
+
+            if (possibleCalleeMethod.isAbstract()) {
+                continue;
+            }
+
+            rows.classSignatures.push(classSignature);
+            rows.calleeNodeIDs.push(this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID());
+            rows.isSdkClasses.push(this.scene.hasSdkFile(classSignature.getDeclaringFileSignature()));
+        }
+
+        methodIndex.set(methodName, rows);
+        return rows;
     }
 
     private tryResolveAggressiveThisPruneCall(
