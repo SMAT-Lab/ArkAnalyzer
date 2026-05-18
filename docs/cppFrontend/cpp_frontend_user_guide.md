@@ -94,7 +94,7 @@ for (const file of scene.getFiles()) {
 }
 ```
 
-若工程依赖第三方头文件目录，把绝对路径放进 **`buildFromProjectDir` 的第二个参数**（`includeDirs`），等价于为 LibTooling 增加 `-I`。
+若工程依赖第三方头文件目录，把路径放进 **`buildFromProjectDir` 的第二个参数**（`includeDirs`），等价于为 LibTooling 增加 `-I`。
 
 ---
 
@@ -138,7 +138,7 @@ const includeDirs = [cxxIncludeDir, ...configSiteDirs].filter(Boolean);
 config.setCcjsonPath(path.join(buildDir, 'compile_commands.json'));
 ```
 
-若你已有现成的 **`compile_commands.json`**（任意 CMake / Bear 生成），可直接 **`config.setCcjsonPath(绝对路径)`**，无需经过 `ensureCompileDb`。
+若已有现成的 **`compile_commands.json`**（任意 CMake / Bear 生成），可直接 **`config.setCcjsonPath(路径)`**，无需经过 `ensureCompileDb`。
 
 **注意**：`setCcjsonPath` 只需在 **`scene.buildSceneFromProjectDir(config)`** 之前完成即可；与 **`buildFromProjectDir`** 的先后次序无强约束。测试里在存在 `CMakeLists.txt` 且配置了 `OHOS_SDK_HOME` 时，会先 `ensureCompileDb`、`setCcjsonPath`，再 **`buildFromProjectDir`**。
 
@@ -155,7 +155,7 @@ const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
 ```
 
-测试中部分用例在断言前会调用 **`scene.inferTypes()`**（例如部分 `switch`、懒加载、`namespace` 等），用于补全类型信息或满足特定分析路径。若你的分析依赖完整类型推导，建议在构建 Scene 后同样调用 **`inferTypes()`**。
+测试中部分用例在断言前会调用 **`scene.inferTypes()`**（例如部分 `switch`、懒加载、`namespace` 等），用于补全类型信息或满足特定分析路径。若分析依赖完整类型推导，建议在构建 Scene 后同样调用 **`inferTypes()`**。
 
 ---
 

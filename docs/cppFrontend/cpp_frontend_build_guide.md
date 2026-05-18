@@ -13,11 +13,11 @@
 
 - **CMake**：3.16+（工程 `cmake_minimum_required`），且 `cmake` 在 `PATH` 中。
 - **Node 头文件（N-API）**：需能解析到含 **`node_api.h`** 的目录（见上文）；否则 `cmake` 会跳过 addon 目标。
-- **LLVM / clang**：需能通过 CMake `find_package(LLVM)`、`find_package(clang)` 解析。仓库开发与 CI 以 **LLVM 19** 为主线；若使用其他主版本，需自行验证链接与头文件是否一致。
-- **C++ 编译器**：支持 **C++17**（由 LLVM/clang 或 MSVC 提供，取决于平台与生成器）。
+- **LLVM / Clang**：需能通过 CMake `find_package(LLVM)`、`find_package(Clang)` 解析。仓库开发与 CI 以 **LLVM 19** 为主线；若使用其它主版本，需自行验证链接与头文件是否一致。
+- **C++ 编译器**：支持 **C++17**（由 LLVM/Clang 或 MSVC 提供，取决于平台与生成器）。
 
 脚本会按顺序尝试：环境变量 **`LLVM_DIR`**（若目录存在）、**`llvm-config` / `llvm-config-19`**（`--cmakedir`）、常见安装路径（见各节）。  
-若同时设置 **`LLVM_DIR`** 与 **`clang_DIR`**，将优先直接使用二者（路径需分别指向 `lib/cmake/llvm` 与 `lib/cmake/clang`）。
+若同时设置 **`LLVM_DIR`** 与 **`Clang_DIR`**，将优先直接使用二者（路径需分别指向 `lib/cmake/llvm` 与 `lib/cmake/Clang`）。
 
 ### 2.1 官方下载与参考链接（可选）
 
@@ -33,22 +33,22 @@
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y cmake ninja-build llvm-19-dev libclang-19-dev
+sudo apt-get install -y cmake ninja-build llvm-19-dev libClang-19-dev
 ```
 
 确保 `llvm-config-19` 在 `PATH` 中，或显式导出：
 
 ```bash
 export LLVM_DIR=$(llvm-config-19 --cmakedir)
-# 可选：clang_DIR 通常可由脚本根据 LLVM_DIR 推导；若 CMake 报错再设：
-# export clang_DIR=$(dirname "$(llvm-config-19 --cmakedir)")/clang
+# 可选：Clang_DIR 通常可由脚本根据 LLVM_DIR 推导；若 CMake 报错再设：
+# export Clang_DIR=$(dirname "$(llvm-config-19 --cmakedir)")/Clang
 ```
 
 ### 3.2 注意
 
 - 在仓库根目录执行 **`npm install`**，确保存在 **`node_modules/node-api-headers`**，以便 `buildCpp.js` 自动传入 **`NODE_API_INCLUDE_DIR`**（否则需本机安装 Node 开发头文件或手动设置该变量）。
 - 避免混用不同主版本的 LLVM 动态库（例如系统 `libLLVM.so` 与 `LLVM_DIR` 指向 19 不一致），否则易出现链接错误或 “DSO missing” 类问题。
-- 其他发行版请使用对应包名安装 **LLVM/clang 开发包** 与 **CMake**，原则同上。
+- 其它发行版请使用对应包名安装 **LLVM/Clang 开发包** 与 **CMake**，原则同上。
 
 ### 3.3 Docker 开发镜像（`Dockerfile.dev`）
 
@@ -60,11 +60,11 @@ export LLVM_DIR=$(llvm-config-19 --cmakedir)
 |------|------|
 | 基础系统 | **Ubuntu 22.04**；APT 使用**阿里云**镜像加速 |
 | 构建工具 | `build-essential`、`cmake`、`pkg-config`、`python3` 等 |
-| LLVM / clang **19** | 通过清华 **TUNA** 的 `llvm-apt`（`llvm-toolchain-jammy-19`）安装：`llvm-19-dev`、`libclang-19-dev`、`clang-19`、`lld-19` |
+| LLVM / Clang **19** | 通过清华 **TUNA** 的 `llvm-apt`（`llvm-toolchain-jammy-19`）安装：`llvm-19-dev`、`libClang-19-dev`、`Clang-19`、`lld-19` |
 | Node.js | **20.19.2** x64 官方包经 **npmmirror** 下载，解压到 **`/usr/local`**（提供 `node` / `npm`） |
-| npm 依赖 | 构建镜像时在 **`/workspace/arkanalyzer`** 执行 `npm install`（registry 为 **npmmirror**），并将 **`node_modules`** 备份到 **`/opt/arkanalyzer-deps`**（注释说明：若宿主挂载源码时覆盖了 `node_modules` 且平台二进制不兼容，可由入口脚本从该目录恢复；当前 Dockerfile 仅定义 `CMD`，具体恢复逻辑以你们部署为准） |
+| npm 依赖 | 构建镜像时在 **`/workspace/arkanalyzer`** 执行 `npm install`（registry 为 **npmmirror**），并将 **`node_modules`** 备份到 **`/opt/arkanalyzer-deps`**（注释说明：若宿主挂载源码时覆盖了 `node_modules` 且平台二进制不兼容，可由入口脚本从该目录恢复；当前 Dockerfile 仅定义 `CMD`） |
 | 工作目录 | **`WORKDIR /workspace/arkanalyzer`** |
-| `OHOS_SDK_HOME` | 默认 **`/workspace/command-line-tools/sdk/default`**（与根 `README` 中挂载 Command Line Tools 到 `/workspace/command-line-tools` 的示例一致；**编译 addon 不依赖**，运行/测鸿蒙场景时可在 `docker run` 用 `-e` 覆盖） |
+| `OHOS_SDK_HOME` | 默认 **`/workspace/command-line-tools/sdk/default`**（与根 `README` 中挂载 Command Line Tools 到 `/workspace/command-line-tools` 的示例一致；**编译 addon 不依赖**，运行/测试场景时可在 `docker run` 用 `-e` 覆盖） |
 
 **在容器内编译 C++ addon：** 挂载本仓库到 `/workspace/arkanalyzer` 后，在仓库根执行：
 
@@ -72,7 +72,7 @@ export LLVM_DIR=$(llvm-config-19 --cmakedir)
 npm run build:cpp
 ```
 
-此时 **`NODE_API_INCLUDE_DIR`** 通常由镜像内已存在的 **`node_modules/node-api-headers/include`** 满足；**`LLVM_DIR`** 可由脚本通过 **`llvm-config-19 --cmakedir`** 解析（请保证 **`llvm-config-19`** 在 `PATH`；镜像已安装 **`clang-19`** 套件）。
+此时 **`NODE_API_INCLUDE_DIR`** 通常由镜像内已存在的 **`node_modules/node-api-headers/include`** 满足；**`LLVM_DIR`** 可由脚本通过 **`llvm-config-19 --cmakedir`** 解析（请保证 **`llvm-config-19`** 在 `PATH`；镜像已安装 **`Clang-19`** 套件）。
 
 **构建与运行容器**（与根目录 [README.md](../../README.md)「Docker 开发环境」一致）：
 
@@ -99,7 +99,7 @@ brew install cmake llvm@19 ninja
 
 ```bash
 export LLVM_DIR="$(brew --prefix llvm@19)/lib/cmake/llvm"
-export clang_DIR="$(brew --prefix llvm@19)/lib/cmake/clang"
+export Clang_DIR="$(brew --prefix llvm@19)/lib/cmake/Clang"
 ```
 
 脚本在未设置 `LLVM_DIR` 时，也会尝试通过 `brew --prefix llvm` 或常见路径探测（以本机实际安装为准）。
@@ -107,7 +107,7 @@ export clang_DIR="$(brew --prefix llvm@19)/lib/cmake/clang"
 ### 4.2 注意
 
 - 在仓库根目录执行 **`npm install`**，以便使用 **`node_modules/node-api-headers`** 作为 N-API 头路径（与 Linux 相同）。
-- Apple 自带 `clang` 不等于 **LLVM CMake 包**；若未安装 Homebrew LLVM，需自行提供可用的 `LLVM_DIR` / `clang_DIR`。
+- Apple 自带 `Clang` 不等于 **LLVM CMake 包**；若未安装 Homebrew LLVM，需自行提供可用的 `LLVM_DIR` / `Clang_DIR`。
 
 ## 5. Windows（本机，非 MSYS2）
 
@@ -125,19 +125,19 @@ export clang_DIR="$(brew --prefix llvm@19)/lib/cmake/clang"
 
 ```text
 LLVM_DIR=C:\Program Files\LLVM\lib\cmake\llvm
-clang_DIR=C:\Program Files\LLVM\lib\cmake\clang
+Clang_DIR=C:\Program Files\LLVM\lib\cmake\Clang
 ```
 
 路径含空格时，在图形界面或脚本中设置即可，无需手动转义引号给 Node 脚本。
 
 ## 6. Windows（MSYS2 本机构建）
 
-在 **MSYS2** 的 **MinGW x64**、**UCRT64** 或 **CLANG64** 环境中，使用 `pacman` 安装 LLVM 与构建工具，然后在**同一环境**中执行 `npm run build:cpp`（需能访问到该环境中的 `cmake`、`node`）。仓库根的 **`npm install`** 仍建议在 Windows 侧或同一套可访问的 `node_modules` 下完成，以便解析 **`node-api-headers`**。
+在 **MSYS2** 的 **MinGW x64**、**UCRT64** 或 **Clang64** 环境中，使用 `pacman` 安装 LLVM 与构建工具，然后在**同一环境**中执行 `npm run build:cpp`（需能访问到该环境中的 `cmake`、`node`）。仓库根的 **`npm install`** 仍建议在 Windows 侧或同一套可访问的 `node_modules` 下完成，以便解析 **`node-api-headers`**。
 
 ### 6.1 MinGW64 环境示例
 
 ```bash
-pacman -S mingw-w64-x86_64-llvm mingw-w64-x86_64-clang mingw-w64-x86_64-clang-tools-extra mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nodejs
+pacman -S mingw-w64-x86_64-llvm mingw-w64-x86_64-Clang mingw-w64-x86_64-Clang-tools-extra mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-nodejs
 ```
 
 ### 6.2 UCRT64 环境
@@ -146,7 +146,7 @@ pacman -S mingw-w64-x86_64-llvm mingw-w64-x86_64-clang mingw-w64-x86_64-clang-to
 
 ### 6.3 路径探测说明
 
-脚本会结合 **`MSYS2_ROOT`**、**`MINGW_PREFIX`**（如 `/mingw64`）以及常见根目录（如 `C:\msys64` 下 `mingw64`、`ucrt64`、`clang64`）自动查找 `lib\cmake\llvm`。若 MSYS2 未安装在默认盘符路径，请设置 **`MSYS2_ROOT`** 或 **`LLVM_DIR`**。
+脚本会结合 **`MSYS2_ROOT`**、**`MINGW_PREFIX`**（如 `/mingw64`）以及常见根目录（如 `C:\msys64` 下 `mingw64`、`ucrt64`、`Clang64`）自动查找 `lib\cmake\llvm`。若 MSYS2 未安装在默认盘符路径，请设置 **`MSYS2_ROOT`** 或 **`LLVM_DIR`**。
 
 ## 7. 环境变量一览
 
@@ -154,7 +154,7 @@ pacman -S mingw-w64-x86_64-llvm mingw-w64-x86_64-clang mingw-w64-x86_64-clang-to
 | ---- | ---- |
 | `NODE_API_INCLUDE_DIR` | 含 **`node_api.h`** 的目录；不设时脚本尝试 `node_modules/node-api-headers/include` 或 `/usr/include/node` |
 | `LLVM_DIR` | 指向 `lib/cmake/llvm`（LLVM CMake 包目录） |
-| `clang_DIR` | 指向 `lib/cmake/clang`（可选；未设时脚本常从 `LLVM_DIR` 推导） |
+| `Clang_DIR` | 指向 `lib/cmake/Clang`（可选；未设时脚本常从 `LLVM_DIR` 推导） |
 | `MSYS2_ROOT` | 仅 Windows：MSYS2 安装根目录，辅助解析 `mingw64` 等前缀 |
 | `ARKANALYZER_INCREMENTAL_CPP_BUILD` | 设为 `1` 时跳过清空 `ast/cpp/build`，便于增量编译 |
 | `OHOS_SDK_HOME` | **非编译 addon 所需**。分析工程或运行依赖 OHOS SDK 的测试时，指向 SDK 的 **`default` 根目录**（见下文第 10 节） |
@@ -173,13 +173,13 @@ CMake 在 `src/frontend/cppFrontend/ast/cpp/build/`（及 Windows 多配置下�
 - **CMake 找不到 LLVM**：先确认 `LLVM_DIR` 目录存在且包含 `LLVMConfig.cmake`；Linux 上优先使用 `llvm-config-19 --cmakedir` 输出。
 - **`node_api.h not found`**：在仓库根执行 **`npm install`**（拉取 `node-api-headers`），或设置 **`NODE_API_INCLUDE_DIR`** 指向本机 Node 开发头文件目录。
 - **Windows 上找不到 `astJsonDumper.node`**：确认是否使用 **Release** 配置；脚本会尝试 `build\`、`build\Release\`、`build\x64\Release\` 等路径查找 **`.node`** 文件。
-- **版本混链**：同一构建中 `LLVM_DIR`、系统 `libLLVM`、PATH 中的 `clang` 应来自同一 LLVM 大版本，避免 18/19 混用。
+- **版本混链**：同一构建中 `LLVM_DIR`、系统 `libLLVM`、PATH 中的 `Clang` 应来自同一 LLVM 大版本，避免 18/19 混用。
 
 ## 10. OpenHarmony SDK：`OHOS_SDK_HOME`（运行分析，非 `build:cpp`）
 
 编译 **`astJsonDumper.node`** 时 **不需要** 设置本变量。以下场景需要：使用 **`buildSceneConfigFromProject`**、CLI **`--ohos-sdk-home`**，或运行依赖 OHOS SDK 头文件的测试（见根目录 **`README.md`**、`vitest.config.ts`）。
 
-将 **`OHOS_SDK_HOME`** 设为 **OpenHarmony Command Line Tools 安装目录下的 `sdk/default`**（或你本机等效路径），且该目录下存在 **`openharmony/ets`** 或 **`hms/ets`** 之一时，ArkAnalyzer 才能按 `src/Config.ts` 中的逻辑收集 SDK（`collectSdksFromOhosSdkHome`）。
+将 **`OHOS_SDK_HOME`** 设为 **OpenHarmony Command Line Tools 安装目录下的 `sdk/default`**（或本机等效路径），且该目录下存在 **`openharmony/ets`** 或 **`hms/ets`** 之一时，ArkAnalyzer 才能按 `src/Config.ts` 中的逻辑收集 SDK（`collectSdksFromOhosSdkHome`）。
 
 Linux 示例（路径按本机安装调整）：
 
