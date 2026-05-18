@@ -75,7 +75,7 @@ function run4Project(): void {
     console.log('entry count: ', cg.getEntries().length);
 }
 
-if (true) {
+if (false) {
     run4Project();
 } else {
     runDir();
