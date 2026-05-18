@@ -15,7 +15,7 @@
 
 'use strict';
 
-const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require('fs');
+const { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('fs');
 const { join, resolve, delimiter } = require('path');
 const { spawnSync } = require('child_process');
 
@@ -284,9 +284,68 @@ function ensureFreshCppBuildDir() {
     }
 }
 
+function resolveFlatcCommand() {
+    const candidates = [
+        join(projectRoot, 'tools', 'flatc'),
+        join(projectRoot, 'node_modules', 'flatbuffers', 'flatc'),
+        join(projectRoot, 'node_modules', '.bin', 'flatc'),
+        'flatc',
+    ];
+    for (const command of candidates) {
+        if (command === 'flatc') {
+            if (isCommandAvailable('flatc')) {
+                return command;
+            }
+            continue;
+        }
+        if (existsSync(command)) {
+            return command;
+        }
+    }
+    return undefined;
+}
+
+function patchFlatcTsImports(tsOutDir) {
+    for (const entry of readdirSync(tsOutDir, { withFileTypes: true })) {
+        const filePath = join(tsOutDir, entry.name);
+        if (entry.isDirectory()) {
+            patchFlatcTsImports(filePath);
+            continue;
+        }
+        if (!entry.name.endsWith('.ts')) {
+            continue;
+        }
+        const source = readFileSync(filePath, 'utf8');
+        const patched = source.replace(/(from\s+['"])([^'"]+)\.js(['"])/g, '$1$2$3');
+        if (patched !== source) {
+            writeFileSync(filePath, patched);
+        }
+    }
+}
+
+function runFlatcCodegen() {
+    const fbsPath = join(astCppDir, 'serialization', 'astWire.fbs');
+    const cppOut = join(astCppDir, 'serialization', 'flatGenerated');
+    const tsOut = join(astDir, 'ts', 'serialization', 'flatGenerated');
+    mkdirSync(cppOut, { recursive: true });
+    mkdirSync(tsOut, { recursive: true });
+    const flatc = resolveFlatcCommand();
+    if (!flatc) {
+        console.error(
+            '[build:cpp] flatc not found. Place flatc under tools/flatc, run npm install (flatbuffers devDependency), or install flatbuffers-compiler.',
+        );
+        process.exit(1);
+    }
+    console.log(`[build:cpp] flatc codegen: ${fbsPath}`);
+    runCommand(flatc, ['--cpp', '-o', cppOut, fbsPath]);
+    runCommand(flatc, ['--ts', '-o', tsOut, fbsPath]);
+    patchFlatcTsImports(tsOut);
+}
+
 ensureFreshCppBuildDir();
 mkdirSync(buildDir, { recursive: true });
 mkdirSync(dumperDir, { recursive: true });
+runFlatcCodegen();
 
 const { llvmDir, clangDir } = discoverLlvmCmakeDirs();
 if (!llvmDir || !clangDir) {
@@ -318,6 +377,7 @@ if (useWinNinja) {
     cmakeConfigureArgs.push('-DCMAKE_BUILD_TYPE=Release');
 }
 cmakeConfigureArgs.push(`-DLLVM_DIR=${llvmDir}`, `-DClang_DIR=${clangDir}`);
+cmakeConfigureArgs.push(`-DARKANALYZER_ROOT=${projectRoot}`);
 
 if (llvmRoot) {
     const clangxx = isWin ? join(llvmRoot, 'bin', 'clang++.exe') : join(llvmRoot, 'bin', 'clang++');

@@ -149,6 +149,9 @@ export interface CxxAstNode {
     /** Value category ("prvalue"/"lvalue"... default is "prvalue") */
     valueCategory?: string;
 
+    /** ImplicitCastExpr / CXXStaticCastExpr etc. (Clang JSON "castKind") */
+    castKind?: string;
+
     /** Derived information: unary/binary operator */
     opcode?: string; // Binary / CompoundAssign / UnaryOperator
     op?: string; // CxxFolderExpr
@@ -205,6 +208,12 @@ export interface CxxAstNode {
      */
     headerUnits?: CxxAstNode[];
 
+    /** Set on translation unit root by AstParser.filter */
+    fileName?: string;
+
+    /** Set on translation unit root by AstParser.filter */
+    projectName?: string;
+
     typeArguments?: string[];
 
     default?: string;
@@ -219,9 +228,6 @@ export interface CxxAstNode {
     modifiers?: string[];
 
     enclosingFunction?: CxxEnclosingFunction;
-
-    /** Reserved for future fields */
-    [key: string]: unknown;
 
     defaultArg?: defaultArg;
 

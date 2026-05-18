@@ -17,17 +17,19 @@ import * as path from 'path';
 
 import type { Scene } from '../../../../Scene';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
+import { CxxAstFlatInfo } from './CxxAstFlatInfo';
 import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 import { callCppAstParser } from './napi/napiApi';
 import { getCxxHeaderFileExtensionSet } from './const';
-import { extractAllCppModifiers, findCompileCommands } from './astUtils';
+import { extractAllCppModifiers, findCompileCommands, findProjectRoot } from './astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astParser');
 
 interface AstStreamRecord {
     index: number;
     exitCode: number;
-    payload: string;
+    /** Absolute path to the per-TU AST file for this translation unit. */
+    astPath: string;
 }
 export interface CppAstError {
     filePath: string;
@@ -48,7 +50,9 @@ export interface CppAstParams {
     maxParallelProcesses: number;
     // <= 0 means auto (2 * workerCount).
     maxPendingAstResults: number;
-    // Invoked for each source after the JSON payload is decoded.
+    /** Log AST payload stats after each successful TU decode. */
+    logAstInfo?: boolean;
+    // Invoked for each source after the AST payload is decoded.
     onSourceAst: (sourceFile: string, astRoot: CxxAstNode) => void;
 }
 
@@ -72,44 +76,56 @@ export class AstParser {
      */
     public static runCppAst(params: CppAstParams): CppAstResult {
         const dumpErrors: CppAstError[] = [];
-        const { scene, sources, projectDir, includeDirs, maxParallelProcesses, maxPendingAstResults, onSourceAst } = params;
         const manifest = this.buildCppAstManifest(
-            scene,
-            sources,
-            projectDir,
-            includeDirs,
-            maxParallelProcesses,
-            maxPendingAstResults,
+            params.scene,
+            params.sources,
+            params.projectDir,
+            params.includeDirs,
+            params.maxParallelProcesses,
+            params.maxPendingAstResults,
         );
         let processed = 0;
-        const HEAP_DEBUG = process.env.ARKANALYZER_DEBUG_AST_MEM === '1';
         const applyRecord = (rec: AstStreamRecord): void => {
-            const sourceFile = sources[rec.index];
-            try {
-                const astRoot = this.processAstJson(rec.payload, sourceFile);
-                onSourceAst(sourceFile, astRoot);
-            } catch (error) {
-                dumpErrors.push({ filePath: sourceFile, reason: error as Error });
-            }
+            AstParser.applyCppAstRecord(rec, params, dumpErrors);
             processed++;
-            if (HEAP_DEBUG && (processed % 50 === 0 || processed === sources.length)) {
-                const m = process.memoryUsage();
-                logger.info(
-                    `[HEAP] processed=${processed}/${sources.length} ` +
-                        `heapUsed=${(m.heapUsed / 1024 / 1024).toFixed(1)}MB ` +
-                        `rss=${(m.rss / 1024 / 1024).toFixed(1)}MB ` +
-                        `external=${(m.external / 1024 / 1024).toFixed(1)}MB`
-                );
-            }
+            AstParser.logHeapProgressIfDebug(processed, params.sources.length);
         };
         const exitCode = callCppAstParser(manifest, (record) => {
             applyRecord({
                 index: record.index,
                 exitCode: record.exitCode,
-                payload: record.payload,
+                astPath: record.payload,
             });
         });
         return { dumpErrors, exitCode };
+    }
+
+    private static applyCppAstRecord(rec: AstStreamRecord, params: CppAstParams, dumpErrors: CppAstError[]): void {
+        const sourceFile = params.sources[rec.index];
+        try {
+            const astRoot = this.processAst(rec.astPath, sourceFile, rec.exitCode, params.logAstInfo ?? false);
+            params.onSourceAst(sourceFile, astRoot);
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            CxxAstFlatInfo.logError(sourceFile, err);
+            dumpErrors.push({ filePath: sourceFile, reason: err });
+        }
+    }
+
+    private static logHeapProgressIfDebug(processed: number, total: number): void {
+        if (process.env.ARKANALYZER_DEBUG_AST_MEM !== '1') {
+            return;
+        }
+        if (processed % 50 !== 0 && processed !== total) {
+            return;
+        }
+        const m = process.memoryUsage();
+        logger.info(
+            `[HEAP] processed=${processed}/${total} ` +
+                `heapUsed=${(m.heapUsed / 1024 / 1024).toFixed(1)}MB ` +
+                `rss=${(m.rss / 1024 / 1024).toFixed(1)}MB ` +
+                `external=${(m.external / 1024 / 1024).toFixed(1)}MB`
+        );
     }
 
     private static buildCppAstManifest(
@@ -124,13 +140,14 @@ export class AstParser {
         const defaultCcAbs = sceneCc ? (path.isAbsolute(sceneCc) ? sceneCc : path.resolve(projectDir, sceneCc)) : '';
         const ccJsonPaths = sources.map((f) => this.resolveCcJsonPath(f, sceneCc, projectDir));
         const mergedIncludes = this.mergeIncludeDirs(sources, includeDirs);
-        const manifest = {
+        const manifest: Record<string, unknown> = {
             files: sources,
             defaultCcJson: defaultCcAbs,
             ccJsonPaths,
             includeDirs: mergedIncludes,
             maxParallelProcesses,
             maxPendingAstResults,
+            outputDir: path.join(findProjectRoot(__dirname), 'output', 'astFiles'),
         };
         return JSON.stringify(manifest);
     }
@@ -185,16 +202,14 @@ export class AstParser {
         return null;
     }
 
-    private static processAstJson(payload: string, sourceFile: string): CxxAstNode {
-        if (!payload.trim()) {
-            return this.createEmptyNode();
-        }
-        const decoded = JSON.parse(payload) as CxxAstNode;
-        return this.filter(sourceFile, decoded) as CxxAstNode;
-    }
-
-    private static createEmptyNode(): CxxAstNode {
-        return { kind: '', name: '', code: '', type: { qualType: '' }, inner: [] };
+    private static processAst(
+        astPath: string,
+        sourceFile: string,
+        exitCode: number,
+        logAstInfo: boolean,
+    ): CxxAstNode {
+        const { root } = CxxAstFlatInfo.loadAndDecode(sourceFile, astPath, exitCode, logAstInfo);
+        return this.filter(sourceFile, root) as CxxAstNode;
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {

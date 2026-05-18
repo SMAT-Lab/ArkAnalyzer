@@ -69,6 +69,7 @@ export function prepareArkFiles(
     absoluteSourceFiles: string[],
     maxParallelProcesses: number = 1,
     maxPendingAstResults: number = 2,
+    logAstInfo: boolean = false,
 ): CppStreamBuildResult {
     const arkFiles: ArkFile[] = [];
     const failedFiles: FrontendParseFailure[] = [];
@@ -85,6 +86,7 @@ export function prepareArkFiles(
         includeDirs,
         maxParallelProcesses,
         maxPendingAstResults,
+        logAstInfo,
         onSourceAst: (sourceFile, astRoot) => {
             const target = new ArkFile(Language.CXX);
             target.setScene(scene);
@@ -108,6 +110,7 @@ export function prepareArkFile(
     scene: Scene,
     absoluteFilePath: string,
     targetArkFile: ArkFile,
+    logAstInfo: boolean = false,
 ): void {
     const sourceFile = path.resolve(absoluteFilePath);
     const projectDir = scene.getRealProjectDir();
@@ -119,6 +122,7 @@ export function prepareArkFile(
         includeDirs,
         maxParallelProcesses: 1,
         maxPendingAstResults: 2,
+        logAstInfo,
         onSourceAst: (source, astRoot) => {
             try {
                 applyArkFile(targetArkFile, source, astRoot);

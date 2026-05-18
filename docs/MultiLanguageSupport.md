@@ -4,7 +4,7 @@
 
 ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中间表示），从而让上层分析对源语言透明。各前端的差别集中在两处：
 
-1. **解析与 IR 转换**：`.ts` / `.ets` / `.js` 走 [TypeScript Compiler API](https://github.com/microsoft/TypeScript) + ArkAnalyzer 自己的转换器；`C/C++` 经 [`src/frontend/cppFrontend`](../src/frontend/cppFrontend) 的独立流水线（依赖本机构建的 **`astJsonDumper.node`** 输出 AST JSON、`compile_commands.json` 以及 include 路径等）。
+1. **解析与 IR 转换**：`.ts` / `.ets` / `.js` 走 [TypeScript Compiler API](https://github.com/microsoft/TypeScript) + ArkAnalyzer 自己的转换器；`C/C++` 经 [`src/frontend/cppFrontend`](../src/frontend/cppFrontend) 的独立流水线（依赖本机构建的 **`astJsonDumper.node`** 输出 FlatBuffers AST（`.ast.flat`）、`compile_commands.json` 以及 include 路径等）。
 2. **类型推导**：[`InferenceManager`](../src/core/inference/Inference.ts) 把 `Language` 派发到对应实现 —— [`ArkTsInferenceBuilder`](../src/core/inference/arkts/ArkTsInference.ts)、`JsInferenceBuilder`、`ArkTs2InferenceBuilder`、`CxxInferenceBuilder`、`AbcInferenceBuilder`。
 
 ### 1.1 解析阶段：`FrontendBuilder` 如何分发到各语言前端
@@ -15,7 +15,7 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 |------|------|
 | 入口 | **`FrontendBuilder.buildFilesIntoArkFiles(scene, filePaths)`**（多模块下还有 **`buildModuleFilesIntoArkFiles`**）。 |
 | 分桶 | **`partitionFilePaths`**：对每个路径调用 **`FileUtils.getFileLanguage(path, scene.getFileLanguages())`**（扩展名默认识别 + **`SceneConfig`** 里 **`languageTags` / `fileLanguages` 覆盖**），**仅 `Language.CXX` 进 C++ 列表，其余全部进「TS 系」列表**。 |
-| C++ 路径 | **`CppFrontend.buildProjectFiles`** → **`prepareArkFiles`** / **`AstParser.runCppAst`**（依赖本机构建的 **`astJsonDumper.node`**，消费 Clang 导出的 AST JSON）。单文件场景走 **`buildProjectFileIntoArkFile`** 里对 **`CppFrontend.buildProjectFile`** 的分支。 |
+| C++ 路径 | **`CppFrontend.buildProjectFiles`** → **`prepareArkFiles`** / **`AstParser.runCppAst`**（依赖本机构建的 **`astJsonDumper.node`**，消费 Clang 导出的 FlatBuffers AST）。单文件场景走 **`buildProjectFileIntoArkFile`** 里对 **`CppFrontend.buildProjectFile`** 的分支。 |
 | TS 系路径 | **`ArktsFrontend.buildProjectFiles`** → 逐文件 **`buildArkFileFromFile`**（**TypeScript Compiler API**；`.ets` / `.ts` / `.js` 及 ArkTS 1.2 的 `'use static'` 等细节在 ArkFile 构建阶段处理）。 |
 | 回写 | 两侧返回的 **`ArkFile[]`** 经 **`scene.setFile(...)`** 挂到同一 `Scene`；解析失败路径记入 **`addUnhandledFilePath`**。 |
 
@@ -57,7 +57,7 @@ flowchart TB
 |------|--------------------|-----------------------------|---------------------|--------------------|---------|-----|
 | `Language` 枚举值 | `ARKTS1_1` | `ARKTS1_2` | `TYPESCRIPT` | `JAVASCRIPT` | `CXX` | `ABC` |
 | 扩展名识别 | `.ets` | `.ets` + 文件头 `'use static'` | `.ts` | `.js` | 见 §2.1（默认可识别 `.c` `.cc` `.cpp` `.cxx` `.h` `.hh` `.hpp`） | `.abc` |
-| AST 来源 | TS Compiler API | TS Compiler API | TS Compiler API | TS Compiler API | Clang AST → JSON（由 `astJsonDumper.node` 管道消费） | ArkCompiler 字节码 |
+| AST 来源 | TS Compiler API | TS Compiler API | TS Compiler API | TS Compiler API | Clang AST → FlatBuffers（由 `astJsonDumper.node` 管道消费） | ArkCompiler 字节码 |
 | 全部 7 种 [`ClassCategory`](./components/ArkClass.md#3-核心数据结构) | ✅ | ✅ | ✅ | ✅ (除 INTERFACE / TYPE_LITERAL) | ✅（独占 `UNION`） | 部分 |
 | 命名空间 | ✅ | ✅ | ✅ | — | ✅（按 namespace / 文件） | — |
 | 接口 / 抽象类 | ✅ | ✅ | ✅ | — | ✅（纯虚函数） | — |

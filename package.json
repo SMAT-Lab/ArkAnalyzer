@@ -13,6 +13,7 @@
     "prebuild": "node script/npmInstall.js",
     "build": "tsc",
     "build:cpp": "node script/buildCpp.js",
+    "test:cpp": "node script/testCpp.js",
     "sync:addon-optional-deps": "node script/syncAddonOptionalDeps.js",
     "preversion": "npm run sync:addon-optional-deps && npm run build",
     "prepack": "npm run sync:addon-optional-deps && npm run build && tsc -p ./tsconfig.prod.json && node script/vendorOhosTypescript.js && node script/packageCppAddons.js",
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "commander": "13.1.0",
+    "flatbuffers": "^25.9.23",
     "log4js": "6.9.1"
   },
   "optionalDependencies": {
