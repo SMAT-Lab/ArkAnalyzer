@@ -13,7 +13,7 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 
 | 步骤 | 行为 |
 |------|------|
-| 入口 | **`FrontendBuilder.buildFilesIntoArkFiles(scene, filePaths)`**（鸿蒙多模块下还有 **`buildModuleFilesIntoArkFiles`**）。 |
+| 入口 | **`FrontendBuilder.buildFilesIntoArkFiles(scene, filePaths)`**（多模块下还有 **`buildModuleFilesIntoArkFiles`**）。 |
 | 分桶 | **`partitionFilePaths`**：对每个路径调用 **`FileUtils.getFileLanguage(path, scene.getFileLanguages())`**（扩展名默认识别 + **`SceneConfig`** 里 **`languageTags` / `fileLanguages` 覆盖**），**仅 `Language.CXX` 进 C++ 列表，其余全部进「TS 系」列表**。 |
 | C++ 路径 | **`CppFrontend.buildProjectFiles`** → **`prepareArkFiles`** / **`AstParser.runCppAst`**（依赖本机构建的 **`astJsonDumper.node`**，消费 Clang 导出的 AST JSON）。单文件场景走 **`buildProjectFileIntoArkFile`** 里对 **`CppFrontend.buildProjectFile`** 的分支。 |
 | TS 系路径 | **`ArktsFrontend.buildProjectFiles`** → 逐文件 **`buildArkFileFromFile`**（**TypeScript Compiler API**；`.ets` / `.ts` / `.js` 及 ArkTS 1.2 的 `'use static'` 等细节在 ArkFile 构建阶段处理）。 |
@@ -70,7 +70,7 @@ flowchart TB
 | [Def-Use Chain](./analysis/Def-Use%20Chain.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [IFDS](./analysis/IFDS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [ViewTree](./analysis/ViewTree.md) | ✅ | ✅ | — | — | — | — |
-| 多模块（鸿蒙 `oh-package.json5`） | ✅ | ✅ | — | — | ✅（与 ArkTS 同工程） | — |
+| 多模块（`oh-package.json5`） | ✅ | ✅ | — | — | ✅（与 ArkTS 同工程） | — |
 
 > "✅" 表示已实现且测试覆盖；"⚠" 表示部分实现；"—" 表示当前不支持或不适用。
 
@@ -109,7 +109,7 @@ flowchart TB
 
 ### 3.1 ArkTS（HarmonyOS）
 
-最常用：直接 `buildSceneFromProjectDir`，对鸿蒙多模块工程改用 `buildScene4HarmonyProject`。详见 [Scene §5.1](./components/Scene.md#51-构建-scene)。
+最常用：直接 `buildSceneFromProjectDir`，对多模块工程改用 `buildScene4HarmonyProject`。详见 [Scene §5.1](./components/Scene.md#51-构建-scene)。
 
 ```typescript
 const config = new SceneConfig();
@@ -157,7 +157,7 @@ console.log('cxx files:', scene.getFiles().filter(f => f.getLanguage() === Langu
 
 ### 3.4 ArkTS 与 C/C++ 混合工程
 
-鸿蒙原生模块经常出现 ArkTS 通过 `napi_*` 调到 C/C++ 实现的场景。`ArkClass` 提供桥接表：
+原生模块经常出现 ArkTS 通过 `napi_*` 调到 C/C++ 实现的场景。`ArkClass` 提供桥接表：
 
 ```typescript
 for (const cls of scene.getClasses()) {
@@ -290,7 +290,7 @@ C/C++ 的方法调用文本与 TS 一致（`instanceinvoke` / `staticinvoke`）�
 | HarmonyOS 应用 / ArkUI 视图分析 | ArkTS 1.1（`.ets`）；启用了 `'use static'` 的新代码用 ArkTS 1.2 |
 | 通用 TS 库 / 服务端 | TypeScript |
 | 既有 JS 工程做粗粒度 CG | JavaScript（建议先补类型注解再升级到 TS） |
-| 鸿蒙 Native 模块 / 跨语言追踪 | C/C++（搭配 ArkTS 主工程同 Scene 构建） |
+| Native 模块 / 跨语言追踪 | C/C++（搭配 ArkTS 主工程同 Scene 构建） |
 | IR 互译验证 | ABC（实验） |
 
 ## 6. 参考资料
