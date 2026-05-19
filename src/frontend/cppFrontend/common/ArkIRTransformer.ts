@@ -1015,8 +1015,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     public cxxMapStmtsToTsStmt(stmts: Stmt[], node: CxxAstNode): void {
         for (const stmt of stmts) {
-            if (!this.stmtsHaveOriginalText.has(stmt)) {
-                this.stmtsHaveOriginalText.add(stmt);
+            if (!stmt.getOriginFullPosition()) {
                 stmt.setOriginFullPosition(FullPosition.cxxBuildFromNode(node, this.cxxSourceFile));
             }
         }

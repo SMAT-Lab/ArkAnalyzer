@@ -38,6 +38,7 @@ import {
     RelationalBinaryOperator,
 } from '../base/Expr';
 import { ArkClass } from '../model/ArkClass';
+import { ArkField } from '../model/ArkField';
 import { buildNormalArkClassFromArkFile, buildNormalArkClassFromArkNamespace } from '../model/builder/ArkClassBuilder';
 import {
     AliasType,
@@ -312,7 +313,108 @@ export class ArkValueTransformer {
         const assignStmtPositions = [newExprLocalPositions[0], newExprLocalPositions[0], ...newExprLocalPositions];
         assignStmt.setOperandOriginalPositions(assignStmtPositions);
         stmts.push(assignStmt);
+
+        this.appendObjectLiteralPropertyInitStmts(objectLiteralExpression, anonymousClass, newExprLocal as Local, stmts);
         return { value: newExprLocal, valueOriginalPositions: assignStmtPositions, stmts: stmts };
+    }
+
+    private appendObjectLiteralPropertyInitStmts(
+        objectLiteralExpression: ts.ObjectLiteralExpression,
+        anonymousClass: ArkClass,
+        objectLocal: Local,
+        stmts: Stmt[]
+    ): void {
+        for (const property of objectLiteralExpression.properties) {
+            this.processObjectLiteralPropertyInitStmts(property, anonymousClass, objectLocal, stmts);
+        }
+    }
+
+    private processObjectLiteralPropertyInitStmts(
+        property: ts.ObjectLiteralElementLike,
+        anonymousClass: ArkClass,
+        objectLocal: Local,
+        stmts: Stmt[]
+    ): void {
+        const { fieldName, valueNode, propertyPosition } = this.getObjectLiteralFieldInitInfo(property);
+        if (fieldName === null || valueNode === null || propertyPosition === null) {
+            return;
+        }
+
+        const field = anonymousClass.getFieldWithName(fieldName);
+        const fieldSignature = field?.getSignature();
+        if (!field || !fieldSignature) {
+            return;
+        }
+
+        const fieldInitStmts: Stmt[] = [];
+        let {
+            value: initValue,
+            valueOriginalPositions: initPositions,
+            stmts: initStmts,
+        } = this.tsNodeToValueAndStmts(valueNode);
+        this.appendInitStmts(stmts, fieldInitStmts, initStmts);
+
+        if (IRUtils.moreThanOneAddress(initValue)) {
+            ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } =
+                this.arkIRTransformer.generateAssignStmtForValue(initValue, initPositions));
+            this.appendInitStmts(stmts, fieldInitStmts, initStmts);
+        }
+
+        const fieldRef = new ArkInstanceFieldRef(objectLocal, fieldSignature);
+        const fieldAssignStmt = new ArkAssignStmt(fieldRef, initValue);
+        fieldAssignStmt.setOperandOriginalPositions([propertyPosition, propertyPosition, ...initPositions]);
+        stmts.push(fieldAssignStmt);
+        fieldInitStmts.push(fieldAssignStmt);
+
+        this.setFieldInitializerWithPosition(field, fieldInitStmts, initValue);
+    }
+
+    private appendInitStmts(stmts: Stmt[], fieldInitStmts: Stmt[], initStmts: Stmt[]): void {
+        initStmts.forEach(stmt => {
+            stmts.push(stmt);
+            fieldInitStmts.push(stmt);
+        });
+    }
+
+    private setFieldInitializerWithPosition(field: ArkField, fieldInitStmts: Stmt[], initValue: Value): void {
+        const fieldOriginPosition = field.getOriginFullPosition();
+        for (const initStmt of fieldInitStmts) {
+            if (!initStmt.getOriginFullPosition()) {
+                initStmt.setOriginFullPosition(fieldOriginPosition);
+            }
+        }
+        field.setInitializer(fieldInitStmts);
+        if (field.getType() instanceof UnknownType) {
+            field.getSignature().setType(initValue.getType());
+        }
+    }
+
+    private getObjectLiteralFieldInitInfo(property: ts.ObjectLiteralElementLike): {
+        fieldName: string | null;
+        valueNode: ts.Expression | null;
+        propertyPosition: FullPosition | null;
+    } {
+        if (ts.isPropertyAssignment(property)) {
+            const nameNode = property.name;
+            if (ts.isIdentifier(nameNode) || ts.isStringLiteral(nameNode) || ts.isNumericLiteral(nameNode)) {
+                return {
+                    fieldName: nameNode.text,
+                    valueNode: property.initializer,
+                    propertyPosition: FullPosition.buildFromNode(property, this.sourceFile),
+                };
+            }
+            return { fieldName: null, valueNode: null, propertyPosition: null };
+        }
+
+        if (ts.isShorthandPropertyAssignment(property)) {
+            return {
+                fieldName: property.name.text,
+                valueNode: property.name,
+                propertyPosition: FullPosition.buildFromNode(property, this.sourceFile),
+            };
+        }
+
+        return { fieldName: null, valueNode: null, propertyPosition: null };
     }
 
     private generateSystemComponentStmt(componentName: string, args: Value[], argPositionsAllFlat: FullPosition[],

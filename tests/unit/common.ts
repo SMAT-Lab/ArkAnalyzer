@@ -77,7 +77,7 @@ export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any
     className: string = DEFAULT_ARK_CLASS_NAME,
     methodName: string = DEFAULT_ARK_METHOD_NAME, assertPos: boolean = true): void {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
-    const arkMethod = arkFile?.getClassWithName(className)?.getMethods()
+    const arkMethod = arkFile?.getClassWithName(className)?.getMethods(true)
         .find((method) => (method.getName() === methodName));
     const stmts = arkMethod?.getCfg()?.getStmts();
     if (!stmts) {
@@ -233,6 +233,17 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
     for (let i = 0; i < stmts.length; i++) {
         expect(stmts[i].toString()).toEqual(expectStmts[i].text);
         assert.isDefined(stmts[i].getCfg());
+
+        if (expectStmts[i].originalText !== undefined) {
+            expect(stmts[i].getOriginalText()).toEqual(expectStmts[i].originalText);
+        }
+        if (expectStmts[i].originalPosition !== undefined) {
+            const originalPosition = stmts[i].getOriginPositionInfo();
+            const actualOriginalPosition = originalPosition === undefined ? undefined : [
+                originalPosition.getLineNo(), originalPosition.getColNo(),
+            ];
+            expect(actualOriginalPosition).toEqual(expectStmts[i].originalPosition);
+        }
 
         if (expectStmts[i].operandOriginalPositions === undefined) {
             continue;

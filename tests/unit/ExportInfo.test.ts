@@ -202,7 +202,7 @@ describe("export Test", () => {
     it('get class case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Lottie_Report.ets');
         const stmt = projectScene.getFile(fileId)?.getClassWithName('BlurEffectsExample')
-            ?.getMethodWithName('build')?.getCfg()?.getStmts()[5];
+            ?.getMethodWithName('build')?.getCfg()?.getStmts()[7];
         assert.isDefined(stmt);
         const classSignature = stmt?.getInvokeExpr()?.getMethodSignature().getDeclaringClassSignature();
         assert.isTrue(classSignature instanceof AliasClassSignature);
@@ -271,9 +271,9 @@ describe("export Test", () => {
     it('setTimeout case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Lottie_Report.ets');
         const stmts = projectScene.getFile(fileId)?.getClassWithName('Foo')?.getMethodWithName('func')?.getCfg()?.getStmts();
-        const stmt = stmts?.[stmts?.length - 2];
+        const stmt = stmts?.[5];
         assert.isDefined(stmt);
-        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().toString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo-%instInit-%instInit.%AM0$%instInit()');
+        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().toString(), '@exports/Lottie_Report.ets: Foo.%AM0$%instInit()');
     });
 
     it('export local case', () => {

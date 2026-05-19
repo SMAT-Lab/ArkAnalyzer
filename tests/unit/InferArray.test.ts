@@ -708,6 +708,7 @@ struct GlobalFancy {
       this = this: @inferType/ArktsExtend.ets: GlobalFancy
       %0 = new @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
       %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.constructor()>()
+      %0.<@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions.space> = 10
       %1 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>(%0)
       %2 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyA')
       staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
@@ -725,18 +726,17 @@ struct GlobalFancy {
 object %AC3$GlobalFancy-build {
   space: string|number
 
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
+      return
+  }
+
   constructor(): @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build {
     label0:
       this = this: @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
       instanceinvoke this.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
-      this.<@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions.space> = 10
-      return
   }
 }
 @Entry
@@ -779,6 +779,7 @@ struct FancyUse {
       this = this: @inferType/ArktsExtend.ets: FancyUse
       %0 = new @inferType/ArktsExtend.ets: %AC4$FancyUse-build
       %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.constructor()>()
+      %0.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.space> = 10
       %1 = staticinvoke <@%unk/%unk: Row.create()>(%0)
       %2 = this.<@inferType/ArktsExtend.ets: FancyUse.label>
       %3 = instanceinvoke %2.<@built-in/lib.es5.d.ts: String.toString()>()
@@ -800,18 +801,17 @@ struct FancyUse {
 object %AC4$FancyUse-build {
   space: number
 
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC4$FancyUse-build
+      return
+  }
+
   constructor(): @inferType/ArktsExtend.ets: %AC4$FancyUse-build {
     label0:
       this = this: @inferType/ArktsExtend.ets: %AC4$FancyUse-build
       instanceinvoke this.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @inferType/ArktsExtend.ets: %AC4$FancyUse-build
-      this.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.space> = 10
-      return
   }
 }
 @Entry
@@ -848,14 +848,17 @@ struct AnimatablePropertyText {
       %0 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>()
       %1 = new @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
       %1 = instanceinvoke %1.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.constructor()>()
-      %2 = this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth>
-      %3 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('AnimatableProperty')
+      %1.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.duration> = 2000
+      %2 = @etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
+      %1.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.curve> = %2
+      %3 = this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth>
+      %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('AnimatableProperty')
       staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
-      %4 = instanceinvoke %3.<@inferType/ArktsExtend.ets: %dflt.animatableWidth(number)>(%2)
-      instanceinvoke %4.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.animation(@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam)>(%1)
+      %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: %dflt.animatableWidth(number)>(%3)
+      instanceinvoke %5.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.animation(@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam)>(%1)
       staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
-      %5 = instanceinvoke %0.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
-      instanceinvoke %5.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.padding(Padding|Length|LocalizedPadding)>(10)
+      %6 = instanceinvoke %0.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
+      instanceinvoke %6.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.padding(Padding|Length|LocalizedPadding)>(10)
       return
   }
 }
@@ -863,20 +866,17 @@ object %AC5$AnimatablePropertyText-build {
   duration: number
   curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve
 
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
+      return
+  }
+
   constructor(): @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build {
     label0:
       this = this: @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
       instanceinvoke this.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
-      this.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.duration> = 2000
-      %0 = @etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
-      this.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.curve> = %0
-      return
   }
 }
 `;

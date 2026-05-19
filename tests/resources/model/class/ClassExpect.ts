@@ -402,7 +402,13 @@ export const SubTypeLiteralClass = `typeliteral %AC1 {
 
 export const ObjClass = `object %AC2$%dflt-%dflt {
   a: number
-  b: @class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit
+  b: @class/ClassWithOtherCategory.ts: %AC3$%dflt-%dflt
+
+  %instInit(): void {
+    label0:
+      this = this: @class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt
+      return
+  }
 
   constructor(): @class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt {
     label0:
@@ -410,34 +416,23 @@ export const ObjClass = `object %AC2$%dflt-%dflt {
       instanceinvoke this.<@class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt.%instInit()>()
       return this
   }
-
-  %instInit(): void {
-    label0:
-      this = this: @class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt
-      this.<@class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt.a> = a
-      %0 = new @class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      %0 = instanceinvoke %0.<@class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit.constructor()>()
-      this.<@class/ClassWithOtherCategory.ts: %AC2$%dflt-%dflt.b> = %0
-      return
-  }
 }
 `;
 
-export const SubObjClass = `object %AC3$%AC2$%dflt-%dflt-%instInit {
+export const SubObjClass = `object %AC3$%dflt-%dflt {
   value: number
-
-  constructor(): @class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit {
-    label0:
-      this = this: @class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      instanceinvoke this.<@class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit.%instInit()>()
-      return this
-  }
 
   %instInit(): void {
     label0:
-      this = this: @class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit
-      this.<@class/ClassWithOtherCategory.ts: %AC3$%AC2$%dflt-%dflt-%instInit.value> = b
+      this = this: @class/ClassWithOtherCategory.ts: %AC3$%dflt-%dflt
       return
+  }
+
+  constructor(): @class/ClassWithOtherCategory.ts: %AC3$%dflt-%dflt {
+    label0:
+      this = this: @class/ClassWithOtherCategory.ts: %AC3$%dflt-%dflt
+      instanceinvoke this.<@class/ClassWithOtherCategory.ts: %AC3$%dflt-%dflt.%instInit()>()
+      return this
   }
 }
 `;

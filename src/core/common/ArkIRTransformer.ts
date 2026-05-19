@@ -80,7 +80,6 @@ export class ArkIRTransformer {
     protected declaringMethod: ArkMethod;
     protected inBuilderMethod = false;
     protected builderMethodContextFlag = false;
-    protected stmtsHaveOriginalText: Set<Stmt> = new Set();
     protected arkValueTransformer: ArkValueTransformer;
 
     constructor(sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
@@ -803,8 +802,7 @@ export class ArkIRTransformer {
 
     public mapStmtsToTsStmt(stmts: Stmt[], node: ts.Node): void {
         for (const stmt of stmts) {
-            if (!this.stmtsHaveOriginalText.has(stmt)) {
-                this.stmtsHaveOriginalText.add(stmt);
+            if (!stmt.getOriginFullPosition()) {
                 stmt.setOriginFullPosition(FullPosition.buildFromNode(node, this.sourceFile));
             }
         }

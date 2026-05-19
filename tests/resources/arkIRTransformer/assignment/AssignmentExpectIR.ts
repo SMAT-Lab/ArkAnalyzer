@@ -238,6 +238,14 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[17, 20, 17, 36], [17, 20, 17, 36], [17, 20, 17, 36]],
         },
         {
+            text: '%3.<@assignment/DestructuringSample.ts: %AC0$%dflt-%dflt.d3> = 1',
+            operandOriginalPositions: [[17, 22, 17, 27], [17, 22, 17, 27], [17, 26, 17, 27]],
+        },
+        {
+            text: '%3.<@assignment/DestructuringSample.ts: %AC0$%dflt-%dflt.d4> = 2',
+            operandOriginalPositions: [[17, 29, 17, 34], [17, 29, 17, 34], [17, 33, 17, 34]],
+        },
+        {
             text: '%2 = %3',
             operandOriginalPositions: [[17, 7, 17, 17], [17, 20, 17, 36]],
         },
@@ -256,6 +264,14 @@ export const Destructuring_Expect_IR = {
         {
             text: '%5 = instanceinvoke %5.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.constructor()>()',
             operandOriginalPositions: [[18, 28, 18, 44], [18, 28, 18, 44], [18, 28, 18, 44]],
+        },
+        {
+            text: '%5.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.d5> = 1',
+            operandOriginalPositions: [[18, 30, 18, 35], [18, 30, 18, 35], [18, 34, 18, 35]],
+        },
+        {
+            text: '%5.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.d6> = 2',
+            operandOriginalPositions: [[18, 37, 18, 42], [18, 37, 18, 42], [18, 41, 18, 42]],
         },
         {
             text: '%4 = %5',
@@ -308,6 +324,14 @@ export const Destructuring_Expect_IR = {
         {
             text: '%9 = instanceinvoke %9.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.constructor()>()',
             operandOriginalPositions: [[22, 26, 22, 44], [22, 26, 22, 44], [22, 26, 22, 44]],
+        },
+        {
+            text: '%9.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.d11> = 1',
+            operandOriginalPositions: [[22, 28, 22, 34], [22, 28, 22, 34], [22, 33, 22, 34]],
+        },
+        {
+            text: '%9.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.d12> = 2',
+            operandOriginalPositions: [[22, 36, 22, 42], [22, 36, 22, 42], [22, 41, 22, 42]],
         },
         {
             text: '%8 = %9',

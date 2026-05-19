@@ -198,9 +198,13 @@ struct MyComponent2 {
       %0 = staticinvoke <@%unk/%unk: Row.create()>()
       %1 = new @importType/MyComponent2.ets: %AC0$MyComponent2-build
       %1 = instanceinvoke %1.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.constructor()>()
+      %1.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.status1> = 'aaa'
+      %1.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.status2> = 'bbb'
+      %1.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.callback> = %AM0$build
       instanceinvoke XX.<@importType/MyComponent.ets: MyComponent.constructor(string)>(%1)
       %2 = new @importType/MyComponent2.ets: %AC1$MyComponent2-build
       %2 = instanceinvoke %2.<@importType/MyComponent2.ets: %AC1$MyComponent2-build.constructor()>()
+      %2.<@importType/MyComponent2.ets: %AC1$MyComponent2-build.status1> = 'xxxx'
       %3 = new @importType/MyComponent.ets: MyComponent
       %3 = instanceinvoke %3.<@importType/MyComponent.ets: MyComponent.constructor(string)>(%2)
       %4 = staticinvoke <@%unk/%unk: View.create()>(%3)
@@ -208,11 +212,26 @@ struct MyComponent2 {
       staticinvoke <@%unk/%unk: Row.pop()>()
       return
   }
+
+  %AM0$build(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: MyComponent2
+      instanceinvoke console.<@%unk/%unk: .log()>('cccc')
+      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello')
+      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello2')
+      return
+  }
 }
 object %AC0$MyComponent2-build {
   status1: string
   status2: string
-  callback: @importType/MyComponent2.ets: %AC0$MyComponent2-build.%AM0$%instInit()
+  callback: @importType/MyComponent2.ets: MyComponent2.%AM0$build()
+
+  %instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2-build
+      return
+  }
 
   constructor(): @importType/MyComponent2.ets: %AC0$MyComponent2-build {
     label0:
@@ -220,40 +239,21 @@ object %AC0$MyComponent2-build {
       instanceinvoke this.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.%instInit()>()
       return this
   }
-
-  %instInit(): void {
-    label0:
-      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2-build
-      this.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.status1> = 'aaa'
-      this.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.status2> = 'bbb'
-      this.<@importType/MyComponent2.ets: %AC0$MyComponent2-build.callback> = %AM0$%instInit
-      return
-  }
-
-  %AM0$%instInit(): void {
-    label0:
-      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2-build
-      instanceinvoke console.<@%unk/%unk: .log()>('cccc')
-      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello')
-      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello2')
-      return
-  }
 }
 object %AC1$MyComponent2-build {
   status1: string
+
+  %instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC1$MyComponent2-build
+      return
+  }
 
   constructor(): @importType/MyComponent2.ets: %AC1$MyComponent2-build {
     label0:
       this = this: @importType/MyComponent2.ets: %AC1$MyComponent2-build
       instanceinvoke this.<@importType/MyComponent2.ets: %AC1$MyComponent2-build.%instInit()>()
       return this
-  }
-
-  %instInit(): void {
-    label0:
-      this = this: @importType/MyComponent2.ets: %AC1$MyComponent2-build
-      this.<@importType/MyComponent2.ets: %AC1$MyComponent2-build.status1> = 'xxxx'
-      return
   }
 }
 `;
