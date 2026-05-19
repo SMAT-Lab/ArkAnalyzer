@@ -3,13 +3,13 @@
 
 ## 1. 目录组织
 
-`docs/` 下共 4 个子目录 + 若干顶层 .md 文件：
+`docs/` 下共 **6** 个子目录，以及若干顶层 `.md` 文件：
 
 | 路径 | 内容 |
 |------|------|
 | [`components/`](./components/) | **核心组件** 10 篇——Scene 数据结构层级模型 |
 | [`analysis/`](./analysis/) | **静态分析** 5 篇——TypeInference / Def-Use / CallGraph / IFDS / ViewTree |
-| [`cppFrontend/`](./cppFrontend/) | C/C++ 前端用户指南、构建指南、配套截图 |
+| [`cppFrontend/`](./cppFrontend/) | C/C++ 前端用户指南、构建指南 |
 | [`contributing/`](./contributing/) | 贡献流程（PR / Issue 提交规范） |
 | [`api_docs/`](./api_docs/) | typedoc 自动生成的 API 参考（`npm run gendoc` 产物，**不要手工编辑**） |
 | [`images/`](./images/) | 项目级配图 |
@@ -25,7 +25,7 @@
 
 ### 2.2 核心组件（`components/`）
 
-按"自上而下"的层级顺序：
+按「自上而下」的层级顺序：
 
 | 层级 | 文档 | 说明 |
 |------|------|------|
@@ -56,8 +56,7 @@
 |------|------|
 | [MultiLanguageSupport.md](./MultiLanguageSupport.md) | ArkTS 1.1/1.2、TypeScript、JavaScript、C/C++、ABC 各前端能力矩阵与 IR 差异 |
 | [cppFrontend/cpp_frontend_user_guide.md](./cppFrontend/cpp_frontend_user_guide.md) | C/C++ 前端用户指南 |
-| [cppFrontend/cpp_frontend_build_guide.md](./cppFrontend/cpp_frontend_build_guide.md) | C/C++ 前端构建指南（cppast dumper、CMake 配置） |
-| [cppFrontend/ArkAnalyzer-cpp_usage_guide.md](./cppFrontend/ArkAnalyzer-cpp_usage_guide.md) | 分析 C/C++ 项目的端到端示例 |
+| [cppFrontend/cpp_frontend_build_guide.md](./cppFrontend/cpp_frontend_build_guide.md) | C/C++ 前端构建指南（`astJsonDumper.node`、CMake、`OHOS_SDK_HOME` 等） |
 
 ### 2.5 SIG 与社区
 

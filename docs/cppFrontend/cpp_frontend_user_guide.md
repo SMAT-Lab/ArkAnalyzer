@@ -1,175 +1,184 @@
-# ArkAnalyzer-CPP前端
+# ArkAnalyzer C++ 前端使用指南
 
-### ArkAnalyzer-CPP前端是由 ICT BG 公共开发部的品牌-精卫 团队主导设计与开发, 基于llvm的解析能力对cpp/c的语义场景完成其到ArkAnalyzer IR的转译及分析。
+ArkAnalyzer C++ 前端由 ICT BG 公共开发部品牌「精卫」团队主导设计与开发，基于 LLVM / LibTooling 将 C/C++ 源码解析并映射到 ArkAnalyzer IR，便于与既有 ArkTS 分析流程共用 `Scene`、`ArkFile`、`ArkMethod`、`Cfg` 等模型。
 
-## 一、ArkAnalyzer-CPP工具使用介绍
+本文只说明**如何配置与在代码里接入**，不涉及仓库内模块划分或内部流水线。原生插件的编译与 `astJsonDumper.node` 的产出见 [C++ 前端构建指南](./cpp_frontend_build_guide.md)。
 
-### 1、外部接口调用
+---
 
-在本分支下，对ArkAnalyzer使用者提供统一接口调用，可以参考tests/unit/core_cpp/graph/Cfg.test.ts测试文件中的构建
+## 文档导读
 
-```
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    return scene;
-```
+| 主题 | 说明 |
+| --- | --- |
+| [1. 前置条件](#1-前置条件) | 先完成 Node 插件构建，保证运行时可加载 `astJsonDumper.node`。 |
+| [2. 打开 C++ 扫描](#2-打开-c-扫描) | `config/arkanalyzer.json` 中 `languages.cpp` 与扩展名。 |
+| [3. 最小接入示例](#3-最小接入示例) | `SceneConfig` + `Scene`，仅工程内 `.cpp`。 |
+| [4. 与单元测试对齐的写法](#4-与单元测试对齐的写法) | 参考 `tests/unit/cppCore/graph/Cfg.test.ts`：`includeDirs`、`compile_commands`、`OHOS_SDK_HOME`、懒加载 NAPI 头路径。 |
+| [5. 构建 Scene 之后](#5-构建-scene-之后) | 取文件、类、方法、`Cfg`，以及何时调用 `inferTypes()`。 |
+| [6. 与 ArkTS 混编](#6-与-arkts-混编) | 指向多语言说明文档。 |
+| [7. 常见问题](#7-常见问题) | 并行度、扩展名、找不到头等。 |
 
-只需要调用SceneConfig和scene构建即可，其中config.buildFromProjectDir()传入的参数是需要解析的项目路径。该函数位置在src/Scene.ts中
-以一个if代码的解析做介绍，解析过程如下图所示:
-![img.png](img.png)
-在解析过程中，genArkFiles函数会区分文件类型，对于cpp文件会调用buildArkCxxFileFromFile生成对应语法树。
-在genArkFiles下的buildAllMethodBody中调用method.freeCxxBodyBuilder()进行函数内语句的解析。
+---
 
-### 2、解析结果，scene展示
+## 1. 前置条件
 
-如下图所示
-![img_1.png](img_1.png)
-![img_2.png](img_2.png)
+1. 按 [cpp_frontend_build_guide.md](./cpp_frontend_build_guide.md) 在本地或 Docker 中执行 **`npm run build:cpp`**，生成 **`astJsonDumper.node`**（及依赖），并保证运行 ArkAnalyzer 时的 `PATH` / `LD_LIBRARY_PATH`（Linux）或等价环境满足该文档要求。
+2. 业务脚本或测试通过 **`npm install`** / workspace 等方式能 `import` 到 **`arkanalyzer`** 包（或本仓库 `src` 的编译产物）。
 
-如果一个cpp接口是在ts语言中被调用的接口，会在Scene结构中添加ts2cxxFuncMap进行暴露，通过setTs2CxxFuncMapOfClass函数进行填充。
-这里以懒加载任务提供的代码示例
-![img_3.png](img_3.png)
+---
 
-## 二、cpp_frontend模块介绍
+## 2. 打开 C++ 扫描
 
-#### 路径：ArkAnalyzer/src/cpp_frontend
+`SceneConfig` 会读取仓库根下的 **`config/arkanalyzer.json`** 并与构造函数入参做浅合并。要让 **`.cpp` / `.c` / `.h` 等** 进入 `getAllFiles` 的待解析列表，需要 **`languages.cpp.enabled` 为 `true`**。
 
-### 1、common模块
+示例（与仓库 `config/arkanalyzer.json` 中 `languages.cpp` 段一致，请将 `enabled` 改为 `true`）：
 
-ArkCxxIRTransformer：继承ArkAnalyzer/src/core/common下的ArkIRTransformer，复用了ArkIRTransformer下的方法，根据c++语法重写和新增了ArkCxxIRTransformer下的方法
-
-ArkCxxValueTransformer：继承ArkAnalyzer/src/core/common下的ArkValueTransformer，复用了ArkValueTransformer下的方法，根据c++语法重写和新增了ArkCxxValueTransformer下的方法
-
-ModelUtils：根据c++语法编写了关于获取头文件的include信息的方法
-
-TypeInference：根据c++语法编写了关于类型推断的方法，该文件下许多方法的函数体与ArkAnalyzer/src/core/common/TypeInference相同，因为c++和typescript使用的AST结构不同，所以不能复用
-
-ValueUtilsCpp：继承ArkAnalyzer/src/core/common下的ValueUtils,复用了ValueUtils下的方法，根据c++语法新增了normalizeString和createStringConst两个方法
-
-### 2、graph模块
-
-CfgBuilder：根据c++语法编写了关于构建cfg的方法，复用了ArkAnalyzer/src/core/graph/builder/CfgBuilder下的BlockBuilder, Case, Catch, TextError, Variable, Scope对象
-
-### 3、model模块
-
-ArkClassBuilder：根据c++语法编写了关于构建cfg结构下ArkClass的方法，复用了ArkAnalyzer/src/core/model/builder/ArkClassBuilder下的方法和对象
-
-ArkFieldBuilder：根据c++语法编写了关于构建cfg结构下ArkField的方法
-
-ArkFileBuilder：根据c++语法编写了关于构建cfg结构下ArkFile的方法，复用了ArkAnalyzer/src/core/model/builder下ArkExportBuilder和ArkClassBuilder的方法
-
-ArkImportBuilder：根据c++语法编写了关于构建cfg结构下ArkInclude的方法
-
-ArkMethodBuilder：根据c++语法编写了关于构建cfg结构下ArkMethod的方法，复用了ArkAnalyzer/src/core/model/builder下ViewTreeBuilder和ArkMethodBuilder的方法和对象
-
-ArkNamespaceBuilder：根据c++语法编写了关于构建cfg结构下ArkNamespace的方法，复用了ArkAnalyzer/src/core/model/builder/ArkNamespaceBuilder下的方法
-
-CxxBodyBuilder：根据c++语法编写了关于构建整个cfg结构的方法，从CxxBodyBuilder开始调用cpp_frontend模块下的方法，复用了ArkAnalyzer/src/core/model/builder/ArkMethodBuilder的方法
-
-builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用了ArkAnalyzer/src/core/model/builder下ArkMethodBuilder和builderUtils的方法
-
-## 三、ArkAnalyzer-CPP前端暴露接口，ArkAnalyzer/src/Scene下调用
-
-1、ArkAnalyzer/src/cpp_frontend/model/builder/ArkFileBuilder下的buildArkFileFromFile方法，该方法获取c++的抽象语法树
-
-2、ArkAnalyzer/src/cpp_frontend/model/builder/ArkMethodBuilder下的addInitInConstructor方法，该方法添加默认的构造函数
-
-3、ArkAnalyzer/src/cpp_frontend/model/ArkMethod下的buildCxxBody和freeCxxBodyBuilder方法，作用分别是构建cfg和释放资源
-
-## 四、ArkAnalyzer-CPP工具开发介绍
-
-### 本部分介绍ArkAnalzyer解析Cpp源码生成IR的接口逻辑，主要是关键函数相关的调用逻辑，以及函数功能的介绍
-
-#### 1、对scene数据结构的介绍，ArkAnalyzer项目的核心就是在将代码解析成scene数据结构
-
-Scene 类为 ArkAnalyzer 的核心类，用户可以通过该类访问所分析代码（项目）的所有信息，包括文件列表、类列表、方法列表、属性列表等。Scene 类具体数据结构如下所示。
-
-![img_4.png](img_4.png)
-
-### 2.下面介绍Cpp代码解析的过程
-
-<核心函数调用图>
-
-```mermaid
-graph TD
-    buildSceneFromProjectDir --> buildBasicInfo
-    buildSceneFromProjectDir --> genArkFiles
-    genArkFiles --> buildArkCxxFileFromFile
-    genArkFiles --> buildAllMethodBody
-    genArkFiles --> addDefaultConstructors
-    buildArkCxxFileFromFile --> AstUtils.parse
-    AstUtils.parse --> getPlatformClang
-    AstUtils.parse --> JSON.parse
-    buildArkCxxFileFromFile --> genDefaultArkClass
-    buildArkCxxFileFromFile --> buildArkFile
-    genDefaultArkClass --> buildDefaultArkClassFromArkFile
-    genDefaultArkClass --> arkFile.setDefaultClass
-    genDefaultArkClass --> arkFile.addArkClass
-    buildArkFile --> buildNormalArkClassFromArkFile
-    buildArkFile --> buildArkMethodFromArkClass
-    buildArkFile --> buildArkNamespace
-    buildArkFile --> buildImportInfo
-    genArkFiles --> buildAllMethodBody
-    genArkFiles --> addDefaultConstructors
-    buildAllMethodBody --> method.buildCxxBody
-    method.buildCxxBody --> CxxBodyBuilder.build
-    CxxBodyBuilder.build --> cfgBuilder.buildCfgBuilder
-    CxxBodyBuilder.build --> cfgBuilder.buildCfg
-    cfgBuilder.buildCfgBuilder --> walkAST
-    cfgBuilder.buildCfg --> buildNormalCfg
-    cfgBuilder.buildCfg --> buildCfgForSimpleArrowFunction
-    buildNormalCfg --> processBlocks
-    processBlocks --> switchStatementToValueAndStmts
-    processBlocks --> tsNodeToStmts
-    tsNodeToStmts --> xxxToStmts
-    xxxToStmts --> cxxNodeToValueAndStmts
-
+```json
+"cpp": {
+  "enabled": true,
+  "sourceExtensions": [".cc", ".cpp", ".cxx", ".c", ".c++"],
+  "headerExtensions": [".hpp", ".h", ".hxx", ".hh"],
+  "maxParallelProcesses": -1,
+  "maxPendingAstResults": -1
+}
 ```
 
-#### 项目入口
+说明：
 
-首先配置config结构，如
-config.buildFromProjectDir(path);
-将需要解析的项目源码位置存储到config结构中。
-随后使用scene的buildSceneFromProjectDir进行scene构建。
+- **`sourceExtensions` / `headerExtensions`**：在 `enabled === true` 时会被合并进 `SceneConfig` 的 `supportFileExts`，从而扫描到对应后缀的翻译单元与头文件。
+- **`maxParallelProcesses` / `maxPendingAstResults`**：`-1` 表示使用内置默认；若在大仓库上 OOM 或 CPU 打满，可改为较小正整数做限流（具体行为以当前实现为准）。
+
+也可在代码里覆盖（与 JSON 合并后生效）：
+
+```typescript
+import { SceneConfig } from 'arkanalyzer';
+
+const config = new SceneConfig({
+  languages: {
+    cpp: { enabled: true },
+  },
+});
+```
+
+**测试里另一种写法**（不依赖 JSON 里的 `enabled`）：直接把待扫描后缀写进 `supportFileExts`，例如使用导出的 **`getCxxSourceFileExtensions()`**（仅常见「源文件」后缀，不含头文件）。见 `tests/unit/cppCore/graph/Cfg.test.ts` 中 `new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] })`。
+
+---
+
+## 3. 最小接入示例
+
+适用于工程内只有自包含 C/C++、系统头路径由 Clang 默认即可解析的场景。
+
+```typescript
+import path from 'path';
+import { Scene, SceneConfig } from 'arkanalyzer';
+
+const projectDir = path.resolve('/path/to/your/cpp/project');
+
+const config = new SceneConfig();
+// 若未改 JSON，请保证 languages.cpp.enabled 为 true，或见上一节在构造函数中传入。
+config.buildFromProjectDir(projectDir, []); // 第二个参数为额外 -I 目录，可传空数组
+
+const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
 
-#### 下面是构建过程的详细介绍，整个过程分为两个阶段，第一阶段是生成Arkfile，ArkClass，和ArkMethod：①调用libClang工具生成ast语法树，②ArkAnalzyer对生成的语法树解析，构造scene结构。
+// 按需：scene.inferTypes();
 
-第二阶段，对method的语句进行解析。
-
-##### 第一阶段：
-
-```
-    private genArkFiles(): void {
-        this.projectFiles.forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                if (arkFile.getLanguage() === Language.CXX) {
-                    buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
-                } else {
-                    buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
-                }
-                this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledFilePaths.push(file);
-                return;
-            }
-        });
-        this.buildAllMethodBody();
-        this.addDefaultConstructors();
+for (const file of scene.getFiles()) {
+  // 按 file.getName() 过滤 .cpp 等，或遍历命名空间 / 类 / 方法
+  for (const cls of file.getClasses()) {
+    for (const method of cls.getMethods()) {
+      const cfg = method.getCfg();
+      // 使用 BasicBlock、Stmt 等做数据流 / CFG 分析
     }
+  }
+}
 ```
 
-##### 第二阶段：
+若工程依赖第三方头文件目录，把路径放进 **`buildFromProjectDir` 的第二个参数**（`includeDirs`），等价于为 LibTooling 增加 `-I`。
 
-这一部分主要介绍两个处理过程：
-1、buildAllMethodBody()，在此函数中使用buildCxxBody()接口,在开发中walkAST依据语法树的结构划分出block，并构建出block的前后继关系
-2、tsNodeToStmts：在这个函数中根据不同的模块类型，进行不同的处理，比如传入节点是IfStmt时，选择对应的cxxIfStatementToStmts，构建出相应的IR表示，这里的IR就是三地址码的形式了，例如其中条件表达部分调用conditionToValueAndStmts，构造ArkConditionExpr
+---
 
-当前ArkAnalzyer在解析源码生成中间IR集
+## 4. 与单元测试对齐的写法
+
+集成测试 **`tests/unit/cppCore/graph/Cfg.test.ts`** 中的 `buildScene` 展示了更接近 OpenHarmony / NDK 环境的配置方式，核心步骤如下。
+
+### 4.1 `includeDirs`（libc++ 与 sysroot）
+
+测试从 **`tests/unit/cppCore/cppBuildUtils.ts`** 的 **`resolveSdkPaths()`** 读取环境变量 **`OHOS_SDK_HOME`**，得到：
+
+- **`cxxIncludeDir`**：LLVM 自带 libc++ 头（`.../llvm/include/c++/v1`）
+- **`configSiteDirs`**：带 **`__config_site`** 的目标相关目录（工具会扫描 `llvm/include` 下子目录）
+- **`sysrootIncludeDir`**：sysroot 下的 `usr/include`（懒加载 NAPI 等场景会用到）
+
+典型组合与测试一致：
+
+```typescript
+import path from 'path';
+import fs from 'fs';
+import { Scene, SceneConfig, getCxxSourceFileExtensions } from 'arkanalyzer';
+import { resolveSdkPaths, ensureCompileDb } from './cppBuildUtils'; // 从测试 utils 拷贝或自行实现等价逻辑
+
+const { cxxIncludeDir, sysrootIncludeDir, configSiteDirs } = resolveSdkPaths();
+const includeDirs = [cxxIncludeDir, ...configSiteDirs].filter(Boolean);
+
+// 若用例涉及 lazyImport 下的 NAPI，可追加例如：
+// includeDirs.push(
+//   path.join(sysrootIncludeDir, 'x86_64-linux-ohos'),
+//   sysrootIncludeDir,
+// );
+```
+
+未设置 **`OHOS_SDK_HOME`** 时，`resolveSdkPaths()` 返回空字符串；仅解析不依赖 OHOS 标准库的代码时，可继续使用空或自定义 `-I` 列表。
+
+### 4.2 `compile_commands.json`
+
+当存在 **`CMakeLists.txt`** 且配置了 **`OHOS_SDK_HOME`** 时，测试会调用 **`ensureCompileDb(projectDir, buildDir)`**（内部用 OHOS 的 **`ohos.toolchain.cmake`** 跑 CMake 并 **`CMAKE_EXPORT_COMPILE_COMMANDS=ON`**），然后：
+
+```typescript
+config.setCcjsonPath(path.join(buildDir, 'compile_commands.json'));
+```
+
+若已有现成的 **`compile_commands.json`**（任意 CMake / Bear 生成），可直接 **`config.setCcjsonPath(路径)`**，无需经过 `ensureCompileDb`。
+
+**注意**：`setCcjsonPath` 只需在 **`scene.buildSceneFromProjectDir(config)`** 之前完成即可；与 **`buildFromProjectDir`** 的先后次序无强约束。测试里在存在 `CMakeLists.txt` 且配置了 `OHOS_SDK_HOME` 时，会先 `ensureCompileDb`、`setCcjsonPath`，再 **`buildFromProjectDir`**。
+
+### 4.3 组装 `Scene`
+
+与测试相同的主线：
+
+```typescript
+const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+// … 按上文设置 includeDirs、setCcjsonPath（可选）…
+config.buildFromProjectDir(projectDir, includeDirs);
+
+const scene = new Scene();
+scene.buildSceneFromProjectDir(config);
+```
+
+测试中部分用例在断言前会调用 **`scene.inferTypes()`**（例如部分 `switch`、懒加载、`namespace` 等），用于补全类型信息或满足特定分析路径。若分析依赖完整类型推导，建议在构建 Scene 后同样调用 **`inferTypes()`**。
+
+---
+
+## 5. 构建 Scene 之后
+
+- **`scene.getFiles()`**：得到 `ArkFile` 列表；可用 **`file.getName()`** 匹配路径后缀，或按业务维护的文件列表过滤。
+- **命名空间 / 类 / 方法**：`file.getNamespaces()`、`namespace.getClasses()`、`class.getMethods()` 等与 ArkTS 侧模型一致；许多 C++ 全局函数落在 **`file.getDefaultClass()`** 上。
+- **控制流图**：**`method.getCfg()`** 返回 **`Cfg`**，可遍历 **`getBlocks()`**、**`getStmts()`** 等与 `Cfg.test.ts` 中断言方式一致。
+- **`scene.inferTypes()`**：在需要跨过程类型、调用图或其它依赖 TypeInference 的场景中调用；纯 CFG 冒烟可按需省略（与测试各用例不完全相同）。
+
+---
+
+## 6. 与 ArkTS 混编
+
+同一 `Scene` 中可同时存在 ArkTS 与 C++ 文件；TS 侧调用 native 的映射、多语言场景说明见 **[多语言支持](../MultiLanguageSupport.md)**。
+
+---
+
+## 7. 常见问题
+
+1. **扫描不到 `.cpp` / `.h`**：检查 **`languages.cpp.enabled`** 或是否在 **`supportFileExts`** 中显式加入了对应后缀。
+2. **解析标准库或 OHOS 头失败**：配置 **`includeDirs`**，并优先提供准确的 **`compile_commands.json`**（**`setCcjsonPath`**）。
+3. **与 CI 行为一致**：在流水线中设置与本地相同的 **`OHOS_SDK_HOME`**、预置 **`compile_commands.json`**，并完成 [构建指南](./cpp_frontend_build_guide.md) 中的插件构建步骤。
+4. **`getCxxSourceFileExtensions()`**：仅覆盖常见实现文件后缀；需要分析头文件本体时，应使用 JSON 里 **`headerExtensions`** 并在 **`enabled: true`** 下由配置自动合并进扫描列表。
+
+更多分析概念（如 Def-Use）见仓库 **`docs/analysis/`** 下各文档；与语言无关的 API 以 TypeScript 声明与源码为准。

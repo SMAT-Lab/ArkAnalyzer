@@ -4,8 +4,50 @@
 
 ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中间表示），从而让上层分析对源语言透明。各前端的差别集中在两处：
 
-1. **解析与 IR 转换**：`.ts` / `.ets` / `.js` 走 [TypeScript Compiler API](https://github.com/microsoft/TypeScript) + ArkAnalyzer 自己的转换器；`C/C++` 经 [`src/frontend/cppFrontend`](../src/frontend/cppFrontend) 的独立流水线（依赖外部 cppast JSON / compile_commands.json）。
+1. **解析与 IR 转换**：`.ts` / `.ets` / `.js` 走 [TypeScript Compiler API](https://github.com/microsoft/TypeScript) + ArkAnalyzer 自己的转换器；`C/C++` 经 [`src/frontend/cppFrontend`](../src/frontend/cppFrontend) 的独立流水线（依赖本机构建的 **`astJsonDumper.node`** 输出 AST JSON、`compile_commands.json` 以及 include 路径等）。
 2. **类型推导**：[`InferenceManager`](../src/core/inference/Inference.ts) 把 `Language` 派发到对应实现 —— [`ArkTsInferenceBuilder`](../src/core/inference/arkts/ArkTsInference.ts)、`JsInferenceBuilder`、`ArkTs2InferenceBuilder`、`CxxInferenceBuilder`、`AbcInferenceBuilder`。
+
+### 1.1 解析阶段：`FrontendBuilder` 如何分发到各语言前端
+
+生成 `ArkFile` 时，`Scene` 不直接在内部写「`if (CXX)` / `else`」，而是统一委托 **[`FrontendBuilder`](../src/frontend/FrontendBuilder.ts)**：
+
+| 步骤 | 行为 |
+|------|------|
+| 入口 | **`FrontendBuilder.buildFilesIntoArkFiles(scene, filePaths)`**（多模块下还有 **`buildModuleFilesIntoArkFiles`**）。 |
+| 分桶 | **`partitionFilePaths`**：对每个路径调用 **`FileUtils.getFileLanguage(path, scene.getFileLanguages())`**（扩展名默认识别 + **`SceneConfig`** 里 **`languageTags` / `fileLanguages` 覆盖**），**仅 `Language.CXX` 进 C++ 列表，其余全部进「TS 系」列表**。 |
+| C++ 路径 | **`CppFrontend.buildProjectFiles`** → **`prepareArkFiles`** / **`AstParser.runCppAst`**（依赖本机构建的 **`astJsonDumper.node`**，消费 Clang 导出的 AST JSON）。单文件场景走 **`buildProjectFileIntoArkFile`** 里对 **`CppFrontend.buildProjectFile`** 的分支。 |
+| TS 系路径 | **`ArktsFrontend.buildProjectFiles`** → 逐文件 **`buildArkFileFromFile`**（**TypeScript Compiler API**；`.ets` / `.ts` / `.js` 及 ArkTS 1.2 的 `'use static'` 等细节在 ArkFile 构建阶段处理）。 |
+| 回写 | 两侧返回的 **`ArkFile[]`** 经 **`scene.setFile(...)`** 挂到同一 `Scene`；解析失败路径记入 **`addUnhandledFilePath`**。 |
+
+当前实现是 **「C++」与「非 C++」** 两路前端；**非 C++** 统一由 **`ArktsFrontend`** 进入 TS 编译器管线（与后续 **`inferTypes()`** 里按 `Language` 再细分不同——后者见 §2.2）。
+
+```mermaid
+flowchart TB
+  subgraph Entry["Scene"]
+    PF["待解析文件路径列表 projectFiles"]
+    FB["FrontendBuilder.buildFilesIntoArkFiles"]
+  end
+
+  PART["partitionFilePaths\nFileUtils.getFileLanguage + fileLanguages 覆盖"]
+
+  subgraph TSBranch["非 CXX：ArktsFrontend"]
+    AF["buildProjectFiles"]
+    BAF["buildArkFileFromFile\nTypeScript Compiler API"]
+  end
+
+  subgraph CPPBranch["CXX：CppFrontend"]
+    CF["buildProjectFiles"]
+    PA["prepareArkFiles / AstParser\nastJsonDumper.node"]
+  end
+
+  OUT["ArkFile 集合 → scene.setFile"]
+
+  PF --> FB --> PART
+  PART -->|其余 Language| AF --> BAF --> OUT
+  PART -->|Language.CXX| CF --> PA --> OUT
+```
+
+单文件按需构建时，**`FrontendBuilder.buildProjectFileIntoArkFile(scene, path, arkFile)`** 根据 **`arkFile` 上已设好的 `Language`** 在 **`CppFrontend`** 与 **`ArktsFrontend`** 之间二选一，不再经过 `partitionFilePaths`。
 
 下面给出**功能矩阵**与**与 ArkTS 的 IR 差异**。完整的阶段化使用场景见根 [README.md](../README.md#支持的使用场景分语言)。
 
@@ -14,8 +56,8 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 | 维度 | ArkTS 1.1 (`.ets`) | ArkTS 1.2 (`'use static'`) | TypeScript (`.ts`) | JavaScript (`.js`) | C / C++ | ABC |
 |------|--------------------|-----------------------------|---------------------|--------------------|---------|-----|
 | `Language` 枚举值 | `ARKTS1_1` | `ARKTS1_2` | `TYPESCRIPT` | `JAVASCRIPT` | `CXX` | `ABC` |
-| 扩展名识别 | `.ets` | `.ets` + 文件头 `'use static'` | `.ts` | `.js` | `.c/.cc/.cpp/.h/.hpp` 等 | `.abc` |
-| AST 来源 | TS Compiler API | TS Compiler API | TS Compiler API | TS Compiler API | cppast JSON | ArkCompiler 字节码 |
+| 扩展名识别 | `.ets` | `.ets` + 文件头 `'use static'` | `.ts` | `.js` | 见 §2.1（默认可识别 `.c` `.cc` `.cpp` `.cxx` `.h` `.hh` `.hpp`） | `.abc` |
+| AST 来源 | TS Compiler API | TS Compiler API | TS Compiler API | TS Compiler API | Clang AST → JSON（由 `astJsonDumper.node` 管道消费） | ArkCompiler 字节码 |
 | 全部 7 种 [`ClassCategory`](./components/ArkClass.md#3-核心数据结构) | ✅ | ✅ | ✅ | ✅ (除 INTERFACE / TYPE_LITERAL) | ✅（独占 `UNION`） | 部分 |
 | 命名空间 | ✅ | ✅ | ✅ | — | ✅（按 namespace / 文件） | — |
 | 接口 / 抽象类 | ✅ | ✅ | ✅ | — | ✅（纯虚函数） | — |
@@ -28,7 +70,7 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 | [Def-Use Chain](./analysis/Def-Use%20Chain.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [IFDS](./analysis/IFDS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [ViewTree](./analysis/ViewTree.md) | ✅ | ✅ | — | — | — | — |
-| 多模块（鸿蒙 `oh-package.json5`） | ✅ | ✅ | — | — | ✅（与 ArkTS 同工程） | — |
+| 多模块（`oh-package.json5`） | ✅ | ✅ | — | — | ✅（与 ArkTS 同工程） | — |
 
 > "✅" 表示已实现且测试覆盖；"⚠" 表示部分实现；"—" 表示当前不支持或不适用。
 
@@ -38,15 +80,16 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 
   | 扩展名 | 语言 |
   |--------|------|
-  | `.ts` / `.tsx` | `TYPESCRIPT` |
+  | `.ts` | `TYPESCRIPT` |
   | `.ets` | `ARKTS1_1`（默认） |
-  | `.js` / `.mjs` | `JAVASCRIPT` |
-  | `.c` / `.cc` / `.cpp` / `.cxx` / `.h` / `.hpp` / `.hh` 等 | `CXX` |
+  | `.js` | `JAVASCRIPT` |
+  | `.c` / `.cc` / `.cpp` / `.cxx` / `.h` / `.hpp` / `.hh` | `CXX`（集合由 [`getCxxSourceFileExtensionSet()`](../src/frontend/cppFrontend/ast/ts/const.ts) 定义，[`FileUtils`](../src/utils/FileUtils.ts) 引用） |
+  | `.tsx`、`.mjs` 等 | 当前 **未**在 `switch` 中单独映射 → 一般为 `UNKNOWN`（需通过 `languageTags` 显式指定语言，见下） |
   | 其他 | `UNKNOWN` |
 
 - **ArkTS 1.2 升级**：`.ets` 文件头若有顶层 `'use static'` 指令（`ARKTS_STATIC_MARK`），[`ArkFileBuilder`](../src/core/model/builder/ArkFileBuilder.ts) 会把语言切到 `ARKTS1_2`，启用更严格的静态推导路径。
-- C/C++ 集合定义在 [`CXX_EXTENSION_SET`](../src/utils/FileUtils.ts) 中。
-- 用户可通过 `SceneConfig` 提供 `fileTags`（路径 → Language）覆盖默认识别。
+- **`arkanalyzer.json` 的 `languages.cpp`**：可将更多后缀并入 **`supportFileExts`** 以参与扫描；但 **`FileUtils.getFileLanguage` 判定 `Language.CXX` 仍以上表所列集合为准**，未纳入该集合的扩展名需使用 **`languageTags`**，否则可能保持为 `UNKNOWN`。
+- 用户可在 **`SceneConfig.buildFromProjectFiles(..., languageTags?)`** 中传入 **`Map<路径或目录, Language>`**，写入内部的 **`fileLanguages`**（亦可通过 **`getFileLanguages()`** 读取），用于覆盖默认识别。
 
 ### 2.2 类型推导分发
 
@@ -66,7 +109,7 @@ ArkAnalyzer 把所有支持的源语言统一编译成 **ArkIR**（三地址中�
 
 ### 3.1 ArkTS（HarmonyOS）
 
-最常用：直接 `buildSceneFromProjectDir`，对鸿蒙多模块工程改用 `buildScene4HarmonyProject`。详见 [Scene §5.1](./components/Scene.md#51-构建-scene)。
+最常用：直接 `buildSceneFromProjectDir`，对多模块工程改用 `buildScene4HarmonyProject`。详见 [Scene §5.1](./components/Scene.md#51-构建-scene)。
 
 ```typescript
 const config = new SceneConfig();
@@ -90,26 +133,31 @@ scene.inferTypes();
 
 ### 3.3 C / C++
 
-C/C++ 必须额外提供 **cppast JSON** 与 **compile_commands.json**，以及头文件 include 目录：
+1. **构建并部署 addon**：在仓库根执行 `npm run build:cpp`，得到 `src/frontend/cppFrontend/ast/dumper/astJsonDumper.node`（见 [`cpp_frontend_build_guide.md`](./cppFrontend/cpp_frontend_build_guide.md)）。
+2. **打开 C++ 语言开关**：在工程使用的配置里将 **`languages.cpp.enabled`** 设为 **`true`**（见 `config/arkanalyzer.json` 示例），否则对应后缀不会进入扫描列表。
+3. **编译数据库与头文件路径**：提供 **`compile_commands.json`**（`SceneConfig.setCcjsonPath`，或在工程目录旁可被自动发现）以及 **`includeDirs`**（`buildFromProjectDir(projectDir, includeDirs)`），以便 Clang 正确解析 TU。
+
+典型用法之一：用 JSON 合并工程选项后构建 Scene（`buildSceneFromProjectDir` 内已含 `buildBasicInfo`，无需再手动调用后者）：
 
 ```typescript
-import { SceneConfig, Scene } from 'arkanalyzer';
+import { SceneConfig, Scene, Language } from 'arkanalyzer';
 
 const config = new SceneConfig();
-config.buildFromJson('./cxx-config.json');     // 配置中含 cppAstPath / ccjsonPath / includeDirs
+config.buildFromJson('./cxx-config.json'); // 合并 arkanalyzer.json 风格 options、工程路径等
+config.setCcjsonPath('/abs/path/to/compile_commands.json');
+config.buildFromProjectDir('/abs/path/to/cxx-project', ['/abs/path/to/include']);
 const scene = new Scene();
-scene.buildBasicInfo(config);
 scene.buildSceneFromProjectDir(config);
 scene.inferTypes();
 
 console.log('cxx files:', scene.getFiles().filter(f => f.getLanguage() === Language.CXX).length);
 ```
 
-> CXX 配置示例可参考 [tests/resources/cpp/](../tests/resources/cpp/)；`SceneConfig` 中提供 `cppAstPath: <cppast JSON>`、`ccjsonPath: <compile_commands.json>` 与 `includeDirs: string[]`。
+> 参考：`SceneConfig` 另有 **`setCppAstPath`** / **`getCppAstPath`** 字段，当前管线中**未参与** AST 拉取；AST 由 **`astJsonDumper.node`** 在解析阶段生成。C++ 相关单测与资源见 **`tests/unit/cppCore/`**、**`tests/cppResources/`** 等目录。
 
 ### 3.4 ArkTS 与 C/C++ 混合工程
 
-鸿蒙原生模块经常出现 ArkTS 通过 `napi_*` 调到 C/C++ 实现的场景。`ArkClass` 提供桥接表：
+原生模块经常出现 ArkTS 通过 `napi_*` 调到 C/C++ 实现的场景。`ArkClass` 提供桥接表：
 
 ```typescript
 for (const cls of scene.getClasses()) {
@@ -200,7 +248,11 @@ class PointerType extends Type {
 }
 class SmartPointerType extends PointerType { /* unique_ptr / shared_ptr / weak_ptr */ }
 
-enum ReferCategory { L_VALUE, R_VALUE }   // T& / T&&
+enum ReferCategory {
+    LVALUE_REF,   // T&
+    RVALUE_REF,   // T&&
+    UNIVERSAL_REF // 转发引用等
+}
 ```
 
 这些类型在 IR 中出现在 `Local` / 字段 / 形参的类型槽里，例如：
@@ -214,7 +266,7 @@ const std::string& s = "hi";
 ```typescript
 // ArkIR（ArkAnalyzer 文本）
 arr = new @F: int[10]: PointerType<int, 1>
-s   = parameter0: ReferenceType<string, L_VALUE, const>
+s   = parameter0: ReferenceType<string, LVALUE_REF, const>
 ```
 
 #### 4.4.4 调用 IR 差异
@@ -238,12 +290,12 @@ C/C++ 的方法调用文本与 TS 一致（`instanceinvoke` / `staticinvoke`）�
 | HarmonyOS 应用 / ArkUI 视图分析 | ArkTS 1.1（`.ets`）；启用了 `'use static'` 的新代码用 ArkTS 1.2 |
 | 通用 TS 库 / 服务端 | TypeScript |
 | 既有 JS 工程做粗粒度 CG | JavaScript（建议先补类型注解再升级到 TS） |
-| 鸿蒙 Native 模块 / 跨语言追踪 | C/C++（搭配 ArkTS 主工程同 Scene 构建） |
+| Native 模块 / 跨语言追踪 | C/C++（搭配 ArkTS 主工程同 Scene 构建） |
 | IR 互译验证 | ABC（实验） |
 
 ## 6. 参考资料
 
-- 语言枚举与扩展名映射：[`src/utils/FileUtils.ts`](../src/utils/FileUtils.ts)、[`src/core/model/ArkFile.ts`](../src/core/model/ArkFile.ts)
+- 语言枚举与扩展名映射：[`src/utils/FileUtils.ts`](../src/utils/FileUtils.ts)、[`src/frontend/cppFrontend/ast/ts/const.ts`](../src/frontend/cppFrontend/ast/ts/const.ts)（`getCxxSourceFileExtensionSet`）、[`src/core/model/ArkFile.ts`](../src/core/model/ArkFile.ts)
 - 推导分发：[`src/core/inference/Inference.ts`](../src/core/inference/Inference.ts)
 - 重载支持判断：[`src/core/common/ModelUtils.ts`](../src/core/common/ModelUtils.ts)（`isLanguageOverloadSupport`）
 - ArkTS 1.2 检测：[`src/core/model/builder/ArkFileBuilder.ts`](../src/core/model/builder/ArkFileBuilder.ts)（`ARKTS_STATIC_MARK = 'use static'`）
