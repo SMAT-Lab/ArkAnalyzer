@@ -361,8 +361,7 @@ export class Scene {
         }
     }
 
-    private buildAllMethodBody(): void {
-        this.buildStage = SceneBuildStage.CLASS_DONE;
+    private collectAllMethods(): ArkMethod[] {
         const methods: ArkMethod[] = [];
         for (const file of this.getFiles()) {
             if (!this.options.enableOhModulesBody && file.getName().includes(OH_MODULES)) {
@@ -392,6 +391,21 @@ export class Scene {
                 }
             }
         }
+        return methods;
+    }
+
+    private static freeMethodBodyBuilder(method: ArkMethod): void {
+        const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
+        if (isCxxFile) {
+            method.freeCxxBodyBuilder();
+        } else {
+            method.freeBodyBuilder();
+        }
+    }
+
+    private buildAllMethodBody(): void {
+        this.buildStage = SceneBuildStage.CLASS_DONE;
+        const methods = this.collectAllMethods();
 
         for (const method of methods) {
             try {
@@ -399,13 +413,7 @@ export class Scene {
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                // CXXTodo: Distinguish between C++ and TS/ArkTS.
-                const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
-                if (isCxxFile) {
-                    method.freeCxxBodyBuilder();
-                } else {
-                    method.freeBodyBuilder();
-                }
+                Scene.freeMethodBodyBuilder(method);
             }
         }
 
@@ -413,18 +421,37 @@ export class Scene {
         this.buildStage = SceneBuildStage.METHOD_DONE;
     }
 
+    private freeAllBodyBuilders(): void {
+        const methods = this.collectAllMethods();
+        for (const method of methods) {
+            Scene.freeMethodBodyBuilder(method);
+        }
+    }
+
     private genArkFiles(): void {
         FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles);
-        this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        if (this.options.enableMethodBodyBuild ?? true) {
+            this.buildAllMethodBody();
+            this.updateOrAddDefaultConstructors();
+        } else {
+            this.freeAllBodyBuilders();
+            ModelUtils.dispose();
+            this.buildStage = SceneBuildStage.METHOD_DONE;
+        }
     }
 
     private getFilesOrderByDependency(): void {
         for (const projectFile of this.projectFiles) {
             this.getDependencyFilesDeeply(projectFile);
         }
-        this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        if (this.options.enableMethodBodyBuild ?? true) {
+            this.buildAllMethodBody();
+            this.updateOrAddDefaultConstructors();
+        } else {
+            this.freeAllBodyBuilders();
+            ModelUtils.dispose();
+            this.buildStage = SceneBuildStage.METHOD_DONE;
+        }
     }
 
     public getDependencyFilesDeeply(projectFile: string): void {
@@ -726,8 +753,14 @@ export class Scene {
             this.moduleScenesMap.set(value, moduleScene);
         });
 
-        this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        if (this.options.enableMethodBodyBuild ?? true) {
+            this.buildAllMethodBody();
+            this.updateOrAddDefaultConstructors();
+        } else {
+            this.freeAllBodyBuilders();
+            ModelUtils.dispose();
+            this.buildStage = SceneBuildStage.METHOD_DONE;
+        }
     }
 
     private buildOhPkgContentMap(): void {
@@ -766,7 +799,13 @@ export class Scene {
         moduleScene.ModuleSceneBuilder(moduleName, modulePath, supportFileExts);
         this.moduleScenesMap.set(moduleName, moduleScene);
 
-        this.buildAllMethodBody();
+        if (this.options.enableMethodBodyBuild ?? true) {
+            this.buildAllMethodBody();
+        } else {
+            this.freeAllBodyBuilders();
+            ModelUtils.dispose();
+            this.buildStage = SceneBuildStage.METHOD_DONE;
+        }
     }
 
     private processModuleOhPkgContent(dependencies: Object, moduleOhPkgFilePath: string, supportFileExts: string[]): void {
