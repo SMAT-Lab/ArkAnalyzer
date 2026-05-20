@@ -366,8 +366,8 @@ export const INCREMENT_EXPECT_CASE9 = {
                 'if %0 != 0',
             ],
             preds: [
-                0,
                 4,
+                0,
             ],
             succes: [
                 2,

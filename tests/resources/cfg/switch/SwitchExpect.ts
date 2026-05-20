@@ -230,7 +230,7 @@ export const SWITCH_EXPECT_CASE4 = {
             stmts: [
                 'if i < 3',
             ],
-            preds: [0, 8],
+            preds: [8, 0],
             succes: [2, 7],
         },
         {

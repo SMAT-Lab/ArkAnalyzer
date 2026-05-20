@@ -248,7 +248,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             stmts: [
                 'if j < 10',
             ],
-            preds: [0, 6],
+            preds: [6, 0],
             succes: [2, 5],
         },
         {

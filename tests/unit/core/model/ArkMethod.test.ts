@@ -181,16 +181,16 @@ const methodWithTryCatch = `paramInitializerWithTryCatch(a?: unknown): void {
 `;
 
 const methodWithForLoop = `paramInitializerWithForLoop(a?: unknown): void {
-  label3:
+  label4:
     a = parameter0: unknown
     this = this: @method/method.ts: %dflt
-    if a == undefined goto label4 label5
-
-  label4:
-    a = 3
-    goto label5
+    if a == undefined goto label5 label3
 
   label5:
+    a = 3
+    goto label3
+
+  label3:
     i = 0
     goto label0
 
@@ -663,7 +663,7 @@ describe('Method Param with Default Value', () => {
         assert.equal(printer.dump(), methodWithForLoop);
         const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
         assert.isDefined(startingBlockID);
-        assert.equal(startingBlockID, 3);
+        assert.equal(startingBlockID, 4);
     });
 
     it('case11: method with Switch', async () => {

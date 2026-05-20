@@ -60,7 +60,7 @@ export const FOR_STATEMENT_EXPECT_CASE2 = {
                 'if i < 10',
 
             ],
-            preds: [0, 3],
+            preds: [3, 0],
             succes: [3, 2],
         },
         {
@@ -139,7 +139,7 @@ export const FOR_STATEMENT_EXPECT_CASE4 = {
                 'if i < 10',
 
             ],
-            preds: [0, 2],
+            preds: [2, 0],
             succes: [2, 3],
         },
         {
@@ -267,7 +267,7 @@ export const FOR_STATEMENT_EXPECT_CASE7 = {
                 'if i < 10',
 
             ],
-            preds: [0, 5],
+            preds: [5, 0],
             succes: [2, 4],
         },
         {

@@ -277,53 +277,53 @@ const CASE1_EXPECT = `class %dflt {
       min = instanceinvoke Math.<@built-in/lib.es5.d.ts: Math.min(number[])>(%1, bRGB)
       bHSB = max / 255
       hHSB = 0
-      %2 = max === rRGB
-      %3 = gRGB >= bRGB
-      %4 = %2 && %3
-      if %4 != false goto label1 label2
+      if max === rRGB goto label14 label2
+
+    label14:
+      if gRGB >= bRGB goto label1 label2
 
     label1:
-      %5 = gRGB - bRGB
-      %6 = 60 * %5
-      %7 = max - min
-      %8 = %6 / %7
-      hHSB = %8 + 0
+      %2 = gRGB - bRGB
+      %3 = 60 * %2
+      %4 = max - min
+      %5 = %3 / %4
+      hHSB = %5 + 0
       goto label2
 
     label2:
-      %9 = max === rRGB
-      %10 = gRGB < bRGB
-      %11 = %9 && %10
-      if %11 != false goto label3 label4
+      if max === rRGB goto label15 label4
+
+    label15:
+      if gRGB < bRGB goto label3 label4
 
     label3:
-      %12 = gRGB - bRGB
-      %13 = 60 * %12
-      %14 = max - min
-      %15 = %13 / %14
-      hHSB = %15 + 360
+      %6 = gRGB - bRGB
+      %7 = 60 * %6
+      %8 = max - min
+      %9 = %7 / %8
+      hHSB = %9 + 360
       goto label4
 
     label4:
       if max === gRGB goto label5 label6
 
     label5:
-      %16 = bRGB - rRGB
-      %17 = 60 * %16
-      %18 = max - min
-      %19 = %17 / %18
-      hHSB = %19 + 120
+      %10 = bRGB - rRGB
+      %11 = 60 * %10
+      %12 = max - min
+      %13 = %11 / %12
+      hHSB = %13 + 120
       goto label6
 
     label6:
       if max === bRGB goto label7 label8
 
     label7:
-      %20 = rRGB - gRGB
-      %21 = 60 * %20
-      %22 = max - min
-      %23 = %21 / %22
-      hHSB = %23 + 240
+      %14 = rRGB - gRGB
+      %15 = 60 * %14
+      %16 = max - min
+      %17 = %15 / %16
+      hHSB = %17 + 240
       goto label8
 
     label8:

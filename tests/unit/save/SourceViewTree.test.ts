@@ -304,8 +304,12 @@ export default class SongItemBuilder {
     return this.realUrl;
   }
   public async release(): Promise<void> {
-    if (this.context && this.context !== null && this.songItem !== null != 0) {
-      this.context.resourceManager.closeRawFd(this.songItem.src);
+    if (this.context != 0) {
+      if (this.context !== null) {
+        if (this.songItem !== null) {
+          this.context.resourceManager.closeRawFd(this.songItem.src);
+        }
+      }
     }
     this.songItem = null;
   }

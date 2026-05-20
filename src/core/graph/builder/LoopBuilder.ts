@@ -17,7 +17,7 @@ import { BasicBlock } from '../BasicBlock';
 import { ArkAssignStmt, ArkIfStmt, Stmt } from '../../base/Stmt';
 import { AbstractInvokeExpr } from '../../base/Expr';
 import { Builtin } from '../../common/Builtin';
-import { ArkIRTransformer } from '../../common/ArkIRTransformer';
+import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
 import { BlockBuilder } from './CfgBuilder';
 
 /**
@@ -53,22 +53,14 @@ export class LoopBuilder {
                     block.addPredecessorBlock(block);
                 }
 
-                let prevBlockBuilderContainsLoop = this.doesPrevBlockBuilderContainLoop(blockBuilder, blockId, blocksContainLoopCondition);
-                if (prevBlockBuilderContainsLoop) {
-                    // should create an extra block when previous block contains loop condition
-                    this.insertBeforeConditionBlockBuilder(
-                        blockBuilderToCfgBlock,
-                        blockBuilder,
-                        stmtsInsertBeforeCondition,
-                        false,
-                        basicBlockSet,
-                        blockBuilders
-                    );
-                } else {
-                    const blockBuilderBeforeCondition = blockBuilder.lasts[0];
-                    const blockBeforeCondition = blockBuilderToCfgBlock.get(blockBuilderBeforeCondition) as BasicBlock;
-                    stmtsInsertBeforeCondition.forEach(stmt => blockBeforeCondition?.getStmts().push(stmt));
-                }
+                this.insertBeforeConditionBlockBuilder(
+                    blockBuilderToCfgBlock,
+                    blockBuilder,
+                    stmtsInsertBeforeCondition,
+                    false,
+                    basicBlockSet,
+                    blockBuilders
+                );
                 if (dummyInitializerStmtIdx !== -1 && ifStmtIdx !== stmtsCnt - 1) {
                     // put incrementor statements into block which reenters condition
                     this.adjustIncrementorStmts(
@@ -95,17 +87,6 @@ export class LoopBuilder {
                 stmts.splice(ifStmtIdx - firstStmtIdxInCondition + 1);
             }
         }
-    }
-
-    private doesPrevBlockBuilderContainLoop(currBlockBuilder: BlockBuilder, currBlockId: number, blocksContainLoopCondition: Set<BlockBuilder>): boolean {
-        let prevBlockBuilderContainsLoop = false;
-        for (const prevBlockBuilder of currBlockBuilder.lasts) {
-            if (prevBlockBuilder.id < currBlockId && blocksContainLoopCondition.has(prevBlockBuilder)) {
-                prevBlockBuilderContainsLoop = true;
-                break;
-            }
-        }
-        return prevBlockBuilderContainsLoop;
     }
 
     private insertBeforeConditionBlockBuilder(
@@ -331,7 +312,9 @@ export class LoopBuilder {
             }
             if (stmt instanceof ArkIfStmt) {
                 ifStmtIdx = i;
-                break;
+            }
+            if (stmt instanceof DummyStmt && stmt.toString()?.startsWith(ArkIRTransformer.DUMMY_IF_OPERATOR_END)) {
+                ifStmtIdx = i;
             }
         }
         return {

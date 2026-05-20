@@ -75,6 +75,9 @@ export class ArkIRTransformer {
     public static readonly DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'IfTrue';
     public static readonly DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'IfFalse';
     public static readonly DUMMY_CONDITIONAL_OPERATOR_END_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'End';
+    public static readonly DUMMY_IF_OPERATOR_AND_SIGNAL = 'If(&&)';
+    public static readonly DUMMY_IF_OPERATOR_OR_SIGNAL = 'If(||)';
+    public static readonly DUMMY_IF_OPERATOR_END = 'IfEnd';
 
     protected sourceFile: ts.SourceFile;
     protected declaringMethod: ArkMethod;
@@ -558,9 +561,7 @@ export class ArkIRTransformer {
         stmts.push(dummyInitializerStmt);
 
         if (forStatement.condition) {
-            const { value: conditionValue, stmts: conditionStmts } = this.arkValueTransformer.conditionToValueAndStmts(forStatement.condition);
-            conditionStmts.forEach(stmt => stmts.push(stmt));
-            stmts.push(new ArkIfStmt(conditionValue as ArkConditionExpr));
+            this.processLogicalBinaryExprToStmts(forStatement.condition).forEach(stmt => stmts.push(stmt));
         } else {
             // The omitted condition always evaluates to true.
             const trueConstant = ValueUtil.getBooleanConstant(true);
@@ -669,17 +670,13 @@ export class ArkIRTransformer {
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
 
-        const { value: conditionExpr, stmts: conditionStmts } = this.arkValueTransformer.conditionToValueAndStmts(whileStatement.expression);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
-        stmts.push(new ArkIfStmt(conditionExpr as ArkConditionExpr));
+        this.processLogicalBinaryExprToStmts(whileStatement.expression).forEach(stmt => stmts.push(stmt));
         return stmts;
     }
 
     private doStatementToStmts(doStatement: ts.DoStatement): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: conditionExpr, stmts: conditionStmts } = this.arkValueTransformer.conditionToValueAndStmts(doStatement.expression);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
-        stmts.push(new ArkIfStmt(conditionExpr as ArkConditionExpr));
+        this.processLogicalBinaryExprToStmts(doStatement.expression).forEach(stmt => stmts.push(stmt));
         return stmts;
     }
 
@@ -693,12 +690,65 @@ export class ArkIRTransformer {
 
     private ifStatementToStmts(ifStatement: ts.IfStatement): Stmt[] {
         const stmts: Stmt[] = [];
+        this.processLogicalBinaryExprToStmts(ifStatement.expression).forEach(stmt => stmts.push(stmt));
+        if (this.inBuilderMethod) {
+            this.tsNodeToStmts(ifStatement.thenStatement).forEach(stmt => stmts.push(stmt));
+            if (ifStatement.elseStatement) {
+                const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+                    COMPONENT_IF,
+                    COMPONENT_BRANCH_FUNCTION
+                );
+                const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [ValueUtil.getOrCreateNumberConst(1)]);
+                const branchElseInvokeExprPositions = [FullPosition.buildFromNode(ifStatement.elseStatement, this.sourceFile), FullPosition.DEFAULT];
+                const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
+                branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
+                stmts.push(branchElseInvokeStmt);
+
+                this.tsNodeToStmts(ifStatement.elseStatement).forEach(stmt => stmts.push(stmt));
+            }
+            const popInvokeStmt = this.arkValueTransformer.generateComponentPopStmts(COMPONENT_IF);
+            stmts.push(popInvokeStmt);
+        }
+        return stmts;
+    }
+
+    /**
+     * Recursively parses logical expressions with &&/|| in the TypeScript AST, and decomposes them into an array of
+     * statements ordered as [left expression statements → operator marker → right expression statements → end marker].
+     */
+    private processLogicalBinaryExprToStmts(expression: ts.Expression, depth: number = 0): Stmt[] {
+        const stmts: Stmt[] = [];
+        if (expression.kind === ts.SyntaxKind.ParenthesizedExpression) {
+            expression = (expression as ts.ParenthesizedExpression).expression;
+        }
+        if (expression.kind === ts.SyntaxKind.BinaryExpression) {
+            const expr = expression as ts.BinaryExpression;
+            if (expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+                this.processLogicalBinaryExprToStmts(expr.left, depth + 1).forEach(stmt => stmts.push(stmt));
+                stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_IF_OPERATOR_AND_SIGNAL + depth));
+                this.processLogicalBinaryExprToStmts(expr.right, depth + 1).forEach(stmt => stmts.push(stmt));
+                stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_IF_OPERATOR_END + depth));
+                return stmts;
+            }
+            if (expr.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+                this.processLogicalBinaryExprToStmts(expr.left, depth + 1).forEach(stmt => stmts.push(stmt));
+                stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_IF_OPERATOR_OR_SIGNAL + depth));
+                this.processLogicalBinaryExprToStmts(expr.right, depth + 1).forEach(stmt => stmts.push(stmt));
+                stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_IF_OPERATOR_END + depth));
+                return stmts;
+            }
+        }
+        return this.conditionToStmts(expression);
+    }
+
+    private conditionToStmts(expression: ts.Expression): Stmt[] {
+        const stmts: Stmt[] = [];
         if (this.inBuilderMethod) {
             const {
                 value: conditionExpr,
                 valueOriginalPositions: conditionExprPositions,
                 stmts: conditionStmts,
-            } = this.arkValueTransformer.conditionToValueAndStmts(ifStatement.expression);
+            } = this.arkValueTransformer.conditionToValueAndStmts(expression);
             conditionStmts.forEach(stmt => stmts.push(stmt));
             const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_CREATE_FUNCTION);
             const {
@@ -717,26 +767,12 @@ export class ArkIRTransformer {
             const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
             branchInvokeStmt.setOperandOriginalPositions(branchInvokeExprPositions);
             stmts.push(branchInvokeStmt);
-            this.tsNodeToStmts(ifStatement.thenStatement).forEach(stmt => stmts.push(stmt));
-            if (ifStatement.elseStatement) {
-                const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
-                const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [ValueUtil.getOrCreateNumberConst(1)]);
-                const branchElseInvokeExprPositions = [FullPosition.buildFromNode(ifStatement.elseStatement, this.sourceFile), FullPosition.DEFAULT];
-                const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
-                branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
-                stmts.push(branchElseInvokeStmt);
-
-                this.tsNodeToStmts(ifStatement.elseStatement).forEach(stmt => stmts.push(stmt));
-            }
-
-            const popInvokeStmt = this.arkValueTransformer.generateComponentPopStmts(COMPONENT_IF);
-            stmts.push(popInvokeStmt);
         } else {
             const {
                 value: conditionExpr,
                 valueOriginalPositions: conditionExprPositions,
                 stmts: conditionStmts,
-            } = this.arkValueTransformer.conditionToValueAndStmts(ifStatement.expression);
+            } = this.arkValueTransformer.conditionToValueAndStmts(expression);
             conditionStmts.forEach(stmt => stmts.push(stmt));
             const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionExprPositions);
@@ -876,7 +912,7 @@ export class ArkIRTransformer {
 
     public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
         const leftOp = this.arkValueTransformer.generateTempLocal(value.getType());
-        if (valueOriginalPositions.length === 0 ) {
+        if (valueOriginalPositions.length === 0) {
             return {
                 value: leftOp,
                 valueOriginalPositions: [],

@@ -83,6 +83,14 @@ import {
     CLOSURE_EXPECT_CASE3,
 } from '../../../resources/cfg/closure/ClosureExpect';
 
+import {
+    LOGICAL_EXPR_EXPECT_CASE1,
+    LOGICAL_EXPR_EXPECT_CASE2,
+    LOGICAL_EXPR_EXPECT_CASE3,
+    LOGICAL_EXPR_EXPECT_CASE4,
+    LOGICAL_EXPR_EXPECT_CASE5,
+} from '../../../resources/cfg/LogicalExpr/LogicalExprExpect';
+
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
         let cfg = new Cfg();
@@ -233,6 +241,15 @@ describe('CfgTest', () => {
         testBlocks(scene, 'IncrementSample.ts', 'case9', INCREMENT_EXPECT_CASE9.blocks);
         testBlocks(scene, 'IncrementSample.ts', 'case10', INCREMENT_EXPECT_CASE10.blocks);
         testBlocks(scene, 'IncrementSample.ts', 'case11', INCREMENT_EXPECT_CASE11.blocks);
+    });
+
+    it('case9: logical expression', () => {
+        const scene = buildScene('LogicalExpr');
+        testBlocks(scene, 'LogicalExprSample.ts', 'case1', LOGICAL_EXPR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'LogicalExprSample.ts', 'case2', LOGICAL_EXPR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'LogicalExprSample.ts', 'case3', LOGICAL_EXPR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'LogicalExprSample.ts', 'case4', LOGICAL_EXPR_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'LogicalExprSample.ts', 'case5', LOGICAL_EXPR_EXPECT_CASE5.blocks);
     });
 });
 
