@@ -16,7 +16,7 @@
 import { Scene } from '../../Scene';
 import { COMPONENT_LIFECYCLE_METHOD_NAME, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
 import { Constant } from '../base/Constant';
-import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
+import { ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { ClassType, NumberType, Type } from '../base/Type';
@@ -94,17 +94,20 @@ export class DummyMainCreater {
     private scene: Scene;
     private tempLocalIndex: number = 0;
     private tempBlockIndex: number = 0;
+    private extraInstanceAssign: boolean = false;
     private classScope?: ArkClass[];
     private dummyMethodName?: string;
 
     /**
      * Create dummy entry method and add it to the specified scene.
      * @param scene
+     * @param extraInstanceAssign if enabled, then will add extra assign stmt like %1000 = %1, after each instance invoke stmt
      * @param dummyMethodName if not provided, using the default method name '@dummyMain'
      * @param classScope if not provided, collect all Ability class and Component struct.
      */
-    constructor(scene: Scene, dummyMethodName?: string, classScope?: ArkClass[]) {
+    constructor(scene: Scene, extraInstanceAssign: boolean = false, dummyMethodName?: string, classScope?: ArkClass[]) {
         this.scene = scene;
+        this.extraInstanceAssign = extraInstanceAssign;
         this.dummyMethodName = dummyMethodName;
         this.classScope = classScope;
         // Currently get entries from module.json5 can't visit all of abilities
@@ -165,7 +168,7 @@ export class DummyMainCreater {
         }
 
         // step5: create dummy method body
-        const localSet = new Set(this.classLocalMap.values());
+        let localSet = new Set(this.classLocalMap.values());
         const dummyCfg = new Cfg();
         this.dummyMain.setBody(new ArkBody(localSet, dummyCfg));
         dummyCfg.setDeclaringMethod(this.dummyMain);
@@ -189,8 +192,14 @@ export class DummyMainCreater {
             let consMtd = cls.getMethodWithName(CONSTRUCTOR_NAME);
             if (consMtd) {
                 let ivkExpr = new ArkInstanceInvokeExpr(local, consMtd.getSignature(), []);
-                let ivkStmt = new ArkAssignStmt(local, ivkExpr);
-                firstBlock.addStmt(ivkStmt);
+                let ivkAssignStmt = new ArkAssignStmt(local, ivkExpr);
+                firstBlock.addStmt(ivkAssignStmt);
+                local.addUsedStmt(ivkAssignStmt);
+                if (this.extraInstanceAssign) {
+                    const instanceAssignStmt = new ArkAssignStmt(local, local);
+                    firstBlock.addStmt(instanceAssignStmt);
+                    local.addUsedStmt(instanceAssignStmt);
+                }
             }
         }
     }
@@ -258,8 +267,11 @@ export class DummyMainCreater {
         // 4. all start lifecycle methods in sequence
         const firstBlock = new BasicBlock(this.tempBlockIndex++);
         const dummyClassType = new ClassType(this.dummyMain.getDeclaringArkClass().getSignature());
-        const startingStmt = new ArkAssignStmt(new Local(THIS_NAME, dummyClassType), new ArkThisRef(dummyClassType));
+        const localThis = new Local(THIS_NAME, dummyClassType);
+        this.dummyMain.getBody()?.addLocal(THIS_NAME, localThis);
+        const startingStmt = new ArkAssignStmt(localThis, new ArkThisRef(dummyClassType));
         firstBlock.addStmt(startingStmt);
+        localThis.setDeclaringStmt(startingStmt);
         dummyCfg.setStartingStmt(startingStmt);
 
         this.addStaticInit(firstBlock);
@@ -310,14 +322,22 @@ export class DummyMainCreater {
             const paramLocals: Local[] = [];
             this.addParamInit(method, paramLocals, block);
             const local = this.classLocalMap.get(method.getDeclaringArkClass());
-            let invokeExpr: AbstractInvokeExpr;
             if (local) {
-                invokeExpr = new ArkInstanceInvokeExpr(local, method.getSignature(), paramLocals);
+                const invokeExpr = new ArkInstanceInvokeExpr(local, method.getSignature(), paramLocals);
+                const invokeStmt = new ArkInvokeStmt(invokeExpr);
+                block.addStmt(invokeStmt);
+                local.addUsedStmt(invokeStmt);
+
+                if (this.extraInstanceAssign) {
+                    const assignStmt = new ArkAssignStmt(local, local);
+                    block.addStmt(assignStmt);
+                    local.addUsedStmt(assignStmt);
+                }
             } else {
-                invokeExpr = new ArkStaticInvokeExpr(method.getSignature(), paramLocals);
+                const invokeExpr = new ArkStaticInvokeExpr(method.getSignature(), paramLocals);
+                const invokeStmt = new ArkInvokeStmt(invokeExpr);
+                block.addStmt(invokeStmt);
             }
-            const invokeStmt = new ArkInvokeStmt(invokeExpr);
-            block.addStmt(invokeStmt);
         }
     }
 
