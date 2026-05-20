@@ -101,11 +101,11 @@ For detailed option semantics and examples, see [skills/arkanalyzer/skills/cg.md
 
 ## Supported Use Cases (by Language)
 
-ArkAnalyzer compiles every supported source language into a unified **ArkIR** (three-address intermediate representation), so downstream analyses ([CallGraph](docs/analysis/CallGraph.md), [Def-Use Chain](docs/analysis/Def-Use%20Chain.md), [IFDS](docs/analysis/IFDS.md), [ViewTree](docs/analysis/ViewTree.md), …) work uniformly across languages. Maturity differences are mostly in **frontend coverage** and **type-inference precision**; see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md) for the detailed matrix.
+ArkAnalyzer compiles every supported source language into a unified **ArkIR** (three-address intermediate representation), so downstream analyses ([CallGraph](docs/analysis/CallGraph.md), [Def-Use Chain](docs/analysis/Def-Use%20Chain.md), [DataFlow](docs/analysis/DataFlow.md), [ViewTree](docs/analysis/ViewTree.md), …) work uniformly across languages. Maturity differences are mostly in **frontend coverage** and **type-inference precision**; see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md) for the detailed matrix.
 
-| Language | `Language` enum | IR lowering | Type inference | Call graph (CHA / RTA) | Def-Use / IFDS | ViewTree | Notes |
+| Language | `Language` enum | IR lowering | Type inference | Call graph (CHA / RTA) | Def-Use / intraprocedural data flow | ViewTree | Notes |
 |----------|-----------------|-------------|----------------|------------------------|----------------|----------|-------|
-| ArkTS 1.1 / 1.2 | `ARKTS1_1` / `ARKTS1_2` | ✅ full | ✅ full (incl. decorators) | ✅ | ✅ | ✅ | HarmonyOS first-class; the only language with ArkUI view-tree analysis |
+| ArkTS 1.1 | `ARKTS1_1` | ✅ full | ✅ full (incl. decorators) | ✅ | ✅ | ✅ | HarmonyOS first-class; the only language with ArkUI view-tree analysis |
 | TypeScript | `TYPESCRIPT` | ✅ full | ✅ full | ✅ | ✅ | — | Vanilla TS projects; namespaces, generics, decorators, `type`/`interface`, etc. |
 | JavaScript | `JAVASCRIPT` | ✅ basic | ⚠ limited (falls back to `UnknownType` without annotations) | ✅ | ✅ | — | Good for sketching dynamic call relations; for precision, prefer TS annotations |
 | C / C++ | `CXX` | ✅ (cppFrontend) | ⚠ partial | ✅ | ✅ | — | Requires `cppAstPath` / `ccjsonPath`; supports `VIRTUAL`, `INLINE`, `CONSTEXPR`, `MUTABLE`, …; targets HarmonyOS native modules |
@@ -114,7 +114,7 @@ ArkAnalyzer compiles every supported source language into a unified **ArkIR** (t
 **Typical scenarios**:
 
 - **HarmonyOS / ArkTS applications**: ArkUI view-tree analysis ([ViewTree](docs/analysis/ViewTree.md)) + state-dependency tracking + `@State` side-effect checks; multi-module projects are auto-detected via [`Scene.buildScene4HarmonyProject()`](docs/components/Scene.md#51-构建-scene).
-- **TS / JS libraries or server-side projects**: [CallGraph](docs/analysis/CallGraph.md) (CHA / RTA) + [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [IFDS](docs/analysis/IFDS.md) (custom checkers for taint, undefined-variable, divide-by-zero, …).
+- **TS / JS libraries or server-side projects**: [CallGraph](docs/analysis/CallGraph.md) (CHA / RTA) + [Def-Use Chain](docs/analysis/Def-Use%20Chain.md) + [DataFlow](docs/analysis/DataFlow.md) (`MFPDataFlowSolver`, reaching definitions, or custom problems).
 - **Mixed TS/ArkTS + C/C++ projects**: use `ArkClass.getTs2cxxFuncMap()` to bridge TS-side `napi_*` calls to their C/C++ implementations for cross-language reachability.
 
 For a finer-grained capability matrix and IR differences across languages, see [docs/MultiLanguageSupport.md](docs/MultiLanguageSupport.md).

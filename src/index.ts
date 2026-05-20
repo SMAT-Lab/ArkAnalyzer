@@ -63,12 +63,8 @@ export { ValueUtil } from './core/common/ValueUtil';
 export { VisibleValue, Scope } from './core/common/VisibleValue';
 
 // core/dataflow
-export { DataflowProblem, FlowFunction } from './core/dataflow/DataflowProblem';
-export { DataflowResult } from './core/dataflow/DataflowResult';
-export { DataflowSolver } from './core/dataflow/DataflowSolver';
-export { PathEdgePoint, PathEdge } from './core/dataflow/Edge';
-export { Fact } from './core/dataflow/Fact';
-export { UndefinedVariableChecker, UndefinedVariableSolver } from './core/dataflow/UndefinedVariable';
+export { ReachingDefProblem, ReachingDefTransferFunction } from './core/dataflow/ReachingDef';
+export { FlowGraph, TransferFunction, DataFlowProblem, Solution, MFPDataFlowSolver } from './core/dataflow/GenericDataFlow';
 
 // core/graph
 export { BasicBlock } from './core/graph/BasicBlock';
