@@ -19,7 +19,7 @@ import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
 import { FunctionType } from '../../core/base/Type';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, MethodSignature } from '../../core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { IntWorkList } from '../../utils/IntWorkList';
 import { NodeID } from '../../core/graph/BaseExplicitGraph';
@@ -35,7 +35,11 @@ export abstract class AbstractAnalysis {
     protected cgBuilder!: CallGraphBuilder;
     protected workList: IntWorkList = new IntWorkList();
     protected processedMethod!: IPtsCollection<FuncID>;
-    private classHierarchyCache: Map<string, ArkClass[]> = new Map();
+    private classHierarchyCache: Map<ClassSignature, ArkClass[]> = new Map();
+    /** Reused on cache miss to avoid per-call array / Set allocations. */
+    private hierarchyWorkList: ArkClass[] = [];
+    private hierarchyScratch: ArkClass[] = [];
+    private hierarchyVisited: Set<ArkClass> = new Set();
 
     constructor(s: Scene, cg: CallGraph) {
         this.scene = s;
@@ -62,30 +66,43 @@ export abstract class AbstractAnalysis {
     }
 
     public getClassHierarchy(arkClass: ArkClass): ArkClass[] {
-        // Check if already in cache
-        const cacheKey = arkClass.getSignature().toString();
-        if (this.classHierarchyCache.has(cacheKey)) {
-            return this.classHierarchyCache.get(cacheKey)!;
+        const sig = arkClass.getSignature();
+        const hit = this.classHierarchyCache.get(sig);
+        if (hit !== undefined) {
+            return hit;
         }
 
         // TODO: remove abstract class
-        let classWorkList: ArkClass[] = [arkClass];
-        // TODO: check class with no super Class
-        let classHierarchy: ArkClass[] = [];
+        const work = this.hierarchyWorkList;
+        const out = this.hierarchyScratch;
+        const seen = this.hierarchyVisited;
+        work.length = 0;
+        out.length = 0;
+        seen.clear();
 
-        while (classWorkList.length > 0) {
-            // TODO: no dumplicated check, TS doesn't allow multi extend
-            let tempClass = classWorkList.shift()!;
-            classWorkList.push(...tempClass.getExtendedClasses().values());
-            classHierarchy.push(tempClass);
+        work.push(arkClass);
+        seen.add(arkClass);
+        let head = 0;
+
+        while (head < work.length) {
+            const tempClass = work[head++]!;
+            out.push(tempClass);
+            for (const base of tempClass.getExtendedClasses().values()) {
+                if (seen.has(base)) {
+                    continue;
+                }
+                seen.add(base);
+                work.push(base);
+            }
         }
-        // Cache the result
-        this.classHierarchyCache.set(cacheKey, classHierarchy);
 
-        return classHierarchy;
+        const cached = out.slice();
+        this.classHierarchyCache.set(sig, cached);
+        return cached;
     }
 
     public start(displayGeneratedMethod: boolean): void {
+        this.cg.startStat();
         this.init();
         while (!this.workList.isEmpty()) {
             const method = this.workList.pop() as FuncID;
@@ -102,9 +119,11 @@ export abstract class AbstractAnalysis {
 
             this.processMethod(method, displayGeneratedMethod, false);
         }
+        this.cg.endStat();
     }
 
     public projectStart(displayGeneratedMethod: boolean): void {
+        this.cg.startStat();
         this.cgBuilder.buildCGNodes(this.scene.getMethods());
 
         for (let n of this.cg.getNodesIter()) {
@@ -120,6 +139,7 @@ export abstract class AbstractAnalysis {
         }
 
         this.cgBuilder.setEntries();
+        this.cg.endStat();
     }
 
     protected processCallSite(method: FuncID, cs: CallSite, displayGeneratedMethod: boolean, isProject: boolean = false): void {
