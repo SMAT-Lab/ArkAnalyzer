@@ -305,6 +305,21 @@ function resolveFlatcCommand() {
     return undefined;
 }
 
+/** Committed flatc outputs; when all present, skip regeneration unless forced. */
+const FLATC_TS_OUTPUT_MARKERS = [
+    'astWire.ts',
+    join('ark-cxx-ast-fb', 'cxx-ast-payload.ts'),
+    join('ark-cxx-ast-fb', 'cxx-ast-node-wire.ts'),
+];
+const FLATC_CPP_OUTPUT_MARKER = 'astWire_generated.h';
+
+function flatGeneratedOutputsPresent(cppOut, tsOut) {
+    if (!existsSync(join(cppOut, FLATC_CPP_OUTPUT_MARKER))) {
+        return false;
+    }
+    return FLATC_TS_OUTPUT_MARKERS.every((rel) => existsSync(join(tsOut, rel)));
+}
+
 function patchFlatcTsImports(tsOutDir) {
     for (const entry of readdirSync(tsOutDir, { withFileTypes: true })) {
         const filePath = join(tsOutDir, entry.name);
@@ -329,6 +344,16 @@ function runFlatcCodegen() {
     const tsOut = join(astDir, 'ts', 'serialization', 'flatGenerated');
     mkdirSync(cppOut, { recursive: true });
     mkdirSync(tsOut, { recursive: true });
+
+    const forceRegenerate = process.env.ARKANALYZER_FORCE_FLATC_CODEGEN === '1';
+    if (!forceRegenerate && flatGeneratedOutputsPresent(cppOut, tsOut)) {
+        console.log(
+            '[build:cpp] flatGenerated outputs already present; skipping flatc ' +
+                '(set ARKANALYZER_FORCE_FLATC_CODEGEN=1 to regenerate)',
+        );
+        return;
+    }
+
     const flatc = resolveFlatcCommand();
     if (!flatc) {
         console.error(

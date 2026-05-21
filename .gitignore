@@ -34,9 +34,6 @@ src/frontend/cppFrontend/ast/*/
 !src/frontend/cppFrontend/ast/cpp/
 !src/frontend/cppFrontend/ast/cpp/**
 
-# FlatBuffers codegen output for C++ addon (npm run build:cpp).
-src/frontend/cppFrontend/ast/cpp/serialization/flatGenerated/
-
 # Agent related files
 .claude/settings.json
 src/frontend/cppFrontend/ast/cpp/build/
