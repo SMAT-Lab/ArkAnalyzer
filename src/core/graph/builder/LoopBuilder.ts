@@ -324,6 +324,11 @@ export class LoopBuilder {
         };
     }
 
+    /**
+     * Place the incrementor statements (e.g., i = i + 1) of a for-loop into the appropriate block.
+     * If the loop body always exits (e.g., contains a return), there may be no re-entry block;
+     * in that case the incrementor is dead code and is simply skipped.
+     */
     private adjustIncrementorStmts(
         stmts: Stmt[],
         ifStmtIdx: number,
@@ -354,6 +359,9 @@ export class LoopBuilder {
             return;
         }
 
+        // Collect block builders that re-enter the loop condition (i.e., predecessors with
+        // an ID greater than the current condition block). These represent back-edges in the
+        // loop, where the incrementor statements should be placed.
         const blockBuildersReenterCondition: BlockBuilder[] = [];
         for (const prevBlockBuilder of currBlockBuilder.lasts) {
             const prevBlock = blockBuilderToCfgBlock.get(prevBlockBuilder) as BasicBlock;
@@ -361,6 +369,14 @@ export class LoopBuilder {
             if (prevBlock.getId() > currBlockId) {
                 blockBuildersReenterCondition.push(prevBlockBuilder);
             }
+        }
+
+        // When no block re-enters the condition (e.g., a for-loop whose body always returns),
+        // the incrementor statements are unreachable dead code. Skip placing them since there
+        // is no re-entry path to attach them to. They will be removed from the condition
+        // block later by rebuildBlocksInLoop via splice.
+        if (blockBuildersReenterCondition.length === 0) {
+            return;
         }
 
         if (

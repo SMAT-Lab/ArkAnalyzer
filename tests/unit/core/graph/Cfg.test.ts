@@ -56,6 +56,7 @@ import {
     SWITCH_EXPECT_CASE9,
 } from '../../../resources/cfg/switch/SwitchExpect';
 import { LOOP_EXPECT_CASE1, LOOP_EXPECT_CASE2, LOOP_EXPECT_CASE3 } from '../../../resources/cfg/loop/LoopExpect';
+import { LOOP_RETURN_EXPECT_CASE1 } from '../../../resources/cfg/loop/LoopReturnExpect';
 import {
     INCREMENT_EXPECT_CASE1,
     INCREMENT_EXPECT_CASE2,
@@ -206,6 +207,11 @@ describe('CfgTest', () => {
         testBlocks(scene, 'LoopSample.ts', 'case3', LOOP_EXPECT_CASE3.blocks);
     },
     );
+
+    it('case4.1: for-loop with return in body (no re-entry block)', () => {
+        const scene = buildScene('loop');
+        testBlocks(scene, 'LoopReturnSample.ts', 'forLoopWithReturn', LOOP_RETURN_EXPECT_CASE1.blocks);
+    });
 
     it('case5: mix of statements', () => {
         const scene = buildScene('mixOfStatements');
