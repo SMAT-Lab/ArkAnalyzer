@@ -46,6 +46,9 @@ import {
     SWITCH_EXPECT_CASE12,
     SWITCH_EXPECT_CASE13,
     SWITCH_EXPECT_CASE14,
+    SWITCH_EXPECT_CASE15,
+    SWITCH_EXPECT_CASE16,
+    SWITCH_EXPECT_CASE17,
     SWITCH_EXPECT_CASE2,
     SWITCH_EXPECT_CASE3,
     SWITCH_EXPECT_CASE4,
@@ -197,6 +200,9 @@ describe('CfgTest', () => {
         testBlocks(scene, 'SwitchSample.ts', 'case12', SWITCH_EXPECT_CASE12.blocks);
         testBlocks(scene, 'SwitchSample.ts', 'case13', SWITCH_EXPECT_CASE13.blocks);
         testBlocks(scene, 'SwitchSample.ts', 'case14', SWITCH_EXPECT_CASE14.blocks);
+        testBlocks(scene, 'SwitchSample.ts', 'case15', SWITCH_EXPECT_CASE15.blocks);
+        testBlocks(scene, 'SwitchSample.ts', 'case16', SWITCH_EXPECT_CASE16.blocks);
+        testBlocks(scene, 'SwitchSample.ts', 'case17', SWITCH_EXPECT_CASE17.blocks);
     });
 
     it('case4: loop statement', () => {
