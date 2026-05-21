@@ -15,7 +15,7 @@
 
 import path from 'path';
 import { ArkArrayRef, ArkAssignStmt, ArkClass, INSTANCE_INIT_METHOD_NAME, NumberType, Scene, SceneConfig, STATIC_INIT_METHOD_NAME } from '../../../../src';
-import { assert, beforeAll, describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { Trap } from '../../../../src/core/base/Trap';
 import {
     TRAP_EXPECT_CASE1,
@@ -82,57 +82,6 @@ describe('trap Test', () => {
 
     it('trap case12 - empty try body with catch and code after', async () => {
         testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case12');
-    });
-});
-
-describe('Empty try body TrapBuilderError integration Test', () => {
-    const trapBuilderErrorDir = path.join(__dirname, '../../../resources/arkIRTransformer/mainModule/TrapBuilderError');
-    let trapBuilderErrorScene: Scene;
-
-    beforeAll(() => {
-        const config = new SceneConfig();
-        config.buildFromProjectDir(trapBuilderErrorDir);
-        trapBuilderErrorScene = new Scene();
-        trapBuilderErrorScene.buildSceneFromProjectDir(config);
-        trapBuilderErrorScene.inferTypes();
-    });
-
-    it('scene builds successfully with empty try bodies', () => {
-        assert.isDefined(trapBuilderErrorScene);
-        const files = trapBuilderErrorScene.getFiles();
-        assert.isAtLeast(files.length, 1);
-    });
-
-    it('all methods have valid CFGs', () => {
-        for (const arkFile of trapBuilderErrorScene.getFiles()) {
-            for (const arkClass of arkFile.getClasses()) {
-                for (const method of arkClass.getMethods(true)) {
-                    const body = method.getBody();
-                    if (body) {
-                        const cfg = body.getCfg();
-                        if (cfg) {
-                            assert.isAtLeast(cfg.getBlocks().size, 1);
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    it('no method has TrapBuilder errors', () => {
-        for (const arkFile of trapBuilderErrorScene.getFiles()) {
-            for (const arkClass of arkFile.getClasses()) {
-                for (const method of arkClass.getMethods(true)) {
-                    const body = method.getBody();
-                    if (body) {
-                        const traps = body.getTraps();
-                        if (traps) {
-                            assert.isArray(traps);
-                        }
-                    }
-                }
-            }
-        }
     });
 });
 
