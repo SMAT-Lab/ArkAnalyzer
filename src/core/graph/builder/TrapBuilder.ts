@@ -75,6 +75,10 @@ export class TrapBuilder {
             return { traps: [], headBlockBuilder: null };
         }
 
+        if (!tryStmtBuilder.tryFirst || tryStmtBuilder.tryFirst.type.includes(' exit')) {
+            return this.handleEmptyTryBody(tryStmtBuilder, blockBuilderBeforeTry);
+        }
+
         const finallyBlockBuilder = this.getFinallyBlock(tryStmtBuilder);
         if (!finallyBlockBuilder) {
             return { traps: [], headBlockBuilder: null };
@@ -119,6 +123,18 @@ export class TrapBuilder {
             return true;
         }
         return false;
+    }
+
+    private handleEmptyTryBody(
+        tryStmtBuilder: TryStatementBuilder,
+        blockBuilderBeforeTry: BlockBuilder
+    ): { traps: Trap[], headBlockBuilder: BlockBuilder | null } {
+        if (this.shouldRemoveEmptyBlockBeforeTry(blockBuilderBeforeTry)) {
+            const nextBlockBuilder = blockBuilderBeforeTry.nexts[0];
+            this.removeEmptyBlockBeforeTry(blockBuilderBeforeTry);
+            return { traps: [], headBlockBuilder: nextBlockBuilder };
+        }
+        return { traps: [], headBlockBuilder: null };
     }
 
     private getTryStatementBuilder(blockBuilderBeforeTry: BlockBuilder): TryStatementBuilder | null {

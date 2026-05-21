@@ -130,3 +130,35 @@ function case8(): void {
     }
     console.log(i);
 }
+
+function case9(): void {
+    try {
+    } catch (e) {
+        console.log('catch');
+    }
+}
+
+function case10(): void {
+    try {
+    } catch (e) {
+        console.log('catch');
+    } finally {
+        console.log('finally');
+    }
+}
+
+function case11(): void {
+    try {
+    } finally {
+        console.log('finally');
+    }
+}
+
+function case12(): void {
+    let i = 0;
+    try {
+    } catch (e) {
+        i = 1;
+    }
+    console.log(i);
+}

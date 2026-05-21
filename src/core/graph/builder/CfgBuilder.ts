@@ -654,7 +654,11 @@ export class CfgBuilder {
                     this.deleteExitAfterSwitch(last, exit);
                 } else if (last instanceof TryStatementBuilder && exit.type === 'finallyExit') {
                     last.afterFinal = exit.next;
-                    last.next = last.tryFirst;
+                    if (last.tryFirst && !last.tryFirst.type.includes(' exit')) {
+                        last.next = last.tryFirst;
+                    } else {
+                        last.next = last.finallyStatement;
+                    }
                     exit.lasts.delete(last);
                 } else {
                     last.next = exit.next;
