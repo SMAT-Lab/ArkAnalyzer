@@ -24,8 +24,8 @@
 // Ensure the included flatbuffers.h is the same version as when this file was
 // generated, otherwise it may not be compatible.
 static_assert(FLATBUFFERS_VERSION_MAJOR == 25 &&
-              FLATBUFFERS_VERSION_MINOR == 12 &&
-              FLATBUFFERS_VERSION_REVISION == 19,
+              FLATBUFFERS_VERSION_MINOR == 2 &&
+              FLATBUFFERS_VERSION_REVISION == 10,
              "Non-compatible flatbuffers version included");
 
 namespace ArkCxxAstFb {
@@ -99,8 +99,7 @@ struct CxxPositionWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::String *file() const {
     return GetPointer<const ::flatbuffers::String *>(VT_FILE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_LINE, 4) &&
            VerifyField<int32_t>(verifier, VT_COL, 4) &&
@@ -195,8 +194,7 @@ struct CxxRangeWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxPositionWire *expansion_loc() const {
     return GetPointer<const ArkCxxAstFb::CxxPositionWire *>(VT_EXPANSION_LOC);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BEGIN) &&
            verifier.VerifyTable(begin()) &&
@@ -275,8 +273,7 @@ struct CxxTypeInfoWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::String *type_alias_decl_qualified_name() const {
     return GetPointer<const ::flatbuffers::String *>(VT_TYPE_ALIAS_DECL_QUALIFIED_NAME);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_TYPE) &&
            verifier.VerifyString(type()) &&
@@ -369,8 +366,7 @@ struct CxxAliasInfoWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxRangeWire *range() const {
     return GetPointer<const ArkCxxAstFb::CxxRangeWire *>(VT_RANGE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_DECL_CODE) &&
            verifier.VerifyString(decl_code()) &&
@@ -442,8 +438,7 @@ struct CxxReferencedDeclWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Ta
   const ArkCxxAstFb::CxxAliasInfoWire *alias() const {
     return GetPointer<const ArkCxxAstFb::CxxAliasInfoWire *>(VT_ALIAS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_KIND) &&
            verifier.VerifyString(kind()) &&
@@ -530,8 +525,7 @@ struct CxxCtorAnyInitWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table
   const ArkCxxAstFb::CxxTypeInfoWire *type() const {
     return GetPointer<const ArkCxxAstFb::CxxTypeInfoWire *>(VT_TYPE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_KIND) &&
            verifier.VerifyString(kind()) &&
@@ -613,8 +607,7 @@ struct CxxEnclosingFunctionWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers:
   const ArkCxxAstFb::CxxRangeWire *range() const {
     return GetPointer<const ArkCxxAstFb::CxxRangeWire *>(VT_RANGE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint64_t>(verifier, VT_ID, 8) &&
            VerifyOffset(verifier, VT_KIND) &&
@@ -700,8 +693,7 @@ struct CxxNominatedNamespaceWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers
   const ::flatbuffers::String *name() const {
     return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_ID) &&
            verifier.VerifyString(id()) &&
@@ -784,8 +776,7 @@ struct DtorTypeWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxTypeInfoWire *type() const {
     return GetPointer<const ArkCxxAstFb::CxxTypeInfoWire *>(VT_TYPE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint64_t>(verifier, VT_ID, 8) &&
            VerifyOffset(verifier, VT_KIND) &&
@@ -895,8 +886,7 @@ struct CxxIncludeInfoWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table
   const ::flatbuffers::String *search_path() const {
     return GetPointer<const ::flatbuffers::String *>(VT_SEARCH_PATH);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_CODE) &&
            verifier.VerifyString(code()) &&
@@ -1048,8 +1038,7 @@ struct CxxLocWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxPositionWire *expansion_loc() const {
     return GetPointer<const ArkCxxAstFb::CxxPositionWire *>(VT_EXPANSION_LOC);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_FILE) &&
            verifier.VerifyString(file()) &&
@@ -1154,8 +1143,7 @@ struct DefaultArgWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxTypeInfoWire *type() const {
     return GetPointer<const ArkCxxAstFb::CxxTypeInfoWire *>(VT_TYPE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_KIND) &&
            verifier.VerifyString(kind()) &&
@@ -1227,8 +1215,7 @@ struct ClassBaseWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::String *written_access() const {
     return GetPointer<const ::flatbuffers::String *>(VT_WRITTEN_ACCESS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_ACCESS) &&
            verifier.VerifyString(access()) &&
@@ -1475,8 +1462,7 @@ struct CxxAstNodeWire FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::Vector<::flatbuffers::Offset<ArkCxxAstFb::CxxAstNodeWire>> *header_units() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<ArkCxxAstFb::CxxAstNodeWire>> *>(VT_HEADER_UNITS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_ID) &&
            verifier.VerifyString(id()) &&
@@ -1942,8 +1928,7 @@ struct CxxAstPayload FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ArkCxxAstFb::CxxAstNodeWire *root() const {
     return GetPointer<const ArkCxxAstFb::CxxAstNodeWire *>(VT_ROOT);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_WIRE_VERSION, 4) &&
            VerifyOffset(verifier, VT_SOURCE_FILE) &&
@@ -2021,16 +2006,14 @@ inline const ArkCxxAstFb::CxxAstPayload *GetSizePrefixedCxxAstPayload(const void
   return ::flatbuffers::GetSizePrefixedRoot<ArkCxxAstFb::CxxAstPayload>(buf);
 }
 
-template <bool B = false>
 inline bool VerifyCxxAstPayloadBuffer(
-    ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifyBuffer<ArkCxxAstFb::CxxAstPayload>(nullptr);
+    ::flatbuffers::Verifier &verifier) {
+  return verifier.VerifyBuffer<ArkCxxAstFb::CxxAstPayload>(nullptr);
 }
 
-template <bool B = false>
 inline bool VerifySizePrefixedCxxAstPayloadBuffer(
-    ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifySizePrefixedBuffer<ArkCxxAstFb::CxxAstPayload>(nullptr);
+    ::flatbuffers::Verifier &verifier) {
+  return verifier.VerifySizePrefixedBuffer<ArkCxxAstFb::CxxAstPayload>(nullptr);
 }
 
 inline void FinishCxxAstPayloadBuffer(
