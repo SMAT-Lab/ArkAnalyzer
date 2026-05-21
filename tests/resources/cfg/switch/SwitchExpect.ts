@@ -847,10 +847,10 @@ export const SWITCH_EXPECT_CASE16 = {
                 'if a == 1',
             ],
             preds: [],
-            succes: [1, 4],
+            succes: [2, 4],
         },
         {
-            id: 1,
+            id: 2,
             stmts: [
                 'return 1',
             ],
@@ -863,10 +863,10 @@ export const SWITCH_EXPECT_CASE16 = {
                 'if a == 2',
             ],
             preds: [0],
-            succes: [2, 3],
+            succes: [3, 1],
         },
         {
-            id: 2,
+            id: 3,
             stmts: [
                 'return 2',
             ],
@@ -874,9 +874,9 @@ export const SWITCH_EXPECT_CASE16 = {
             succes: [],
         },
         {
-            id: 3,
+            id: 1,
             stmts: [
-                'return',
+                'return 0',
             ],
             preds: [4],
             succes: [],

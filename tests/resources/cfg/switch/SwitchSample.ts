@@ -219,6 +219,7 @@ function case16(): number {
         case 2:
             return 2;
     }
+    return 0;
 }
 
 function case17(): void {
