@@ -1,0 +1,174 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// FlatBuffers wire schema for C++ AST flat payloads (.ast.flat).
+// Pipeline: Clang AST -> astNodeAttrsExtract (JSON attrs) -> astAttrsToWire -> tables below.
+// JSON keys are camelCase at the emit/decode boundary; wire fields use snake_case.
+// Aligned with ArkCxxAstNode.ts on the TypeScript decode side.
+
+namespace ArkCxxAstFb;
+
+table CxxPositionWire {
+  line:int32;
+  col:int32;
+  offset:uint32;
+  tok_len:uint32;
+  file:string;
+}
+
+table CxxRangeWire {
+  begin:CxxPositionWire;
+  end:CxxPositionWire;
+  spelling_loc:CxxPositionWire;
+  expansion_loc:CxxPositionWire;
+}
+
+table CxxTypeInfoWire {
+  type:string;
+  qual_type:string;
+  desugared_qual_type:string;
+  type_alias_decl_id:uint64;
+  type_alias_decl_qualified_name:string;
+}
+
+table CxxAliasInfoWire {
+  decl_code:string;
+  range:CxxRangeWire;
+}
+
+table CxxReferencedDeclWire {
+  kind:string;
+  name:string;
+  type:CxxTypeInfoWire;
+  alias:CxxAliasInfoWire;
+}
+
+table CxxCtorAnyInitWire {
+  kind:string;
+  name:string;
+  type:CxxTypeInfoWire;
+}
+
+table CxxEnclosingFunctionWire {
+  id:uint64;
+  kind:string;
+  name:string;
+  range:CxxRangeWire;
+}
+
+table CxxNominatedNamespaceWire {
+  id:string;
+  kind:string;
+  name:string;
+}
+
+table DtorTypeWire {
+  id:uint64;
+  kind:string;
+  name:string;
+  type:CxxTypeInfoWire;
+}
+
+table CxxIncludeInfoWire {
+  code:string;
+  file_name:string;
+  include_name:string;
+  included_from:string;
+  is_angled:bool;
+  kind:string;
+  loc:CxxPositionWire;
+  relative_path:string;
+  search_path:string;
+}
+
+table CxxLocWire {
+  file:string;
+  line:int32;
+  col:int32;
+  offset:uint32;
+  tok_len:uint32;
+  spelling_loc:CxxPositionWire;
+  expansion_loc:CxxPositionWire;
+}
+
+table DefaultArgWire {
+  kind:string;
+  type:CxxTypeInfoWire;
+}
+
+table ClassBaseWire {
+  access:string;
+  type:CxxTypeInfoWire;
+  is_virtual:bool;
+  written_access:string;
+}
+
+/// Per-node attrs as structured columns (inner/header_units are separate wire vectors).
+table CxxAstNodeWire {
+  id:string;
+  original_id:string;
+  has_in_class_initializer:bool;
+  kind:string;
+  name:string;
+  code:string;
+  type:CxxTypeInfoWire;
+  mangled_name:string;
+  tag_used:string;
+  is_implicit:bool;
+  storage_class:string;
+  access:string;
+  referenced_decl:CxxReferencedDeclWire;
+  value:string;
+  value_category:string;
+  cast_kind:string;
+  opcode:string;
+  op:string;
+  is_postfix:bool;
+  is_arrow:bool;
+  is_array:bool;
+  trait_func:string;
+  trait_args:string;
+  noexcept_arg:string;
+  type_arg:CxxTypeInfoWire;
+  atomic_func:string;
+  pseudo_destructor_type:string;
+  target_label_id:int32;
+  any_init:CxxCtorAnyInitWire;
+  base_init:CxxTypeInfoWire;
+  nominated_namespace:CxxNominatedNamespaceWire;
+  loc:CxxLocWire;
+  range:CxxRangeWire;
+  enclosing_function:CxxEnclosingFunctionWire;
+  default_arg:DefaultArgWire;
+  dtor:DtorTypeWire;
+  default:string;
+
+  array_sizes:[string];
+  type_arguments:[string];
+  includes:[CxxIncludeInfoWire];
+  bases:[ClassBaseWire];
+
+  inner:[CxxAstNodeWire];
+  header_units:[CxxAstNodeWire];
+}
+
+table CxxAstPayload {
+  wire_version:uint;
+  source_file:string;
+  flat_path:string;
+  root:CxxAstNodeWire;
+}
+
+root_type CxxAstPayload;

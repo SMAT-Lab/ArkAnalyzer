@@ -18,6 +18,7 @@ import { getAstJsonDumperNodePath } from '../astUtils';
 /**
  * One AST record as delivered by the addon’s per-TU callback (`onFileAst` in native docs).
  * `index` matches the manifest `files` array order.
+ * `payload` is the absolute path to the per-TU `.ast.flat` file.
  */
 export type CppAstNapiRecord = {
     index: number;

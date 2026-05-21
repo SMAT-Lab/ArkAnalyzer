@@ -92,6 +92,8 @@ export interface CppLanguageOptions extends LanguageOptions {
     maxParallelProcesses?: number;
     /** Max AST results in flight before back-pressure; `-1` or omission uses defaults aligned with `CppFrontend`. */
     maxPendingAstResults?: number;
+    /** Log per-TU AST payload stats (bytes, node count, etc.) after successful decode. */
+    logAstInfo?: boolean;
 }
 
 export interface SceneLanguagesOptions {

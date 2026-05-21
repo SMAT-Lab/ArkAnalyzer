@@ -34,7 +34,7 @@ export class CppFrontend {
         if (!this.requireAstJsonDumper()) {
             return;
         }
-        prepareArkFile(scene, filePath, arkFile,);
+        prepareArkFile(scene, filePath, arkFile, this.resolveLogAstInfo(scene));
     }
 
     public buildProjectFiles(scene: Scene, filePaths: string[]): FrontendParseResult {
@@ -43,7 +43,8 @@ export class CppFrontend {
         }
         const maxParallelProcesses = this.resolveMaxParallelProcesses(scene);
         const maxPendingAstResults = this.resolveMaxPendingAstResults(scene, maxParallelProcesses);
-        const result = prepareArkFiles(scene, filePaths, maxParallelProcesses, maxPendingAstResults,);
+        const logAstInfo = this.resolveLogAstInfo(scene);
+        const result = prepareArkFiles(scene, filePaths, maxParallelProcesses, maxPendingAstResults, logAstInfo);
         const failedFiles: FrontendParseFailure[] = result.failedFiles;
         return { arkFiles: result.arkFiles, failedFiles };
     }
@@ -97,5 +98,9 @@ export class CppFrontend {
             return configured;
         }
         return fallback;
+    }
+
+    private resolveLogAstInfo(scene: Scene): boolean {
+        return scene.getOptions().languages?.cpp?.logAstInfo === true;
     }
 }

@@ -4,7 +4,9 @@
 
 ## 1. 构建什么、命令是什么
 
-在仓库根目录执行 **`npm run build:cpp`**，于**当前操作系统**本机构建 **`astJsonDumper.node`**：在 Linux / macOS / Windows 上均为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**，构建完成后由脚本复制到 **`src/frontend/cppFrontend/ast/dumper/`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
+在仓库根目录执行 **`npm run build:cpp`**，于**当前操作系统**本机构建 **`astJsonDumper.node`**：脚本先对 **`serialization/astWire.fbs`** 运行 **flatc** 生成 C++/TS 绑定代码，再经 CMake 编译 addon。在 Linux / macOS / Windows 上均为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**，构建完成后由脚本复制到 **`src/frontend/cppFrontend/ast/dumper/`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
+
+C++ 原生单元测试（GTest）与 addon 共用 **`ast/cpp/build/`** 与 LLVM 环境，**不依赖 Node/N-API**。在仓库根目录执行 **`npm run test:cpp`** 即可构建并运行 **`astJsonDumper_unit_tests`**。GoogleTest 解析顺序：**本机系统包（如 `libgtest-dev`）** → **`tools/googletest/`** → 联网自动下载 v1.14.0；离线环境推荐 `sudo apt install libgtest-dev` 或手动解压 zip 到 **`tools/googletest/`**。测试源码在 **`tests/unit/cppCore/dumper/`**，fixture 在 **`tests/cppResources/dumper/`**。
 
 源码与 **CMake 工程根目录**：`src/frontend/cppFrontend/ast/cpp`（脚本中的 `-S` 指向该目录；中间产物在同级 `build/`）。  
 脚本会在配置阶段向 CMake 传入 **`NODE_API_INCLUDE_DIR`**（须含 `node_api.h`）、以及 **`LLVM_DIR`**（若已探测或已设置）。`NODE_API_INCLUDE_DIR` 默认通过 **`npm install` 后的 `node_modules/node-api-headers/include`**、或环境变量 **`NODE_API_INCLUDE_DIR`**、或 Linux 常见 **`/usr/include/node`** 解析。
@@ -33,7 +35,7 @@
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y cmake ninja-build llvm-19-dev libClang-19-dev
+sudo apt-get install -y cmake ninja-build llvm-19-dev libClang-19-dev libgtest-dev
 ```
 
 确保 `llvm-config-19` 在 `PATH` 中，或显式导出：

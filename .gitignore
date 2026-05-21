@@ -24,6 +24,9 @@ builtIn/
 arktools/
 lib/
 
+# Vendored FlatBuffers toolchain (local only; not in repo). Use npm flatbuffers or place flatc under tools/.
+tools/
+
 # Keep only selected folders under src/frontend/cppFrontend/ast.
 src/frontend/cppFrontend/ast/*/
 !src/frontend/cppFrontend/ast/ts/

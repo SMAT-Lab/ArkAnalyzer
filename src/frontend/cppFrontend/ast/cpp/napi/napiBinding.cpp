@@ -22,8 +22,8 @@ extern "C" int ParseCppAstWithManifest(const char *manifest,
                                        bool (*callback)(void *userData,
                                                         uint32_t fileIndex,
                                                         uint32_t taskRc,
-                                                        const char *payloadData,
-                                                        size_t payloadSize),
+                                                        const char *flatPathData,
+                                                        size_t flatPathSize),
                                        void *callbackUserData);
 
 namespace {
@@ -40,14 +40,14 @@ struct JsAstCallbackData {
     bool callbackFailed = false;
 };
 
-bool SendFileAstToJs(void *userData, uint32_t fileIndex, uint32_t taskRc,
-                     const char *payloadData, size_t payloadSize)
+bool SendFileAstToJs(void *userData, uint32_t fileIndex, uint32_t taskRc, const char *flatPathData,
+                     size_t flatPathSize)
 {
     auto *data = static_cast<JsAstCallbackData *>(userData);
     napi_env env = data->env;
     napi_value payloadString = nullptr;
     napi_status st = napi_create_string_utf8(
-        env, payloadData == nullptr ? "" : payloadData, payloadSize, &payloadString);
+        env, flatPathData == nullptr ? "" : flatPathData, flatPathSize, &payloadString);
     if (st != napi_ok) {
         data->callbackFailed = true;
         return false;
