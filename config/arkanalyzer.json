@@ -24,6 +24,7 @@
   "enableBuiltIn": true,
   "enableOhModulesBody": false,
   "saveSourceCodeByDefault": false,
+  "enableMethodBodyBuild": true,
   "ignoreFileNames": [
     "node_modules",
     "build-tools",

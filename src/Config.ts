@@ -121,6 +121,8 @@ export interface SceneOptions {
     enableTrailingComments?: boolean;
     enableJSDoc?: boolean;
     enableBuiltIn?: boolean;
+    enableOhModulesBody?: boolean;
+    enableMethodBodyBuild?: boolean;
     tsconfig?: string;
     isScanAbc?: boolean;
     sdkGlobalFolders?: string[];
