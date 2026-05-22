@@ -652,23 +652,46 @@ export class CfgBuilder {
         for (const exit of this.exits) {
             const lasts = [...exit.lasts];
             for (const last of lasts) {
-                if (last instanceof ConditionStatementBuilder) {
-                    this.deleteExitAfterCondition(last, exit);
-                } else if (last instanceof SwitchStatementBuilder) {
-                    this.deleteExitAfterSwitch(last, exit);
-                } else if (last instanceof TryStatementBuilder && exit.type === 'finallyExit') {
-                    last.afterFinal = exit.next;
-                    last.next = last.tryFirst;
-                    exit.lasts.delete(last);
-                } else {
-                    last.next = exit.next;
-                    const lasts = exit.next!.lasts;
-                    lasts.delete(exit);
-                    lasts.add(last);
-                }
+                this.deleteExitForLast(last, exit);
             }
         }
-        // 部分语句例如return后面的exit语句的next无法在上面清除
+        this.cleanupOrphanedExitNextReferences();
+    }
+
+    private deleteExitForLast(last: StatementBuilder, exit: StatementBuilder): void {
+        if (last instanceof ConditionStatementBuilder) {
+            this.deleteExitAfterCondition(last, exit);
+            return;
+        }
+        if (last instanceof SwitchStatementBuilder) {
+            this.deleteExitAfterSwitch(last, exit);
+            return;
+        }
+        if (last instanceof TryStatementBuilder && exit.type === 'finallyExit') {
+            this.deleteExitAfterTry(last, exit);
+            return;
+        }
+        this.deleteExitDefault(last, exit);
+    }
+
+    private deleteExitAfterTry(last: TryStatementBuilder, exit: StatementBuilder): void {
+        last.afterFinal = exit.next;
+        if (last.tryFirst && !last.tryFirst.type.includes(' exit')) {
+            last.next = last.tryFirst;
+        } else {
+            last.next = last.finallyStatement;
+        }
+        exit.lasts.delete(last);
+    }
+
+    private deleteExitDefault(last: StatementBuilder, exit: StatementBuilder): void {
+        last.next = exit.next;
+        const lasts = exit.next!.lasts;
+        lasts.delete(exit);
+        lasts.add(last);
+    }
+
+    private cleanupOrphanedExitNextReferences(): void {
         for (const exit of this.exits) {
             if (exit.next && exit.next.lasts.has(exit)) {
                 exit.next.lasts.delete(exit);

@@ -67,6 +67,22 @@ describe('trap Test', () => {
     it('trap case8', async () => {
         testTraps(scene, 'TrapTest.ts', 'case8', TRAP_EXPECT_CASE8.traps);
     });
+
+    it('trap case9 - empty try body with catch', async () => {
+        testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case9');
+    });
+
+    it('trap case10 - empty try body with catch and finally', async () => {
+        testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case10');
+    });
+
+    it('trap case11 - empty try body with only finally', async () => {
+        testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case11');
+    });
+
+    it('trap case12 - empty try body with catch and code after', async () => {
+        testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case12');
+    });
 });
 
 describe('Local Test', () => {
@@ -156,6 +172,14 @@ function testTraps(scene: Scene, filePath: string, methodName: string, expectTra
         return;
     }
     assertTrapsEqual(traps, expectTraps);
+}
+
+function testEmptyTryBodyTraps(scene: Scene, filePath: string, methodName: string): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+    const traps = arkMethod?.getBody()?.getTraps();
+    assert.isUndefined(traps);
 }
 
 function assertTrapsEqual(traps: Trap[], expectTraps: any[]): void {
