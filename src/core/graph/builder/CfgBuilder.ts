@@ -642,6 +642,10 @@ export class CfgBuilder {
             last.next = exit.next;
             exit.next?.lasts.add(last);
         }
+        if (!last.default && last.nexts.length > 0 && exit.next?.type === 'exit') {
+            exit.next?.lasts.add(last);
+            last.next = exit.next;
+        }
     }
 
     deleteExit(): void {

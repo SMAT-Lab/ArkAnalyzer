@@ -789,3 +789,145 @@ export const SWITCH_EXPECT_CASE14 = {
         },
     ],
 };
+
+export const SWITCH_EXPECT_CASE15 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/SwitchSample.ts: %dflt',
+                'a = 0',
+                'if a == 1',
+            ],
+            preds: [],
+            succes: [1, 4],
+        },
+        {
+            id: 1,
+            stmts: [
+                'return',
+            ],
+            preds: [0],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'if a == 2',
+            ],
+            preds: [0],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                'return',
+            ],
+            preds: [4],
+            succes: [],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return',
+            ],
+            preds: [4],
+            succes: [],
+        },
+    ],
+};
+
+export const SWITCH_EXPECT_CASE16 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/SwitchSample.ts: %dflt',
+                'a = 0',
+                'if a == 1',
+            ],
+            preds: [],
+            succes: [2, 4],
+        },
+        {
+            id: 2,
+            stmts: [
+                'return 1',
+            ],
+            preds: [0],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'if a == 2',
+            ],
+            preds: [0],
+            succes: [3, 1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return 2',
+            ],
+            preds: [4],
+            succes: [],
+        },
+        {
+            id: 1,
+            stmts: [
+                'return 0',
+            ],
+            preds: [4],
+            succes: [],
+        },
+    ],
+};
+
+export const SWITCH_EXPECT_CASE17 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/SwitchSample.ts: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == 2',
+            ],
+            preds: [],
+            succes: [1, 4],
+        },
+        {
+            id: 1,
+            stmts: [
+                'b = 2',
+            ],
+            preds: [0],
+            succes: [3],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return',
+            ],
+            preds: [1, 2, 4],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'if a == 3',
+            ],
+            preds: [0],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                'b = 3',
+            ],
+            preds: [4],
+            succes: [3],
+        },
+    ],
+};

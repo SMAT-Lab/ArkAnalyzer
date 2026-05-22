@@ -200,3 +200,37 @@ function case14(): void {
     }
     a = 1;
 }
+
+function case15(): void {
+    let a = 0;
+    switch (a) {
+        case 1:
+            return;
+        case 2:
+            return;
+    }
+}
+
+function case16(): number {
+    let a = 0;
+    switch (a) {
+        case 1:
+            return 1;
+        case 2:
+            return 2;
+    }
+    return 0;
+}
+
+function case17(): void {
+    let a = 0;
+    let b = 1;
+    switch (a) {
+        case 2:
+            b = 2;
+            break;
+        case 3:
+            b = 3;
+            break;
+    }
+}

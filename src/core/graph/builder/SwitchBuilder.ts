@@ -131,7 +131,12 @@ export class SwitchBuilder {
                 logger.error(`can't find basicBlock corresponding to the blockBuilder.`);
                 return false;
             }
-            expectedSuccessorsOfCaseIfBlock.push(blockBuilderToCfgBlock.get(afterSwitchBlockBuilder)!);
+            const afterSwitchBasicBlock = blockBuilderToCfgBlock.get(afterSwitchBlockBuilder)!;
+            expectedSuccessorsOfCaseIfBlock.push(afterSwitchBasicBlock);
+            const afterSwitchIndex = successorsOfBlockContainSwitch.indexOf(afterSwitchBasicBlock);
+            if (afterSwitchIndex !== -1) {
+                successorsOfBlockContainSwitch.splice(afterSwitchIndex, 1);
+            }
         }
         const caseCnt = switchStmtBuilder.cases.length;
         for (let i = caseCnt - 1; i >= 0; i--) {
