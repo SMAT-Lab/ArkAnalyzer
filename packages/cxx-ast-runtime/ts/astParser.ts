@@ -15,21 +15,24 @@
 
 import * as path from 'path';
 
-import { astKind } from '../lib/utils/ArkCxxAstNode';
-import type {
-    CppAstError,
-    CppAstParams,
-    CppAstResult,
-    CppAstSceneContext,
-    CxxAstNode,
-    CxxAstNodeLite,
+import {
+    AstKind,
+    CxxAccess,
+    CxxTagUsed,
+    type CppAstError,
+    type CppAstParams,
+    type CppAstResult,
+    type CppAstSceneContext,
+    type CxxAstNode,
+    type CxxAstNodeLite,
+    type CxxTranslationUnit,
 } from '../lib/utils/ArkCxxAstNode';
 
 export type { CppAstError, CppAstParams, CppAstResult, CppAstSceneContext } from '../lib/utils/ArkCxxAstNode';
 import { CxxAstFlatInfo } from './CxxAstFlatInfo';
 import { callCppAstParser } from './napi/napiApi';
-import { getCxxHeaderFileExtensionSet } from '../lib/utils/cxxFileConst';
-import { extractAllCppModifiers, findCompileCommands, findProjectRoot } from './astUtils';
+import { getCxxHeaderFileExtensionSet } from '../lib/utils/cppUtils';
+import { cxxAccessToModifierFlag, findCompileCommands, findProjectRoot } from './astUtils';
 
 const log = {
     info: (message: string): void => {
@@ -49,13 +52,14 @@ interface AstStreamRecord {
     /** Absolute path to the per-TU AST file for this translation unit. */
     astPath: string;
 }
+
 export type GetParentFn = {
     (isNeedInner: true): CxxAstNode;
     (isNeedInner?: false): CxxAstNodeLite;
 };
 
 export class AstParser {
-    private static currentAccess: string = '';
+    private static currentAccess: CxxAccess = CxxAccess.Unknown;
 
     /**
      * Optional include-root hint (e.g. main/cpp) for consumers building compile or include lists.
@@ -117,7 +121,7 @@ export class AstParser {
             `[HEAP] processed=${processed}/${total} ` +
                 `heapUsed=${(m.heapUsed / 1024 / 1024).toFixed(1)}MB ` +
                 `rss=${(m.rss / 1024 / 1024).toFixed(1)}MB ` +
-                `external=${(m.external / 1024 / 1024).toFixed(1)}MB`
+                `external=${(m.external / 1024 / 1024).toFixed(1)}MB`,
         );
     }
 
@@ -200,18 +204,15 @@ export class AstParser {
         sourceFile: string,
         exitCode: number,
         logAstInfo: boolean,
-    ): CxxAstNode {
+    ): CxxTranslationUnit {
         const { root } = CxxAstFlatInfo.loadAndDecode(sourceFile, astPath, exitCode, {
             logAstInfo,
             onInfo: logAstInfo ? (message: string) => log.info(message) : undefined,
         });
-        return this.filter(sourceFile, root as CxxAstNode);
+        return this.filter(sourceFile, root as CxxTranslationUnit);
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
-        if (entry.isImplicit) {
-            return;
-        }
         const loc = entry.loc;
         if (!loc) {
             log.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
@@ -220,7 +221,7 @@ export class AstParser {
         newInner.push(entry);
     }
 
-    private static filter(sourceFile: string, translationUnit: CxxAstNode): CxxAstNode {
+    private static filter(sourceFile: string, translationUnit: CxxTranslationUnit): CxxTranslationUnit {
         const newInner: CxxAstNode[] = [];
         for (const entry of translationUnit.inner) {
             this.updateInner(sourceFile, entry, newInner);
@@ -230,13 +231,6 @@ export class AstParser {
         translationUnit.projectName = path.dirname(sourceFile);
         this.fullInfo(translationUnit);
         return translationUnit;
-    }
-
-    private static filterChildren(cursor: CxxAstNode): CxxAstNode[] {
-        if (!cursor.inner) {
-            return [];
-        }
-        return cursor.inner.filter((item: CxxAstNode) => !item.isImplicit);
     }
 
     private static makeGetParent(cursor: CxxAstNode): GetParentFn {
@@ -256,26 +250,29 @@ export class AstParser {
         if (!cursor.inner) {
             cursor.inner = [];
         }
-        cursor.inner = this.filterChildren(cursor);
         if (cursor.name === undefined) {
             cursor.name = '';
         }
 
-        if (cursor.kind === 'LambdaExpr') {
+        if (cursor.kind === AstKind.LambdaExpr) {
             this.processAccess(cursor);
         }
 
-        if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'class') {
-            this.currentAccess = 'private';
-        } else if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'struct') {
-            this.currentAccess = 'public';
+        if (cursor.kind === AstKind.CXXRecordDecl && cursor.tagUsed === CxxTagUsed.Class) {
+            this.currentAccess = CxxAccess.Private;
+        } else if (cursor.kind === AstKind.CXXRecordDecl && cursor.tagUsed === CxxTagUsed.Struct) {
+            this.currentAccess = CxxAccess.Public;
         } else {
-            this.currentAccess = '';
+            this.currentAccess = CxxAccess.Unknown;
         }
 
         for (const currentCursor of cursor.inner) {
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
-            if (cursor.kind === astKind.CXXRecordDecl || cursor.kind === astKind.CXXMethodDecl || cursor.kind === astKind.FunctionDecl) {
+            if (
+                cursor.kind === AstKind.CXXRecordDecl ||
+                cursor.kind === AstKind.CXXMethodDecl ||
+                cursor.kind === AstKind.FunctionDecl
+            ) {
                 this.processAccess(currentCursor);
             }
             this.fullInfo(currentCursor);
@@ -283,54 +280,14 @@ export class AstParser {
     }
 
     private static processAccess(cursor: CxxAstNode): void {
-        cursor.modifiers = [];
-        if (cursor.kind === 'AccessSpecDecl') {
-            this.currentAccess = cursor.access ?? extractAllCppModifiers(cursor.code)[0] ?? '';
-        } else {
-            const extractedCode = this.getCodeForExtractModifiers(cursor);
-            const codeModifier = extractAllCppModifiers(extractedCode);
-            if (this.currentAccess !== '') {
-                cursor.modifiers.push(this.currentAccess);
-            }
-            if (codeModifier !== null) {
-                cursor.modifiers.push(...codeModifier);
-            }
+        const flags = cursor.modifierFlags ?? 0;
+        if (cursor.kind === AstKind.AccessSpecDecl) {
+            this.currentAccess = cursor.access ?? CxxAccess.Unknown;
+            return;
+        }
+        cursor.modifierFlags = flags;
+        if (this.currentAccess !== CxxAccess.Unknown) {
+            cursor.modifierFlags |= cxxAccessToModifierFlag(this.currentAccess);
         }
     }
-
-    private static getCodeForExtractModifiers(cursor: CxxAstNode): string {
-        const extractedCode = cursor.code;
-        if (!['CXXConstructorDecl', 'CXXDestructorDecl', 'CXXMethodDecl', 'FriendDecl', 'FunctionDecl', 'FunctionTemplateDecl'].includes(cursor.kind)) {
-            return extractedCode;
-        }
-        const bodyNode = cursor.inner.filter((inner) => inner.kind === 'CompoundStmt');
-        const bodyCode = bodyNode.length === 0 ? '' : bodyNode[0].code;
-        return this.stripFucntionParams(extractedCode.replace(bodyCode, ''));
-    }
-
-    private static stripFucntionParams(code: string): string {
-        let depth = 0;
-        let start = -1;
-        let end = -1;
-        for (let i = 0; i < code.length; i++) {
-            const ch = code[i];
-            if (ch === '(') {
-                if (depth === 0) {
-                    start = i;
-                }
-                depth++;
-            } else if (ch === ')') {
-                depth--;
-                if (depth === 0) {
-                    end = i;
-                    break;
-                }
-            }
-        }
-        if (start === -1 || end === -1) {
-            return code;
-        }
-        return code.slice(0, start).trimEnd() + ' ' + code.slice(end + 1).trimStart();
-    }
-
 }

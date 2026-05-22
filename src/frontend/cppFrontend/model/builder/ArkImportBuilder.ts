@@ -36,7 +36,7 @@ export function buildUsingNamespaceImportInfo(node: CxxAstNode, sourceFile: CxxA
     if (!node.nominatedNamespace) {
         return null;
     }
-    const importClauseName = node.nominatedNamespace.name;
+    const importClauseName = node.nominatedNamespace;
     const importFrom: string = '';
     let importInfo = new ImportInfo();
     importInfo.build(importClauseName, ImportType.NAMESPACE_IMPORT, importFrom, originFullPosition, 0);

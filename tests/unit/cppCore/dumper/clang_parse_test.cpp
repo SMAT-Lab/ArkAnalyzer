@@ -24,7 +24,8 @@
 
 namespace {
 
-constexpr uint32_t EXPECTED_WIRE_VERSION = 3;
+constexpr uint32_t EXPECTED_WIRE_VERSION = 13;
+constexpr uint16_t K_AST_KIND_TRANSLATION_UNIT_DECL = 95;
 constexpr unsigned TEMP_DIR_PATH_BUFFER_SIZE = 128;
 constexpr uint64_t MIN_SIMPLE_CLASS_FLAT_BYTES = 100;
 constexpr int MANIFEST_MAX_PARALLEL_PROCESSES = 1;
@@ -59,7 +60,7 @@ bool ValidateFlatFile(const std::string &path, uint64_t &outBytes)
         return false;
     }
     const auto *wire = payload->root();
-    if (wire->kind() == nullptr || std::string(wire->kind()->str()) != "TranslationUnitDecl") {
+    if (wire->kind() != K_AST_KIND_TRANSLATION_UNIT_DECL) {
         return false;
     }
     return true;

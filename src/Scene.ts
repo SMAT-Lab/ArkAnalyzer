@@ -37,6 +37,7 @@ import {
     replaceSuper2Constructor
 } from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
+import { clearCxxTypeStringCache } from './frontend/cppFrontend/model/builder/builderUtils';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
@@ -123,6 +124,7 @@ export class Scene {
         SdkUtils.dispose();
         ValueUtil.dispose();
         ModelUtils.dispose();
+        clearCxxTypeStringCache();
     }
 
     public getOptions(): SceneOptions {
@@ -1224,6 +1226,7 @@ export class Scene {
         SdkUtils.dispose();
         ModuleUtils.dispose();
         ValueUtil.dispose();
+        clearCxxTypeStringCache();
     }
 
     /**

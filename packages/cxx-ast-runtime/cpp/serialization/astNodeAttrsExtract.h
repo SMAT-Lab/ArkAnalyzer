@@ -51,8 +51,6 @@ std::optional<llvm::json::Object> ParseJsonObjectString(std::string buf);
 
 std::optional<llvm::json::Object> ParseEmittedAttrsJson(std::string buf);
 
-void MergeSourceCodeIntoObject(llvm::json::Object &obj, llvm::StringRef sourceCode);
-
 std::optional<llvm::json::Object> EmitDeclAttrs(clang::Decl *d, AstNodeJsonEmitContext &ec);
 
 std::optional<llvm::json::Object> EmitStmtAttrs(clang::Stmt *s, AstNodeJsonEmitContext &ec);

@@ -25,6 +25,7 @@
 #include "flatGenerated/astWire_generated.h"
 #include "serialization/astAttrsToWire.h"
 #include "serialization/astNodeAttrsExtract.h"
+#include "serialization/wire_string_pool.h"
 #include "utils/header_units.h"
 #include "utils/flat_output_path.h"
 #include "utils/source_utils.h"
@@ -43,7 +44,7 @@ namespace {
 using namespace clang;
 using namespace ArkCxxAstFb;
 
-constexpr uint32_t kWireVersion = 3;
+constexpr uint32_t kWireVersion = 13;
 
 class CxxAstFlatStreamerImpl : public RecursiveASTVisitor<CxxAstFlatStreamerImpl> {
 public:
@@ -66,8 +67,10 @@ public:
             empty["name"] = "TranslationUnit";
             rootOffset = BuildWireNode(empty, {}, {});
         }
-        auto payload = CreateCxxAstPayload(fbb_, kWireVersion, fbb_.CreateString(sourceFile),
-                                         fbb_.CreateString(flatPath), rootOffset);
+        (void)sourceFile;
+        (void)flatPath;
+        const auto stringPoolVec = stringPool_.createVector(fbb_);
+        auto payload = CreateCxxAstPayload(fbb_, kWireVersion, stringPoolVec, rootOffset);
         fbb_.Finish(payload);
         std::vector<uint8_t> out(fbb_.GetSize());
         const uint8_t *src = fbb_.GetBufferPointer();
@@ -111,6 +114,11 @@ public:
             if (!ast_dumper::IsFromMainFileIncludingExpansion(sm, loc)) {
                 return true;
             }
+        }
+        // Implicit decls (e.g. UsingDirectiveDecl): omit node and its subtree from wire output.
+        // Matches legacy TS filterChildren (drop isImplicit child only; no hoist). ImplicitCastExpr is kept.
+        if (!isa<TranslationUnitDecl>(d) && d->isImplicit()) {
+            return true;
         }
         llvm::json::Object attrs;
         if (auto obj = ast_dumper::EmitDeclAttrs(d, emitCtx)) {
@@ -174,6 +182,7 @@ public:
 
 private:
     flatbuffers::FlatBufferBuilder fbb_;
+    ast_dumper::WireStringPool stringPool_;
     ASTContext &ctx;
     const SourceManager &sm;
     ast_dumper::AstNodeJsonEmitContext emitCtx;
@@ -219,7 +228,7 @@ private:
         const llvm::json::Object &attrs, const std::vector<flatbuffers::Offset<CxxAstNodeWire>> &inner,
         const std::vector<flatbuffers::Offset<CxxAstNodeWire>> &headerUnits)
     {
-        return ast_dumper::BuildCxxAstNodeWireFromJson(fbb_, attrs, inner, headerUnits);
+        return ast_dumper::BuildCxxAstNodeWireFromJson(fbb_, stringPool_, attrs, inner, headerUnits);
     }
 
     std::vector<flatbuffers::Offset<CxxAstNodeWire>> BuildHeaderUnits()

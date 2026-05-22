@@ -27,7 +27,16 @@ import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
 import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
-import type { CxxAstNode, CxxTranslationUnit } from '../../utils/ArkCxxAstNode';
+import {
+    CxxAstNode,
+    CxxTranslationUnit,
+    AstKind,
+    CxxAccess,
+    CxxTagUsed,
+    CxxBaseFlag,
+    CxxNodeFlag,
+} from '../../utils/ArkCxxAstNode';
+import { cxxAccessToString, hasBaseFlag, hasNodeFlag } from '../../utils/cppUtils';
 import { ArkField } from '../../../../core/model/ArkField';
 import { Value } from '../../../../core/base/Value';
 import { NumberConstant } from '../../../../core/base/Constant';
@@ -73,26 +82,26 @@ export function buildNormalArkClassFromArkNamespace(
 }
 
 export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaring?: ArkMethod | ArkClass): void {
-    if (clsNode.kind === 'CXXRecordDecl' || clsNode.kind === 'RecordDecl') {
+    if (clsNode.kind === AstKind.CXXRecordDecl || clsNode.kind === AstKind.RecordDecl) {
         switch (clsNode.tagUsed) {
-            case 'struct':
+            case CxxTagUsed.Struct:
                 buildStruct2ArkClass(clsNode, cls, sourceFile, declaring);
                 break;
-            case 'class':
+            case CxxTagUsed.Class:
                 buildClass2ArkClass(clsNode, cls, sourceFile, declaring);
                 break;
-            case 'enum':
+            case CxxTagUsed.Enum:
                 buildEnum2ArkClass(clsNode, cls, sourceFile, declaring);
                 break;
-            case 'union':
+            case CxxTagUsed.Union:
                 buildUnion2ArkClass(clsNode, cls, sourceFile, declaring);
                 break;
             default:
         }
     }
-    if (clsNode.kind === 'ClassTemplateDecl') {
+    if (clsNode.kind === AstKind.ClassTemplateDecl) {
         buildTemplateClass(clsNode, cls, sourceFile); // The kind attribute of template classes will not be automatically classified as 'class' in tagUsed
-    } else if (clsNode.kind === 'EnumDecl') {
+    } else if (clsNode.kind === AstKind.EnumDecl) {
         buildEnum2ArkClass(clsNode, cls, sourceFile, declaring);
     }
     IRUtils.setComments(cls, clsNode, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
@@ -145,12 +154,12 @@ function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
         processCXXHeritage(clsNode, cls);
     }
 
-    if (clsNode.kind === 'ClassTemplateDecl') {
+    if (clsNode.kind === AstKind.ClassTemplateDecl) {
         buildTypeParameters(clsNode, sourceFile, cls).forEach(typeParameter => {
             cls.addGenericType(typeParameter);
         });
     }
-    cls.setCategory(clsNode.tagUsed === 'struct' ? ClassCategory.STRUCT : ClassCategory.CLASS);
+    cls.setCategory(clsNode.tagUsed === CxxTagUsed.Struct ? ClassCategory.STRUCT : ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
@@ -169,7 +178,7 @@ function buildTemplateClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxA
         cls.addGenericType(typeParameter);
     });
     let classBody: CxxAstNode = clsNode.inner[clsNode.inner.length - 1];
-    cls.setCategory(clsNode.tagUsed === 'struct' ? ClassCategory.STRUCT : ClassCategory.CLASS);
+    cls.setCategory(clsNode.tagUsed === CxxTagUsed.Struct ? ClassCategory.STRUCT : ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(classBody, cls, sourceFile);
@@ -196,8 +205,8 @@ function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
         for (let i = 0; i < clsNode.bases.length; i++) {
             let classInfo: heritageClassWithInfo = {
                 baseClass: undefined,
-                isVirtual: clsNode.bases[i].isVirtual ?? false,
-                access: clsNode.bases[i].access ?? 'private',
+                isVirtual: hasBaseFlag(clsNode.bases[i], CxxBaseFlag.Virtual),
+                access: cxxAccessToString(clsNode.bases[i].access ?? CxxAccess.Private),
             };
             cls.addHeritageClassNameWithInfo(clsNode.bases[i].type.qualType, classInfo);
         }
@@ -220,19 +229,19 @@ function buildEnum2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxA
 }
 
 function buildInitMethodsForClassTag(
-    tagStr: string,
+    tag: CxxTagUsed | undefined,
     cls: ArkClass,
     sourceFile: CxxAstNode,
     instanceInitStmts: Stmt[],
     staticInitStmts: Stmt[]
 ): void {
-    if (tagStr === 'class') {
+    if (tag === CxxTagUsed.Class) {
         const tu = sourceFile as CxxTranslationUnit;
         const instanceIRTransformer = new ArkCxxIRTransformer(tu, cls.getInstanceInitMethod());
         const staticIRTransformer = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
         buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer.getThisLocal());
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer.getThisLocal());
-    } else if (tagStr === 'enum') {
+    } else if (tag === CxxTagUsed.Enum) {
         const tu = sourceFile as CxxTranslationUnit;
         const staticIRTransformer = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer.getThisLocal());
@@ -242,46 +251,46 @@ function buildInitMethodsForClassTag(
 function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
     let staticIRTransformer: ArkCxxIRTransformer;
-    const tagStr = (clsNode.tagUsed ?? '');
+    const tag = clsNode.tagUsed;
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
     const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
     for (let i = 0; i < clsNode.inner.length; i++) {
         let member = clsNode.inner[i];
         switch (member.kind) {
-            case 'FieldDecl':
-            case 'VarDecl': {
+            case AstKind.FieldDecl:
+            case AstKind.VarDecl: {
                 const arkField = buildProperty2ArkField(member, sourceFile, cls);
                 // If the parameter inner is not empty, it means it contains initialization information
-                if (member.inner.length > 0 && member.hasInClassInitializer) {
+                if (member.inner.length > 0 && hasNodeFlag(member, CxxNodeFlag.HasInClassInitializer)) {
                     staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
                     getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
                 }
                 arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
                 break;
             }
-            case 'EnumConstantDecl': {
+            case AstKind.EnumConstantDecl: {
                 const arkField = buildProperty2ArkField(member, sourceFile, cls);
                 staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
                 getInitStmts(staticIRTransformer, arkField, member.inner[0], enumFieldInfo);
                 arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
                 break;
             }
-            case 'CXXMethodDecl':
-            case 'CXXConstructorDecl':
-            case 'CXXAccessSpecifier':
-            case 'CXXDestructorDecl':
+            case AstKind.CXXMethodDecl:
+            case AstKind.CXXConstructorDecl:
+            case AstKind.CXXAccessSpecifier:
+            case AstKind.CXXDestructorDecl:
                 // ignore
                 break;
-            case 'EnumDecl':
-            case 'CXXRecordDecl': {
+            case AstKind.EnumDecl:
+            case AstKind.CXXRecordDecl: {
                 processClassDeclInClass(member, cls, sourceFile);
                 break;
             }
-            case 'UsingDecl':
+            case AstKind.UsingDecl:
                 processUsingDeclInClass(member, cls);
                 break;
-            case 'TypeAliasDecl':
+            case AstKind.TypeAliasDecl:
                 processTypeAliasDeclInClass(member, cls, sourceFile, instanceInitStmts);
                 break;
             default:
@@ -289,7 +298,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
                 break;
         }
     }
-    buildInitMethodsForClassTag(tagStr, cls, sourceFile, instanceInitStmts, staticInitStmts);
+    buildInitMethodsForClassTag(tag, cls, sourceFile, instanceInitStmts, staticInitStmts);
 }
 
 function processClassDeclInClass(classDeclNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
@@ -340,10 +349,10 @@ function processTypeAliasDeclInClass(typeAliasDecl: CxxAstNode, cls: ArkClass, s
 function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     clsNode.inner.forEach((member: CxxAstNode) => {
         if (
-            member.kind.toString() === 'CXXMethodDecl' ||
-            member.kind.toString() === 'CXXConstructorDecl' ||
-            member.kind.toString() === 'CXXDestructorDecl' ||
-            member.kind.toString() === 'FriendDecl'
+            member.kind === AstKind.CXXMethodDecl ||
+            member.kind === AstKind.CXXConstructorDecl ||
+            member.kind === AstKind.CXXDestructorDecl ||
+            member.kind === AstKind.FriendDecl
         ) {
             let method: ArkMethod = new ArkMethod();
             buildArkMethodFromArkClass(member, cls, method, sourceFile);

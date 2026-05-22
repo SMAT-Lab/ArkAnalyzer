@@ -16,6 +16,23 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import {
+    AstKind,
+    AST_KIND_COUNT,
+    CxxAccess,
+    CXX_ACCESS_COUNT,
+    CxxFoldOp,
+    CXX_FOLD_OP_COUNT,
+    CxxOpcode,
+    CXX_OPCODE_COUNT,
+    CxxStorageClass,
+    CXX_STORAGE_CLASS_COUNT,
+    CxxTagUsed,
+    CXX_TAG_USED_COUNT,
+    CxxValueCategory,
+    CXX_VALUE_CATEGORY_COUNT,
+} from '../lib/utils/ArkCxxAstNode';
+
 // Module level cache: Sub project root directory (including .cxx directory) -> compile_commands.json absolute path
 const ccJsonCache: Map<string, string> = new Map();
 
@@ -155,4 +172,80 @@ function searchCompileCommandsInDir(dir: string): string {
         }
     }
     return '';
+}
+
+/** Wire uint16 kind id → AstKind (C++ already emits numeric ids on .ast.flat). */
+export function wireKindToAstKind(wireId: number): AstKind {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= AST_KIND_COUNT) {
+        return AstKind.Unknown;
+    }
+    return wireId as AstKind;
+}
+
+/** Clang kind name for logs / legacy string APIs (numeric enum reverse map). */
+export function astKindToString(kind: AstKind): string {
+    const name = AstKind[kind];
+    return typeof name === 'string' ? name : 'Unknown';
+}
+
+/** Wire uint8 tagUsed id → CxxTagUsed. */
+export function wireTagUsedToEnum(wireId: number): CxxTagUsed {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_TAG_USED_COUNT) {
+        return CxxTagUsed.Unknown;
+    }
+    return wireId as CxxTagUsed;
+}
+
+/** Wire uint8 storageClass id → CxxStorageClass. */
+export function wireStorageClassToEnum(wireId: number): CxxStorageClass {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_STORAGE_CLASS_COUNT) {
+        return CxxStorageClass.Unknown;
+    }
+    return wireId as CxxStorageClass;
+}
+
+/** Wire uint8 access id → CxxAccess. */
+export function wireAccessToEnum(wireId: number): CxxAccess {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_ACCESS_COUNT) {
+        return CxxAccess.Unknown;
+    }
+    return wireId as CxxAccess;
+}
+
+/** Map wire/AST access specifier to ModifierType bitmask (PRIVATE / PROTECTED / PUBLIC). */
+export function cxxAccessToModifierFlag(access: CxxAccess): number {
+    switch (access) {
+        case CxxAccess.Private:
+            return 1;
+        case CxxAccess.Protected:
+            return 1 << 1;
+        case CxxAccess.Public:
+            return 1 << 2;
+        default:
+            return 0;
+    }
+}
+
+/** Wire uint8 valueCategory id → CxxValueCategory. */
+export function wireValueCategoryToEnum(wireId: number): CxxValueCategory {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_VALUE_CATEGORY_COUNT) {
+        return CxxValueCategory.Unknown;
+    }
+    return wireId as CxxValueCategory;
+}
+
+/** Wire uint8 fold op id → CxxFoldOp. */
+export function wireFoldOpToEnum(wireId: number): CxxFoldOp {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_FOLD_OP_COUNT) {
+        return CxxFoldOp.Unknown;
+    }
+    return wireId as CxxFoldOp;
+}
+
+/** Wire uint8 opcode id → CxxOpcode. */
+export function wireOpcodeToEnum(wireId: number): CxxOpcode {
+    if (!Number.isInteger(wireId) || wireId <= 0 || wireId >= CXX_OPCODE_COUNT) {
+        return CxxOpcode.Unknown;
+    }
+    return wireId as CxxOpcode;
 }

@@ -15,7 +15,7 @@
 import fs from 'fs';
 import path, { normalize } from 'path';
 
-import { getCxxImplementationFileExtensions } from '../utils/cxxFileConst';
+import { getCxxImplementationFileExtensions } from '../utils/cppUtils';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
     AliasType,

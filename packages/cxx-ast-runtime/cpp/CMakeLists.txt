@@ -41,6 +41,8 @@ endforeach()
 set(AST_JSON_DUMPER_CORE_SRCS
     cppAstDumper.cpp
     serialization/astAttrsToWire.cpp
+    serialization/wire_string_pool.cpp
+    serialization/astAttrsEnrich.cpp
     serialization/astNodeAttrsExtract.cpp
     serialization/astFlatStreamer.cpp
     utils/astAttrsProcessor.cpp
@@ -51,6 +53,7 @@ set(AST_JSON_DUMPER_CORE_SRCS
     utils/cli_options.cpp
     utils/source_utils.cpp
     utils/header_units.cpp
+    utils/ast_attr_const.cpp
 )
 
 set(AST_JSON_DUMPER_ADDON_SOURCES

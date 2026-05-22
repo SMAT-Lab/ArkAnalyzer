@@ -46,26 +46,34 @@ import { buildGenericType } from '../../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
-import type { CxxAstNode } from '../../utils/ArkCxxAstNode';
+import { CxxAstNode, AstKind } from '../../utils/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
-function getSpecificNodes(methodNode: CxxAstNode, targetNode: string): CxxAstNode[] {
+const LAMBDA_WRAPPER_METHOD_KINDS: AstKind[] = [
+    AstKind.FunctionDecl,
+    AstKind.CXXMethodDecl,
+    AstKind.CXXConstructorDecl,
+    AstKind.CXXDestructorDecl,
+    AstKind.FriendDecl,
+    AstKind.LambdaExpr,
+    AstKind.FunctionTemplateDecl,
+];
+
+function getSpecificNodes(methodNode: CxxAstNode, targetNode: AstKind): CxxAstNode[] {
     if (!methodNode || !methodNode.inner) {
         return [];
     }
     // Handle Cpp lambda functions
     if (methodNode.type && !(isCxxFunctionPointer(methodNode.type.qualType)) &&
-        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplateDecl'].includes(
-            methodNode.kind
-        ) &&
+        !LAMBDA_WRAPPER_METHOD_KINDS.includes(methodNode.kind) &&
         methodNode.inner
     ) {
         return getSpecificNodes(methodNode.inner[0], targetNode);
     }
     let result: CxxAstNode[] = [];
     methodNode.inner.forEach((childNode: CxxAstNode) => {
-        if (childNode.kind.toString() === targetNode) {
+        if (childNode.kind === targetNode) {
             result.push(childNode);
         }
     });
@@ -87,19 +95,19 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
 }
 
 export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
-    if (methodNode.kind !== 'FunctionTemplateDecl' && methodNode.kind !== 'LambdaExpr') {
+    if (methodNode.kind !== AstKind.FunctionTemplateDecl && methodNode.kind !== AstKind.LambdaExpr) {
         return;
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
     let index = -1;
     for (const innerNode of methodNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParmVarDecl' && innerNode.kind !== 'TemplateTypeParmDecl') {
+        if (innerNode.kind !== AstKind.TemplateTypeParmVarDecl && innerNode.kind !== AstKind.TemplateTypeParmDecl) {
             continue;
         }
         let typename = innerNode.name;
         // Template for handling parameter folding
-        if (innerNode.code.includes('...')) {
+        if (innerNode.name.includes('...')) {
             typename = typename + '...';
         }
         let defaultType;
@@ -120,19 +128,19 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
-    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplateDecl') {
+    if (methodNode.kind === AstKind.FunctionDecl || methodNode.kind === AstKind.FunctionTemplateDecl) {
         mtd.setAsteriskToken(false);
     }
     handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
     // After processing the template parameters, proceed to the corresponding functions below
-    methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
+    methodNode = methodNode.kind === AstKind.FunctionTemplateDecl ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
     mtd.addModifier(buildModifiers(methodNode));
-    if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
+    if (methodNode.kind === AstKind.FriendDecl && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
     }
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
     const methodParameters: MethodParameter[] = [];
-    const parameters = getSpecificNodes(methodNode, 'ParmVarDecl');
+    const parameters = getSpecificNodes(methodNode, AstKind.ParmVarDecl);
     buildParameters(parameters, mtd, sourceFile).forEach(parameter => {
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
@@ -213,7 +221,7 @@ function isRelatedToCXXInheritedCtorInitExpr(node: CxxAstNode): boolean {
         if (innerNodes.length === 0) {
             return false;
         }
-        if (innerNodes[0].kind === 'CXXInheritedCtorInitExpr') {
+        if (innerNodes[0].kind === AstKind.CXXInheritedCtorInitExpr) {
             return true;
         }
         innerNodes = innerNodes[0]!.inner;
@@ -248,22 +256,21 @@ function addParamsToCXXInheritedCtorInitExpr(mtdNode: CxxAstNode, mtd: ArkMethod
 
 function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): string {
     let name: string = '';
-    let declType = node.kind.toString();
-    switch (declType) {
-        case 'CXXMethodDecl':
-        case 'FunctionDecl':
-        case 'CXXDestructorDecl':
-        case 'FunctionTemplateDecl':
+    switch (node.kind) {
+        case AstKind.CXXMethodDecl:
+        case AstKind.FunctionDecl:
+        case AstKind.CXXDestructorDecl:
+        case AstKind.FunctionTemplateDecl:
             name = node.name.toString();
             break;
-        case 'CXXConstructorDecl':
+        case AstKind.CXXConstructorDecl:
             name = 'constructor';
             break;
-        case 'LambdaExpr':
+        case AstKind.LambdaExpr:
             name = buildAnonymousMethodName(node, declaringClass);
             break;
-        case 'VarDecl':
-        case 'ParmVarDecl':
+        case AstKind.VarDecl:
+        case AstKind.ParmVarDecl:
             if (isCxxFunctionPointer(node.type.qualType)) {
                 name = buildAnonymousMethodName(node, declaringClass);
             }
@@ -415,18 +422,18 @@ export function addInitInConstructor(constructor: ArkMethod): void {
 
 export function isMethodImplementation(node: CxxAstNode): boolean {
     switch (node.kind) {
-        case 'LambdaExpr':
+        case AstKind.LambdaExpr:
             return (node.inner && node.inner.length > 0);
-        case 'CXXMethodDecl':
-        case 'CXXConstructorDecl':
-        case 'CXXDestructorDecl':
-        case 'FunctionDecl':
-        case 'FunctionTemplateDecl':
-        case 'FriendDecl':
+        case AstKind.CXXMethodDecl:
+        case AstKind.CXXConstructorDecl:
+        case AstKind.CXXDestructorDecl:
+        case AstKind.FunctionDecl:
+        case AstKind.FunctionTemplateDecl:
+        case AstKind.FriendDecl:
             // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
             // ==> The constructor of the subclass has the same implementation as that of the parent class.
             return !!node.inner?.find((inn: CxxAstNode) =>
-                (inn.kind === 'CompoundStmt' || inn.kind === 'CXXCtorInitializer')
+                (inn.kind === AstKind.CompoundStmt || inn.kind === AstKind.CXXCtorInitializer)
             );
         default:
             return false;

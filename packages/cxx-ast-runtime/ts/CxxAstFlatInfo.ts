@@ -17,11 +17,12 @@ import * as fs from 'fs';
 
 import { ByteBuffer } from 'flatbuffers';
 
-import type { CxxAstNode } from '../lib/utils/ArkCxxAstNode';
+import { AstKind, type CxxAstNode } from '../lib/utils/ArkCxxAstNode';
+import { astKindToString } from './astUtils';
 import { CxxAstPayload } from './serialization/flatGenerated/ark-cxx-ast-fb/cxx-ast-payload';
-import { decodeWireNode } from './serialization/WireDecoder';
+import { decodeWireNode, loadStringPool } from './serialization/WireDecoder';
 
-const EXPECTED_WIRE_VERSION = 3;
+const EXPECTED_WIRE_VERSION = 13;
 
 export type CxxAstFlatStage = 'cpp_dump' | 'read_flat' | 'validate_flat' | 'decode';
 
@@ -97,7 +98,6 @@ export class CxxAstFlatInfo {
         if (exitCode !== 0) {
             const message =
                 `C++ AST dump returned non-zero exitCode=${exitCode} but flat payload exists: file=${sourceFile}`;
-            // Non-fatal: caller may log via onInfo if desired.
             if (process.env.ARKANALYZER_DEBUG_AST_MEM === '1') {
                 console.warn(message);
             }
@@ -130,15 +130,16 @@ export class CxxAstFlatInfo {
                     `wire version mismatch: expected ${EXPECTED_WIRE_VERSION}, got ${wireVersion}`,
                 );
             }
+            const pool = loadStringPool(payload);
             const wire = payload.root();
             if (!wire) {
                 throw new CxxAstFlatError('validate_flat', 'missing root node in flat payload');
             }
-            const root = decodeWireNode(wire);
-            if (root.kind !== 'TranslationUnitDecl') {
+            const root = decodeWireNode(wire, pool);
+            if (root.kind !== AstKind.TranslationUnitDecl) {
                 throw new CxxAstFlatError(
                     'validate_flat',
-                    `unexpected root kind: ${root.kind || '(empty)'}`,
+                    `unexpected root kind: ${astKindToString(root.kind)}`,
                 );
             }
             return { wireVersion, root };

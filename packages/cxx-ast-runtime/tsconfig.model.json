@@ -13,6 +13,6 @@
     },
     "include": [
         "../../src/frontend/cppFrontend/utils/ArkCxxAstNode.ts",
-        "../../src/frontend/cppFrontend/utils/cxxFileConst.ts"
+        "../../src/frontend/cppFrontend/utils/cppUtils.ts"
     ]
 }

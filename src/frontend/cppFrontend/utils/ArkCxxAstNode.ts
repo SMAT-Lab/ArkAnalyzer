@@ -13,269 +13,6 @@
  * limitations under the License.
  */
 
-
-/** Position information (line/column/offset/length) */
-export interface CxxPosition {
-    line: number;
-    col: number;
-    offset?: number; // Offset will be set by the generator
-    tokLen?: number; // tokLen is available for 'begin'
-}
-
-/** Source code range */
-export interface CxxRange {
-    begin: CxxPosition;
-    end: CxxPosition;
-    spellingLoc?: SpellingLoc; // Spelling Location related to macros
-    expansionLoc?: CxxPosition; // Expansion Location related to macros
-}
-
-/** Type information */
-export interface CxxTypeInfo {
-    type?: string;
-    qualType: string; // Main field: output from unifyTypeStr
-    desugaredQualType?: string;
-    typeAliasDeclId?: number;
-    typeAliasDeclQualifiedName?: string;
-}
-
-export interface CxxAliasInfo {
-    declCode?: string;
-    range?: CxxRange;
-}
-
-/** Target information for DeclRef */
-export interface CxxReferencedDecl {
-    kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
-    name?: string;
-    type?: CxxTypeInfo;
-    alias?: CxxAliasInfo;
-}
-
-/** Target information for CXXCtorInitializer */
-export interface CxxCtorAnyInit {
-    kind: 'FieldDecl';
-    name: string;
-    type?: CxxTypeInfo;
-}
-
-/** Target information for enclosingFunction */
-export interface CxxEnclosingFunction {
-    id?: number;
-    kind?: string;
-    name?: string;
-    range?: CxxRange;
-}
-
-/** Spelling Location related to macros or inclusion directive */
-export interface SpellingLoc extends CxxPosition {
-    file?: string;
-}
-
-/** Target information for UsingDirectiveDecl  */
-export interface NominatedNamespace {
-    id: number;
-    kind: string;
-    name: string;
-}
-
-/** Target information for dtor  */
-export interface DtorType {
-    id?: number;
-    kind?: string;
-    name?: string;
-    type?: CxxTypeInfo;
-}
-
-/** Target information for Inclusion Directive */
-export interface CxxIncludeInfo {
-    code: string; // inclusion directive code
-    fileName?: string; // include header file absolute path. When the target cannot be found in the search path, this property does not exist.
-    includeName: string; // include header file name
-    includedFrom: string; // The absolute path of the translation unit file where the 'InclusionDirective' node is located.
-    isAngled: boolean; // whether it is a reference enclosed in angle brackets or not.
-    kind: string; // kind of node
-    loc: SpellingLoc; // inclusion directive position in translate unit file
-    relativePath: string; // the relative path of the header file relative to the search path
-    searchPath: string; // path of searching header files
-}
-
-export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
-
-/** General C++ AST node (compatible with Clang JSON) */
-export interface CxxAstNode {
-    /** Unique node ID */
-    id?: string;
-
-    /** Unique node ID */
-    originalId?: string;
-
-    /** Is there any initialization of member variables */
-    hasInClassInitializer?: boolean;
-
-    /** Node kind (e.g., "TranslationUnit", "FunctionDecl", "CXXConstructExpr", etc.) */
-    kind: string;
-
-    /** Node name (function/variable/type/operator name, etc.) */
-    name: string;
-
-    /** Source code snippet */
-    code: string;
-
-    /** Type information */
-    type: CxxTypeInfo;
-
-    /** Mangled name (injected by getMemberInClassName for methods/constructors/destructors) */
-    mangledName?: string;
-
-    /** Tag: class/struct/union/enum (injected by fillNodeKindTag) */
-    tagUsed?: string;
-
-    /** Stores implicit markers such as UsingDirective */
-    isImplicit?: boolean;
-
-    /** Storage class (e.g., "static" for member VarDecl) */
-    storageClass?: string;
-
-    /** The access modifier of class member stored in 'AccessSpecDecl' node. (e.g., public or private)*/
-    access?: string;
-
-    /** Target information parsed from DeclRef */
-    referencedDecl?: CxxReferencedDecl;
-
-    /** Literal value (IntegerLiteral/StringLiteral/BoolLiteral) */
-    value?: string;
-
-    /** Value category ("prvalue"/"lvalue"... default is "prvalue") */
-    valueCategory?: string;
-
-    /** ImplicitCastExpr / CXXStaticCastExpr etc. (Clang JSON "castKind") */
-    castKind?: string;
-
-    /** Derived information: unary/binary operator */
-    opcode?: string; // Binary / CompoundAssign / UnaryOperator
-    op?: string; // CxxFolderExpr
-    isPostfix?: boolean; // UnaryOperator
-
-    /** Whether MemberExpr is accessed via -> */
-    isArrow?: boolean;
-
-    /** Annotation for new[] */
-    isArray?: boolean;
-    arraySizes?: string[];
-
-    /** Special expression annotations (trait/noexcept/typeid/atomic) */
-    traitFunc?: string;
-    traitArgs?: string;
-    noexceptArg?: string;
-    typeArg?: CxxTypeInfo;
-    atomicFunc?: string;
-
-    /** Annotation for pseudo-destructor expression */
-    pseudoDestructorType?: string;
-
-    /** Result of goto -> label resolution */
-    targetLabelId?: number;
-
-    /** Specific to CXXCtorInitializer */
-    anyInit?: CxxCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
-    baseInit?: CxxTypeInfo; // Used for base class initialization
-
-    /** Specific to UsingDirectiveDecl  */
-    nominatedNamespace?: NominatedNamespace;
-
-    /** Header/include relationship related */
-    includes?: CxxIncludeInfo[],
-
-    /** Simple location (line/column); some nodes may not have this */
-    loc?: {
-        file?: string;
-        line?: number;
-        col?: number;
-        spellingLoc?: SpellingLoc; // Spelling Location related to macros
-        expansionLoc?: CxxPosition; // Expansion Location related to macros
-    };
-
-    /** Precise range (begin/end includes offset and tokLen) */
-    range?: CxxRange;
-
-    /** Child nodes */
-    inner: CxxAstNode[];
-
-    /**
-     * Root node may additionally carry: nodes from user includes aggregated here
-     * (filled by filterToMainFileOnly(); also present in sample JSON)
-     */
-    headerUnits?: CxxAstNode[];
-
-    /** Set on translation unit root by AstParser.filter */
-    fileName?: string;
-
-    /** Set on translation unit root by AstParser.filter */
-    projectName?: string;
-
-    typeArguments?: string[];
-
-    default?: string;
-
-    parent?: CxxAstNode;
-
-    getParent?: {
-        (isNeedInner: true): CxxAstNode; // Requires full parent node (including inner)
-        (isNeedInner?: false): CxxAstNodeLite; // Lightweight snapshot (excluding inner)
-    };
-
-    modifiers?: string[];
-
-    enclosingFunction?: CxxEnclosingFunction;
-
-    defaultArg?: defaultArg;
-
-    bases?: classBase[];
-
-    dtor?: DtorType;
-
-}
-
-/** Subset of {@link CxxAstNode} for position helpers in core/base. */
-export type CxxAstNodePositionSource = Pick<CxxAstNode, 'loc' | 'range'>;
-
-/** root type */
-export interface CxxTranslationUnit extends CxxAstNode {
-    kind: 'TranslationUnit' | 'TranslationUnitDecl';
-    fileName?: string;
-    headerUnits?: CxxAstNode[];
-    projectName?: string;
-}
-
-export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefined {
-    // Unified Border Protection Inspection
-    if (!node?.inner?.length || index < 0 || index >= node.inner.length) {
-        return undefined;
-    }
-    return node.inner[index];
-}
-
-/** Get the starting line and column numbers of the ast node, Default LineColPosition is (0, 0). */
-export function getNodeStartLineAndCol(node: CxxAstNodePositionSource): CxxPosition {
-    if (node.loc?.line && node.loc?.col) {
-        return { line: node.loc.line, col: node.loc.col };
-    }
-    return node.loc?.expansionLoc ?? node.range?.begin ?? node.range?.expansionLoc ?? { line: 0, col: 0 };
-}
-
-export interface defaultArg {
-    kind: string;
-    type: CxxTypeInfo;
-}
-
-export interface classBase {
-    access: string;
-    type: CxxTypeInfo;
-    isVirtual?: boolean;
-    writtenAccess?: string;
-}
-
 export interface CppAstSceneContext {
     getCcjsonPath(): string | undefined;
 }
@@ -295,123 +32,472 @@ export interface CppAstParams {
     sources: string[];
     projectDir: string;
     includeDirs: string[];
-    // <= 1 means serial mode.
     maxParallelProcesses: number;
-    // <= 0 means auto (2 * workerCount).
     maxPendingAstResults: number;
-    /** Log AST payload stats after each successful TU decode. */
     logAstInfo?: boolean;
-    // Invoked for each source after the AST payload is decoded.
     onSourceAst: (sourceFile: string, astRoot: CxxAstNode) => void;
 }
 
-export enum astKind {
-    ArraySubscriptExpr = 'ArraySubscriptExpr',
-    ArrayTypeTraitExpr = 'ArrayTypeTraitExpr',
-    AtomicCallExpr = 'AtomicCallExpr',
-    BinaryConditionalOperator = 'BinaryConditionalOperator',
-    BinaryOperator = 'BinaryOperator',
-    BindingDecl = 'BindingDecl',
-    BreakStmt = 'BreakStmt',
-    CallExpr = 'CallExpr',
-    CaseStmt = 'CaseStmt',
-    CharacterLiteral = 'CharacterLiteral',
-    ClassTemplateDecl = 'ClassTemplateDecl',
-    CompoundAssignOperator = 'CompoundAssignOperator',
-    CompoundLiteralExpr = 'CompoundLiteralExpr',
-    CompoundStmt = 'CompoundStmt',
-    ConditionalOperator = 'ConditionalOperator',
-    ConstantExpr = 'ConstantExpr',
-    ContinueStmt = 'ContinueStmt',
-    CStyleCastExpr = 'CStyleCastExpr',
-    CXXBindTemporaryExpr = 'CXXBindTemporaryExpr',
-    CXXBoolLiteralExpr = 'CXXBoolLiteralExpr',
-    CXXCatchStmt = 'CXXCatchStmt',
-    CXXConstCastExpr = 'CXXConstCastExpr',
-    CXXConstructorDecl = 'CXXConstructorDecl',
-    CXXConstructExpr = 'CXXConstructExpr',
+export enum AstKind {
+    Unknown = 0,
+    TranslationUnit = 1,
+    ArraySubscriptExpr = 2,
+    ArrayTypeTraitExpr = 3,
+    AtomicCallExpr = 4,
+    BinaryConditionalOperator = 5,
+    BinaryOperator = 6,
+    BindingDecl = 7,
+    BreakStmt = 8,
+    CallExpr = 9,
+    CaseStmt = 10,
+    CharacterLiteral = 11,
+    ClassTemplateDecl = 12,
+    CompoundAssignOperator = 13,
+    CompoundLiteralExpr = 14,
+    CompoundStmt = 15,
+    ConditionalOperator = 16,
+    ConstantExpr = 17,
+    ContinueStmt = 18,
+    CStyleCastExpr = 19,
+    CXXBindTemporaryExpr = 20,
+    CXXBoolLiteralExpr = 21,
+    CXXCatchStmt = 22,
+    CXXConstCastExpr = 23,
+    CXXConstructorDecl = 24,
+    CXXConstructExpr = 25,
+    CXXCtorInitializer = 26,
+    CXXDefaultArgExpr = 27,
+    CXXDeleteExpr = 28,
+    CXXDestructorDecl = 29,
+    CXXDynamicCastExpr = 30,
+    CXXFoldExpr = 31,
+    CXXForRangeStmt = 32,
+    CXXFunctionalCastExpr = 33,
+    CXXInheritedCtorInitExpr = 34,
+    CXXMemberCallExpr = 35,
+    CXXMethodDecl = 36,
+    CXXNewExpr = 37,
+    CXXNoexceptExpr = 38,
+    CXXNullPtrLiteralExpr = 39,
+    CXXOperatorCallExpr = 40,
+    CXXPseudoDestructorExpression = 41,
+    CXXRecordDecl = 42,
+    CXXReinterpretCastExpr = 43,
+    CXXRewrittenBinaryOperator = 44,
+    CXXScalarValueInitExpr = 45,
+    CXXStaticCastExpr = 46,
+    CXXStdInitializerListExpr = 47,
+    CXXTemporaryObjectExpr = 48,
+    CXXThisExpr = 49,
+    CXXThrowExpr = 50,
+    CXXTryStmt = 51,
+    CXXTypeidExpr = 52,
+    DeclRefExpr = 53,
+    DeclStmt = 54,
+    DecompositionDecl = 55,
+    DefaultStmt = 56,
+    DesignatedInitExpr = 57,
+    DoStmt = 58,
+    EnumDecl = 59,
+    EnumConstantDecl = 60,
+    ExprWithCleanups = 61,
+    FloatingLiteral = 62,
+    ForStmt = 63,
+    FriendDecl = 64,
+    FunctionDecl = 65,
+    FunctionTemplateDecl = 66,
+    GotoStmt = 67,
+    IfStmt = 68,
+    ImplicitCastExpr = 69,
+    IndirectGotoStmt = 70,
+    InitListExpr = 71,
+    IntegerLiteral = 72,
+    LabelStmt = 73,
+    LambdaExpr = 74,
+    LinkageSpecDecl = 75,
+    MaterializeTemporaryExpr = 76,
+    MemberExpr = 77,
+    MemberRef = 78,
+    NamespaceRef = 79,
+    NamespaceDecl = 80,
+    NonTypeTemplateParmDecl = 81,
+    NullStmt = 82,
+    OverloadedDeclRef = 83,
+    ParenExpr = 84,
+    ParenListExpr = 85,
+    ParentExpr = 86,
+    ParmVarDecl = 87,
+    RecordDecl = 88,
+    RecoveryExpr = 89,
+    ReturnStmt = 90,
+    StringLiteral = 91,
+    SwitchStmt = 92,
+    TemplateRef = 93,
+    TemplateTypeParmDecl = 94,
+    TranslationUnitDecl = 95,
+    TypeAliasDecl = 96,
+    TypeAliasTemplateDecl = 97,
+    TypedefDecl = 98,
+    TypeRef = 99,
+    UnaryExprOrTypeTraitExpr = 100,
+    UnaryOperator = 101,
+    UnexposedExpr = 102,
+    UnresolvedLookupExpr = 103,
+    UnsupportedKind = 104,
+    UserDefinedLiteral = 105,
+    UsingDirectiveDecl = 106,
+    VarDecl = 107,
+    WhileStmt = 108,
+    AccessSpecDecl = 109,
+    CatchAllException = 110,
+    CXXAccessSpecifier = 111,
+    UsingDecl = 112,
+    FieldDecl = 113,
+    InclusionDirective = 114,
+    TemplateTypeParmVarDecl = 115,
+    AttributeOverride = 116,
+    FunctionToPointerDecay = 117,
+}
 
-    CXXCtorInitializer = 'CXXCtorInitializer',
-    CXXDefaultArgExpr = 'CXXDefaultArgExpr',
-    CXXDeleteExpr = 'CXXDeleteExpr',
-    CXXDestructorDecl = 'CXXDestructorDecl',
-    CXXDynamicCastExpr = 'CXXDynamicCastExpr',
-    CXXFoldExpr = 'CXXFoldExpr',
-    CXXForRangeStmt = 'CXXForRangeStmt',
-    CXXFunctionalCastExpr = 'CXXFunctionalCastExpr',
-    CXXInheritedCtorInitExpr = 'CXXInheritedCtorInitExpr',
-    CXXMemberCallExpr = 'CXXMemberCallExpr',
-    CXXMethodDecl = 'CXXMethodDecl',
-    CXXNewExpr = 'CXXNewExpr',
-    CXXNoexceptExpr = 'CXXNoexceptExpr',
-    CXXNullPtrLiteralExpr = 'CXXNullPtrLiteralExpr',
-    CXXOperatorCallExpr = 'CXXOperatorCallExpr',
-    CXXPseudoDestructorExpression = 'CXXPseudoDestructorExpression',
-    CXXRecordDecl = 'CXXRecordDecl',
-    CXXReinterpretCastExpr = 'CXXReinterpretCastExpr',
-    CXXRewrittenBinaryOperator = 'CXXRewrittenBinaryOperator',
-    CXXScalarValueInitExpr = 'CXXScalarValueInitExpr',
-    CXXStaticCastExpr = 'CXXStaticCastExpr',
-    CXXStdInitializerListExpr = 'CXXStdInitializerListExpr',
-    CXXTemporaryObjectExpr = 'CXXTemporaryObjectExpr',
-    CXXThisExpr = 'CXXThisExpr',
-    CXXThrowExpr = 'CXXThrowExpr',
-    CXXTryStmt = 'CXXTryStmt',
-    CXXTypeidExpr = 'CXXTypeidExpr',
-    DeclRefExpr = 'DeclRefExpr',
-    DeclStmt = 'DeclStmt',
-    DecompositionDecl = 'DecompositionDecl',
-    DefaultStmt = 'DefaultStmt',
-    DesignatedInitExpr = 'DesignatedInitExpr',
-    DoStmt = 'DoStmt',
-    EnumDecl = 'EnumDecl',
-    EnumConstantDecl = 'EnumConstantDecl',
-    ExprWithCleanups = 'ExprWithCleanups',
-    FloatingLiteral = 'FloatingLiteral',
-    ForStmt = 'ForStmt',
-    FriendDecl = 'FriendDecl',
-    FunctionDecl = 'FunctionDecl',
-    FunctionTemplateDecl = 'FunctionTemplateDecl',
-    GotoStmt = 'GotoStmt',
-    IfStmt = 'IfStmt',
-    ImplicitCastExpr = 'ImplicitCastExpr',
-    IndirectGotoStmt = 'IndirectGotoStmt',
-    InitListExpr = 'InitListExpr',
-    IntegerLiteral = 'IntegerLiteral',
-    LabelStmt = 'LabelStmt',
-    LambdaExpr = 'LambdaExpr',
-    LinkageSpecDecl = 'LinkageSpecDecl',
-    MaterializeTemporaryExpr = 'MaterializeTemporaryExpr',
-    MemberExpr = 'MemberExpr',
-    MemberRef = 'MemberRef',
-    NamespaceRef = 'NamespaceRef',
-    NamespaceDecl = 'NamespaceDecl',
-    NonTypeTemplateParmDecl = 'NonTypeTemplateParmDecl',
-    NullStmt = 'NullStmt',
-    OverloadedDeclRef = 'OverloadedDeclRef',
-    ParenExpr = 'ParenExpr',
-    ParenListExpr = 'ParenListExpr',
-    ParentExpr = 'ParentExpr',
-    ParmVarDecl = 'ParmVarDecl',
-    RecordDecl = 'RecordDecl',
-    RecoveryExpr = 'RecoveryExpr',
-    ReturnStmt = 'ReturnStmt',
-    StringLiteral = 'StringLiteral',
-    SwitchStmt = 'SwitchStmt',
-    TemplateRef = 'TemplateRef',
-    TemplateTypeParmDecl = 'TemplateTypeParmDecl',
-    TranslationUnitDecl = 'TranslationUnitDecl',
-    TypeAliasDecl = 'TypeAliasDecl',
-    TypeAliasTemplateDecl = 'TypeAliasTemplateDecl',
-    TypedefDecl = 'TypedefDecl',
-    TypeRef = 'TypeRef',
-    UnaryExprOrTypeTraitExpr = 'UnaryExprOrTypeTraitExpr',
-    UnaryOperator = 'UnaryOperator',
-    UnexposedExpr = 'UnexposedExpr',
-    UnresolvedLookupExpr = 'UnresolvedLookupExpr',
-    unsupported_kind = 'unsupported kind',
-    UserDefinedLiteral = 'UserDefinedLiteral',
-    UsingDirectiveDecl = 'UsingDirectiveDecl',
-    VarDecl = 'VarDecl',
-    WhileStmt = 'WhileStmt',
+/** Exclusive upper bound for wire kind ids (uint16). */
+export const AST_KIND_COUNT = 118;
+
+/** CXXRecordDecl tag (wire uint8). */
+export enum CxxTagUsed {
+    Unknown = 0,
+    Class = 1,
+    Struct = 2,
+    Union = 3,
+    Enum = 4,
+}
+export const CXX_TAG_USED_COUNT = 5;
+
+/** VarDecl / similar storage class (wire uint8). */
+export enum CxxStorageClass {
+    Unknown = 0,
+    Static = 1,
+    Extern = 2,
+}
+export const CXX_STORAGE_CLASS_COUNT = 3;
+
+/** Access specifier (wire uint8). */
+export enum CxxAccess {
+    Unknown = 0,
+    Public = 1,
+    Private = 2,
+    Protected = 3,
+}
+export const CXX_ACCESS_COUNT = 4;
+
+/** Clang value category (wire uint8). */
+export enum CxxValueCategory {
+    Unknown = 0,
+    Prvalue = 1,
+    Lvalue = 2,
+    Xvalue = 3,
+}
+export const CXX_VALUE_CATEGORY_COUNT = 4;
+
+/** CXXFoldExpr fold operator (wire uint8). */
+export enum CxxFoldOp {
+    Unknown = 0,
+    FoldSpace = 1,
+    BitOr = 2,
+    BitAnd = 3,
+    BitXor = 4,
+}
+export const CXX_FOLD_OP_COUNT = 5;
+
+/** Binary/unary/compound operator token (wire uint8). */
+export enum CxxOpcode {
+    Unknown = 0,
+    Assign = 1,
+    Plus = 2,
+    Minus = 3,
+    Mul = 4,
+    Div = 5,
+    Mod = 6,
+    Shl = 7,
+    Shr = 8,
+    BitAnd = 9,
+    BitOr = 10,
+    BitXor = 11,
+    LogicalAnd = 12,
+    LogicalOr = 13,
+    Lt = 14,
+    Le = 15,
+    Gt = 16,
+    Ge = 17,
+    Eq = 18,
+    Ne = 19,
+    Inc = 20,
+    Dec = 21,
+    PlusAssign = 22,
+    MinusAssign = 23,
+    MulAssign = 24,
+    DivAssign = 25,
+    ModAssign = 26,
+    ShlAssign = 27,
+    ShrAssign = 28,
+    BitAndAssign = 29,
+    BitOrAssign = 30,
+    BitXorAssign = 31,
+    Comma = 32,
+    Not = 33,
+    BitNot = 34,
+}
+export const CXX_OPCODE_COUNT = 35;
+
+/**
+ * Maps normalized C++ primitive / builtin spellings to ArkAnalyzer data-type categories
+ * used when building IR from {@link CxxTypeInfo.qualType}.
+ */
+export const CXX_PRIMITIVE_TYPE_MAP: Record<string, string> = {
+    bool: 'boolean',
+    string: 'string',
+    'std::string': 'string',
+    char: 'string',
+    'signed char': 'string',
+    'unsigned char': 'string',
+    'unsignedchar': 'string',
+    wchar_t: 'string',
+    char16_t: 'string',
+    char32_t: 'string',
+    'std::basic_string<char>': 'string',
+    'basic_string<char>': 'string',
+    short: 'number',
+    'unsigned short': 'number',
+    'unsigned int': 'number',
+    int: 'number',
+    long: 'number',
+    'unsigned long': 'number',
+    'long long': 'number',
+    'unsigned long long': 'number',
+    float: 'number',
+    double: 'number',
+    'long double': 'number',
+    uint8_t: 'number',
+    uint16_t: 'number',
+    uint32_t: 'number',
+    uint64_t: 'number',
+    int8_t: 'number',
+    int16_t: 'number',
+    int32_t: 'number',
+    int64_t: 'number',
+    size_t: 'number',
+    intptr_t: 'number',
+    uintptr_t: 'number',
+    void: 'void',
+    'std::type_info': 'type_info',
+    type_info: 'type_info',
+    auto: 'auto',
+};
+
+/** Position information (line/column/offset/length) */
+export interface CxxPosition {
+    line: number;
+    col: number;
+    offset?: number; // Offset will be set by the generator
+    tokLen?: number; // tokLen is available for 'begin'
+}
+
+/** Source code range */
+export interface CxxRange {
+    begin: CxxPosition;
+    end: CxxPosition;
+}
+
+/** Type information */
+export interface CxxTypeInfo {
+    qualType: string; // Main field: output from unifyTypeStr
+    desugaredQualType?: string;
+    typeAliasDeclId?: number;
+}
+
+/** Target information for DeclRef */
+export interface CxxReferencedDecl {
+    kind?: AstKind; // VarDecl / ParamVarDecl / FunctionDecl ...
+    name?: string;
+    type?: CxxTypeInfo;
+}
+
+/** Target information for CXXCtorInitializer */
+export interface CxxCtorAnyInit {
+    name: string;
+    type?: CxxTypeInfo;
+}
+
+/** Target information for Inclusion Directive */
+export interface CxxIncludeInfo {
+    fileName?: string; // include header file absolute path. When the target cannot be found in the search path, this property does not exist.
+    includeName: string; // include header file name
+    kind: AstKind; // kind of node
+    loc: CxxPosition; // inclusion directive position in translate unit file
+}
+
+export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
+
+/**
+ * Wire `node_flags:uint8` bits on {@link CxxAstNodeWire}.
+ * Read with {@link hasNodeFlag} in {@link ./cppUtils}; layout is stable across wire v12+.
+ */
+export enum CxxNodeFlag {
+    HasInClassInitializer = 1 << 0,
+    Implicit = 1 << 1,
+    Postfix = 1 << 2,
+    Arrow = 1 << 3,
+    Array = 1 << 4,
+}
+
+/**
+ * Wire `base_flags:uint8` bits on {@link ClassBaseWire}.
+ * Read with {@link hasBaseFlag} in {@link ./cppUtils}.
+ */
+export enum CxxBaseFlag {
+    Virtual = 1 << 0,
+}
+
+/** General C++ AST node (compatible with Clang JSON) */
+export interface CxxAstNode {
+    /** Unique node ID */
+    id?: string;
+
+    /** Unique node ID */
+    originalId?: string;
+
+    /** Node kind (numeric AstKind; wire uint16) */
+    kind: AstKind;
+
+    /** Node name (function/variable/type/operator name, etc.) */
+    name: string;
+
+    /** Type information */
+    type: CxxTypeInfo;
+
+    /** Mangled name (injected by getMemberInClassName for methods/constructors/destructors) */
+    mangledName?: string;
+
+    /** Tag: class/struct/union/enum (injected by fillNodeKindTag) */
+    tagUsed?: CxxTagUsed;
+
+    /** Storage class (e.g., static for member VarDecl) */
+    storageClass?: CxxStorageClass;
+
+    /** The access modifier of class member stored in AccessSpecDecl. */
+    access?: CxxAccess;
+
+    /** Target information parsed from DeclRef */
+    referencedDecl?: CxxReferencedDecl;
+
+    /** Literal value (IntegerLiteral/StringLiteral/BoolLiteral) */
+    value?: string;
+
+    /** Value category (Clang prvalue/lvalue/xvalue). */
+    valueCategory?: CxxValueCategory;
+
+    /** ImplicitCastExpr castKind (only TS-parsed kinds are wired; else omitted) */
+    castKind?: AstKind;
+
+    /** Derived information: unary/binary/compound operator token. */
+    opcode?: CxxOpcode;
+    op?: CxxFoldOp; // CXXFoldExpr
+
+    typeArg?: CxxTypeInfo;
+
+    /** Specific to CXXCtorInitializer */
+    anyInit?: CxxCtorAnyInit; // e.g., { name, type }
+    baseInit?: CxxTypeInfo; // Used for base class initialization
+
+    /** Nominated namespace name (UsingDirectiveDecl) */
+    nominatedNamespace?: string;
+
+    /** Header/include relationship related */
+    includes?: CxxIncludeInfo[];
+
+    /** Simple location (line/column); some nodes may not have this */
+    loc?: {
+        file?: string;
+        line?: number;
+        col?: number;
+    };
+
+    /** Precise range (begin/end includes offset and tokLen) */
+    range?: CxxRange;
+
+    /** Child nodes */
+    inner: CxxAstNode[];
+
+    /**
+     * Root node may additionally carry: nodes from user includes aggregated here
+     * (filled by filterToMainFileOnly(); also present in sample JSON)
+     */
+    headerUnits?: CxxAstNode[];
+
+    parent?: CxxAstNode;
+
+    getParent?: {
+        (isNeedInner: true): CxxAstNode; // Requires full parent node (including inner)
+        (isNeedInner?: false): CxxAstNodeLite; // Lightweight snapshot (excluding inner)
+    };
+
+    /**
+     * C++ declaration/expression modifier bitmask (wire `modifier_flags:uint32`).
+     *
+     * Bit layout matches {@link ModifierType} in `src/core/model/ArkBaseModel.ts`.
+     * Values are OR-combined; use bitwise `&` / `|` when reading or merging.
+     */
+    modifierFlags?: number;
+
+    /**
+     * AST shape / structural attribute bitmask (wire `node_flags:uint8`).
+     *
+     * Replaces per-node booleans (`hasInClassInitializer`, `isImplicit`, `isPostfix`,
+     * `isArrow`, `isArray`). Read with {@link hasNodeFlag} in {@link ./cppUtils} and {@link CxxNodeFlag}.
+     *
+     * | Bit | Value | {@link CxxNodeFlag} | Meaning |
+     * |-----|-------|-------------------|---------|
+     * | 0 | 1 | HasInClassInitializer | in-class member initializer present |
+     * | 1 | 2 | Implicit | Clang implicit node (e.g. UsingDirective) |
+     * | 2 | 4 | Postfix | postfix unary operator (`i++`) |
+     * | 3 | 8 | Arrow | MemberExpr uses `->` |
+     * | 4 | 16 | Array | `new[]` / `delete[]` array form |
+     * | 5–7 | — | — | reserved |
+     */
+    nodeFlags?: number;
+
+    /** Default argument type (TemplateTypeParmDecl / ParmVarDecl) */
+    defaultArg?: CxxTypeInfo;
+
+    bases?: ClassBase[];
+
+    /** Destructor kind (CXXPseudoDestructorExpression) */
+    dtor?: AstKind;
+}
+
+export type CxxAstNodePositionSource = Pick<CxxAstNode, 'loc' | 'range'>;
+
+/** Translation unit root (debug metadata set by AstParser.filter). */
+export interface CxxTranslationUnit extends CxxAstNode {
+    kind: AstKind.TranslationUnit | AstKind.TranslationUnitDecl;
+    /** Main source path; for debugging only (builders use the `sourceFile` argument). */
+    fileName?: string;
+    headerUnits?: CxxAstNode[];
+    /** Parent directory of `fileName`; for debugging only. */
+    projectName?: string;
+}
+
+export interface ClassBase {
+    access: CxxAccess;
+    type: CxxTypeInfo;
+    /**
+     * Base-class attribute bitmask (wire `base_flags:uint8`).
+     *
+     * | Bit | Value | {@link CxxBaseFlag} | Meaning |
+     * |-----|-------|-------------------|---------|
+     * | 0 | 1 | Virtual | virtual base inheritance |
+     * | 1–7 | — | — | reserved |
+     *
+     * Read with {@link hasBaseFlag} in {@link ./cppUtils}.
+     */
+    baseFlags?: number;
 }
