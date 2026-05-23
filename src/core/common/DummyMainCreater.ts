@@ -105,7 +105,7 @@ export class DummyMainCreater {
      * @param dummyMethodName if not provided, using the default method name '@dummyMain'
      * @param classScope if not provided, collect all Ability class and Component struct.
      */
-    constructor(scene: Scene, extraInstanceAssign: boolean = false, dummyMethodName?: string, classScope?: ArkClass[]) {
+    constructor(scene: Scene, dummyMethodName?: string, classScope?: ArkClass[], extraInstanceAssign: boolean = false) {
         this.scene = scene;
         this.extraInstanceAssign = extraInstanceAssign;
         this.dummyMethodName = dummyMethodName;
