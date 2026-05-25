@@ -15,7 +15,13 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION, SCOPE_PREFIX } from './EtsConst';
+import {
+    addSystemComponent,
+    COMMON_METHOD,
+    COMPONENT_ATTRIBUTE,
+    COMPONENT_POP_FUNCTION,
+    SCOPE_PREFIX
+} from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -288,6 +294,31 @@ export class SdkUtils {
             mtd.setDeclareSignatures(new MethodSignature(cls.getSignature(), methodSubSignature));
             mtd.setIsGeneratedFlag(true);
             cls.addMethod(mtd);
+        }
+    }
+
+    public static loadSystemComponentsFromSdk(sdkPath: string): void {
+        const componentsDir = path.join(sdkPath, 'build-tools', 'ets-loader', 'components');
+        if (!fs.existsSync(componentsDir)) {
+            return;
+        }
+        const componentFiles = fs.readdirSync(componentsDir)
+            .filter(file => file.endsWith('.json'));
+        const componentNames: string[] = [];
+        componentFiles.forEach(file => {
+            const filePath = path.join(componentsDir, file);
+            try {
+                const content = fs.readFileSync(filePath, 'utf-8');
+                const componentData = JSON.parse(content);
+                if (componentData && typeof componentData.name === 'string') {
+                    componentNames.push(componentData.name);
+                }
+            } catch (error) {
+                logger.error(`Failed to parse component file: ${filePath}`, error);
+            }
+        });
+        if (componentNames.length > 0) {
+            addSystemComponent(componentNames);
         }
     }
 }

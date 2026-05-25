@@ -998,6 +998,13 @@ export function isEtsContainerComponent(name: string): boolean {
     return isEtsSystemComponent(name) && !isEtsAtomicComponent(name);
 }
 
+export function addSystemComponent(componentNames: string[]): void {
+    componentNames.forEach(name => {
+        ETS_COMPILER_OPTIONS.ets.components.push(name);
+        BUILDIN_SYSTEM_COMPONENT.add(name);
+    });
+}
+
 export const COMPONENT_CREATE_FUNCTION: string = 'create';
 export const COMPONENT_POP_FUNCTION: string = 'pop';
 export const COMPONENT_CUSTOMVIEW: string = 'View';
