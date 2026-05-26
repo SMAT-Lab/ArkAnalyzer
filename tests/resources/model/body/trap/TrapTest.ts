@@ -162,3 +162,117 @@ function case12(): void {
     }
     console.log(i);
 }
+
+function case13(): boolean {
+    let result = false;
+    try {
+        result = true;
+    } catch (e) {
+        console.log('catch');
+    } finally {
+        return result;
+    }
+}
+
+function case14(): number {
+    let i = 0;
+    try {
+        i = 1;
+    } catch (e) {
+        i = 2;
+    } finally {
+        try {
+            i = 3;
+        } catch (innerE) {
+            i = 4;
+        } finally {
+            i = 5;
+        }
+    }
+    return i;
+}
+
+function case15(): number {
+    let i = 0;
+    try {
+        i = 1;
+    } catch (e) {
+        try {
+            i = 2;
+        } catch (innerE) {
+            i = 3;
+        } finally {
+            i = 4;
+        }
+    } finally {
+        i = 5;
+    }
+    return i;
+}
+
+function case16(): number {
+    let i = 0;
+    try {
+        try {
+            i = 1;
+        } catch (innerE) {
+            i = 2;
+        } finally {
+            return i;
+        }
+    } catch (e) {
+        i = 3;
+    } finally {
+        i = 4;
+    }
+    return i;
+}
+
+function case17(): number {
+    let i = 0;
+    try {
+        i = 1;
+    } finally {
+        return i;
+    }
+}
+
+function case18(): number {
+    let i = 0;
+    try {
+        try {
+        } catch (innerE) {
+            i = 1;
+        }
+        i = 2;
+    } catch (e) {
+        i = 3;
+    } finally {
+        i = 4;
+    }
+    return i;
+}
+
+function case19(): number {
+    let i = 0;
+    try {
+        i = 1;
+        try {
+            i = 2;
+        } catch (innerE) {
+            i = 3;
+        } finally {
+            try {
+                i = 4;
+            } catch (deepE) {
+                i = 5;
+            }
+            i = 6;
+        }
+    } catch (e) {
+        i = 7;
+    } finally {
+        i = 8;
+    }
+    return i;
+}

@@ -26,6 +26,13 @@ import {
     TRAP_EXPECT_CASE6,
     TRAP_EXPECT_CASE7,
     TRAP_EXPECT_CASE8,
+    TRAP_EXPECT_CASE13,
+    TRAP_EXPECT_CASE14,
+    TRAP_EXPECT_CASE15,
+    TRAP_EXPECT_CASE16,
+    TRAP_EXPECT_CASE17,
+    TRAP_EXPECT_CASE18,
+    TRAP_EXPECT_CASE19,
 } from '../../../resources/model/body/trap/TrapExpect';
 import { assertBlocksEqual } from '../../common';
 import { Local_Expect_In_Generated_Method } from '../../../resources/model/body/local/LocalExpect';
@@ -82,6 +89,34 @@ describe('trap Test', () => {
 
     it('trap case12 - empty try body with catch and code after', async () => {
         testEmptyTryBodyTraps(scene, 'TrapTest.ts', 'case12');
+    });
+
+    it('trap case13 - try-catch-finally with return in finally', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case13', TRAP_EXPECT_CASE13.traps);
+    });
+
+    it('trap case14 - nested try-catch in finally', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case14', TRAP_EXPECT_CASE14.traps);
+    });
+
+    it('trap case15 - nested try-catch in catch', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case15', TRAP_EXPECT_CASE15.traps);
+    });
+
+    it('trap case16 - nested try-catch with return in inner finally', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case16', TRAP_EXPECT_CASE16.traps);
+    });
+
+    it('trap case17 - try-finally with return in finally', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case17', TRAP_EXPECT_CASE17.traps);
+    });
+
+    it('trap case18 - nested empty try in try body with outer catch and finally', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case18', TRAP_EXPECT_CASE18.traps);
+    });
+
+    it('trap case19 - deeply nested try-catch in finally of inner try', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case19', TRAP_EXPECT_CASE19.traps);
     });
 });
 
