@@ -52,18 +52,19 @@ export class IfBuilder {
     }
 
     private generateBlocksForComplexBooleanExpr(block: BasicBlock, basicBlockSet: Set<BasicBlock>, isOnlyIf?: boolean): void {
-        if (block.getSuccessors().length !== 2) {
+        const successorCount = block.getSuccessors().length;
+        if (successorCount !== 2 && successorCount !== 1) {
             logger.error('the ifStmt build failed');
             return;
         }
+        const resolvedIsOnlyIf = isOnlyIf ?? (successorCount === 1 ? true : this.isOnlyIf(block));
         const { firstOrSignalPos, firstOrEndPos: orEndPos } = this.findOrOperator(block.getStmts());
         if (firstOrSignalPos !== -1) {
-            this.generateBlocksForOrExpr(block, basicBlockSet, firstOrSignalPos, orEndPos);
+            this.generateBlocksForOrExpr(block, basicBlockSet, firstOrSignalPos, orEndPos, resolvedIsOnlyIf);
             return;
         }
         const { firstAndSignalPos, firstAndEndPos: andEndPos } = this.findAndOperator(block.getStmts());
         if (firstAndSignalPos !== -1) {
-            const resolvedIsOnlyIf = isOnlyIf ?? this.isOnlyIf(block);
             this.generateBlocksForAndExpr(block, basicBlockSet, firstAndSignalPos, andEndPos, resolvedIsOnlyIf);
         }
     }
@@ -71,15 +72,19 @@ export class IfBuilder {
     /**
      * Generate the corresponding control flow basic block for a logical OR (||) expression.
      */
-    private generateBlocksForOrExpr(block: BasicBlock, basicBlockSet: Set<BasicBlock>, firstOrSignalPos: number, orEndPos: number): void {
+    private generateBlocksForOrExpr(block: BasicBlock, basicBlockSet: Set<BasicBlock>, firstOrSignalPos: number, orEndPos: number, isOnlyIf: boolean): void {
         const sourceStmts = block.getStmts();
         const secondBlock = this.generateBlock(sourceStmts.slice(firstOrSignalPos + 1, orEndPos));
         sourceStmts.splice(firstOrSignalPos);
-        const falseBlock = block.getSuccessors()[1];
-        const trueBlock = block.getSuccessors()[0];
+        const successors = block.getSuccessors();
+        const trueBlock = successors[0];
+        const falseBlock = successors.length >= 2 ? successors[1] : successors[0];
 
-        CfgBuilder.unlinkBasicBlock(block, falseBlock);
-        CfgBuilder.unlinkBasicBlock(block, trueBlock);
+        block.getSuccessors().length = 0;
+        falseBlock.removePredecessorBlock(block);
+        if (trueBlock !== falseBlock) {
+            trueBlock.removePredecessorBlock(block);
+        }
 
         const newTrueBlock = this.copyBlock(trueBlock);
 
@@ -91,8 +96,8 @@ export class IfBuilder {
         basicBlockSet.add(newTrueBlock);
 
         basicBlockSet.add(secondBlock);
-        this.generateBlocksForComplexBooleanExpr(block, basicBlockSet);
-        this.generateBlocksForComplexBooleanExpr(secondBlock, basicBlockSet);
+        this.generateBlocksForComplexBooleanExpr(block, basicBlockSet, isOnlyIf);
+        this.generateBlocksForComplexBooleanExpr(secondBlock, basicBlockSet, isOnlyIf);
     }
 
     /**
@@ -108,11 +113,15 @@ export class IfBuilder {
         const sourceStmts = block.getStmts();
         const secondBlock = this.generateBlock(sourceStmts.slice(firstAndSignalPos + 1, andEndPos));
         sourceStmts.splice(firstAndSignalPos);
-        const falseBlock = block.getSuccessors()[1];
-        const trueBlock = block.getSuccessors()[0];
+        const successors = block.getSuccessors();
+        const trueBlock = successors[0];
+        const falseBlock = successors.length >= 2 ? successors[1] : successors[0];
 
-        CfgBuilder.unlinkBasicBlock(block, trueBlock);
-        CfgBuilder.unlinkBasicBlock(block, falseBlock);
+        block.getSuccessors().length = 0;
+        trueBlock.removePredecessorBlock(block);
+        if (trueBlock !== falseBlock) {
+            falseBlock.removePredecessorBlock(block);
+        }
 
         CfgBuilder.linkBasicBlock(block, secondBlock);
 
