@@ -15,21 +15,22 @@
 
 'use strict';
 
-const { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('fs');
+const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require('fs');
 const { join, resolve, delimiter } = require('path');
 const { spawnSync } = require('child_process');
 
 const projectRoot = join(__dirname, '..');
+const cxxAstRuntimeRoot = join(projectRoot, 'packages', 'cxx-ast-runtime');
+const { ensureCxxAstRuntimeInstalled } = require('./ensureCxxAstRuntime');
+const { runFlatcCodegen } = require('./flatcCodegen');
 const isWin = process.platform === 'win32';
 const isLinux = process.platform === 'linux';
-const REL_AST = join('src', 'frontend', 'cppFrontend', 'ast');
-const REL_AST_CPP = join(REL_AST, 'cpp');
+const REL_AST_CPP = join('packages', 'cxx-ast-runtime', 'cpp');
 const REL_AST_BUILD = join(REL_AST_CPP, 'build');
 
-const astDir = join(projectRoot, REL_AST);
 const astCppDir = join(projectRoot, REL_AST_CPP);
 const buildDir = join(astCppDir, 'build');
-const dumperDir = join(astDir, 'dumper');
+const dumperDir = join(projectRoot, 'packages', 'cxx-ast-runtime', 'dumper');
 /** N-API addon output (see cpp/CMakeLists.txt). */
 const ADDON_NODE = 'astJsonDumper.node';
 const targetAddonPath = join(dumperDir, ADDON_NODE);
@@ -120,6 +121,15 @@ function runCommand(command, args, envExtra) {
     if (result.status !== 0) {
         process.exit(result.status ?? 1);
     }
+}
+
+function runCommandOptional(command, args) {
+    const result = spawnSync(command, args, {
+        cwd: projectRoot,
+        stdio: 'inherit',
+        env: process.env,
+    });
+    return result.status === 0;
 }
 
 function isCommandAvailable(command) {
@@ -284,93 +294,25 @@ function ensureFreshCppBuildDir() {
     }
 }
 
-function resolveFlatcCommand() {
+function resolveFlatbuffersIncludeDir() {
     const candidates = [
-        join(projectRoot, 'tools', 'flatc'),
-        join(projectRoot, 'node_modules', 'flatbuffers', 'flatc'),
-        join(projectRoot, 'node_modules', '.bin', 'flatc'),
-        'flatc',
+        join(cxxAstRuntimeRoot, 'node_modules', 'flatbuffers', 'include'),
+        join(projectRoot, 'node_modules', 'flatbuffers', 'include'),
+        join(projectRoot, 'tools', 'flatbuffers', 'include'),
     ];
-    for (const command of candidates) {
-        if (command === 'flatc') {
-            if (isCommandAvailable('flatc')) {
-                return command;
-            }
-            continue;
-        }
-        if (existsSync(command)) {
-            return command;
+    for (const dir of candidates) {
+        if (existsSync(join(dir, 'flatbuffers', 'flatbuffers.h'))) {
+            return dir;
         }
     }
     return undefined;
 }
 
-/** Committed flatc outputs; when all present, skip regeneration unless forced. */
-const FLATC_TS_OUTPUT_MARKERS = [
-    'astWire.ts',
-    join('ark-cxx-ast-fb', 'cxx-ast-payload.ts'),
-    join('ark-cxx-ast-fb', 'cxx-ast-node-wire.ts'),
-];
-const FLATC_CPP_OUTPUT_MARKER = 'astWire_generated.h';
-
-function flatGeneratedOutputsPresent(cppOut, tsOut) {
-    if (!existsSync(join(cppOut, FLATC_CPP_OUTPUT_MARKER))) {
-        return false;
-    }
-    return FLATC_TS_OUTPUT_MARKERS.every((rel) => existsSync(join(tsOut, rel)));
-}
-
-function patchFlatcTsImports(tsOutDir) {
-    for (const entry of readdirSync(tsOutDir, { withFileTypes: true })) {
-        const filePath = join(tsOutDir, entry.name);
-        if (entry.isDirectory()) {
-            patchFlatcTsImports(filePath);
-            continue;
-        }
-        if (!entry.name.endsWith('.ts')) {
-            continue;
-        }
-        const source = readFileSync(filePath, 'utf8');
-        const patched = source.replace(/(from\s+['"])([^'"]+)\.js(['"])/g, '$1$2$3');
-        if (patched !== source) {
-            writeFileSync(filePath, patched);
-        }
-    }
-}
-
-function runFlatcCodegen() {
-    const fbsPath = join(astCppDir, 'serialization', 'astWire.fbs');
-    const cppOut = join(astCppDir, 'serialization', 'flatGenerated');
-    const tsOut = join(astDir, 'ts', 'serialization', 'flatGenerated');
-    mkdirSync(cppOut, { recursive: true });
-    mkdirSync(tsOut, { recursive: true });
-
-    const forceRegenerate = process.env.ARKANALYZER_FORCE_FLATC_CODEGEN === '1';
-    if (!forceRegenerate && flatGeneratedOutputsPresent(cppOut, tsOut)) {
-        console.log(
-            '[build:cpp] flatGenerated outputs already present; skipping flatc ' +
-                '(set ARKANALYZER_FORCE_FLATC_CODEGEN=1 to regenerate)',
-        );
-        return;
-    }
-
-    const flatc = resolveFlatcCommand();
-    if (!flatc) {
-        console.error(
-            '[build:cpp] flatc not found. Place flatc under tools/flatc, run npm install (flatbuffers devDependency), or install flatbuffers-compiler.',
-        );
-        process.exit(1);
-    }
-    console.log(`[build:cpp] flatc codegen: ${fbsPath}`);
-    runCommand(flatc, ['--cpp', '-o', cppOut, fbsPath]);
-    runCommand(flatc, ['--ts', '-o', tsOut, fbsPath]);
-    patchFlatcTsImports(tsOut);
-}
-
 ensureFreshCppBuildDir();
 mkdirSync(buildDir, { recursive: true });
 mkdirSync(dumperDir, { recursive: true });
-runFlatcCodegen();
+runFlatcCodegen({ logPrefix: '[build:cpp]', exitOnError: true });
+ensureCxxAstRuntimeInstalled();
 
 const { llvmDir, clangDir } = discoverLlvmCmakeDirs();
 if (!llvmDir || !clangDir) {
@@ -403,6 +345,13 @@ if (useWinNinja) {
 }
 cmakeConfigureArgs.push(`-DLLVM_DIR=${llvmDir}`, `-DClang_DIR=${clangDir}`);
 cmakeConfigureArgs.push(`-DARKANALYZER_ROOT=${projectRoot}`);
+const flatbuffersIncludeDir = resolveFlatbuffersIncludeDir();
+if (flatbuffersIncludeDir) {
+    cmakeConfigureArgs.push(`-DFLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
+    console.log(`[build:cpp] FLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
+} else {
+    console.warn('[build:cpp] flatbuffers headers not found; CMake may fail version check on astWire_generated.h');
+}
 
 if (llvmRoot) {
     const clangxx = isWin ? join(llvmRoot, 'bin', 'clang++.exe') : join(llvmRoot, 'bin', 'clang++');

@@ -17,12 +17,9 @@ import * as fs from 'fs';
 
 import { ByteBuffer } from 'flatbuffers';
 
-import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
-import type { CxxAstNode } from './ArkCxxAstNode';
+import type { CxxAstNode } from '../lib/utils/ArkCxxAstNode';
 import { CxxAstPayload } from './serialization/flatGenerated/ark-cxx-ast-fb/cxx-ast-payload';
 import { decodeWireNode } from './serialization/WireDecoder';
-
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CxxAstFlatInfo');
 
 const EXPECTED_WIRE_VERSION = 3;
 
@@ -55,13 +52,18 @@ export interface CxxAstFlatLoadResult {
     stats: CxxAstFlatStats;
 }
 
+export interface CxxAstFlatLoadOptions {
+    logAstInfo?: boolean;
+    onInfo?: (message: string) => void;
+}
+
 /** Flat payload I/O, validation, decode, and stats logging for C++ AST. */
 export class CxxAstFlatInfo {
     public static loadAndDecode(
         sourceFile: string,
         astPath: string,
         exitCode: number,
-        logAstInfo: boolean = false,
+        options: CxxAstFlatLoadOptions = {},
     ): CxxAstFlatLoadResult {
         CxxAstFlatInfo.ensureDumpOutput(sourceFile, astPath, exitCode);
         const bytes = CxxAstFlatInfo.readFlatFile(sourceFile, astPath);
@@ -75,15 +77,15 @@ export class CxxAstFlatInfo {
             exitCode,
             ...treeStats,
         };
-        if (logAstInfo) {
-            CxxAstFlatInfo.logStats(stats);
+        if (options.logAstInfo) {
+            CxxAstFlatInfo.logStats(stats, options.onInfo);
         }
         return { root, stats };
     }
 
-    public static logError(sourceFile: string, error: Error): void {
+    public static formatError(sourceFile: string, error: Error): string {
         const stage = error instanceof CxxAstFlatError ? error.stage : 'unknown';
-        logger.error(`C++ AST flat failed: file=${sourceFile} stage=${stage} message=${error.message}`);
+        return `C++ AST flat failed: file=${sourceFile} stage=${stage} message=${error.message}`;
     }
 
     private static ensureDumpOutput(sourceFile: string, astPath: string, exitCode: number): void {
@@ -93,9 +95,12 @@ export class CxxAstFlatInfo {
             throw new CxxAstFlatError('cpp_dump', reason);
         }
         if (exitCode !== 0) {
-            logger.warn(
-                `C++ AST dump returned non-zero exitCode=${exitCode} but flat payload exists: file=${sourceFile}`
-            );
+            const message =
+                `C++ AST dump returned non-zero exitCode=${exitCode} but flat payload exists: file=${sourceFile}`;
+            // Non-fatal: caller may log via onInfo if desired.
+            if (process.env.ARKANALYZER_DEBUG_AST_MEM === '1') {
+                console.warn(message);
+            }
         }
     }
 
@@ -122,7 +127,7 @@ export class CxxAstFlatInfo {
             if (wireVersion !== EXPECTED_WIRE_VERSION) {
                 throw new CxxAstFlatError(
                     'validate_flat',
-                    `wire version mismatch: expected ${EXPECTED_WIRE_VERSION}, got ${wireVersion}`
+                    `wire version mismatch: expected ${EXPECTED_WIRE_VERSION}, got ${wireVersion}`,
                 );
             }
             const wire = payload.root();
@@ -133,7 +138,7 @@ export class CxxAstFlatInfo {
             if (root.kind !== 'TranslationUnitDecl') {
                 throw new CxxAstFlatError(
                     'validate_flat',
-                    `unexpected root kind: ${root.kind || '(empty)'}`
+                    `unexpected root kind: ${root.kind || '(empty)'}`,
                 );
             }
             return { wireVersion, root };
@@ -155,7 +160,7 @@ export class CxxAstFlatInfo {
         if (rootOffset <= 0 || rootOffset >= bytes.length) {
             throw new CxxAstFlatError(
                 'validate_flat',
-                `invalid flat root offset: ${rootOffset} (payloadBytes=${bytes.length})`
+                `invalid flat root offset: ${rootOffset} (payloadBytes=${bytes.length})`,
             );
         }
     }
@@ -191,12 +196,16 @@ export class CxxAstFlatInfo {
         };
     }
 
-    private static logStats(stats: CxxAstFlatStats): void {
-        logger.info(
+    private static logStats(stats: CxxAstFlatStats, onInfo?: (message: string) => void): void {
+        const message =
             `C++ AST flat ok: file=${stats.sourceFile} flatBytes=${stats.flatBytes} ` +
-                `wireVersion=${stats.wireVersion} exitCode=${stats.exitCode} ` +
-                `nodeCount=${stats.nodeCount} maxDepth=${stats.maxDepth} ` +
-                `nodesWithLoc=${stats.nodesWithLoc} topLevelDeclCount=${stats.topLevelDeclCount}`
-        );
+            `wireVersion=${stats.wireVersion} exitCode=${stats.exitCode} ` +
+            `nodeCount=${stats.nodeCount} maxDepth=${stats.maxDepth} ` +
+            `nodesWithLoc=${stats.nodesWithLoc} topLevelDeclCount=${stats.topLevelDeclCount}`;
+        if (onInfo) {
+            onInfo(message);
+            return;
+        }
+        console.info(message);
     }
 }

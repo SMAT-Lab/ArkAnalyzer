@@ -24,10 +24,19 @@ add_definitions(-fno-rtti)
 set(AST_JSON_DUMPER_NAPI_SRC napi/napiBinding.cpp)
 
 get_filename_component(ARKANALYZER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
-set(FLATBUFFERS_INCLUDE_DIR "${ARKANALYZER_ROOT}/tools/flatbuffers/include" CACHE PATH "flatbuffers headers")
-if(NOT EXISTS "${FLATBUFFERS_INCLUDE_DIR}/flatbuffers/flatbuffers.h")
-    set(FLATBUFFERS_INCLUDE_DIR "${ARKANALYZER_ROOT}/node_modules/flatbuffers/include")
-endif()
+# Match flatbuffers headers to @arkanalyzer/cxx-ast-runtime, not legacy tools/flatbuffers.
+set(_ARK_FB_INCLUDE_CANDIDATES
+    "${ARKANALYZER_ROOT}/packages/cxx-ast-runtime/node_modules/flatbuffers/include"
+    "${ARKANALYZER_ROOT}/node_modules/flatbuffers/include"
+    "${ARKANALYZER_ROOT}/tools/flatbuffers/include"
+)
+set(FLATBUFFERS_INCLUDE_DIR "" CACHE PATH "flatbuffers headers")
+foreach(_ARK_FB_DIR IN LISTS _ARK_FB_INCLUDE_CANDIDATES)
+    if(EXISTS "${_ARK_FB_DIR}/flatbuffers/flatbuffers.h")
+        set(FLATBUFFERS_INCLUDE_DIR "${_ARK_FB_DIR}" CACHE PATH "flatbuffers headers" FORCE)
+        break()
+    endif()
+endforeach()
 
 set(AST_JSON_DUMPER_CORE_SRCS
     cppAstDumper.cpp

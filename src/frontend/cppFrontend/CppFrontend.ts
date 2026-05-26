@@ -16,9 +16,9 @@
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { isAstJsonDumperAvailable } from './ast/ts/astUtils';
 import { prepareArkFile, prepareArkFiles } from './model/builder/ArkFileBuilder';
 import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
+import type { CxxAstRuntimeModule } from './utils/cxxAstRuntimeTypes';
 import os from 'os';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CppFrontend');
@@ -49,13 +49,23 @@ export class CppFrontend {
         return { arkFiles: result.arkFiles, failedFiles };
     }
 
-    /** Returns true if astJsonDumper is available; otherwise logs a warning. */
+    /** Returns true if astJsonDumper and cxx-ast-runtime are available; otherwise logs a warning. */
     private requireAstJsonDumper(): boolean {
-        if (isAstJsonDumperAvailable()) {
+        try {
+            const runtime = require('@arkanalyzer/cxx-ast-runtime') as CxxAstRuntimeModule;
+            if (!runtime.isCppEnvironmentReady()) {
+                logger.warn(
+                    'C++ environment is not ready (astJsonDumper.node or @arkanalyzer/cxx-ast-runtime); skip C++ frontend build. Run: npm run build:cpp',
+                );
+                return false;
+            }
             return true;
+        } catch {
+            logger.warn(
+                '@arkanalyzer/cxx-ast-runtime is not installed; skip C++ frontend build. Run: npm run build:cpp',
+            );
+            return false;
         }
-        logger.warn('astJsonDumper.node is not available; skip C++ frontend build.');
-        return false;
     }
 
     private resolveMaxParallelProcesses(scene: Scene): number {

@@ -13,25 +13,24 @@
  * limitations under the License.
  */
 
+import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
-import { isAstJsonDumperAvailable } from './src/frontend/cppFrontend/ast';
 
-const astJsonDumperAvailable = isAstJsonDumperAvailable();
-const sdkHome = process.env.OHOS_SDK_HOME?.trim();
-const skipCoreCppTests = !astJsonDumperAvailable;
+import { readCppEnvironmentReady } from './script/vitestCppEnv.js';
 
-// These tests rely on OHOS SDK headers and are skipped when OHOS_SDK_HOME is missing.
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
     'tests/unit/cppCore/graph/Cfg.test.ts',
     'tests/unit/cppCore/export/ExportInfo.test.ts',
 ] as const;
 
-const skipOhosSdkHomeDependentTests =
-    astJsonDumperAvailable && !sdkHome;
+const cppEnvironmentReady = readCppEnvironmentReady();
+const sdkHome = process.env.OHOS_SDK_HOME?.trim();
+const skipCoreCppTests = !cppEnvironmentReady;
+const skipOhosSdkHomeDependentTests = cppEnvironmentReady && !sdkHome;
 
-if (!astJsonDumperAvailable) {
+if (!cppEnvironmentReady) {
     console.warn(
-        '[vitest] reason=astJsonDumper.node missing; impact=skip tests/unit/cppCore; action=build addon per src/frontend/cppFrontend/ast/README.md.',
+        '[vitest] reason=C++ environment not ready; impact=skip tests/unit/cppCore; action=npm run build:cpp to enable C++ tests.',
     );
 } else if (!sdkHome) {
     console.warn(
@@ -40,6 +39,11 @@ if (!astJsonDumperAvailable) {
 }
 
 export default defineConfig({
+    resolve: {
+        alias: {
+            '@arkanalyzer/cxx-ast-runtime': resolve(__dirname, 'packages/cxx-ast-runtime/lib/index.js'),
+        },
+    },
     test: {
         pool: 'forks',
         setupFiles: ['./tests/unit/vitest.setup.ts'],

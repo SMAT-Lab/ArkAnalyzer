@@ -1,0 +1,35 @@
+{
+  "name": "@arkanalyzer/cxx-ast-runtime",
+  "private": true,
+  "version": "1.0.90",
+  "description": "Optional C++ AST native runtime for arkanalyzer (not a standalone public SDK)",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dumper"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.model.json && tsc -p tsconfig.build.json",
+    "sync:addon-optional-deps": "node ../../script/syncAddonOptionalDeps.js --package=cxx-ast-runtime"
+  },
+  "dependencies": {
+    "flatbuffers": "^25.2.10"
+  },
+  "optionalDependencies": {
+    "@arkanalyzer/ast-addon-darwin-arm64": "1.0.90",
+    "@arkanalyzer/ast-addon-linux-arm64": "1.0.90",
+    "@arkanalyzer/ast-addon-linux-x64": "1.0.90",
+    "@arkanalyzer/ast-addon-win32-x64": "1.0.90"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
+  }
+}

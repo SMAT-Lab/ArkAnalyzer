@@ -18,7 +18,7 @@ import { ImportInfo, ImportType } from '../../../../core/model/ArkImport';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../../../../core/model/ArkFile';
 import { normalize } from 'path';
-import { CxxAstNode, CxxIncludeInfo } from '../../ast';
+import type { CxxAstNode, CxxIncludeInfo } from '../../utils/ArkCxxAstNode';
 import { buildExportInfo } from '../../../../core/model/builder/ArkExportBuilder';
 
 export function buildGenericImportInfo(includeInfo: CxxIncludeInfo, includeNode: CxxAstNode, sourceFile: CxxAstNode, arkFile: ArkFile): ImportInfo {

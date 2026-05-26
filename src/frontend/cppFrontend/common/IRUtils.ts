@@ -30,7 +30,8 @@ import { ArkBaseModel } from '../../../core/model/ArkBaseModel';
 import { FullPosition } from '../../../core/base/Position';
 import { Local } from '../../../core/base/Local';
 import { NAME_PREFIX } from '../../../core/common/Const';
-import { astKind, CxxAstNode } from '../ast';
+import type { CxxAstNode } from '../utils/ArkCxxAstNode';
+import { astKind } from '../utils/ArkCxxAstNode';
 import { CxxClosureCaptureType } from '../base/Ref';
 
 export class IRUtils {

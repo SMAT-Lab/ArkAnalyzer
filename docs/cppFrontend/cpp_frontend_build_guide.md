@@ -2,9 +2,39 @@
 
 本文说明在 **Linux / macOS / Windows** 上构建 **C++ AST 导出用 Node 原生扩展** `astJsonDumper.node`（N-API addon）之前需要安装的工具、推荐版本及环境变量。构建由仓库根目录脚本 `script/buildCpp.js` 驱动（`npm run build:cpp`）。若在 **x86_64 Linux** 上希望与本仓库推荐栈一致，可直接使用根目录 **[`Dockerfile.dev`](../../Dockerfile.dev)** 提供的开发镜像（见 [§3.3](#33-docker-开发镜像dockerfiledev)）。
 
+## 0. 默认流水线与 C++ 可选依赖
+
+**公司 CI / 日常 ArkTS 开发**只需：
+
+```bash
+npm install
+npm run build
+npm run testonce
+```
+
+主包 **`dependencies` 不含 flatbuffers**，上述命令**不会**安装或编译 FlatBuffers，也不会跑 `tests/unit/cppCore/**`，ArkTS 相关测试可正常通过。
+
+**启用 C++ 分析**时，在仓库根目录执行一条命令即可（脚本会自动安装 **`@arkanalyzer/cxx-ast-runtime`**（含 flatbuffers 与 ast-addon 可选依赖），再编译 **`astJsonDumper.node`**）：
+
+```bash
+npm run build:cpp
+```
+
+安装来源：优先从 npm registry 拉取 **`@arkanalyzer/cxx-ast-runtime@<与 arkanalyzer 同版本>`**；若尚未发布，则回退到本仓库内的 **`packages/cxx-ast-runtime`** 源码包。
+
+执行 **`build:cpp`** 之后，后续 **`npm run testonce`** 会包含 C++ 单元测试（`tests/unit/cppCore/**`）。未安装 `@arkanalyzer/cxx-ast-runtime` 时，Scene 遇到 C++ 文件会**跳过 C++ 前端**并打 warn，不会导致 `npm testonce` 失败。
+
 ## 1. 构建什么、命令是什么
 
-在仓库根目录执行 **`npm run build:cpp`**，于**当前操作系统**本机构建 **`astJsonDumper.node`**：脚本先对 **`serialization/astWire.fbs`** 运行 **flatc** 生成 C++/TS 绑定代码，再经 CMake 编译 addon。在 Linux / macOS / Windows 上均为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**，构建完成后由脚本复制到 **`src/frontend/cppFrontend/ast/dumper/`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
+在仓库根目录执行 **`npm run build:cpp`**，脚本会：
+
+1. 对 **`serialization/astWire.fbs`** 运行 **flatc** 生成 C++/TS 绑定（输出到各
+   **`src/frontend/cppFrontend/ast/cpp/serialization/flatGenerated/`** 与
+   **`packages/cxx-ast-runtime/src/serialization/flatGenerated/`**，该目录不入 Git，由脚本按需生成）；
+2. 安装并编译 **`@arkanalyzer/cxx-ast-runtime`**；
+3. 经 CMake 在本机构建 **`astJsonDumper.node`**。
+
+产物为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**，构建完成后由脚本复制到 **`src/frontend/cppFrontend/ast/dumper/`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
 
 C++ 原生单元测试（GTest）与 addon 共用 **`ast/cpp/build/`** 与 LLVM 环境，**不依赖 Node/N-API**。在仓库根目录执行 **`npm run test:cpp`** 即可构建并运行 **`astJsonDumper_unit_tests`**。GoogleTest 解析顺序：**本机系统包（如 `libgtest-dev`）** → **`tools/googletest/`** → 联网自动下载 v1.14.0；离线环境推荐 `sudo apt install libgtest-dev` 或手动解压 zip 到 **`tools/googletest/`**。测试源码在 **`tests/unit/cppCore/dumper/`**，fixture 在 **`tests/cppResources/dumper/`**。
 

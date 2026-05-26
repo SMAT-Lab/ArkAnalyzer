@@ -13,23 +13,17 @@
  * limitations under the License.
  */
 
-export {
-    getCxxImplementationFileExtensionSet,
-    getCxxImplementationFileExtensions,
-    getCxxHeaderFileExtensionSet,
-    getCxxSourceFileExtensionSet,
-    getCxxSourceFileExtensions,
-} from './ts/const';
+'use strict';
 
-export {
-    astKind,
-    CxxAstNode,
-    CxxIncludeInfo,
-    CxxTranslationUnit,
-    defaultArg,
-    getNodeStartLineAndCol,
-} from './ts/ArkCxxAstNode';
+const { existsSync, readFileSync, unlinkSync, writeFileSync } = require('fs');
+const { join } = require('path');
 
-export { findCompileCommands, isAstJsonDumperAvailable } from './ts/astUtils';
+const { getProjectRoot } = require('./cppPackUtils');
 
-export { AstParser } from './ts/astParser';
+const packageJsonPath = join(getProjectRoot(), 'package.json');
+const packageJsonBackupPath = join(getProjectRoot(), '.package.json.prepack.bak');
+
+if (existsSync(packageJsonBackupPath)) {
+    writeFileSync(packageJsonPath, readFileSync(packageJsonBackupPath, 'utf8'));
+    unlinkSync(packageJsonBackupPath);
+}

@@ -18,7 +18,8 @@ const fs = require('fs');
 const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
-const packageJsonPath = path.join(projectRoot, 'package.json');
+const rootPackageJsonPath = path.join(projectRoot, 'package.json');
+const runtimePackageJsonPath = path.join(projectRoot, 'packages', 'cxx-ast-runtime', 'package.json');
 const addonPackages = [
     '@arkanalyzer/ast-addon-linux-x64',
     '@arkanalyzer/ast-addon-linux-arm64',
@@ -26,21 +27,29 @@ const addonPackages = [
     '@arkanalyzer/ast-addon-darwin-arm64',
 ];
 
-const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-const version = packageJson.version;
-const originalOptionalDeps = packageJson.optionalDependencies ?? {};
-const nextOptionalDeps = { ...originalOptionalDeps };
+function syncOptionalDeps(packageJsonPath, logLabel) {
+    if (!fs.existsSync(packageJsonPath)) {
+        return false;
+    }
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const version = JSON.parse(fs.readFileSync(rootPackageJsonPath, 'utf8')).version;
+    const originalOptionalDeps = packageJson.optionalDependencies ?? {};
+    const nextOptionalDeps = { ...originalOptionalDeps };
 
-for (const addonPackage of addonPackages) {
-    nextOptionalDeps[addonPackage] = version;
+    for (const addonPackage of addonPackages) {
+        nextOptionalDeps[addonPackage] = version;
+    }
+
+    const isChanged = addonPackages.some((addonPackage) => originalOptionalDeps[addonPackage] !== version);
+    if (!isChanged) {
+        console.log(`[syncAddonOptionalDeps] ${logLabel} optionalDependencies already synced to`, version);
+        return false;
+    }
+
+    packageJson.optionalDependencies = nextOptionalDeps;
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+    console.log(`[syncAddonOptionalDeps] synced ${logLabel} optionalDependencies to`, version);
+    return true;
 }
 
-const isChanged = addonPackages.some((addonPackage) => originalOptionalDeps[addonPackage] !== version);
-if (!isChanged) {
-    console.log('[syncAddonOptionalDeps] optionalDependencies already synced to', version);
-    process.exit(0);
-}
-
-packageJson.optionalDependencies = nextOptionalDeps;
-fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
-console.log('[syncAddonOptionalDeps] synced addon optionalDependencies to', version);
+syncOptionalDeps(runtimePackageJsonPath, '@arkanalyzer/cxx-ast-runtime');

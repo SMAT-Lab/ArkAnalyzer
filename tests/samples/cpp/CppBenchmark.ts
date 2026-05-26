@@ -53,7 +53,7 @@ const SETTINGS = {
 const PATHS = {
     projectRoot: process.cwd(),
     workDir: path.resolve(process.cwd(), 'tests', 'third_party'),
-    astRootDir: path.resolve(process.cwd(), 'src', 'frontend', 'cppFrontend', 'ast'),
+    astRootDir: path.resolve(process.cwd(), 'packages', 'cxx-ast-runtime'),
     cppSampleDir: path.resolve(process.cwd(), 'tests', 'samples', 'cpp'),
 } as const;
 

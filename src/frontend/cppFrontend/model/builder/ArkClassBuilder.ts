@@ -27,7 +27,7 @@ import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
 import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
-import { CxxAstNode, CxxTranslationUnit } from '../../ast';
+import type { CxxAstNode, CxxTranslationUnit } from '../../utils/ArkCxxAstNode';
 import { ArkField } from '../../../../core/model/ArkField';
 import { Value } from '../../../../core/base/Value';
 import { NumberConstant } from '../../../../core/base/Constant';

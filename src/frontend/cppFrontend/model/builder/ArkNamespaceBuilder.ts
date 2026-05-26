@@ -22,7 +22,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { ArkClass } from '../../../../core/model/ArkClass';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
 import { ClassSignature, NamespaceSignature } from '../../../../core/model/ArkSignature';
-import { CxxAstNode } from '../../ast';
+import type { CxxAstNode } from '../../utils/ArkCxxAstNode';
 import { FullPosition } from '../../../../core/base/Position';
 import { ANONYMOUS_NAMESPACE_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../../core/common/Const';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
