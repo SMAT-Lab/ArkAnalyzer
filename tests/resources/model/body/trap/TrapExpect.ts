@@ -1439,3 +1439,234 @@ export const TRAP_EXPECT_CASE19 = {
         },
     ],
 };
+
+export const TRAP_EXPECT_CASE20 = {
+    traps: [
+        {
+            tryBlocks: [
+                {
+                    id: 3,
+                    stmts: [
+                        'i = 2',
+                    ],
+                    preds: [2],
+                    succes: [5],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 4,
+                    stmts: [
+                        'innerE = caughtexception: unknown',
+                        'i = 3',
+                    ],
+                    preds: [],
+                    succes: [],
+                    exceptionalPreds: [3],
+                    exceptionalSucces: []
+                },
+            ],
+        },
+        {
+            tryBlocks: [
+                {
+                    id: 1,
+                    stmts: [
+                        'i = 1',
+                    ],
+                    preds: [0],
+                    succes: [5],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 2,
+                    stmts: [
+                        'e = caughtexception: unknown',
+                    ],
+                    preds: [],
+                    succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: []
+                },
+                {
+                    id: 3,
+                    stmts: [
+                        'i = 2',
+                    ],
+                    preds: [2],
+                    succes: [5],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
+                },
+            ],
+        },
+    ],
+};
+
+export const TRAP_EXPECT_CASE21 = {
+    traps: [
+        {
+            tryBlocks: [
+                {
+                    id: 3,
+                    stmts: [
+                        'return \'retry\'',
+                    ],
+                    preds: [2],
+                    succes: [5],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 4,
+                    stmts: [
+                        'err2 = caughtexception: unknown',
+                        'instanceinvoke console.<@%unk/%unk: .log()>(\'retry failed\')',
+                    ],
+                    preds: [],
+                    succes: [],
+                    exceptionalPreds: [3],
+                    exceptionalSucces: []
+                },
+            ],
+        },
+        {
+            tryBlocks: [
+                {
+                    id: 1,
+                    stmts: [
+                        'return \'ok\'',
+                    ],
+                    preds: [0],
+                    succes: [],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 2,
+                    stmts: [
+                        'err = caughtexception: unknown',
+                    ],
+                    preds: [],
+                    succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: []
+                },
+                {
+                    id: 3,
+                    stmts: [
+                        'return \'retry\'',
+                    ],
+                    preds: [2],
+                    succes: [5],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
+                },
+            ],
+        },
+    ],
+};
+
+export const TRAP_EXPECT_CASE22 = {
+    traps: [
+        {
+            tryBlocks: [
+                {
+                    id: 1,
+                    stmts: [
+                        'i = 1',
+                    ],
+                    preds: [0],
+                    succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 2,
+                    stmts: [
+                        'error = caughtexception: unknown',
+                        'i = 2',
+                    ],
+                    preds: [],
+                    succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: []
+                },
+            ],
+        },
+        {
+            tryBlocks: [
+                {
+                    id: 5,
+                    stmts: [
+                        'i = 4',
+                    ],
+                    preds: [4],
+                    succes: [7],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [6]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 6,
+                    stmts: [
+                        'err = caughtexception: unknown',
+                        'i = 5',
+                    ],
+                    preds: [],
+                    succes: [],
+                    exceptionalPreds: [5],
+                    exceptionalSucces: []
+                },
+            ],
+        },
+        {
+            tryBlocks: [
+                {
+                    id: 3,
+                    stmts: [
+                        'i = 3',
+                    ],
+                    preds: [1, 2],
+                    succes: [7],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
+                },
+            ],
+            catchBlocks: [
+                {
+                    id: 4,
+                    stmts: [
+                        'error = caughtexception: unknown',
+                    ],
+                    preds: [],
+                    succes: [5],
+                    exceptionalPreds: [3],
+                    exceptionalSucces: []
+                },
+                {
+                    id: 5,
+                    stmts: [
+                        'i = 4',
+                    ],
+                    preds: [4],
+                    succes: [7],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [6]
+                },
+            ],
+        },
+    ],
+};

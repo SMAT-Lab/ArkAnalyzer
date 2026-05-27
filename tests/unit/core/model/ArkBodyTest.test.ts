@@ -33,6 +33,9 @@ import {
     TRAP_EXPECT_CASE17,
     TRAP_EXPECT_CASE18,
     TRAP_EXPECT_CASE19,
+    TRAP_EXPECT_CASE20,
+    TRAP_EXPECT_CASE21,
+    TRAP_EXPECT_CASE22,
 } from '../../../resources/model/body/trap/TrapExpect';
 import { assertBlocksEqual } from '../../common';
 import { Local_Expect_In_Generated_Method } from '../../../resources/model/body/local/LocalExpect';
@@ -117,6 +120,18 @@ describe('trap Test', () => {
 
     it('trap case19 - deeply nested try-catch in finally of inner try', async () => {
         testTraps(scene, 'TrapTest.ts', 'case19', TRAP_EXPECT_CASE19.traps);
+    });
+
+    it('trap case20 - nested try-catch in catch block', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case20', TRAP_EXPECT_CASE20.traps);
+    });
+
+    it('trap case21 - try with return and nested try-catch in catch', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case21', TRAP_EXPECT_CASE21.traps);
+    });
+
+    it('trap case22 - sequential try-catch blocks with nested try in second catch', async () => {
+        testTraps(scene, 'TrapTest.ts', 'case22', TRAP_EXPECT_CASE22.traps);
     });
 });
 

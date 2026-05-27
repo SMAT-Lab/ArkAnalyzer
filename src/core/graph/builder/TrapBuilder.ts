@@ -295,13 +295,15 @@ export class TrapBuilder {
         this.basicBlockSet.delete(dummyFinallyBlock);
 
         const blockBuilderAfterFinally = dummyFinallyBlockBuilder.nexts[0];
-        let blockAfterFinally: BasicBlock = this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally)!;
+        let blockAfterFinally: BasicBlock | undefined = this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally);
         if (!this.blockBuilderToCfgBlock.has(dummyFinallyBlockBuilder)) {
             logger.error(`can't find basicBlock corresponding to the blockBuilder.`);
             return [];
         }
-        for (const catchTailBlock of catchTailBlocks) {
-            CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
+        if (blockAfterFinally) {
+            for (const catchTailBlock of catchTailBlocks) {
+                CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
+            }
         }
         for (const tryTailBlock of tryTailBlocks) {
             CfgBuilder.linkExceptionalBasicBlock(tryTailBlock, catchBfsBlocks[0]);

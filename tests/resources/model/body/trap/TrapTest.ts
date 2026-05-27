@@ -276,3 +276,49 @@ function case19(): number {
     }
     return i;
 }
+
+function case20(): number {
+    let i = 0;
+    try {
+        i = 1;
+    } catch (e) {
+        try {
+            i = 2;
+        } catch (innerE) {
+            i = 3;
+        }
+    }
+    return i;
+}
+
+function case21(): string {
+    try {
+        return 'ok';
+    } catch (err) {
+        try {
+            return 'retry';
+        } catch (err2) {
+            console.log('retry failed');
+        }
+    }
+    return '';
+}
+
+function case22(): number {
+    let i = 0;
+    try {
+        i = 1;
+    } catch (error) {
+        i = 2;
+    }
+    try {
+        i = 3;
+    } catch (error) {
+        try {
+            i = 4;
+        } catch (err) {
+            i = 5;
+        }
+    }
+    return i;
+}
