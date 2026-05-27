@@ -94,6 +94,13 @@ import {
     LOGICAL_EXPR_EXPECT_CASE4,
     LOGICAL_EXPR_EXPECT_CASE5,
 } from '../../../resources/cfg/LogicalExpr/LogicalExprExpect';
+import {
+    IF_BUILDER_EXPECT_CASE1,
+    IF_BUILDER_EXPECT_CASE2,
+    IF_BUILDER_EXPECT_CASE3,
+    IF_BUILDER_EXPECT_CASE4,
+    IF_BUILDER_EXPECT_CASE5,
+} from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -262,6 +269,15 @@ describe('CfgTest', () => {
         testBlocks(scene, 'LogicalExprSample.ts', 'case3', LOGICAL_EXPR_EXPECT_CASE3.blocks);
         testBlocks(scene, 'LogicalExprSample.ts', 'case4', LOGICAL_EXPR_EXPECT_CASE4.blocks);
         testBlocks(scene, 'LogicalExprSample.ts', 'case5', LOGICAL_EXPR_EXPECT_CASE5.blocks);
+    });
+
+    it('case10: if with empty body and complex boolean condition', () => {
+        const scene = buildScene('ifBuilder');
+        testBlocks(scene, 'IfBuilderSample.ts', 'case1', IF_BUILDER_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'IfBuilderSample.ts', 'case2', IF_BUILDER_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'IfBuilderSample.ts', 'case3', IF_BUILDER_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'IfBuilderSample.ts', 'case4', IF_BUILDER_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'IfBuilderSample.ts', 'case5', IF_BUILDER_EXPECT_CASE5.blocks);
     });
 });
 
