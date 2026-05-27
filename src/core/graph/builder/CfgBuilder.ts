@@ -676,7 +676,7 @@ export class CfgBuilder {
 
     private deleteExitAfterTry(last: TryStatementBuilder, exit: StatementBuilder): void {
         last.afterFinal = exit.next;
-        if (last.tryFirst && !last.tryFirst.type.includes(' exit')) {
+        if (last.tryFirst && !last.tryFirst.type.includes('Exit')) {
             last.next = last.tryFirst;
         } else {
             last.next = last.finallyStatement;

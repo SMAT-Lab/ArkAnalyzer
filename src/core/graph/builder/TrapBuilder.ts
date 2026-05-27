@@ -75,7 +75,7 @@ export class TrapBuilder {
             return { traps: [], headBlockBuilder: null };
         }
 
-        if (!tryStmtBuilder.tryFirst || tryStmtBuilder.tryFirst.type.includes(' exit')) {
+        if (!tryStmtBuilder.tryFirst || tryStmtBuilder.tryFirst.type.includes('Exit')) {
             return this.handleEmptyTryBody(tryStmtBuilder, blockBuilderBeforeTry);
         }
 
@@ -95,9 +95,6 @@ export class TrapBuilder {
         traps.push(...catchResult.traps);
 
         const blockBuilderAfterFinally = this.getAfterFinallyBlock(tryStmtBuilder);
-        if (!blockBuilderAfterFinally) {
-            return { traps: [], headBlockBuilder: null };
-        }
 
         const singleTraps = this.buildSingleTraps(
             tryResult.bfsBlocks,
@@ -195,7 +192,6 @@ export class TrapBuilder {
     private getAfterFinallyBlock(tryStmtBuilder: TryStatementBuilder): BlockBuilder | null {
         const blockBuilderAfterFinally = tryStmtBuilder.afterFinal?.block;
         if (!blockBuilderAfterFinally) {
-            logger.error(`can't find block after try...catch.`);
             return null;
         }
         return blockBuilderAfterFinally;
@@ -207,7 +203,7 @@ export class TrapBuilder {
         catchBfsBlocks: BasicBlock[],
         catchTailBlocks: BasicBlock[],
         finallyBlockBuilder: BlockBuilder,
-        blockBuilderAfterFinally: BlockBuilder,
+        blockBuilderAfterFinally: BlockBuilder | null,
     ): Trap[] {
         const finallyStmts = finallyBlockBuilder.stmts;
         if (finallyStmts.length === 1 && finallyStmts[0].code === 'dummyFinally') {
@@ -256,8 +252,8 @@ export class TrapBuilder {
             if (this.blockBuildersBeforeTry.has(blockBuilder)) {
                 const { traps, headBlockBuilder } = this.buildTrapGroup(blockBuilder);
                 allTraps.push(...traps);
-                if (blockBuilder === startBlockBuilder && this.shouldRemoveEmptyBlockBeforeTry(blockBuilder)) {
-                    startBlockBuilder = headBlockBuilder!;
+                if (blockBuilder === startBlockBuilder && headBlockBuilder && this.shouldRemoveEmptyBlockBeforeTry(blockBuilder)) {
+                    startBlockBuilder = headBlockBuilder;
                 }
             }
         }
@@ -299,13 +295,15 @@ export class TrapBuilder {
         this.basicBlockSet.delete(dummyFinallyBlock);
 
         const blockBuilderAfterFinally = dummyFinallyBlockBuilder.nexts[0];
-        let blockAfterFinally: BasicBlock = this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally)!;
+        let blockAfterFinally: BasicBlock | undefined = this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally);
         if (!this.blockBuilderToCfgBlock.has(dummyFinallyBlockBuilder)) {
             logger.error(`can't find basicBlock corresponding to the blockBuilder.`);
             return [];
         }
-        for (const catchTailBlock of catchTailBlocks) {
-            CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
+        if (blockAfterFinally) {
+            for (const catchTailBlock of catchTailBlocks) {
+                CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
+            }
         }
         for (const tryTailBlock of tryTailBlocks) {
             CfgBuilder.linkExceptionalBasicBlock(tryTailBlock, catchBfsBlocks[0]);
@@ -319,20 +317,30 @@ export class TrapBuilder {
         catchBfsBlocks: BasicBlock[],
         catchTailBlocks: BasicBlock[],
         finallyBlockBuilder: BlockBuilder,
-        blockBuilderAfterFinally: BlockBuilder,
+        blockBuilderAfterFinally: BlockBuilder | null,
     ): Trap[] {
         const traps: Trap[] = [];
+        const endBlock = blockBuilderAfterFinally ?? undefined;
         const {
             traps: trapsInFinally, newStartBlockBuilder: newStartBlockBuilder,
-        } = this.buildTrapsRecursively(finallyBlockBuilder, blockBuilderAfterFinally);
+        } = this.buildTrapsRecursively(finallyBlockBuilder, endBlock);
         traps.push(...trapsInFinally);
         // May update head blockBuilder with catch statement.
         finallyBlockBuilder = newStartBlockBuilder;
 
         const { bfsBlocks: finallyBfsBlocks, tailBlocks: finallyTailBlocks } = this.getAllBlocksBFS(
             finallyBlockBuilder,
-            blockBuilderAfterFinally
+            endBlock
         );
+        if (finallyBfsBlocks.length === 0) {
+            if (catchBfsBlocks.length !== 0) {
+                for (const tryTailBlock of tryTailBlocks) {
+                    CfgBuilder.linkExceptionalBasicBlock(tryTailBlock, catchBfsBlocks[0]);
+                }
+                traps.push(new Trap(tryBfsBlocks, catchBfsBlocks));
+            }
+            return traps;
+        }
         const copyFinallyBfsBlocks = this.copyFinallyBlocks(finallyBfsBlocks, finallyTailBlocks);
         if (catchBfsBlocks.length !== 0) {
             for (const catchTailBlock of catchTailBlocks) {
@@ -366,7 +374,10 @@ export class TrapBuilder {
     ): { bfsBlocks: BasicBlock[]; tailBlocks: BasicBlock[] } {
         const bfsBlocks: BasicBlock[] = [];
         const tailBlocks: BasicBlock[] = [];
-        const startBlock = this.blockBuilderToCfgBlock.get(startBlockBuilder)!;
+        const startBlock = this.blockBuilderToCfgBlock.get(startBlockBuilder);
+        if (!startBlock) {
+            return { bfsBlocks, tailBlocks };
+        }
         const endBlock = endBlockBuilder ? this.blockBuilderToCfgBlock.get(endBlockBuilder) : undefined;
         const queue: BasicBlock[] = [];
         const visitedBlocks = new Set<BasicBlock>();
