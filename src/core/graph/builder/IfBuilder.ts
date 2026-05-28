@@ -15,16 +15,7 @@
 
 import { BasicBlock } from '../BasicBlock';
 import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
-import {
-    ArkAliasTypeDefineStmt,
-    ArkAssignStmt,
-    ArkIfStmt,
-    ArkInvokeStmt,
-    ArkReturnStmt,
-    ArkReturnVoidStmt,
-    ArkThrowStmt,
-    Stmt,
-} from '../../base/Stmt';
+import { Stmt } from '../../base/Stmt';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { BlockBuilder, CfgBuilder, ConditionStatementBuilder } from './CfgBuilder';
 
@@ -86,14 +77,11 @@ export class IfBuilder {
             trueBlock.removePredecessorBlock(block);
         }
 
-        const newTrueBlock = this.copyBlock(trueBlock);
-
-        CfgBuilder.linkBasicBlock(block, newTrueBlock);
+        CfgBuilder.linkBasicBlock(block, trueBlock);
         CfgBuilder.linkBasicBlock(block, secondBlock);
 
         CfgBuilder.linkBasicBlock(secondBlock, trueBlock);
         CfgBuilder.linkBasicBlock(secondBlock, falseBlock);
-        basicBlockSet.add(newTrueBlock);
 
         basicBlockSet.add(secondBlock);
         this.generateBlocksForComplexBooleanExpr(block, basicBlockSet, isOnlyIf);
@@ -125,13 +113,7 @@ export class IfBuilder {
 
         CfgBuilder.linkBasicBlock(block, secondBlock);
 
-        if (!isOnlyIf) {
-            const newFalseBlock = this.copyBlock(falseBlock);
-            CfgBuilder.linkBasicBlock(block, newFalseBlock);
-            basicBlockSet.add(newFalseBlock);
-        } else {
-            CfgBuilder.linkBasicBlock(block, falseBlock);
-        }
+        CfgBuilder.linkBasicBlock(block, falseBlock);
 
         CfgBuilder.linkBasicBlock(secondBlock, trueBlock);
         CfgBuilder.linkBasicBlock(secondBlock, falseBlock);
@@ -189,18 +171,6 @@ export class IfBuilder {
         return generatedBlock;
     }
 
-    private copyBlock(block: BasicBlock): BasicBlock {
-        const generatedBlock = new BasicBlock();
-        block.getStmts().forEach(stmt => {
-            const newStmt = this.copyStmt(stmt);
-            if (newStmt) {
-                generatedBlock.addStmt(newStmt);
-            }
-        });
-        block.getSuccessors().forEach(successor => generatedBlock.addSuccessorBlock(successor));
-        return generatedBlock;
-    }
-
     /**
      * Determine whether it represents if logic (not if else).
      * Loop conditions and if-without-else merge blocks share the false branch directly;
@@ -224,32 +194,4 @@ export class IfBuilder {
         );
     }
 
-    private copyStmt(sourceStmt: Stmt): Stmt | null {
-        if (sourceStmt instanceof ArkAssignStmt) {
-            return new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
-        }
-        if (sourceStmt instanceof ArkInvokeStmt) {
-            return new ArkInvokeStmt(sourceStmt.getInvokeExpr());
-        }
-        if (sourceStmt instanceof ArkIfStmt) {
-            return new ArkIfStmt(sourceStmt.getConditionExpr());
-        }
-        if (sourceStmt instanceof ArkReturnStmt) {
-            return new ArkReturnStmt(sourceStmt.getOp());
-        }
-        if (sourceStmt instanceof ArkReturnVoidStmt) {
-            return new ArkReturnVoidStmt();
-        }
-        if (sourceStmt instanceof ArkThrowStmt) {
-            return new ArkThrowStmt(sourceStmt.getOp());
-        }
-        if (sourceStmt instanceof ArkAliasTypeDefineStmt) {
-            return new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
-        }
-        if (sourceStmt instanceof DummyStmt) {
-            return new DummyStmt(sourceStmt.toString());
-        }
-        logger.warn(`unsupported statement type`);
-        return null;
-    }
 }

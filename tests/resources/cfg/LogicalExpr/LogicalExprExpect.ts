@@ -48,7 +48,7 @@ export const LOGICAL_EXPR_EXPECT_CASE1 = {
                 'if m < 5',
             ],
             preds: [8, 4],
-            succes: [12, 11],
+            succes: [11, 10],
         },
         {
             id: 4,
@@ -56,7 +56,7 @@ export const LOGICAL_EXPR_EXPECT_CASE1 = {
                 'k = k + 1',
                 'm = m + 1',
             ],
-            preds: [11],
+            preds: [10, 11],
             succes: [3],
         },
         {
@@ -64,7 +64,7 @@ export const LOGICAL_EXPR_EXPECT_CASE1 = {
             stmts: [
                 'j = j + 1',
             ],
-            preds: [11],
+            preds: [10],
             succes: [6],
         },
         {
@@ -102,28 +102,19 @@ export const LOGICAL_EXPR_EXPECT_CASE1 = {
         {
             id: 10,
             stmts: [
-                'k = k + 1',
-                'm = m + 1',
+                'if m === 9',
             ],
-            preds: [12],
-            succes: [3],
+            preds: [3, 11],
+            succes: [4, 5],
         },
         {
             id: 11,
             stmts: [
-                'if m === 9',
-            ],
-            preds: [3, 12],
-            succes: [4, 5],
-        },
-        {
-            id: 12,
-            stmts: [
                 'if m !== 2',
             ],
             preds: [3],
-            succes: [10, 11],
-        }
+            succes: [4, 10],
+        },
     ],
 };
 
@@ -146,15 +137,15 @@ export const LOGICAL_EXPR_EXPECT_CASE2 = {
                 'if i < 15',
             ],
             preds: [5, 0],
-            succes: [9, 8],
+            succes: [8, 7],
         },
         {
             id: 2,
             stmts: [
                 'if b < 8',
             ],
-            preds: [3, 4, 8],
-            succes: [10, 4],
+            preds: [3, 4, 7, 8],
+            succes: [9, 4],
         },
         {
             id: 3,
@@ -162,7 +153,7 @@ export const LOGICAL_EXPR_EXPECT_CASE2 = {
                 'a = a + 1',
                 'b = b + 1',
             ],
-            preds: [10, 11],
+            preds: [9],
             succes: [2],
         },
         {
@@ -170,7 +161,7 @@ export const LOGICAL_EXPR_EXPECT_CASE2 = {
             stmts: [
                 'if a < 50',
             ],
-            preds: [2, 10, 7, 11],
+            preds: [2, 9],
             succes: [2, 5],
         },
         {
@@ -187,49 +178,33 @@ export const LOGICAL_EXPR_EXPECT_CASE2 = {
             stmts: [
                 'return',
             ],
-            preds: [8],
+            preds: [7],
             succes: [],
         },
         {
             id: 7,
             stmts: [
-                'if b < 8',
+                'if i === 20',
             ],
-            preds: [9],
-            succes: [11, 4],
+            preds: [1, 8],
+            succes: [2, 6],
         },
         {
             id: 8,
             stmts: [
-                'if i === 20',
-            ],
-            preds: [1, 9],
-            succes: [2, 6],
-        },
-        {
-            id: 9,
-            stmts: [
                 'if i !== 3',
             ],
             preds: [1],
-            succes: [7, 8],
+            succes: [2, 7],
         },
         {
-            id: 10,
+            id: 9,
             stmts: [
                 'if b !== 4',
             ],
             preds: [2],
             succes: [3, 4],
         },
-        {
-            id: 11,
-            stmts: [
-                'if b !== 4',
-            ],
-            preds: [7],
-            succes: [3, 4],
-        }
     ],
 };
 
@@ -250,7 +225,7 @@ export const LOGICAL_EXPR_EXPECT_CASE3 = {
             stmts: [
                 'if x < 12',
             ],
-            preds: [0, 4, 10],
+            preds: [0, 4, 9, 10],
             succes: [7, 5],
         },
         {
@@ -284,14 +259,14 @@ export const LOGICAL_EXPR_EXPECT_CASE3 = {
                 'if x < 30',
             ],
             preds: [1],
-            succes: [11, 10],
+            succes: [10, 9],
         },
         {
             id: 6,
             stmts: [
                 'return',
             ],
-            preds: [10],
+            preds: [9],
             succes: [],
         },
         {
@@ -313,27 +288,19 @@ export const LOGICAL_EXPR_EXPECT_CASE3 = {
         {
             id: 9,
             stmts: [
-                'if x < 12',
+                'if x === 40',
             ],
-            preds: [11],
-            succes: [7, 5],
+            preds: [5, 10],
+            succes: [1, 6],
         },
         {
             id: 10,
             stmts: [
-                'if x === 40',
-            ],
-            preds: [5, 11],
-            succes: [1, 6],
-        },
-        {
-            id: 11,
-            stmts: [
                 'if x !== 10',
             ],
             preds: [5],
-            succes: [9, 10],
-        }
+            succes: [1, 9],
+        },
     ],
 };
 
@@ -355,15 +322,15 @@ export const LOGICAL_EXPR_EXPECT_CASE4 = {
                 'if p < 8',
             ],
             preds: [0, 4],
-            succes: [6, 7],
+            succes: [2, 6],
         },
         {
             id: 2,
             stmts: [
                 'if q < 5',
             ],
-            preds: [7],
-            succes: [8, 4],
+            preds: [1, 6],
+            succes: [7, 4],
         },
         {
             id: 3,
@@ -372,15 +339,15 @@ export const LOGICAL_EXPR_EXPECT_CASE4 = {
                 'q = q + 1',
                 'if q < 6',
             ],
-            preds: [8, 10, 12],
-            succes: [11, 10],
+            preds: [7, 8, 9],
+            succes: [9, 8],
         },
         {
             id: 4,
             stmts: [
                 'p = p + 1',
             ],
-            preds: [2, 8, 10, 6, 12],
+            preds: [2, 7, 8],
             succes: [1],
         },
         {
@@ -388,19 +355,11 @@ export const LOGICAL_EXPR_EXPECT_CASE4 = {
             stmts: [
                 'return',
             ],
-            preds: [7],
+            preds: [6],
             succes: [],
         },
         {
             id: 6,
-            stmts: [
-                'if q < 5',
-            ],
-            preds: [1],
-            succes: [12, 4],
-        },
-        {
-            id: 7,
             stmts: [
                 'if p === 16',
             ],
@@ -408,7 +367,7 @@ export const LOGICAL_EXPR_EXPECT_CASE4 = {
             succes: [2, 5],
         },
         {
-            id: 8,
+            id: 7,
             stmts: [
                 'if p !== 1',
             ],
@@ -416,42 +375,21 @@ export const LOGICAL_EXPR_EXPECT_CASE4 = {
             succes: [3, 4],
         },
         {
-            id: 9,
-            stmts: [
-                'p = p + 1',
-                'q = q + 1',
-                'if q < 6',
-                'If(&&)1',
-                'if q !== 2',
-                'IfEnd1',
-            ],
-            preds: [11],
-            succes: [],
-        },
-        {
-            id: 10,
+            id: 8,
             stmts: [
                 'if q === 12',
             ],
-            preds: [3, 11],
+            preds: [3, 9],
             succes: [3, 4],
         },
         {
-            id: 11,
+            id: 9,
             stmts: [
                 'if q !== 2',
             ],
             preds: [3],
-            succes: [9, 10],
+            succes: [3, 8],
         },
-        {
-            id: 12,
-            stmts: [
-                'if p !== 1',
-            ],
-            preds: [6],
-            succes: [3, 4],
-        }
     ],
 };
 
@@ -482,7 +420,7 @@ export const LOGICAL_EXPR_EXPECT_CASE5 = {
                 'if m < 12',
             ],
             preds: [1, 4],
-            succes: [9, 8],
+            succes: [8, 7],
         },
         {
             id: 3,
@@ -491,15 +429,15 @@ export const LOGICAL_EXPR_EXPECT_CASE5 = {
                 'n = n + 1',
                 'if n < 8',
             ],
-            preds: [8, 10, 11],
-            succes: [10, 4],
+            preds: [7, 8, 9],
+            succes: [9, 4],
         },
         {
             id: 4,
             stmts: [
                 'm = m + 1',
             ],
-            preds: [3, 10, 7, 11],
+            preds: [3, 9],
             succes: [2],
         },
         {
@@ -515,51 +453,33 @@ export const LOGICAL_EXPR_EXPECT_CASE5 = {
             stmts: [
                 'i = i + 1',
             ],
-            preds: [8],
+            preds: [7],
             succes: [1],
         },
         {
             id: 7,
             stmts: [
-                'm = m + 1',
-                'n = n + 1',
-                'if n < 8',
+                'if m === 18',
             ],
-            preds: [9],
-            succes: [11, 4],
+            preds: [2, 8],
+            succes: [3, 6],
         },
         {
             id: 8,
             stmts: [
-                'if m === 18',
-            ],
-            preds: [2, 9],
-            succes: [3, 6],
-        },
-        {
-            id: 9,
-            stmts: [
                 'if m !== 5',
             ],
             preds: [2],
-            succes: [7, 8],
+            succes: [3, 7],
         },
         {
-            id: 10,
+            id: 9,
             stmts: [
                 'if n !== 3',
             ],
             preds: [3],
             succes: [3, 4],
         },
-        {
-            id: 11,
-            stmts: [
-                'if n !== 3',
-            ],
-            preds: [7],
-            succes: [3, 4],
-        }
     ],
 };
 
