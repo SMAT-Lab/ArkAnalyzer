@@ -16,7 +16,9 @@
 import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { CxxAstNode, getNodeStartLineAndCol } from '../../frontend/cppFrontend/ast';
+import type { CxxAstNodePositionSource } from '../../frontend/cppFrontend/utils/ArkCxxAstNode';
+import { getNodeStartLineAndCol } from '../../frontend/cppFrontend/utils/ArkCxxAstNode';
+
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 
 const LOW_BITS_SIZE = 16;
@@ -106,7 +108,7 @@ export class LineColPosition {
      * @param node - The C++ AST node.
      * @returns A LineColPosition object containing the line and character information. Default LineColPosition is (0, 0).
      */
-    public static cxxBuildFromNode(node: CxxAstNode): LineColPosition {
+    public static cxxBuildFromNode(node: CxxAstNodePositionSource): LineColPosition {
         const nodePos = getNodeStartLineAndCol(node);
         return new LineColPosition(nodePos.line, nodePos.col);
     }
@@ -154,7 +156,7 @@ export class FullPosition {
      *@ param_sourceFile source file node (not used)
      *@ returns The FullPosition object containing location information
      */
-    public static cxxBuildFromNode(node: CxxAstNode | undefined, _sourceFile: CxxAstNode): FullPosition {
+    public static cxxBuildFromNode(node: CxxAstNodePositionSource | undefined, _sourceFile: CxxAstNodePositionSource): FullPosition {
         const begin = node?.range?.begin;
         const end = node?.range?.end;
         const startLine = begin?.line ?? 0;

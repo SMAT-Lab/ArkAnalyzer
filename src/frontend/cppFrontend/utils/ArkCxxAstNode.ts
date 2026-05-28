@@ -237,6 +237,9 @@ export interface CxxAstNode {
 
 }
 
+/** Subset of {@link CxxAstNode} for position helpers in core/base. */
+export type CxxAstNodePositionSource = Pick<CxxAstNode, 'loc' | 'range'>;
+
 /** root type */
 export interface CxxTranslationUnit extends CxxAstNode {
     kind: 'TranslationUnit' | 'TranslationUnitDecl';
@@ -254,7 +257,7 @@ export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefin
 }
 
 /** Get the starting line and column numbers of the ast node, Default LineColPosition is (0, 0). */
-export function getNodeStartLineAndCol(node: CxxAstNode): CxxPosition {
+export function getNodeStartLineAndCol(node: CxxAstNodePositionSource): CxxPosition {
     if (node.loc?.line && node.loc?.col) {
         return { line: node.loc.line, col: node.loc.col };
     }
@@ -272,6 +275,36 @@ export interface classBase {
     isVirtual?: boolean;
     writtenAccess?: string;
 }
+
+export interface CppAstSceneContext {
+    getCcjsonPath(): string | undefined;
+}
+
+export interface CppAstError {
+    filePath: string;
+    reason: Error;
+}
+
+export interface CppAstResult {
+    dumpErrors: CppAstError[];
+    exitCode: number;
+}
+
+export interface CppAstParams {
+    scene: CppAstSceneContext;
+    sources: string[];
+    projectDir: string;
+    includeDirs: string[];
+    // <= 1 means serial mode.
+    maxParallelProcesses: number;
+    // <= 0 means auto (2 * workerCount).
+    maxPendingAstResults: number;
+    /** Log AST payload stats after each successful TU decode. */
+    logAstInfo?: boolean;
+    // Invoked for each source after the AST payload is decoded.
+    onSourceAst: (sourceFile: string, astRoot: CxxAstNode) => void;
+}
+
 export enum astKind {
     ArraySubscriptExpr = 'ArraySubscriptExpr',
     ArrayTypeTraitExpr = 'ArrayTypeTraitExpr',

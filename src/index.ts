@@ -101,13 +101,13 @@ export { FrontendBuilder, FrontendParseFailure, FrontendParseResult } from './fr
 export { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
 export { CppFrontend } from './frontend/cppFrontend/CppFrontend';
 
-// cpp_frontend
+// cpp_frontend (extension helpers; C++ parse runtime is optional @arkanalyzer/cxx-ast-runtime)
 export {
     getCxxImplementationFileExtensionSet,
     getCxxImplementationFileExtensions,
     getCxxSourceFileExtensionSet,
     getCxxSourceFileExtensions,
-} from './frontend/cppFrontend/ast';
+} from './frontend/cppFrontend/utils/cxxFileConst';
 
 // save
 export { Printer } from './save/Printer';

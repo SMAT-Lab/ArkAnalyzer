@@ -12,20 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-'use strict';
 
-const fs = require('fs');
-const path = require('path');
+/** Public API for arkanalyzer only. */
+export { AstParser } from './astParser';
 
-const projectRoot = path.resolve(__dirname, '..');
-const sourceDir = path.join(projectRoot, 'packages', 'cxx-ast-runtime', 'dumper');
-const targetDir = path.join(projectRoot, 'lib', 'ast');
-
-if (!fs.existsSync(sourceDir)) {
-    console.log('[packageCppAddons] source not found, skip:', sourceDir);
-    process.exit(0);
-}
-
-fs.mkdirSync(targetDir, { recursive: true });
-fs.cpSync(sourceDir, targetDir, { recursive: true });
-console.log('[packageCppAddons] copied', sourceDir, '->', targetDir);
+export { isCppEnvironmentReady } from './astUtils';

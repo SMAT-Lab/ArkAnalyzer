@@ -15,15 +15,33 @@
 
 import * as path from 'path';
 
-import type { Scene } from '../../../../Scene';
-import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
+import { astKind } from '../lib/utils/ArkCxxAstNode';
+import type {
+    CppAstError,
+    CppAstParams,
+    CppAstResult,
+    CppAstSceneContext,
+    CxxAstNode,
+    CxxAstNodeLite,
+} from '../lib/utils/ArkCxxAstNode';
+
+export type { CppAstError, CppAstParams, CppAstResult, CppAstSceneContext } from '../lib/utils/ArkCxxAstNode';
 import { CxxAstFlatInfo } from './CxxAstFlatInfo';
-import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 import { callCppAstParser } from './napi/napiApi';
-import { getCxxHeaderFileExtensionSet } from './const';
+import { getCxxHeaderFileExtensionSet } from '../lib/utils/cxxFileConst';
 import { extractAllCppModifiers, findCompileCommands, findProjectRoot } from './astUtils';
 
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astParser');
+const log = {
+    info: (message: string): void => {
+        console.log(message);
+    },
+    warn: (...args: unknown[]): void => {
+        console.warn(...args);
+    },
+    error: (message: string): void => {
+        console.error(message);
+    },
+};
 
 interface AstStreamRecord {
     index: number;
@@ -31,31 +49,6 @@ interface AstStreamRecord {
     /** Absolute path to the per-TU AST file for this translation unit. */
     astPath: string;
 }
-export interface CppAstError {
-    filePath: string;
-    reason: Error;
-}
-
-export interface CppAstResult {
-    dumpErrors: CppAstError[];
-    exitCode: number;
-}
-
-export interface CppAstParams {
-    scene: Scene;
-    sources: string[];
-    projectDir: string;
-    includeDirs: string[];
-    // <= 1 means serial mode.
-    maxParallelProcesses: number;
-    // <= 0 means auto (2 * workerCount).
-    maxPendingAstResults: number;
-    /** Log AST payload stats after each successful TU decode. */
-    logAstInfo?: boolean;
-    // Invoked for each source after the AST payload is decoded.
-    onSourceAst: (sourceFile: string, astRoot: CxxAstNode) => void;
-}
-
 export type GetParentFn = {
     (isNeedInner: true): CxxAstNode;
     (isNeedInner?: false): CxxAstNodeLite;
@@ -107,7 +100,7 @@ export class AstParser {
             params.onSourceAst(sourceFile, astRoot);
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            CxxAstFlatInfo.logError(sourceFile, err);
+            log.error(CxxAstFlatInfo.formatError(sourceFile, err));
             dumpErrors.push({ filePath: sourceFile, reason: err });
         }
     }
@@ -120,7 +113,7 @@ export class AstParser {
             return;
         }
         const m = process.memoryUsage();
-        logger.info(
+        log.info(
             `[HEAP] processed=${processed}/${total} ` +
                 `heapUsed=${(m.heapUsed / 1024 / 1024).toFixed(1)}MB ` +
                 `rss=${(m.rss / 1024 / 1024).toFixed(1)}MB ` +
@@ -129,7 +122,7 @@ export class AstParser {
     }
 
     private static buildCppAstManifest(
-        scene: Scene,
+        scene: CppAstSceneContext,
         sources: string[],
         projectDir: string,
         includeDirs: string[],
@@ -191,13 +184,13 @@ export class AstParser {
                 }
                 if (path.basename(currentDir) === 'cpp' && path.basename(path.dirname(currentDir)) === 'main') {
                     const absRoot = path.resolve(currentDir);
-                    logger.info(`[Debug] Found Source Root: ${absRoot}`);
+                    log.info(`[Debug] Found Source Root: ${absRoot}`);
                     return absRoot;
                 }
                 currentDir = path.dirname(currentDir);
             }
         } catch (e) {
-            logger.error('[Debug] Error finding source root:', e);
+            log.error(`[Debug] Error finding source root: ${e}`);
         }
         return null;
     }
@@ -208,8 +201,11 @@ export class AstParser {
         exitCode: number,
         logAstInfo: boolean,
     ): CxxAstNode {
-        const { root } = CxxAstFlatInfo.loadAndDecode(sourceFile, astPath, exitCode, logAstInfo);
-        return this.filter(sourceFile, root) as CxxAstNode;
+        const { root } = CxxAstFlatInfo.loadAndDecode(sourceFile, astPath, exitCode, {
+            logAstInfo,
+            onInfo: logAstInfo ? (message: string) => log.info(message) : undefined,
+        });
+        return this.filter(sourceFile, root as CxxAstNode);
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
@@ -218,7 +214,7 @@ export class AstParser {
         }
         const loc = entry.loc;
         if (!loc) {
-            logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
+            log.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
             return;
         }
         newInner.push(entry);

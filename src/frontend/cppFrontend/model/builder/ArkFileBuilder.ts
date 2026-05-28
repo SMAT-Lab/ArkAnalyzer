@@ -30,7 +30,9 @@ import { buildGenericImportInfo, buildUsingNamespaceImportInfo } from './ArkImpo
 import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
-import { AstParser, astKind, CxxAstNode, CxxIncludeInfo } from '../../ast';
+import type { CxxAstNode, CxxIncludeInfo } from '../../utils/ArkCxxAstNode';
+import { astKind } from '../../utils/ArkCxxAstNode';
+import type { AstParserClass } from '../../utils/cxxAstRuntimeTypes';
 import { ArkExport } from '../../../../core/model/ArkExport';
 import { Scene } from '../../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -38,6 +40,10 @@ import { DEFAULT_ARK_CLASS_NAME } from '../../../../core/common/Const';
 import { FrontendParseFailure } from '../../../FrontendBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
+
+function getAstParser(): AstParserClass {
+    return require('@arkanalyzer/cxx-ast-runtime').AstParser;
+}
 
 function applyArkFile(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode): void {
     const scene = arkFile.getScene();
@@ -79,7 +85,7 @@ export function prepareArkFiles(
     }
     const projectDir = scene.getRealProjectDir();
     const includeDirs = scene.getIncludeDirs();
-    const result = AstParser.runCppAst({
+    const result = getAstParser().runCppAst({
         scene,
         sources,
         projectDir,
@@ -115,7 +121,7 @@ export function prepareArkFile(
     const sourceFile = path.resolve(absoluteFilePath);
     const projectDir = scene.getRealProjectDir();
     const includeDirs = scene.getIncludeDirs();
-    const result = AstParser.runCppAst({
+    const result = getAstParser().runCppAst({
         scene,
         sources: [sourceFile],
         projectDir,

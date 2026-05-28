@@ -12,31 +12,34 @@
   "scripts": {
     "prebuild": "node script/npmInstall.js",
     "build": "tsc",
+    "build:cxx-ast-runtime": "npm --prefix packages/cxx-ast-runtime install && npm --prefix packages/cxx-ast-runtime run build",
     "build:cpp": "node script/buildCpp.js",
     "test:cpp": "node script/testCpp.js",
     "sync:addon-optional-deps": "node script/syncAddonOptionalDeps.js",
     "preversion": "npm run sync:addon-optional-deps && npm run build",
-    "prepack": "npm run sync:addon-optional-deps && npm run build && tsc -p ./tsconfig.prod.json && node script/vendorOhosTypescript.js && node script/packageCppAddons.js",
-    "test": "npm run build && vitest",
-    "testonce": "npm run build && vitest run",
-    "coverage": "npm run build && vitest run --coverage",
+    "prepack": "node script/prepackPack.js",
+    "postpack": "node script/postpackPack.js",
+    "test": "npm run build && node script/prepareVitestCpp.js && vitest",
+    "testonce": "npm run build && node script/prepareVitestCpp.js && vitest run",
+    "coverage": "npm run build && node script/prepareVitestCpp.js && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
     "perf:arkts": "npm run build && node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",
     "perf:cpp": "npm run build && node --max-old-space-size=16384 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=opencv",
     "gendoc": "npm run build && npx typedoc",
-    "format": "npx prettier --write src/ tests/",
-    "format:check": "npx prettier --check src/ tests/"
+    "format": "npx prettier --write src/ tests/ packages/",
+    "format:check": "npx prettier --check src/ tests/ packages/"
   },
   "dependencies": {
     "commander": "13.1.0",
-    "flatbuffers": "25.2.10",
     "log4js": "6.9.1"
   },
-  "optionalDependencies": {
-    "@arkanalyzer/ast-addon-darwin-arm64": "1.0.90",
-    "@arkanalyzer/ast-addon-linux-arm64": "1.0.90",
-    "@arkanalyzer/ast-addon-linux-x64": "1.0.90",
-    "@arkanalyzer/ast-addon-win32-x64": "1.0.90"
+  "peerDependencies": {
+    "@arkanalyzer/cxx-ast-runtime": "1.0.90"
+  },
+  "peerDependenciesMeta": {
+    "@arkanalyzer/cxx-ast-runtime": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

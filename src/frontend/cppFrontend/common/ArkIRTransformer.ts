@@ -80,7 +80,8 @@ import { buildModifiers, buildTypeParameters, cxxNode2Type } from '../model/buil
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast';
+import type { CxxAstNode, CxxTranslationUnit } from '../utils/ArkCxxAstNode';
+import { astKind } from '../utils/ArkCxxAstNode';
 import { ValueUtil } from '../../../core/common/ValueUtil';
 import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';

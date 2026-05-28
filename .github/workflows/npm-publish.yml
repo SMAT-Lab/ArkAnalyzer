@@ -64,8 +64,8 @@ jobs:
         run: |
           LLVM_DIR="$LLVM_DIR" Clang_DIR="$Clang_DIR" npm run build:cpp
           mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
-          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
-          ldd src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | awk '
+          cp packages/cxx-ast-runtime/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          ldd packages/cxx-ast-runtime/dumper/astJsonDumper.node | awk '
             /=> \// { print $3 }
             /^\/.*\.so/ { print $1 }
           ' | sort -u | while read -r dep; do
@@ -102,8 +102,8 @@ jobs:
         run: |
           LLVM_DIR="$LLVM_DIR" Clang_DIR="$Clang_DIR" npm run build:cpp
           mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
-          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
-          otool -L src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | tail -n +2 | awk '{print $1}' | while read -r dep; do
+          cp packages/cxx-ast-runtime/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          otool -L packages/cxx-ast-runtime/dumper/astJsonDumper.node | tail -n +2 | awk '{print $1}' | while read -r dep; do
             case "$dep" in
               /usr/lib/*|/System/*) continue ;;
             esac
@@ -142,8 +142,8 @@ jobs:
           npm install
           npm run build:cpp
           mkdir -p artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime
-          cp src/frontend/cppFrontend/ast/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
-          llvm-objdump -p src/frontend/cppFrontend/ast/dumper/astJsonDumper.node | awk '/DLL Name:/ { print $3 }' | sort -u | while read -r dll; do
+          cp packages/cxx-ast-runtime/dumper/astJsonDumper.node artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/astJsonDumper.node
+          llvm-objdump -p packages/cxx-ast-runtime/dumper/astJsonDumper.node | awk '/DLL Name:/ { print $3 }' | sort -u | while read -r dll; do
             dep="/mingw64/bin/$dll"
             [ -f "$dep" ] || continue
             cp "$dep" artifacts/${{ matrix.os }}-${{ matrix.arch }}/runtime/

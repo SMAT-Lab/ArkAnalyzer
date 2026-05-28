@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es2016",
+        "module": "commonjs",
+        "declaration": true,
+        "declarationMap": true,
+        "noEmit": true,
+        "strict": true,
+        "strictPropertyInitialization": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "include": ["ts/**/*"],
+    "exclude": ["cpp/**/*"]
+}

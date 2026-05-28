@@ -41,9 +41,10 @@ export function getAstJsonDumperNodePath(): string {
     const platformArch = `${process.platform}-${process.arch}`;
     const addonPackageName = `@arkanalyzer/ast-addon-${platformArch}`;
     const candidates = [
-        path.join(projectRoot, 'src', 'frontend', 'cppFrontend', 'ast', 'dumper', 'astJsonDumper.node'),
+        path.join(__dirname, '..', 'dumper', 'astJsonDumper.node'),
+        path.join(projectRoot, 'packages', 'cxx-ast-runtime', 'dumper', 'astJsonDumper.node'),
         path.join(projectRoot, 'node_modules', addonPackageName, 'runtime', 'astJsonDumper.node'),
-        path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.node'), // Backward compatibility with old package layout.
+        path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.node'),
     ];
     for (const candidate of candidates) {
         if (fs.existsSync(candidate)) {
@@ -56,6 +57,16 @@ export function getAstJsonDumperNodePath(): string {
 /** True when {@link getAstJsonDumperNodePath} exists on disk. */
 export function isAstJsonDumperAvailable(): boolean {
     return fs.existsSync(getAstJsonDumperNodePath());
+}
+
+/** True when flatbuffers and astJsonDumper.node are both usable (arkanalyzer C++ frontend gate). */
+export function isCppEnvironmentReady(): boolean {
+    try {
+        require.resolve('flatbuffers');
+    } catch {
+        return false;
+    }
+    return isAstJsonDumperAvailable();
 }
 
 /** Project-root anchor for C++ AST output paths (legacy name: historically held Clang binary paths). */

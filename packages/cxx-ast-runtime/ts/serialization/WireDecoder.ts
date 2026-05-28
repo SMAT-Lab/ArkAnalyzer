@@ -31,7 +31,7 @@ import type {
     DtorType,
     NominatedNamespace,
     SpellingLoc,
-} from '../ArkCxxAstNode';
+} from '../../lib/utils/ArkCxxAstNode';
 import type { ClassBaseWire } from './flatGenerated/ark-cxx-ast-fb/class-base-wire';
 import type { CxxAliasInfoWire } from './flatGenerated/ark-cxx-ast-fb/cxx-alias-info-wire';
 import type { CxxAstNodeWire } from './flatGenerated/ark-cxx-ast-fb/cxx-ast-node-wire';

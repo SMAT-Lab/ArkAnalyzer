@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "es2016",
+        "module": "commonjs",
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "./lib/utils",
+        "rootDir": "../../src/frontend/cppFrontend/utils",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "include": [
+        "../../src/frontend/cppFrontend/utils/ArkCxxAstNode.ts",
+        "../../src/frontend/cppFrontend/utils/cxxFileConst.ts"
+    ]
+}
