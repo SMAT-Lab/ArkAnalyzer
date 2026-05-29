@@ -326,16 +326,17 @@ export class CfgBuilder {
         } else {
             this.walkAST(ifstm, ifexit, [c.thenStatement]);
         }
+        // Reserve nextT before walking else; otherwise else-if's inner if takes nextT via judgeLastType.
+        if (!ifstm.nextT) {
+            ifstm.nextT = ifexit;
+            ifexit.lasts.add(ifstm);
+        }
         if (c.elseStatement) {
             if (ts.isBlock(c.elseStatement)) {
                 this.walkAST(ifstm, ifexit, [...c.elseStatement.statements]);
             } else {
                 this.walkAST(ifstm, ifexit, [c.elseStatement]);
             }
-        }
-        if (!ifstm.nextT) {
-            ifstm.nextT = ifexit;
-            ifexit.lasts.add(ifstm);
         }
         if (!ifstm.nextF) {
             ifstm.nextF = ifexit;
