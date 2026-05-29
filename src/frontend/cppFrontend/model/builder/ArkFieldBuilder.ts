@@ -22,7 +22,7 @@ import { FullPosition } from '../../../../core/base/Position';
 import { ModifierType } from '../../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { buildGenericType } from '../../../../core/model/builder/builderUtils';
-import type { CxxAstNode } from '../../utils/ArkCxxAstNode';
+import { CxxAstNode, AstKind } from '../../utils/ArkCxxAstNode';
 
 export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNode, cls: ArkClass): ArkField {
     let field = new ArkField();
@@ -34,10 +34,10 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     field.addModifier(buildModifiers(member));
 
     let fieldType: Type = UnknownType.getInstance();
-    if ((member.kind === 'FieldDecl' || member.kind === 'VarDecl') && member.type) {
+    if ((member.kind === AstKind.FieldDecl || member.kind === AstKind.VarDecl) && member.type) {
         fieldType = buildGenericType(cxxNode2Type(member, cls, sourceFile), field);
     }
-    if (member.kind === 'EnumConstantDecl') {
+    if (member.kind === AstKind.EnumConstantDecl) {
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
@@ -48,14 +48,14 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     return field;
 }
 
-function mapSyntaxKindToFieldOriginType(syntaxKind: String): FieldCategory | null {
+function mapSyntaxKindToFieldOriginType(syntaxKind: AstKind): FieldCategory | null {
     let fieldOriginType: FieldCategory | null = null;
     switch (syntaxKind) {
-        case 'FieldDecl':
-        case 'TypeAliasDecl':
+        case AstKind.FieldDecl:
+        case AstKind.TypeAliasDecl:
             fieldOriginType = FieldCategory.PROPERTY_DECLARATION;
             break;
-        case 'EnumConstantDecl':
+        case AstKind.EnumConstantDecl:
             fieldOriginType = FieldCategory.ENUM_MEMBER;
             break;
         default:

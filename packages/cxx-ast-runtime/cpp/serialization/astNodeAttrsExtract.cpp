@@ -14,6 +14,7 @@
  */
 
 #include "serialization/astNodeAttrsExtract.h"
+#include "serialization/astAttrsEnrich.h"
 
 #include <type_traits>
 
@@ -67,19 +68,6 @@ std::optional<llvm::json::Object> ParseEmittedAttrsJson(std::string buf)
     return obj;
 }
 
-void MergeSourceCodeIntoObject(llvm::json::Object &obj, llvm::StringRef sourceCode)
-{
-    if (sourceCode.empty()) {
-        return;
-    }
-    if (auto existing = obj.getString("code")) {
-        if (existing->size() >= sourceCode.size()) {
-            return;
-        }
-    }
-    obj["code"] = sourceCode.str();
-}
-
 namespace {
 
 void AppendTypedefRecordOriginalId(clang::TypedefDecl *td, llvm::raw_ostream &os)
@@ -111,8 +99,7 @@ void AppendAliasOriginalIdToStream(clang::Decl *d, llvm::raw_ostream &os)
 }
 
 template <typename T>
-std::optional<llvm::json::Object> EmitJsonAttrsFromNode(T *node, AstNodeJsonEmitContext &ec,
-                                                        clang::SourceRange sourceRange, bool mergeSourceCode)
+std::optional<llvm::json::Object> EmitJsonAttrsFromNode(T *node, AstNodeJsonEmitContext &ec)
 {
     if (!node) {
         return std::nullopt;
@@ -136,6 +123,15 @@ std::optional<llvm::json::Object> EmitJsonAttrsFromNode(T *node, AstNodeJsonEmit
         return std::nullopt;
     }
     if constexpr (std::is_same_v<std::remove_pointer_t<T>, clang::Decl>) {
+        EnrichStructuredAttrs(node, *obj, ec);
+    }
+    if constexpr (std::is_same_v<std::remove_pointer_t<T>, clang::Stmt>) {
+        EnrichStructuredAttrs(node, *obj, ec);
+    }
+    if constexpr (std::is_same_v<std::remove_pointer_t<T>, clang::CXXCtorInitializer>) {
+        EnrichStructuredAttrs(node, *obj, ec);
+    }
+    if constexpr (std::is_same_v<std::remove_pointer_t<T>, clang::Decl>) {
         if (!dumperHasName) {
             std::string name;
             if (const auto *nd = clang::dyn_cast<clang::NamedDecl>(node)) {
@@ -148,10 +144,6 @@ std::optional<llvm::json::Object> EmitJsonAttrsFromNode(T *node, AstNodeJsonEmit
             }
         }
     }
-    if (mergeSourceCode) {
-        MergeSourceCodeIntoObject(*obj,
-                                  GetSourceTextByRange(ec.sm, ec.ctx.getLangOpts(), sourceRange, true));
-    }
     return obj;
 }
 
@@ -159,19 +151,18 @@ std::optional<llvm::json::Object> EmitJsonAttrsFromNode(T *node, AstNodeJsonEmit
 
 std::optional<llvm::json::Object> EmitDeclAttrs(clang::Decl *d, AstNodeJsonEmitContext &ec)
 {
-    const bool mergeSource = d && !clang::isa<clang::TranslationUnitDecl>(d);
-    return EmitJsonAttrsFromNode(d, ec, d ? d->getSourceRange() : clang::SourceRange(), mergeSource);
+    return EmitJsonAttrsFromNode(d, ec);
 }
 
 std::optional<llvm::json::Object> EmitStmtAttrs(clang::Stmt *s, AstNodeJsonEmitContext &ec)
 {
-    return EmitJsonAttrsFromNode(s, ec, s->getSourceRange(), true);
+    return EmitJsonAttrsFromNode(s, ec);
 }
 
 std::optional<llvm::json::Object> EmitCtorInitializerAttrs(clang::CXXCtorInitializer *init,
                                                            AstNodeJsonEmitContext &ec)
 {
-    return EmitJsonAttrsFromNode(init, ec, init->getSourceRange(), true);
+    return EmitJsonAttrsFromNode(init, ec);
 }
 
 } // namespace ast_dumper

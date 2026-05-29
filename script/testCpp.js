@@ -21,7 +21,7 @@ const { spawnSync } = require('child_process');
 
 const projectRoot = resolve(__dirname, '..');
 const isWin = process.platform === 'win32';
-const REL_AST_CPP = join('src', 'frontend', 'cppFrontend', 'ast', 'cpp');
+const REL_AST_CPP = join('packages', 'cxx-ast-runtime', 'cpp');
 const REL_AST_BUILD = join(REL_AST_CPP, 'build');
 const buildDir = join(projectRoot, REL_AST_BUILD);
 const TEST_TARGET = 'astJsonDumper_unit_tests';

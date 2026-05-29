@@ -31,7 +31,7 @@ import { FullPosition } from '../../../core/base/Position';
 import { Local } from '../../../core/base/Local';
 import { NAME_PREFIX } from '../../../core/common/Const';
 import type { CxxAstNode } from '../utils/ArkCxxAstNode';
-import { astKind } from '../utils/ArkCxxAstNode';
+import { AstKind } from '../utils/ArkCxxAstNode';
 import { CxxClosureCaptureType } from '../base/Ref';
 
 export class IRUtils {
@@ -142,6 +142,35 @@ export class IRUtils {
         return defaultPositions;
     }
 
+    public static buildLambdaCaptureListFromAst(lambdaExpr: CxxAstNode): string {
+        const parts: string[] = [];
+        for (const child of lambdaExpr.inner ?? []) {
+            if (child.kind === AstKind.ParmVarDecl || child.kind === AstKind.CompoundStmt) {
+                break;
+            }
+            const part = IRUtils.formatLambdaCaptureEntry(child);
+            if (part) {
+                parts.push(part);
+            }
+        }
+        return parts.join(', ');
+    }
+
+    private static formatLambdaCaptureEntry(node: CxxAstNode): string {
+        const name = node.name?.trim() ?? '';
+        if (name === '=' || name === '&') {
+            return name;
+        }
+        if (name.startsWith('&')) {
+            return name;
+        }
+        const qual = node.type?.qualType ?? '';
+        if (qual.includes('&') && !qual.includes('&&')) {
+            return `&${name}`;
+        }
+        return name;
+    }
+
     public static getLambdaCapture(lambdaCode: string): string {
         if (!lambdaCode.startsWith('[')) {
             return '';
@@ -178,7 +207,7 @@ export class IRUtils {
     public static getLambdaExplicitCaptureVars(lambdaExpr: CxxAstNode): CxxAstNode[] {
         const captureNodes: CxxAstNode[] = [];
         for (const child of lambdaExpr.inner) {
-            if (child.kind === astKind.ParmVarDecl || child.kind === astKind.CompoundStmt) {
+            if (child.kind === AstKind.ParmVarDecl || child.kind === AstKind.CompoundStmt) {
                 return captureNodes;
             }
             captureNodes.push(child);

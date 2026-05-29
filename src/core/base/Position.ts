@@ -17,7 +17,7 @@ import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import type { CxxAstNodePositionSource } from '../../frontend/cppFrontend/utils/ArkCxxAstNode';
-import { getNodeStartLineAndCol } from '../../frontend/cppFrontend/utils/ArkCxxAstNode';
+import { getNodeStartLineAndCol } from '../../frontend/cppFrontend/utils/cppUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 

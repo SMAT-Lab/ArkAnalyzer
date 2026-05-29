@@ -22,7 +22,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { ArkClass } from '../../../../core/model/ArkClass';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
 import { ClassSignature, NamespaceSignature } from '../../../../core/model/ArkSignature';
-import type { CxxAstNode } from '../../utils/ArkCxxAstNode';
+import { CxxAstNode, AstKind } from '../../utils/ArkCxxAstNode';
 import { FullPosition } from '../../../../core/base/Position';
 import { ANONYMOUS_NAMESPACE_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../../core/common/Const';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
@@ -67,11 +67,9 @@ export function genDefaultArkClass(ns: ArkNamespace, node: CxxAstNode, sourceFil
 }
 
 export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile | ArkNamespace, ns: ArkNamespace, sourceFile: CxxAstNode): void {
-    // modifiers
-    if (node.modifiers) {
-        ns.setModifiers(buildModifiers(node));
-        ns.setDecorators(buildDecorators(node, sourceFile));
-    }
+    // modifierFlags from wire + AstParser access merge
+    ns.setModifiers(buildModifiers(node));
+    ns.setDecorators(buildDecorators(node, sourceFile));
 
     if (declaringInstance instanceof ArkFile) {
         ns.setDeclaringArkFile(declaringInstance);
@@ -130,7 +128,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
     const statements = node.inner;
     statements.forEach((child: CxxAstNode) => {
         switch (child.kind) {
-            case 'NamespaceDecl': {
+            case AstKind.NamespaceDecl: {
                 let childNs: ArkNamespace = new ArkNamespace();
                 childNs.setDeclaringArkNamespace(namespace);
                 childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
@@ -138,26 +136,26 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 namespace.addNamespace(childNs);
                 return;
             }
-            case 'CXXRecordDecl':
-            case 'ClassTemplateDecl': {
+            case AstKind.CXXRecordDecl:
+            case AstKind.ClassTemplateDecl: {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
                 return;
             }
-            case 'CXXConstructorDecl':
-            case 'CXXDestructorDecl':
-            case 'CXXMethodDecl': {
+            case AstKind.CXXConstructorDecl:
+            case AstKind.CXXDestructorDecl:
+            case AstKind.CXXMethodDecl: {
                 buildArkMethodForClassMethodInNamespace(child, namespace, sourceFile);
                 return;
             }
-            case 'FunctionTemplateDecl':
-            case 'FunctionDecl':
-            case 'FriendDecl': {
+            case AstKind.FunctionTemplateDecl:
+            case AstKind.FunctionDecl:
+            case AstKind.FriendDecl: {
                 let mthd: ArkMethod = new ArkMethod();
                 buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
                 return;
             }
-            case 'UsingDecl':
+            case AstKind.UsingDecl:
                 // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
                 processUsingDeclInNamespace(child, namespace);
                 return;

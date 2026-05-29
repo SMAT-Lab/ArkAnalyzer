@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 import { Language } from '../core/model/ArkFile';
-import { getCxxSourceFileExtensionSet } from '../frontend/cppFrontend/utils/cxxFileConst';
+import { getCxxSourceFileExtensionSet } from '../frontend/cppFrontend/utils/cppUtils';
 import { CryptoUtils } from './crypto_utils';
 import { transfer2UnixPath } from './pathTransfer';
 

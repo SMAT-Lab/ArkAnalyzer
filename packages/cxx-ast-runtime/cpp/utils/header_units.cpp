@@ -78,21 +78,6 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
         }
     }
 
-    // code: full "#include ..." line
-    clang::SourceLocation codeLoc = SM.getExpansionLoc(HashLoc);
-    if (codeLoc.isValid()) {
-        clang::FileID FID = SM.getFileID(codeLoc);
-        unsigned LineNo = SM.getSpellingLineNumber(codeLoc);
-        clang::SourceLocation LB = SM.translateLineCol(FID, LineNo, 1);
-        clang::SourceLocation LNext = SM.translateLineCol(FID, LineNo + 1, 1);
-
-        clang::CharSourceRange CR = (LNext.isValid())
-            ? clang::CharSourceRange::getCharRange(LB, LNext)
-            : clang::CharSourceRange::getCharRange(LB, SM.getLocForEndOfFile(FID));
-
-        inc["code"] = clang::Lexer::getSourceText(CR, SM, PP.getLangOpts()).str();
-    }
-
     // aggregate
     std::string key = !headerAbs.empty() ? headerAbs : ("<unresolved>:" + FileName.str());
     llvm::json::Object &HU = store->ByHeader[key];

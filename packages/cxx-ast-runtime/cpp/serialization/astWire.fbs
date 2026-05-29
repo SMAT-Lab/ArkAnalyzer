@@ -17,6 +17,7 @@
 // Pipeline: Clang AST -> astNodeAttrsExtract (JSON attrs) -> astAttrsToWire -> tables below.
 // JSON keys are camelCase at the emit/decode boundary; wire fields use snake_case.
 // Aligned with ArkCxxAstNode.ts on the TypeScript decode side.
+// Wire v13: string fields are uint32 indices into CxxAstPayload.string_pool (0 = absent).
 
 namespace ArkCxxAstFb;
 
@@ -25,138 +26,80 @@ table CxxPositionWire {
   col:int32;
   offset:uint32;
   tok_len:uint32;
-  file:string;
 }
 
 table CxxRangeWire {
   begin:CxxPositionWire;
   end:CxxPositionWire;
-  spelling_loc:CxxPositionWire;
-  expansion_loc:CxxPositionWire;
 }
 
 table CxxTypeInfoWire {
-  type:string;
-  qual_type:string;
-  desugared_qual_type:string;
+  qual_type:uint32;
+  desugared_qual_type:uint32;
   type_alias_decl_id:uint64;
-  type_alias_decl_qualified_name:string;
-}
-
-table CxxAliasInfoWire {
-  decl_code:string;
-  range:CxxRangeWire;
 }
 
 table CxxReferencedDeclWire {
-  kind:string;
-  name:string;
+  kind:uint16;
+  name:uint32;
   type:CxxTypeInfoWire;
-  alias:CxxAliasInfoWire;
 }
 
 table CxxCtorAnyInitWire {
-  kind:string;
-  name:string;
-  type:CxxTypeInfoWire;
-}
-
-table CxxEnclosingFunctionWire {
-  id:uint64;
-  kind:string;
-  name:string;
-  range:CxxRangeWire;
-}
-
-table CxxNominatedNamespaceWire {
-  id:string;
-  kind:string;
-  name:string;
-}
-
-table DtorTypeWire {
-  id:uint64;
-  kind:string;
-  name:string;
+  name:uint32;
   type:CxxTypeInfoWire;
 }
 
 table CxxIncludeInfoWire {
-  code:string;
-  file_name:string;
-  include_name:string;
-  included_from:string;
-  is_angled:bool;
-  kind:string;
+  file_name:uint32;
+  include_name:uint32;
+  kind:uint16;
   loc:CxxPositionWire;
-  relative_path:string;
-  search_path:string;
 }
 
 table CxxLocWire {
-  file:string;
+  file:uint32;
   line:int32;
   col:int32;
-  offset:uint32;
-  tok_len:uint32;
-  spelling_loc:CxxPositionWire;
-  expansion_loc:CxxPositionWire;
-}
-
-table DefaultArgWire {
-  kind:string;
-  type:CxxTypeInfoWire;
 }
 
 table ClassBaseWire {
-  access:string;
+  access:uint8;
   type:CxxTypeInfoWire;
-  is_virtual:bool;
-  written_access:string;
+  /// ClassBase attribute bits (virtual inheritance, etc.).
+  base_flags:uint8;
 }
 
 /// Per-node attrs as structured columns (inner/header_units are separate wire vectors).
 table CxxAstNodeWire {
-  id:string;
-  original_id:string;
-  has_in_class_initializer:bool;
-  kind:string;
-  name:string;
-  code:string;
+  id:uint32;
+  original_id:uint32;
+  kind:uint16;
+  /// AST shape flags (hasInClassInitializer, isImplicit, isPostfix, isArrow, isArray).
+  node_flags:uint8;
+  name:uint32;
+  /// C++ modifier bitmask; bit layout matches ModifierType in ArkBaseModel.ts.
+  modifier_flags:uint32;
   type:CxxTypeInfoWire;
-  mangled_name:string;
-  tag_used:string;
-  is_implicit:bool;
-  storage_class:string;
-  access:string;
+  mangled_name:uint32;
+  tag_used:uint8;
+  storage_class:uint8;
+  access:uint8;
   referenced_decl:CxxReferencedDeclWire;
-  value:string;
-  value_category:string;
-  cast_kind:string;
-  opcode:string;
-  op:string;
-  is_postfix:bool;
-  is_arrow:bool;
-  is_array:bool;
-  trait_func:string;
-  trait_args:string;
-  noexcept_arg:string;
+  value:uint32;
+  value_category:uint8;
+  cast_kind:uint16;
+  opcode:uint8;
+  op:uint8;
   type_arg:CxxTypeInfoWire;
-  atomic_func:string;
-  pseudo_destructor_type:string;
-  target_label_id:int32;
   any_init:CxxCtorAnyInitWire;
   base_init:CxxTypeInfoWire;
-  nominated_namespace:CxxNominatedNamespaceWire;
+  nominated_namespace:uint32;
   loc:CxxLocWire;
   range:CxxRangeWire;
-  enclosing_function:CxxEnclosingFunctionWire;
-  default_arg:DefaultArgWire;
-  dtor:DtorTypeWire;
-  default:string;
+  default_arg:CxxTypeInfoWire;
+  dtor:uint16;
 
-  array_sizes:[string];
-  type_arguments:[string];
   includes:[CxxIncludeInfoWire];
   bases:[ClassBaseWire];
 
@@ -166,8 +109,7 @@ table CxxAstNodeWire {
 
 table CxxAstPayload {
   wire_version:uint;
-  source_file:string;
-  flat_path:string;
+  string_pool:[string];
   root:CxxAstNodeWire;
 }
 

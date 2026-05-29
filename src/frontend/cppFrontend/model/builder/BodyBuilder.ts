@@ -24,7 +24,7 @@ import { ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../../../core/
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../../core/base/Expr';
-import type { CxxAstNode } from '../../utils/ArkCxxAstNode';
+import { CxxAstNode, AstKind } from '../../utils/ArkCxxAstNode';
 import { IRUtils } from '../../common/IRUtils';
 import { CxxClosureCaptureType, CxxClosureFieldRef } from '../../base/Ref';
 import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
@@ -589,7 +589,7 @@ export class CxxBodyBuilder {
         });
 
         const lambdaExprNode = method.getCxxBodyBuilder()?.getCfgBuilder().astRoot;
-        const lambdaCaptureList = lambdaExprNode ? IRUtils.getLambdaCapture(lambdaExprNode.code) : '';
+        const lambdaCaptureList = lambdaExprNode ? IRUtils.buildLambdaCaptureListFromAst(lambdaExprNode) : '';
         const defaultCaptureType = IRUtils.analyzeLambdaDefaultCapture(lambdaCaptureList);
         const explicitVars = lambdaExprNode ? IRUtils.getLambdaExplicitCaptureVars(lambdaExprNode) : [];
         const explicitCaptureTypeMap = this.buildExplicitClosureCaptureTypeMap(explicitVars);
@@ -618,13 +618,13 @@ export class CxxBodyBuilder {
         const closureCaptureTypeMap = new Map<string, CxxClosureCaptureType>();
         let varName = '';
         for (const explicitVar of explicitVars) {
-            if (explicitVar.kind === 'DeclRefExpr') {
+            if (explicitVar.kind === AstKind.DeclRefExpr) {
                 // Reference capture
-                varName = explicitVar.referencedDecl?.name ?? explicitVar.code;
+                varName = explicitVar.referencedDecl?.name ?? '';
                 closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_REF);
-            } else if (explicitVar.kind === 'ImplicitCastExpr' && explicitVar.inner?.[0]?.kind === 'DeclRefExpr') {
+            } else if (explicitVar.kind === AstKind.ImplicitCastExpr && explicitVar.inner?.[0]?.kind === AstKind.DeclRefExpr) {
                 // Value capture
-                varName = explicitVar.inner[0].referencedDecl?.name ?? explicitVar.inner[0].code;
+                varName = explicitVar.inner[0].referencedDecl?.name ?? '';
                 closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_VALUE);
             } else {
                 logger.warn(`Unprocessed capture Node: ${explicitVar.kind}`);

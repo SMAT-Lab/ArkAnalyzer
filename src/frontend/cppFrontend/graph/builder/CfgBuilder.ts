@@ -31,8 +31,8 @@ import { ModifierType } from '../../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../../core/common/TSConst';
-import type { CxxAstNode, CxxTranslationUnit } from '../../utils/ArkCxxAstNode';
-import { astKind } from '../../utils/ArkCxxAstNode';
+import { AstKind, CxxNodeFlag, CxxAstNode, CxxTranslationUnit } from '../../utils/ArkCxxAstNode';
+import { hasNodeFlag } from '../../utils/cppUtils';
 import { CxxLoopBuilder } from './LoopBuilder';
 import { CxxIfBuilder } from './IfBuilder';
 
@@ -219,7 +219,7 @@ export class CfgBuilder {
             lastStatement.next = s;
             s.lasts.add(lastStatement);
             // Process the passTimes when multiple goto entries exist in a node
-            if (lastStatement.code.includes('goto label:') &&
+            if (lastStatement.type === 'labelStatement' &&
                 lastStatement.lasts.size > 1 && s.passTimes === 0) {
                 s.passTimes += (lastStatement.lasts.size - 1);
             }
@@ -229,14 +229,14 @@ export class CfgBuilder {
     ASTNodeBreakStatement(c: CxxAstNode, lastStatement: StatementBuilder): void {
         let p: CxxAstNode | null = c;
         while (p && p.id !== this.astRoot.id) {
-            let pKind = p.kind.toString();
-            if (pKind === 'WhileStmt' || pKind === 'DoStmt' || pKind === 'ForStmt') {
+            const pKind = p.kind;
+            if (pKind === AstKind.WhileStmt || pKind === AstKind.DoStmt || pKind === AstKind.ForStmt) {
                 const lastLoopNextF = this.loopStack[this.loopStack.length - 1].nextF!;
                 this.judgeLastType(lastLoopNextF, lastStatement);
                 lastLoopNextF.lasts.add(lastStatement);
                 return;
             }
-            if (pKind === 'CaseStmt' || pKind === 'DefaultStmt') {
+            if (pKind === AstKind.CaseStmt || pKind === AstKind.DefaultStmt) {
                 const lastSwitchExit = this.switchExitStack[this.switchExitStack.length - 1];
                 this.judgeLastType(lastSwitchExit, lastStatement);
                 lastSwitchExit.lasts.add(lastStatement);
@@ -247,14 +247,12 @@ export class CfgBuilder {
     }
 
     ASTNodeIfStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
-        let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder('ifStatement', 'IfStmt', c, scopeID);
+        let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder('ifStatement', '', c, scopeID);
         this.judgeLastType(ifstm, lastStatement);
         let ifexit: StatementBuilder = new StatementBuilder('ifExit', '', c, scopeID);
         this.exits.push(ifexit);
-        ifstm.condition = c.inner[0].code;
-        ifstm.code = 'if (' + ifstm.condition + ')';
         if (c.inner.length >= 2) { // length >= 2 means there is a condition and a body
-            if (c.inner[1].kind === astKind.CompoundStmt) {
+            if (c.inner[1].kind === AstKind.CompoundStmt) {
                 // Body is a braced block { ... }
                 this.walkAST(ifstm, ifexit, [...c.inner[1].inner]);
             } else {
@@ -266,7 +264,7 @@ export class CfgBuilder {
             this.walkAST(ifstm, ifexit, [c.inner[0]]);
         }
         if (c.inner.length > 2) {
-            if (c.inner[2].kind === astKind.CompoundStmt) {
+            if (c.inner[2].kind === AstKind.CompoundStmt) {
                 // Handle else here
                 this.walkAST(ifstm, ifexit, [...c.inner[2].inner]);
             } else {
@@ -294,15 +292,13 @@ export class CfgBuilder {
         this.exits.push(loopExit);
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
-        loopstm.condition = c.inner[0].code;
-        loopstm.code = 'while (' + loopstm.condition + ')';
         if (c.inner.length >= 2) {
-            if (c.inner[1].kind === astKind.CompoundStmt) {
+            if (c.inner[1].kind === AstKind.CompoundStmt) {
                 this.walkAST(loopstm, loopstm, [...c.inner[1].inner]);
             } else {
                 this.walkAST(loopstm, loopstm, [c.inner[1]]);
             }
-        } else if (c.inner.length === 1 && c.inner[0].kind.toString() === astKind.CompoundStmt) {
+        } else if (c.inner.length === 1 && c.inner[0].kind === AstKind.CompoundStmt) {
             this.walkAST(loopstm, loopstm, [c.inner[0]]);
         }
         if (!loopstm.nextF) {
@@ -317,14 +313,6 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    getPrefix(s: string, varName: string): string {
-        const index = s.indexOf(varName);
-        if (index === -1) {
-            return s;
-        }
-        return s.substring(0, index);
-    }
-
     ASTNodeForStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
@@ -334,8 +322,7 @@ export class CfgBuilder {
         this.exits.push(loopExit);
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
-        loopstm.code = this.getPrefix(c.code, ' {\r\n');
-        if (c.inner[c.inner.length - 1].kind === astKind.CompoundStmt) {
+        if (c.inner[c.inner.length - 1].kind === AstKind.CompoundStmt) {
             this.walkAST(loopstm, loopstm, [...c.inner[c.inner.length - 1].inner]);
         } else {
             this.walkAST(loopstm, loopstm, [c.inner[c.inner.length - 1]]);
@@ -360,16 +347,14 @@ export class CfgBuilder {
         this.exits.push(loopExit);
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
-        loopstm.condition = c.inner[1].code;
-        loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
         for (let idx = 0; idx < c.inner[0].inner.length; idx++) {
             let kind = c.inner[0].inner[idx].kind;
-            if (kind !== 'NullStmt') {
+            if (kind !== AstKind.NullStmt) {
                 loopstm.hasDoWhileBody = true;
             }
         }
-        if (c.inner[0].kind.toString() === 'CompoundStmt') {
+        if (c.inner[0].kind === AstKind.CompoundStmt) {
             this.walkAST(lastStatement, loopstm, [...c.inner[0].inner]);
         } else {
             this.walkAST(lastStatement, loopstm, [c.inner[0]]);
@@ -392,9 +377,9 @@ export class CfgBuilder {
     }
 
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
-        if (node.kind === 'CaseStmt') {
+        if (node.kind === AstKind.CaseStmt) {
             for (let i = 0; i < node.inner.length; i++) {
-                let isCaseOrDefault = node.inner[i].kind === astKind.CaseStmt || node.inner[i].kind === astKind.DefaultStmt;
+                let isCaseOrDefault = node.inner[i].kind === AstKind.CaseStmt || node.inner[i].kind === AstKind.DefaultStmt;
                 if (isCaseOrDefault) {
                     clauses.push(node);
                     this.sliceCaseDefaultNode(node.inner[i], clauses);
@@ -422,10 +407,10 @@ export class CfgBuilder {
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
-            if (['CaseStmt', 'DefaultStmt'].includes(curr.kind)) {
+            if ([AstKind.CaseStmt, AstKind.DefaultStmt].includes(curr.kind)) {
                 curr.parent = switchNode.inner[length - 1];
                 // Reconstruct the syntax tree structure
-                while (idx + 1 < arr.length && !([astKind.CaseStmt, astKind.DefaultStmt] as string[]).includes(arr[idx + 1].kind)) {
+                while (idx + 1 < arr.length && !([AstKind.CaseStmt, AstKind.DefaultStmt] as AstKind[]).includes(arr[idx + 1].kind)) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
                     idx++;
@@ -434,6 +419,38 @@ export class CfgBuilder {
             }
             return acc;
         }, [] as CxxAstNode[]);
+    }
+
+    /** Case constant label from structured literal/name fields (not {@link CxxAstNode.code}). */
+    private caseLabelText(caseExprNode: CxxAstNode): string {
+        if (caseExprNode.kind === AstKind.IntegerLiteral) {
+            return caseExprNode.value ?? '';
+        }
+        if (caseExprNode.kind === AstKind.CharacterLiteral) {
+            if (caseExprNode.name) {
+                return caseExprNode.name;
+            }
+            const raw = caseExprNode.value ?? '';
+            const code = Number(raw);
+            if (raw.length === 1) {
+                return raw;
+            }
+            if (Number.isInteger(code) && code >= 0 && code <= 127) {
+                return String.fromCharCode(code);
+            }
+            return raw;
+        }
+        return caseExprNode.name ?? '';
+    }
+
+    private getGotoLabel(innerNode: CxxAstNode): string {
+        if (innerNode.name) {
+            return innerNode.name;
+        }
+        const labelRef = innerNode.inner?.find(child =>
+            child.kind === AstKind.DeclRefExpr || child.kind === AstKind.LabelStmt
+        );
+        return labelRef?.name ?? '';
     }
 
     ASTNodeSwitchStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
@@ -445,7 +462,6 @@ export class CfgBuilder {
         this.exits.push(switchExit);
         this.switchExitStack.push(switchExit);
         switchExit.lasts.add(switchstm);
-        switchstm.code = 'switch (' + c.inner[0].code + ')';
         let lastCaseExit: StatementBuilder | null = null;
         c.inner[c.inner.length - 1].inner = this.getCaseDefClauseAsts(c);
         const astNodeCase = c.inner[c.inner.length - 1];
@@ -453,8 +469,8 @@ export class CfgBuilder {
             const clause = astNodeCase.inner[i];
             let casestm: StatementBuilder;
             let caseBody: CxxAstNode[] = [...clause.inner];
-            if (clause.kind.toString() === 'CaseStmt') {
-                casestm = new StatementBuilder('statement', 'case ' + clause.inner[0].code + ':', clause, scopeID);
+            if (clause.kind === AstKind.CaseStmt) {
+                casestm = new StatementBuilder('statement', 'case ' + this.caseLabelText(clause.inner[0]) + ':', clause, scopeID);
                 caseBody = caseBody.slice(1);
             } else {
                 casestm = new StatementBuilder('statement', 'default:', clause, scopeID);
@@ -464,8 +480,9 @@ export class CfgBuilder {
             let caseExit = new StatementBuilder('caseExit', '', null, scopeID);
             this.exits.push(caseExit);
             this.walkAST(casestm, caseExit, caseBody);
-            if (clause.kind.toString() === 'CaseStmt') {
-                const cas = new Case(casestm.code, casestm.next!);
+            if (clause.kind === AstKind.CaseStmt) {
+                const caseLabel = this.caseLabelText(clause.inner[0]);
+                const cas = new Case('case ' + caseLabel + ':', casestm.next!);
                 switchstm.cases.push(cas);
             } else {
                 switchstm.default = casestm.next;
@@ -497,21 +514,21 @@ export class CfgBuilder {
         let caller = '';
         let callee = '';
         const first = innerNode?.inner?.[0];
-        if (first && first.kind === 'MemberExpr') {
+        if (first && first.kind === AstKind.MemberExpr) {
             let childInner: CxxAstNode = first;
             // Callee: name is preferred. Some JSONs may only have code
-            const op = childInner.isArrow ? '->' : '.';
-            callee = op + (childInner.name || childInner.code || '');
+            const op = hasNodeFlag(childInner, CxxNodeFlag.Arrow) ? '->' : '.';
+            callee = op + (childInner.name || '');
             // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
             while (childInner.inner && childInner.inner.length > 0) {
                 const n0 = childInner.inner[0];
                 const innerKind = n0?.kind;
-                if (innerKind === astKind.DeclRefExpr) {
+                if (innerKind === AstKind.DeclRefExpr) {
                     // 3) Safely read referencedDecl? .name； Use n0. name/n0. code/empty string at the bottom
-                    caller = n0.referencedDecl?.name || n0.name || n0.code || '';
+                    caller = n0.referencedDecl?.name || n0.name || '';
                     break;
                 }
-                if (innerKind === astKind.ImplicitCastExpr) {
+                if (innerKind === AstKind.ImplicitCastExpr) {
                     childInner = n0; // Continue to traverse downward
                     continue;
                 }
@@ -528,9 +545,10 @@ export class CfgBuilder {
 
 
     ASTNodeGotoStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): void {
-        let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+        const label = this.getGotoLabel(innerNode);
+        const gotoCode = label ? `goto ${label}` : '';
+        let s = new StatementBuilder('gotoStatement', gotoCode, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
-        let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
         let gotoStmtsOfLabel = this.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.gotoStmtMap.set(label, [s]);
@@ -576,9 +594,9 @@ export class CfgBuilder {
     }
 
     ASTNodeLabelStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
-        let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
+        let labelStmt = new StatementBuilder('labelStatement', '', innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
-        let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
+        let label: string = innerNode.name ?? '';
         if (!this.labelStmtMap.has(label)) {
             this.labelStmtMap.set(label, labelStmt);
         }
@@ -623,12 +641,27 @@ export class CfgBuilder {
         return labelExit;
     }
 
-    removeAfterBraces(str: string): string {
-        const index = str.indexOf('{\r\n    ');
-        if (index !== -1) {
-            return str.substring(0, index);
+    /** Catch clause header from handler VarDecl / catch-all structure (not {@link CxxAstNode.code}). */
+    private catchClauseHeaderText(catchBlock: CxxAstNode): string {
+        const handler = catchBlock.inner?.[0];
+        if (!handler || catchBlock.inner.length <= 1) {
+            return 'catch (...)';
         }
-        return str;
+        if (handler.kind === AstKind.CatchAllException || handler.id === '0x0') {
+            return 'catch (...)';
+        }
+        const typeText = handler.type?.qualType ??
+            handler.type?.desugaredQualType ??
+            handler.inner?.find(child => child.kind === AstKind.TypeRef)?.name ??
+            '';
+        const name = handler.name ?? '';
+        if (typeText && name) {
+            return `catch (${typeText} ${name})`;
+        }
+        if (typeText) {
+            return `catch (${typeText})`;
+        }
+        return 'catch';
     }
 
     ASTNodeTryStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
@@ -641,9 +674,9 @@ export class CfgBuilder {
         let tryBlock: CxxAstNode | undefined = undefined;
         let catchBlockList: CxxAstNode[] = [];
         for (const node of c.inner) {
-            if (node.kind === astKind.CompoundStmt) {
+            if (node.kind === AstKind.CompoundStmt) {
                 tryBlock = node;
-            } else if (node.kind === astKind.CXXCatchStmt) {
+            } else if (node.kind === AstKind.CXXCatchStmt) {
                 catchBlockList.push(node);
             }
         }
@@ -652,26 +685,23 @@ export class CfgBuilder {
         trystmt.tryFirst = trystmt.next;
         trystmt.next?.lasts.add(trystmt);
         for (const catchBlock of catchBlockList) {
-            let text = '';
-            if (catchBlock.code) {
-                text += this.removeAfterBraces(catchBlock.code);
-            }
             if (catchBlock.inner?.length === 0) {
                 continue;
             }
-            let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, catchBlock, scopeID);
+            const catchHeader = this.catchClauseHeaderText(catchBlock);
+            let catchOrNot = new ConditionStatementBuilder('catchOrNot', catchHeader, catchBlock, scopeID);
             let catchExit = new StatementBuilder('catch exit', '', catchBlock, scopeID);
             catchOrNot.nextF = catchExit;
             catchExit.lasts.add(catchOrNot);
             if (catchBlock.inner && catchBlock.inner[0].id === '0x0') {
-                catchBlock.inner[0].kind = 'catch_all_exception';
+                catchBlock.inner[0].kind = AstKind.CatchAllException;
             }
             this.walkAST(catchOrNot, catchExit, catchBlock.inner[catchBlock.inner.length - 1].inner);
             if (!catchOrNot.nextT) {
                 catchOrNot.nextT = catchExit;
                 catchExit.lasts.add(catchOrNot);
             }
-            const catchStatement = new StatementBuilder('statement', catchOrNot.code, catchBlock, catchOrNot.nextT.scopeID);
+            const catchStatement = new StatementBuilder('statement', '', catchBlock, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
             trystmt.catchStatement.push(catchStatement);
             catchStatement.lasts.add(trystmt);
@@ -695,14 +725,14 @@ export class CfgBuilder {
     }
 
     private hitsControlBoundaryBeforeRoot(node: CxxAstNode): boolean {
-        const CONTROL_BOUNDARY_KINDS = new Set<string>([
-            astKind.IfStmt,
-            astKind.WhileStmt,
-            astKind.DoStmt,
-            astKind.ForStmt,
-            astKind.CaseStmt,
-            astKind.DefaultStmt,
-            astKind.CXXTryStmt,
+        const CONTROL_BOUNDARY_KINDS = new Set<AstKind>([
+            AstKind.IfStmt,
+            AstKind.WhileStmt,
+            AstKind.DoStmt,
+            AstKind.ForStmt,
+            AstKind.CaseStmt,
+            AstKind.DefaultStmt,
+            AstKind.CXXTryStmt,
         ]);
 
         let p: CxxAstNode | null = node;
@@ -723,18 +753,18 @@ export class CfgBuilder {
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
             let nodeKind = innerNode.kind;
-            if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) !== undefined) {
+            if (nodeKind === AstKind.LabelStmt && this.gotoStmtMap.get(innerNode.name) !== undefined) {
                 gotoLabel = false;
             }
-            if (gotoLabel && nodeKind !== astKind.CompoundStmt) { // Skip the code between goto and label in the code block
+            if (gotoLabel && nodeKind !== AstKind.CompoundStmt) { // Skip the code between goto and label in the code block
                 continue;
             }
             lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
-            if (nodeKind === astKind.ReturnStmt) {
+            if (nodeKind === AstKind.ReturnStmt) {
                 break;
-            } else if (nodeKind === astKind.BreakStmt || nodeKind === astKind.ContinueStmt) {
+            } else if (nodeKind === AstKind.BreakStmt || nodeKind === AstKind.ContinueStmt) {
                 return;
-            } else if (nodeKind === astKind.GotoStmt) {
+            } else if (nodeKind === AstKind.GotoStmt) {
                 if (this.hitsControlBoundaryBeforeRoot(innerNode)) {
                     return;
                 }
@@ -751,85 +781,85 @@ export class CfgBuilder {
 
         // 直接使用 innerNode.kind 进行 switch
         switch (innerNode.kind) {
-            case astKind.AtomicCallExpr:
-            case astKind.BinaryOperator:
-            case astKind.CallExpr:
-            case astKind.CompoundAssignOperator:
-            case astKind.CXXConstructExpr:
-            case astKind.CXXCtorInitializer:
-            case astKind.CXXDeleteExpr:
-            case astKind.CXXOperatorCallExpr:
-            case astKind.CXXThrowExpr:
-            case astKind.DeclStmt:
-            case astKind.RecoveryExpr:
-            case astKind.TypedefDecl:
-            case astKind.TypeAliasDecl:
-            case astKind.TypeAliasTemplateDecl:
-            case astKind.UnaryOperator:
-            case astKind.VarDecl:
-                s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+            case AstKind.AtomicCallExpr:
+            case AstKind.BinaryOperator:
+            case AstKind.CallExpr:
+            case AstKind.CompoundAssignOperator:
+            case AstKind.CXXConstructExpr:
+            case AstKind.CXXCtorInitializer:
+            case AstKind.CXXDeleteExpr:
+            case AstKind.CXXOperatorCallExpr:
+            case AstKind.CXXThrowExpr:
+            case AstKind.DeclStmt:
+            case AstKind.RecoveryExpr:
+            case AstKind.TypedefDecl:
+            case AstKind.TypeAliasDecl:
+            case AstKind.TypeAliasTemplateDecl:
+            case AstKind.UnaryOperator:
+            case AstKind.VarDecl:
+                s = new StatementBuilder('statement', '', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case astKind.BreakStmt:
+            case AstKind.BreakStmt:
                 this.ASTNodeBreakStatement(innerNode, lastStatement);
                 break;
-            case astKind.CompoundStmt:
+            case AstKind.CompoundStmt:
                 let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
                 this.exits.push(blockExit);
                 this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
                 lastStatement = blockExit;
                 break;
-            case astKind.ContinueStmt:
+            case AstKind.ContinueStmt:
                 const lastLoop = this.loopStack[this.loopStack.length - 1];
                 this.judgeLastType(lastLoop, lastStatement);
                 lastLoop.lasts.add(lastStatement);
                 break;
-            case astKind.CXXMemberCallExpr:
+            case AstKind.CXXMemberCallExpr:
                 lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.CXXForRangeStmt:
-            case astKind.ForStmt:
+            case AstKind.CXXForRangeStmt:
+            case AstKind.ForStmt:
                 lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.CXXTryStmt:
+            case AstKind.CXXTryStmt:
                 lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.DoStmt:
+            case AstKind.DoStmt:
                 lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.ExprWithCleanups:
+            case AstKind.ExprWithCleanups:
                 lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
                 break;
-            case astKind.GotoStmt:
-            case astKind.IndirectGotoStmt:
+            case AstKind.GotoStmt:
+            case AstKind.IndirectGotoStmt:
                 this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.IfStmt:
+            case AstKind.IfStmt:
                 lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.LabelStmt:
+            case AstKind.LabelStmt:
                 lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.ReturnStmt:
-                s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
+            case AstKind.ReturnStmt:
+                s = new StatementBuilder('returnStatement', '', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case astKind.SwitchStmt:
+            case AstKind.SwitchStmt:
                 lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.WhileStmt:
+            case AstKind.WhileStmt:
                 lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
                 break;
-            case astKind.NullStmt:
+            case AstKind.NullStmt:
                 break;
-            case astKind.ParmVarDecl:
-                s = new StatementBuilder('statement', 'ParmVarDecl', innerNode, scope.id);
+            case AstKind.ParmVarDecl:
+                s = new StatementBuilder('statement', '', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case astKind.ImplicitCastExpr:
+            case AstKind.ImplicitCastExpr:
                 lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
                 break;
             default:
@@ -848,7 +878,7 @@ export class CfgBuilder {
 
     addReturnInEmptyMethod(): void {
         if (this.entry.next === this.exit) {
-            const ret = new StatementBuilder('returnStatement', 'return;', null, this.entry.scopeID);
+            const ret = new StatementBuilder('returnStatement', '', null, this.entry.scopeID);
             this.entry.next = ret;
             ret.lasts.add(this.entry);
             ret.next = this.exit;
@@ -1087,12 +1117,12 @@ export class CfgBuilder {
         if (notReturnStmts.length < 1) {
             return;
         }
-        const returnStatement = new StatementBuilder('returnStatement', 'return;', null, this.exit.scopeID);
+        const returnStatement = new StatementBuilder('returnStatement', '', null, this.exit.scopeID);
         let TryOrSwitchExit = false;
         if (notReturnStmts.length === 1 && notReturnStmts[0].block) {
             let p: CxxAstNode | null = notReturnStmts[0].astNode;
             while (p && p.id !== this.astRoot.id) {
-                if (p.kind === astKind.CXXTryStmt || p.kind === astKind.SwitchStmt) {
+                if (p.kind === AstKind.CXXTryStmt || p.kind === AstKind.SwitchStmt) {
                     TryOrSwitchExit = true;
                     break;
                 }
@@ -1181,7 +1211,7 @@ export class CfgBuilder {
         if (this.declaringClass?.getDeclaringArkFile()) {
             mes += this.declaringClass?.getDeclaringArkFile().getName() + '.' + this.declaringClass.getName() + '.' + this.name;
         }
-        mes += '\n' + stmt.code;
+        mes += `\n${stmt.type}${stmt.astNode ? ` kind=${stmt.astNode.kind}` : ''}`;
         throw new TextError(mes);
     }
 
@@ -1189,21 +1219,21 @@ export class CfgBuilder {
         let stmts: CxxAstNode[] = [];
         if (this.astRoot.inner) {
             for (let i = 0; i < this.astRoot.inner.length; i++) {
-                const allowedInnerKinds: string[] = [
-                    astKind.CXXConstructExpr,
-                    astKind.CXXCtorInitializer
+                const allowedInnerKinds: AstKind[] = [
+                    AstKind.CXXConstructExpr,
+                    AstKind.CXXCtorInitializer
                 ];
 
-                if (this.astRoot.kind === astKind.CXXConstructorDecl && allowedInnerKinds.includes(this.astRoot.inner[i].kind)) {
+                if (this.astRoot.kind === AstKind.CXXConstructorDecl && allowedInnerKinds.includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 const length = this.astRoot.inner[i].inner.length;
-                if (this.astRoot.inner[i].kind === astKind.ParmVarDecl && length > 0 &&
-                    this.astRoot.inner[i].inner[length - 1].kind !== astKind.TypeRef) {
+                if (this.astRoot.inner[i].kind === AstKind.ParmVarDecl && length > 0 &&
+                    this.astRoot.inner[i].inner[length - 1].kind !== AstKind.TypeRef) {
                     stmts.push(this.astRoot.inner[i]);
                     continue;
                 }
-                if (this.astRoot.inner[i].kind === astKind.CompoundStmt) {
+                if (this.astRoot.inner[i].kind === AstKind.CompoundStmt) {
                     stmts.push(...this.astRoot.inner[i].inner);
                     break;
                 }
@@ -1214,18 +1244,18 @@ export class CfgBuilder {
 
     buildCfgBuilder(): void {
         let stmts: CxxAstNode[] = [];
-        const translationUnitKinds: string[] = [
-            astKind.TranslationUnitDecl,
-            astKind.NamespaceDecl
+        const translationUnitKinds: AstKind[] = [
+            AstKind.TranslationUnitDecl,
+            AstKind.NamespaceDecl
         ];
 
-        const functionKinds: string[] = [
-            astKind.FunctionDecl,
-            astKind.CXXMethodDecl,
-            astKind.CXXConstructorDecl,
-            astKind.LambdaExpr,
-            astKind.FunctionTemplateDecl,
-            astKind.CXXDestructorDecl
+        const functionKinds: AstKind[] = [
+            AstKind.FunctionDecl,
+            AstKind.CXXMethodDecl,
+            AstKind.CXXConstructorDecl,
+            AstKind.LambdaExpr,
+            AstKind.FunctionTemplateDecl,
+            AstKind.CXXDestructorDecl
         ];
 
         if (translationUnitKinds.includes(this.astRoot.kind)) {
@@ -1257,7 +1287,7 @@ export class CfgBuilder {
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
         traps: CxxTrap[];
     } {
-        if (this.astRoot.kind === astKind.LambdaExpr && this.astRoot.inner[this.astRoot.inner.length - 1].kind !== astKind.CompoundStmt) {
+        if (this.astRoot.kind === AstKind.LambdaExpr && this.astRoot.inner[this.astRoot.inner.length - 1].kind !== AstKind.CompoundStmt) {
             return this.buildCfgForSimpleArrowFunction();
         }
 
@@ -1421,6 +1451,23 @@ export class CfgBuilder {
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 
+    /** Whether a {@link StatementBuilder} should be lowered to IR via its {@link CxxAstNode}. */
+    private shouldEmitStatementBuilderAsIr(statementBuilder: StatementBuilder): boolean {
+        if (!statementBuilder.astNode) {
+            return false;
+        }
+        switch (statementBuilder.type) {
+            case 'statement':
+            case 'returnStatement':
+            case 'ifStatement':
+            case 'loopStatement':
+            case 'gotoStatement':
+                return true;
+            default:
+                return statementBuilder.astNode.kind === AstKind.ParmVarDecl;
+        }
+    }
+
     private processBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
@@ -1456,9 +1503,9 @@ export class CfgBuilder {
                     blockBuildersContainSwitch.push(this.blocks[i]);
                     continue;
                 }
-                if (statementBuilder.astNode && statementBuilder.code !== '') {
+                if (statementBuilder.astNode && this.shouldEmitStatementBuilderAsIr(statementBuilder)) {
                     stmtsInBlock.push(...arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode));
-                } else if (statementBuilder.code.startsWith('return')) {
+                } else if (statementBuilder.type === 'returnStatement' && !statementBuilder.astNode) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }
             }
