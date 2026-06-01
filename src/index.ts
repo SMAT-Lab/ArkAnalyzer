@@ -101,7 +101,7 @@ export { FrontendBuilder, FrontendParseFailure, FrontendParseResult } from './fr
 export { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
 export { CppFrontend } from './frontend/cppFrontend/CppFrontend';
 
-// cpp_frontend (extension helpers; C++ parse runtime is optional @arkanalyzer/cxx-ast-runtime)
+// cpp_frontend (extension helpers; C++ parse runtime is optional @arkanalyzer/cxx-ast-parser)
 export {
     getCxxImplementationFileExtensionSet,
     getCxxImplementationFileExtensions,

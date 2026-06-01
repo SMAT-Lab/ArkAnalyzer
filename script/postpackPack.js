@@ -18,7 +18,8 @@
 const { existsSync, readFileSync, unlinkSync, writeFileSync } = require('fs');
 const { join } = require('path');
 
-const { getProjectRoot } = require('./cppPackUtils');
+const { getProjectRoot, isCppBuildReady } = require('./cpp/cppPackUtils');
+const { packLocalCurrentPlatform } = require('./cpp/packPlatformCxxPackage');
 
 const packageJsonPath = join(getProjectRoot(), 'package.json');
 const packageJsonBackupPath = join(getProjectRoot(), '.package.json.prepack.bak');
@@ -26,4 +27,11 @@ const packageJsonBackupPath = join(getProjectRoot(), '.package.json.prepack.bak'
 if (existsSync(packageJsonBackupPath)) {
     writeFileSync(packageJsonPath, readFileSync(packageJsonBackupPath, 'utf8'));
     unlinkSync(packageJsonBackupPath);
+}
+
+if (isCppBuildReady()) {
+    console.log('[postpack] C++ build detected: packing platform @arkanalyzer/cxx-ast-parser package');
+    packLocalCurrentPlatform();
+} else {
+    console.log('[postpack] No C++ build: only arkanalyzer-*.tgz (run npm run build:cpp first for a second platform tgz)');
 }

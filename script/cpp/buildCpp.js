@@ -17,25 +17,33 @@
 
 const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require('fs');
 const { join, resolve, delimiter } = require('path');
-const { spawnSync } = require('child_process');
+const {
+    buildCxxAstRuntimeLib,
+    ensureCxxAstRuntimeInstalled,
+    ensureFlatbuffersTools,
+    installCxxAstRuntimeDeps,
+    isCommandAvailable,
+    resolveFlatbuffersIncludeDir,
+    runCommand,
+    runCommandOptional,
+    runFlatcCodegen,
+    spawnCommand,
+} = require('./cppPackUtils');
 
-const projectRoot = join(__dirname, '..');
-const cxxAstRuntimeRoot = join(projectRoot, 'packages', 'cxx-ast-runtime');
-const { ensureCxxAstRuntimeInstalled } = require('./ensureCxxAstRuntime');
-const { runFlatcCodegen } = require('./flatcCodegen');
+const projectRoot = join(__dirname, '..', '..');
+const cxxAstRuntimeRoot = join(projectRoot, 'packages', 'cxx-ast-parser');
 const isWin = process.platform === 'win32';
 const isLinux = process.platform === 'linux';
-const REL_AST_CPP = join('packages', 'cxx-ast-runtime', 'cpp');
+const REL_AST_CPP = join('packages', 'cxx-ast-parser', 'cpp');
 const REL_AST_BUILD = join(REL_AST_CPP, 'build');
 
 const astCppDir = join(projectRoot, REL_AST_CPP);
 const buildDir = join(astCppDir, 'build');
-const dumperDir = join(projectRoot, 'packages', 'cxx-ast-runtime', 'dumper');
+const dumperDir = join(projectRoot, 'packages', 'cxx-ast-parser', 'dumper');
 /** N-API addon output (see cpp/CMakeLists.txt). */
 const ADDON_NODE = 'astJsonDumper.node';
 const targetAddonPath = join(dumperDir, ADDON_NODE);
 
-/** 常见 Unix 布局：<prefix>/bin/llvm-config 与 <prefix>/lib/cmake/llvm 成对出现，避免两处手写重复路径。 */
 const UNIX_LLVM_PREFIXES = [
     '/usr/lib/llvm-19',
     '/opt/homebrew/opt/llvm@19',
@@ -44,7 +52,6 @@ const UNIX_LLVM_PREFIXES = [
     '/usr/local/opt/llvm',
 ];
 
-/** 非标准布局（无法由 UNIX_LLVM_PREFIXES 推导），仅用于 existsSync 兜底。 */
 const EXTRA_UNIX_LLVM_CMAKE_DIRS = ['/usr/local/lib/llvm-19/cmake/llvm'];
 
 const MSYS2_ENV_SUBDIRS = ['mingw64', 'ucrt64', 'clang64'];
@@ -107,33 +114,6 @@ function windowsLlvmInstallRoots() {
         }
     }
     return out;
-}
-
-/**
- * @param {Record<string, string | undefined>} [envExtra]
- */
-function runCommand(command, args, envExtra) {
-    const result = spawnSync(command, args, {
-        cwd: projectRoot,
-        stdio: 'inherit',
-        env: envExtra ? { ...process.env, ...envExtra } : process.env,
-    });
-    if (result.status !== 0) {
-        process.exit(result.status ?? 1);
-    }
-}
-
-function runCommandOptional(command, args) {
-    const result = spawnSync(command, args, {
-        cwd: projectRoot,
-        stdio: 'inherit',
-        env: process.env,
-    });
-    return result.status === 0;
-}
-
-function isCommandAvailable(command) {
-    return spawnSync(command, ['--version'], { stdio: 'ignore' }).status === 0;
 }
 
 function firstWorkingLlvmConfig() {
@@ -200,11 +180,14 @@ function discoverLlvmCmakeDirs() {
 
     const llvmConfig = firstWorkingLlvmConfig();
     const llvmConfigResult = llvmConfig
-        ? spawnSync(llvmConfig, ['--cmakedir'], { encoding: 'utf8' })
+        ? spawnCommand(llvmConfig, ['--cmakedir'], { encoding: 'utf8' })
         : { status: 1 };
     if (llvmConfigResult.status === 0) {
-        const llvmDir = llvmDirFromEnv ?? llvmConfigResult.stdout.trim();
-        return { llvmDir, clangDir: clangDirBesideLlvm(llvmDir, clangDirFromEnv) };
+        const cmakeDir = (llvmConfigResult.stdout ?? '').trim();
+        if (cmakeDir) {
+            const llvmDir = llvmDirFromEnv ?? cmakeDir;
+            return { llvmDir, clangDir: clangDirBesideLlvm(llvmDir, clangDirFromEnv) };
+        }
     }
 
     const defaultLlvm = firstExistingLlvmCmakeDir();
@@ -214,13 +197,21 @@ function discoverLlvmCmakeDirs() {
     }
 
     if (!isWin) {
-        const brew = spawnSync('brew', ['--prefix', 'llvm'], { encoding: 'utf8' });
-        if (brew.status === 0) {
-            const prefix = brew.stdout.trim();
-            if (prefix) {
+        for (const formula of ['llvm@19', 'llvm']) {
+            const brew = spawnCommand('brew', ['--prefix', formula], { encoding: 'utf8' });
+            if (brew.status !== 0) {
+                continue;
+            }
+            const prefix = (brew.stdout ?? '').trim();
+            if (!prefix) {
+                continue;
+            }
+            const llvmDir = join(prefix, 'lib', 'cmake', 'llvm');
+            const clangDir = join(prefix, 'lib', 'cmake', 'clang');
+            if (existsSync(llvmDir) && existsSync(clangDir)) {
                 return {
-                    llvmDir: llvmDirFromEnv ?? join(prefix, 'lib', 'cmake', 'llvm'),
-                    clangDir: clangDirFromEnv ?? join(prefix, 'lib', 'cmake', 'clang'),
+                    llvmDir: llvmDirFromEnv ?? llvmDir,
+                    clangDir: clangDirFromEnv ?? clangDir,
                 };
             }
         }
@@ -240,18 +231,39 @@ function llvmRootFromCmakeDir(llvmDir) {
 /**
  * 与手动的 -DNODE_API_INCLUDE_DIR= 一致：环境变量 > node_modules > /usr/include/node
  */
-function resolveNodeApiIncludeDir() {
+function resolveNodeApiHeaders() {
     const fromEnv = process.env.NODE_API_INCLUDE_DIR;
     if (fromEnv && existsSync(join(fromEnv, 'node_api.h'))) {
-        return fromEnv;
+        const defFromEnv = process.env.NODE_API_DEF;
+        return {
+            includeDir: fromEnv,
+            defPath:
+                defFromEnv && existsSync(defFromEnv)
+                    ? defFromEnv
+                    : join(fromEnv, '..', 'def', 'node_api.def'),
+        };
+    }
+    try {
+        const apiHeaders = require(join(projectRoot, 'node_modules', 'node-api-headers'));
+        if (apiHeaders?.include_dir && existsSync(join(apiHeaders.include_dir, 'node_api.h'))) {
+            return {
+                includeDir: apiHeaders.include_dir,
+                defPath: apiHeaders.def_paths?.node_api_def,
+            };
+        }
+    } catch {
+        /* optional package */
     }
     const fromNm = join(projectRoot, 'node_modules', 'node-api-headers', 'include');
     if (existsSync(join(fromNm, 'node_api.h'))) {
-        return fromNm;
+        return {
+            includeDir: fromNm,
+            defPath: join(projectRoot, 'node_modules', 'node-api-headers', 'def', 'node_api.def'),
+        };
     }
     const systemNode = '/usr/include/node';
     if (existsSync(join(systemNode, 'node_api.h'))) {
-        return systemNode;
+        return { includeDir: systemNode, defPath: undefined };
     }
     return undefined;
 }
@@ -276,12 +288,6 @@ function findBuiltAddonNodePath() {
     return join(buildDir, ADDON_NODE);
 }
 
-/**
- * 与「清空后重新 cmake」等效，避免在旧缓存上因编译器/选项变更导致 N-API 目标未生成。
- * 只删除 `build` 下的内容、不 `rm -rf build` 本身，这样终端里 `cd` 在 `ast/cpp/build` 时
- * 当前工作目录不会变成已删除的 inode，后续 `npm` 的 process.cwd() 不会 ENOENT。
- * 需增量时设置 ARKANALYZER_INCREMENTAL_CPP_BUILD=1 跳过此步。
- */
 function ensureFreshCppBuildDir() {
     if (process.env.ARKANALYZER_INCREMENTAL_CPP_BUILD === '1') {
         return;
@@ -294,25 +300,11 @@ function ensureFreshCppBuildDir() {
     }
 }
 
-function resolveFlatbuffersIncludeDir() {
-    const candidates = [
-        join(cxxAstRuntimeRoot, 'node_modules', 'flatbuffers', 'include'),
-        join(projectRoot, 'node_modules', 'flatbuffers', 'include'),
-        join(projectRoot, 'tools', 'flatbuffers', 'include'),
-    ];
-    for (const dir of candidates) {
-        if (existsSync(join(dir, 'flatbuffers', 'flatbuffers.h'))) {
-            return dir;
-        }
-    }
-    return undefined;
-}
-
 ensureFreshCppBuildDir();
 mkdirSync(buildDir, { recursive: true });
 mkdirSync(dumperDir, { recursive: true });
 runFlatcCodegen({ logPrefix: '[build:cpp]', exitOnError: true });
-ensureCxxAstRuntimeInstalled();
+installCxxAstRuntimeDeps();
 
 const { llvmDir, clangDir } = discoverLlvmCmakeDirs();
 if (!llvmDir || !clangDir) {
@@ -322,13 +314,14 @@ if (!llvmDir || !clangDir) {
     process.exit(1);
 }
 
-const nodeApiDir = resolveNodeApiIncludeDir();
-if (!nodeApiDir) {
+const nodeApiHeaders = resolveNodeApiHeaders();
+if (!nodeApiHeaders?.includeDir) {
     console.error(
         '[build:cpp] node_api.h not found. Set NODE_API_INCLUDE_DIR, or run `npm install` (node-api-headers), or install Node headers (e.g. /usr/include/node).',
     );
     process.exit(1);
 }
+const nodeApiDir = nodeApiHeaders.includeDir;
 
 const llvmRoot = llvmRootFromCmakeDir(llvmDir);
 const llvmBin = llvmRoot ? join(llvmRoot, 'bin') : undefined;
@@ -345,13 +338,17 @@ if (useWinNinja) {
 }
 cmakeConfigureArgs.push(`-DLLVM_DIR=${llvmDir}`, `-DClang_DIR=${clangDir}`);
 cmakeConfigureArgs.push(`-DARKANALYZER_ROOT=${projectRoot}`);
-const flatbuffersIncludeDir = resolveFlatbuffersIncludeDir();
-if (flatbuffersIncludeDir) {
-    cmakeConfigureArgs.push(`-DFLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
-    console.log(`[build:cpp] FLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
-} else {
-    console.warn('[build:cpp] flatbuffers headers not found; CMake may fail version check on astWire_generated.h');
+if (isWin && nodeApiHeaders.defPath && existsSync(nodeApiHeaders.defPath)) {
+    cmakeConfigureArgs.push(`-DNODE_API_DEF=${nodeApiHeaders.defPath}`);
 }
+ensureFlatbuffersTools({ logPrefix: '[build:cpp] flatbuffers' });
+const flatbuffersIncludeDir = resolveFlatbuffersIncludeDir(projectRoot);
+if (!flatbuffersIncludeDir) {
+    console.error('[build:cpp] flatbuffers C++ headers not found after ensureFlatbuffersTools');
+    process.exit(1);
+}
+cmakeConfigureArgs.push(`-DFLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
+console.log(`[build:cpp] FLATBUFFERS_INCLUDE_DIR=${flatbuffersIncludeDir}`);
 
 if (llvmRoot) {
     const clangxx = isWin ? join(llvmRoot, 'bin', 'clang++.exe') : join(llvmRoot, 'bin', 'clang++');
@@ -373,12 +370,18 @@ if (shouldUseLld(llvmRoot)) {
     );
 }
 
-runCommand('cmake', cmakeConfigureArgs, envForCmake);
+runCommand('cmake', cmakeConfigureArgs, {
+    cwd: projectRoot,
+    env: envForCmake ? { ...process.env, ...envForCmake } : process.env,
+});
 const cmakeBuildArgs = ['--build', REL_AST_BUILD, '--target', 'astJsonDumper_addon', '-j'];
 if (isWin && !useWinNinja) {
     cmakeBuildArgs.push('--config', 'Release');
 }
-runCommand('cmake', cmakeBuildArgs, envForCmake);
+runCommand('cmake', cmakeBuildArgs, {
+    cwd: projectRoot,
+    env: envForCmake ? { ...process.env, ...envForCmake } : process.env,
+});
 
 const outputNode = findBuiltAddonNodePath();
 if (!existsSync(outputNode)) {
@@ -387,3 +390,5 @@ if (!existsSync(outputNode)) {
 }
 cpSync(outputNode, targetAddonPath);
 console.log(`[build:cpp] Copied ${outputNode} -> ${targetAddonPath}`);
+buildCxxAstRuntimeLib({ logPrefix: '[build:cpp]' });
+ensureCxxAstRuntimeInstalled();

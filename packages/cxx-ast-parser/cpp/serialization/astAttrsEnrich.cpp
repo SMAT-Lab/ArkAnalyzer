@@ -33,6 +33,7 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include <cctype>
+#include <type_traits>
 
 namespace ast_dumper {
 namespace {
@@ -319,10 +320,25 @@ void EnrichLambdaExpr(const clang::LambdaExpr *lambda, llvm::json::Object &obj)
     WriteModifierFlags(obj, flags);
 }
 
+// DeclRefExpr::getQualifier() is NestedNameSpecifier* on Linux/macOS LLVM 19, value type on MSYS2 MinGW.
+template <typename QualifierT>
+void PrintDeclRefQualifier(QualifierT qual, llvm::raw_ostream &os, const clang::PrintingPolicy &policy)
+{
+    if constexpr (std::is_pointer_v<QualifierT>) {
+        if (qual != nullptr) {
+            qual->print(os, policy);
+        }
+    } else {
+        if (qual) {
+            qual.print(os, policy);
+        }
+    }
+}
+
 void EnrichDeclRefName(const clang::DeclRefExpr *declRef, llvm::json::Object &obj, const AstNodeJsonEmitContext &ec)
 {
     clang::PrintingPolicy policy = ec.policy;
-    if (const clang::NestedNameSpecifier *nns = declRef->getQualifier()) {
+    if (declRef->hasQualifier()) {
         if (auto existing = obj.getString("name")) {
             if (existing->find("::") != std::string::npos) {
                 return;
@@ -330,7 +346,7 @@ void EnrichDeclRefName(const clang::DeclRefExpr *declRef, llvm::json::Object &ob
         }
         std::string qualName;
         llvm::raw_string_ostream os(qualName);
-        nns->print(os, policy);
+        PrintDeclRefQualifier(declRef->getQualifier(), os, policy);
         if (const clang::NamedDecl *found = clang::dyn_cast<clang::NamedDecl>(declRef->getFoundDecl())) {
             os << found->getName();
         }

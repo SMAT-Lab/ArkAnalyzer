@@ -13,7 +13,21 @@
  * limitations under the License.
  */
 
+import * as path from 'path';
+
 import { getAstJsonDumperNodePath } from '../astUtils';
+
+/** On Windows, dependent DLLs live beside astJsonDumper.node; prepend that dir for LoadLibrary. */
+function ensureWindowsDumperDllPath(addonPath: string): void {
+    if (process.platform !== 'win32') {
+        return;
+    }
+    const dumperDir = path.dirname(addonPath);
+    const sep = path.delimiter;
+    if (!process.env.PATH?.split(sep).includes(dumperDir)) {
+        process.env.PATH = `${dumperDir}${sep}${process.env.PATH ?? ''}`;
+    }
+}
 
 /**
  * One AST record as delivered by the addon’s per-TU callback (`onFileAst` in native docs).
@@ -42,6 +56,10 @@ export function callCppAstParser(manifest: string, onRecord: (rec: CppAstNapiRec
     const savedCwd = process.cwd();
     try {
         const addonPath = getAstJsonDumperNodePath();
+        ensureWindowsDumperDllPath(addonPath);
+        if (process.platform === 'win32') {
+            process.chdir(path.dirname(addonPath));
+        }
         const addon = require(addonPath) as AstJsonDumperAddon;
         const status = addon.parseCppFilesToAst(manifest, onRecord);
         return typeof status === 'number' ? status : 1;

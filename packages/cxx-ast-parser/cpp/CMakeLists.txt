@@ -24,9 +24,9 @@ add_definitions(-fno-rtti)
 set(AST_JSON_DUMPER_NAPI_SRC napi/napiBinding.cpp)
 
 get_filename_component(ARKANALYZER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
-# Match flatbuffers headers to @arkanalyzer/cxx-ast-runtime, not legacy tools/flatbuffers.
+# Match flatbuffers headers to @arkanalyzer/cxx-ast-parser, not legacy tools/flatbuffers.
 set(_ARK_FB_INCLUDE_CANDIDATES
-    "${ARKANALYZER_ROOT}/packages/cxx-ast-runtime/node_modules/flatbuffers/include"
+    "${ARKANALYZER_ROOT}/packages/cxx-ast-parser/node_modules/flatbuffers/include"
     "${ARKANALYZER_ROOT}/node_modules/flatbuffers/include"
     "${ARKANALYZER_ROOT}/tools/flatbuffers/include"
 )
@@ -110,11 +110,59 @@ if(NODE_API_INCLUDE_DIR AND EXISTS "${NODE_API_INCLUDE_DIR}/node_api.h")
     )
     if(WIN32)
         target_compile_definitions(astJsonDumper_addon PRIVATE BUILDING_NODE_EXTENSION)
-        # MSYS2/MinGW builds need libnode import library to resolve __imp_napi_* symbols.
-        find_library(NODE_IMPORT_LIB
-            NAMES node libnode
-            PATHS /mingw64/lib /ucrt64/lib
-        )
+        set(NODE_API_DEF "" CACHE FILEPATH "node_api.def from node-api-headers (for import lib generation)")
+        set(NODE_IMPORT_LIB "" CACHE FILEPATH "Prebuilt Node import library (node.lib / libnode)")
+
+        if(NOT NODE_IMPORT_LIB)
+            find_library(NODE_IMPORT_LIB NAMES node libnode PATHS /mingw64/lib /ucrt64/lib)
+        endif()
+
+        if(NOT NODE_IMPORT_LIB)
+            set(_node_api_def "${NODE_API_DEF}")
+            if(NOT _node_api_def AND NODE_API_INCLUDE_DIR)
+                set(_node_api_def_candidate "${NODE_API_INCLUDE_DIR}/../def/node_api.def")
+                get_filename_component(_node_api_def_candidate "${_node_api_def_candidate}" ABSOLUTE)
+                if(EXISTS "${_node_api_def_candidate}")
+                    set(_node_api_def "${_node_api_def_candidate}")
+                endif()
+            endif()
+            if(NOT _node_api_def AND ARKANALYZER_ROOT)
+                set(_node_api_def_candidate "${ARKANALYZER_ROOT}/node_modules/node-api-headers/def/node_api.def")
+                if(EXISTS "${_node_api_def_candidate}")
+                    set(_node_api_def "${_node_api_def_candidate}")
+                endif()
+            endif()
+
+            if(_node_api_def AND EXISTS "${_node_api_def}")
+                set(_generated_node_lib "${CMAKE_CURRENT_BINARY_DIR}/node_api_import.lib")
+                set(_lib_tool_hints "")
+                if(LLVM_DIR)
+                    get_filename_component(_llvm_root "${LLVM_DIR}/../../.." ABSOLUTE)
+                    list(APPEND _lib_tool_hints "${_llvm_root}/bin")
+                endif()
+                find_program(NODE_LIB_EXECUTABLE NAMES llvm-lib lib lib.exe
+                    HINTS ${_lib_tool_hints}
+                    PATHS "$ENV{VCINSTALLDIR}Tools/MSVC"
+                    PATH_SUFFIXES bin/Hostx64/x64
+                )
+                if(NODE_LIB_EXECUTABLE)
+                    add_custom_command(
+                        OUTPUT "${_generated_node_lib}"
+                        COMMAND "${NODE_LIB_EXECUTABLE}" "/def:${_node_api_def}"
+                                "/out:${_generated_node_lib}" /machine:x64
+                        DEPENDS "${_node_api_def}"
+                        COMMENT "Generating Node N-API import library (${_generated_node_lib})"
+                    )
+                    add_custom_target(node_api_import_lib DEPENDS "${_generated_node_lib}")
+                    add_dependencies(astJsonDumper_addon node_api_import_lib)
+                    set(NODE_IMPORT_LIB "${_generated_node_lib}")
+                    message(STATUS "Will generate Node import library: ${NODE_IMPORT_LIB} (from ${_node_api_def})")
+                else()
+                    message(WARNING "llvm-lib/lib.exe not found; cannot generate Node import library from ${_node_api_def}")
+                endif()
+            endif()
+        endif()
+
         if(NODE_IMPORT_LIB)
             target_link_libraries(astJsonDumper_addon PRIVATE ${NODE_IMPORT_LIB})
             message(STATUS "Using Node import library: ${NODE_IMPORT_LIB}")

@@ -1,6 +1,6 @@
 # CPP 前端构建指南
 
-本文说明在 **Linux / macOS / Windows** 上构建 **C++ AST 导出用 Node 原生扩展** `astJsonDumper.node`（N-API addon）之前需要安装的工具、推荐版本及环境变量。构建由仓库根目录脚本 `script/buildCpp.js` 驱动（`npm run build:cpp`）。若在 **x86_64 Linux** 上希望与本仓库推荐栈一致，可直接使用根目录 **[`Dockerfile.dev`](../../Dockerfile.dev)** 提供的开发镜像（见 [§3.3](#33-docker-开发镜像dockerfiledev)）。
+本文说明在 **Linux / macOS / Windows** 上构建 **C++ AST 导出用 Node 原生扩展** `astJsonDumper.node`（N-API addon）之前需要安装的工具、推荐版本及环境变量。构建由仓库根目录脚本 `script/cpp/buildCpp.js` 驱动（`npm run build:cpp`）。若在 **x86_64 Linux** 上希望与本仓库推荐栈一致，可直接使用根目录 **[`Dockerfile.dev`](../../Dockerfile.dev)** 提供的开发镜像（见 [§3.3](#33-docker-开发镜像dockerfiledev)）。
 
 ## 0. 默认流水线与 C++ 可选依赖
 
@@ -14,27 +14,32 @@ npm run testonce
 
 主包 **`dependencies` 不含 flatbuffers**，上述命令**不会**安装或编译 FlatBuffers，也不会跑 `tests/unit/cppCore/**`，ArkTS 相关测试可正常通过。
 
-**启用 C++ 分析**时，在仓库根目录执行一条命令即可（脚本会自动安装 **`@arkanalyzer/cxx-ast-runtime`**（含 flatbuffers 与 ast-addon 可选依赖），再编译 **`astJsonDumper.node`**）：
+**`npm pack`** 始终产出主包 **`arkanalyzer-*.tgz`**（**仅含 ArkTS**，不把 C++ addon 打进主包）：
+
+- **未**先执行 **`npm run build:cpp`**：只得到上述主包一个 tgz。
+- **已**执行 **`npm run build:cpp`** 再 **`npm pack`**：主包 tgz 之外，`postpack` 会再打出当前平台的 **`arkanalyzer-cxx-ast-parser-<platform>-<arch>-*.tgz`**（即 npm 包 `@arkanalyzer/cxx-ast-parser-<platform>-<arch>`）。
+
+CI Release 上各平台 C++ 包由 workflow 在对应 runner 上分别 `packPlatformCxxPackage` 发布；也可本地单独执行 `node script/cpp/packPlatformCxxPackage.js --local`。
+
+**启用 C++ 分析**时，在仓库根目录执行一条命令即可（脚本会链接本仓库 **`packages/cxx-ast-parser`** 并编译当前平台的 **`astJsonDumper.node`**）：
 
 ```bash
 npm run build:cpp
 ```
 
-安装来源：优先从 npm registry 拉取 **`@arkanalyzer/cxx-ast-runtime@<与 arkanalyzer 同版本>`**；若尚未发布，则回退到本仓库内的 **`packages/cxx-ast-runtime`** 源码包。
+**npm 用户**（非本仓库开发）安装主包后，按需再安装与系统匹配的平台 C++ 包，例如 **`@arkanalyzer/cxx-ast-parser-linux-x64@<与 arkanalyzer 同版本>`**。
 
-执行 **`build:cpp`** 之后，后续 **`npm run testonce`** 会包含 C++ 单元测试（`tests/unit/cppCore/**`）。未安装 `@arkanalyzer/cxx-ast-runtime` 时，Scene 遇到 C++ 文件会**跳过 C++ 前端**并打 warn，不会导致 `npm testonce` 失败。
+执行 **`build:cpp`** 之后，后续 **`npm run testonce`** 会包含 C++ 单元测试（`tests/unit/cppCore/**`）。未安装 `@arkanalyzer/cxx-ast-parser` 时，Scene 遇到 C++ 文件会**跳过 C++ 前端**并打 warn，不会导致 `npm testonce` 失败。
 
 ## 1. 构建什么、命令是什么
 
 在仓库根目录执行 **`npm run build:cpp`**，脚本会：
 
-1. 对 **`serialization/astWire.fbs`** 运行 **flatc** 生成 C++/TS 绑定（输出到各
-   **`src/frontend/cppFrontend/ast/cpp/serialization/flatGenerated/`** 与
-   **`packages/cxx-ast-runtime/src/serialization/flatGenerated/`**，该目录不入 Git，由脚本按需生成）；
-2. 安装并编译 **`@arkanalyzer/cxx-ast-runtime`**；
-3. 经 CMake 在本机构建 **`astJsonDumper.node`**。
+1. 若 **`tools/flatbuffers`** / **`tools/flatc`** 不存在，按 **`packages/cxx-ast-parser` 依赖的 FlatBuffers 版本**从 GitHub 自动下载到 **`tools/`**（目录在 `.gitignore`，无需提交）；再对 **`astWire.fbs`** 运行 **flatc**，生成 C++/TS 绑定（输出到 **`flatGenerated/`**，不入 Git）；
+2. 经 CMake 在本机构建 **`astJsonDumper.node`**，并复制到 **`packages/cxx-ast-parser/dumper/`**；
+3. 编译 **`packages/cxx-ast-parser/lib`**（与 `.node` 配套的 FlatBuffers wire 解码器），并链接到 **`node_modules/@arkanalyzer/cxx-ast-parser`**。
 
-产物为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**，构建完成后由脚本复制到 **`src/frontend/cppFrontend/ast/dumper/`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
+产物为 **Node 加载的 `.node` 动态库**，不再产出独立的 `astJsonDumper` 可执行文件（`.exe` 等）。CMake 目标名为 **`astJsonDumper_addon`**。不在此脚本中支持从 Linux/macOS 交叉编译到另一平台的 addon。
 
 C++ 原生单元测试（GTest）与 addon 共用 **`ast/cpp/build/`** 与 LLVM 环境，**不依赖 Node/N-API**。在仓库根目录执行 **`npm run test:cpp`** 即可构建并运行 **`astJsonDumper_unit_tests`**。GoogleTest 解析顺序：**本机系统包（如 `libgtest-dev`）** → **`tools/googletest/`** → 联网自动下载 v1.14.0；离线环境推荐 `sudo apt install libgtest-dev` 或手动解压 zip 到 **`tools/googletest/`**。测试源码在 **`tests/unit/cppCore/dumper/`**，fixture 在 **`tests/cppResources/dumper/`**。
 
@@ -223,6 +228,6 @@ export OHOS_SDK_HOME=/path/to/command-line-tools-6.1.0/sdk/default
 
 ---
 
-实现细节见仓库内 **`script/buildCpp.js`** 与 **`src/frontend/cppFrontend/ast/cpp/CMakeLists.txt`**。  
+实现细节见仓库内 **`script/cpp/buildCpp.js`** 与 **`packages/cxx-ast-parser/cpp/CMakeLists.txt`**。  
 Linux 统一开发环境见根目录 **`Dockerfile.dev`**（说明见上文 [§3.3](#33-docker-开发镜像dockerfiledev)）。  
 C++ 前端架构与 Scene 管线见 **`docs/cppFrontend/cpp_frontend_user_guide.md`**；多语言能力与矩阵见 **`docs/MultiLanguageSupport.md`**。

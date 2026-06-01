@@ -25,17 +25,17 @@ arktools/
 lib/
 .package.json.prepack.bak
 
-# Optional @arkanalyzer/cxx-ast-runtime (C++ AST addon + TS runtime).
-packages/cxx-ast-runtime/node_modules/
-packages/cxx-ast-runtime/lib/
-packages/cxx-ast-runtime/cpp/build/
-packages/cxx-ast-runtime/dumper/
-packages/cxx-ast-runtime/ts/*.js
-packages/cxx-ast-runtime/ts/*.d.ts
-packages/cxx-ast-runtime/ts/*.d.ts.map
-packages/cxx-ast-runtime/ts/**/*.js
-packages/cxx-ast-runtime/ts/**/*.d.ts
-packages/cxx-ast-runtime/ts/**/*.d.ts.map
+# Optional @arkanalyzer/cxx-ast-parser (C++ AST addon + TS runtime).
+packages/cxx-ast-parser/node_modules/
+packages/cxx-ast-parser/lib/
+packages/cxx-ast-parser/cpp/build/
+packages/cxx-ast-parser/dumper/
+packages/cxx-ast-parser/ts/*.js
+packages/cxx-ast-parser/ts/*.d.ts
+packages/cxx-ast-parser/ts/*.d.ts.map
+packages/cxx-ast-parser/ts/**/*.js
+packages/cxx-ast-parser/ts/**/*.d.ts
+packages/cxx-ast-parser/ts/**/*.d.ts.map
 
 tools/
 
