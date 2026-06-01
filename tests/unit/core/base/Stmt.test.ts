@@ -154,7 +154,7 @@ describe('Stmt Source Code and Position Test', () => {
     } else {
         return -a;
     }`;
-            expect(originalText).eq(expectedText);
+            expect(originalText?.replace(/\r\n/g, '\n')).eq(expectedText);
         });
     });
 });

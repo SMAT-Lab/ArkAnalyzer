@@ -235,7 +235,7 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
         assert.isDefined(stmts[i].getCfg());
 
         if (expectStmts[i].originalText !== undefined) {
-            expect(stmts[i].getOriginalText()).toEqual(expectStmts[i].originalText);
+            expect(stmts[i].getOriginalText()?.replace(/\r\n/g, '\n')).toEqual(expectStmts[i].originalText);
         }
         if (expectStmts[i].originalPosition !== undefined) {
             const originalPosition = stmts[i].getOriginPositionInfo();
