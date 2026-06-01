@@ -137,7 +137,7 @@ describe('ArkNamespace Source Code and Position Test', () => {
         const expectedCode = `namespace ConstructorTest {
     export function constructor(): void {}
 }`;
-        expect(namespace!.getCode()).eq(expectedCode);
+        expect(namespace!.getCode().replace(/\r\n/g, '\n')).eq(expectedCode);
     });
 
     it('test getCodes for ConstructorTest namespace', async () => {
@@ -148,7 +148,7 @@ describe('ArkNamespace Source Code and Position Test', () => {
         const expectedCode = `namespace ConstructorTest {
     export function constructor(): void {}
 }`;
-        expect(codes[0]).eq(expectedCode);
+        expect(codes[0].replace(/\r\n/g, '\n')).eq(expectedCode);
     });
 
     it('test getLineColPairs for ConstructorTest namespace', async () => {

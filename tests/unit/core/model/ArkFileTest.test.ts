@@ -96,7 +96,7 @@ describe('ArkFile Source Code Test', () => {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */`;
-        expect(code!.substring(0, expectedCodeStart.length)).eq(expectedCodeStart);
+        expect(code!.replace(/\r\n/g, '\n').substring(0, expectedCodeStart.length)).eq(expectedCodeStart);
     });
 
     it('test getCode ends with expected content', async () => {
@@ -109,6 +109,6 @@ namespace ConstructorTest {
     export function constructor(): void {}
 }
 `;
-        expect(code!.endsWith(expectedCodeEnd)).eq(true);
+        expect(code!.replace(/\r\n/g, '\n').endsWith(expectedCodeEnd)).eq(true);
     });
 });

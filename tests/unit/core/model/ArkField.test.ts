@@ -58,7 +58,7 @@ describe('ArkField Source Code and Position Test', () => {
         const expectedCode = `f = (): void => {
         console.log(GLOBAL_NUM);
     };`;
-        expect(field!.getCode()).eq(expectedCode);
+        expect(field!.getCode().replace(/\r\n/g, '\n')).eq(expectedCode);
     });
 
     it('test getOriginFullPosition for goo field', async () => {
