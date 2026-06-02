@@ -38,7 +38,7 @@ import {
     ABILITY_STAGE_DESTROY_METHOD,
     ABILITY_STAGE_WILL_DESTROY_METHOD,
     COMPONENT_DETACHED_METHOD,
-    COMPONENT_DISAPPEAR_METHOD,
+    COMPONENT_DISAPPEAR_METHOD, COMPONENT_RECYCLE_METHOD, COMPONENT_REUSE_METHOD,
     COMPONENT_START_METHOD,
     DUMMY_CLASS,
     DUMMY_FILE,
@@ -88,6 +88,9 @@ export class DummyMainCreater {
     private componentAppearMethods: ArkMethod[] = [];
     private componentDisappearMethods: ArkMethod[] = [];
     private componentDetachedMethods: ArkMethod[] = [];
+    // aboutToRecycle and aboutToReuse methods should be put into the same block because they are used paired
+    private componentRecycleMethods: ArkMethod[] = [];
+    private componentReuseMethods: ArkMethod[] = [];
     // every declaring class of method in entryMethods have its instance local which is used to be the base of instance invoke expr
     private classLocalMap: Map<ArkClass, Local> = new Map();
     private dummyMain: ArkMethod = new ArkMethod();
@@ -233,28 +236,37 @@ export class DummyMainCreater {
     private addBranches(whileBlock: BasicBlock, countLocal: Local, dummyCfg: Cfg): void {
         let lastBlocks: BasicBlock[] = [whileBlock];
         let count = 0;
+        // step1: create the block for aboutToRecycle and aboutToReuse
+        if (this.componentRecycleMethods.length > 0 || this.componentReuseMethods.length > 0) {
+            lastBlocks = this.createConditionAndInvokeBlockPair(count++, countLocal, dummyCfg, lastBlocks,
+                [...this.componentRecycleMethods, ...this.componentReuseMethods]);
+        }
+
+        // step2: create the blocks for other lifecycle methods
         for (let method of this.entryMethods) {
-            count++;
-            const condition = new ArkConditionExpr(countLocal, new Constant(count.toString(), NumberType.getInstance()), RelationalBinaryOperator.Equality);
-            const ifStmt = new ArkIfStmt(condition);
-            const ifBlock = new BasicBlock(this.tempBlockIndex++);
-            ifBlock.addStmt(ifStmt);
-            dummyCfg.addBlock(ifBlock);
-
-            for (const block of lastBlocks) {
-                this.linkBlocks(block, ifBlock);
-            }
-
-            const invokeBlock = new BasicBlock(this.tempBlockIndex++);
-            this.addMethodsInvokeStmt(invokeBlock, [method]);
-            dummyCfg.addBlock(invokeBlock);
-            this.linkBlocks(ifBlock, invokeBlock);
-
-            lastBlocks = [ifBlock, invokeBlock];
+            lastBlocks = this.createConditionAndInvokeBlockPair(count++, countLocal, dummyCfg, lastBlocks, [method]);
         }
         for (const block of lastBlocks) {
             this.linkBlocks(block, whileBlock);
         }
+    }
+
+    private createConditionAndInvokeBlockPair(count: number, countLocal: Local, dummyCfg: Cfg, lastBlocks: BasicBlock[], methods: ArkMethod[]): BasicBlock[] {
+        const condition = new ArkConditionExpr(countLocal, new Constant(count.toString(), NumberType.getInstance()), RelationalBinaryOperator.Equality);
+        const ifStmt = new ArkIfStmt(condition);
+        const ifBlock = new BasicBlock(this.tempBlockIndex++);
+        ifBlock.addStmt(ifStmt);
+        dummyCfg.addBlock(ifBlock);
+
+        for (const block of lastBlocks) {
+            this.linkBlocks(block, ifBlock);
+        }
+
+        const invokeBlock = new BasicBlock(this.tempBlockIndex++);
+        this.addMethodsInvokeStmt(invokeBlock, methods);
+        dummyCfg.addBlock(invokeBlock);
+        this.linkBlocks(ifBlock, invokeBlock);
+        return [ifBlock, invokeBlock];
     }
 
     private createDummyMainCfg(): void {
@@ -388,6 +400,14 @@ export class DummyMainCreater {
                     }
                     if (name === COMPONENT_DETACHED_METHOD) {
                         this.componentDetachedMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === COMPONENT_RECYCLE_METHOD) {
+                        this.componentRecycleMethods.push(mtd);
+                        continue;
+                    }
+                    if (name === COMPONENT_REUSE_METHOD) {
+                        this.componentReuseMethods.push(mtd);
                         continue;
                     }
                     if (COMPONENT_LIFECYCLE_METHOD_NAME.includes(name)) {
