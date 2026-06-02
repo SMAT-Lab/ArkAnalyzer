@@ -16,10 +16,10 @@
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
 import {
-    addSystemComponent,
+    addSystemComponent, BUILDIN_SYSTEM_COMPONENT,
     COMMON_METHOD,
     COMPONENT_ATTRIBUTE,
-    COMPONENT_POP_FUNCTION,
+    COMPONENT_POP_FUNCTION, DEFAULT_COMPONENTS,
     SCOPE_PREFIX
 } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
@@ -294,6 +294,10 @@ export class SdkUtils {
             mtd.setDeclareSignatures(new MethodSignature(cls.getSignature(), methodSubSignature));
             mtd.setIsGeneratedFlag(true);
             cls.addMethod(mtd);
+        }
+        if (BUILDIN_SYSTEM_COMPONENT.size < DEFAULT_COMPONENTS.length) {
+            addSystemComponent(DEFAULT_COMPONENTS);
+            logger.error('System component not found, fall back to default component. Please check sdk setting.');
         }
     }
 
