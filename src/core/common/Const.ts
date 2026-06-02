@@ -72,3 +72,5 @@ export const ABILITY_DESTROY_METHOD = 'onDestroy';
 export const COMPONENT_START_METHOD = 'aboutToAppear';
 export const COMPONENT_DISAPPEAR_METHOD = 'aboutToDisappear';
 export const COMPONENT_DETACHED_METHOD = 'onDetached';
+export const COMPONENT_RECYCLE_METHOD = 'aboutToRecycle';
+export const COMPONENT_REUSE_METHOD = 'aboutToReuse';
