@@ -44,7 +44,7 @@ Scene.inferTypes(times = 1)
 │                   └── .doInfer(file)                 // 核心推导入口
 │
 └── [Step 4] 收尾
-    ├── getMethodsMap(true)              // 重建方法索引（首次推导后）
+    ├── getMethodsMap(true)              // 重建方法索引
     ├── buildStage = TYPE_INFERRED       // 标记阶段完成
     └── SdkUtils.dispose() / ModuleUtils.dispose() / ValueUtil.dispose()  // 清理缓存
 ```
