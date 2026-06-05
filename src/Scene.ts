@@ -711,6 +711,7 @@ export class Scene {
             }
             return builtInFiles;
         }
+        SdkUtils.loadSystemComponentsFromSdk(sdkPath);
         return getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
     }
 
