@@ -16,7 +16,7 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
 
-import { readCppEnvironmentReady } from './script/vitestCppEnv.js';
+import { readCppEnvironmentReady } from './script/cpp/vitestCpp.js';
 
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
     'tests/unit/cppCore/graph/Cfg.test.ts',
@@ -41,7 +41,7 @@ if (!cppEnvironmentReady) {
 export default defineConfig({
     resolve: {
         alias: {
-            '@arkanalyzer/cxx-ast-runtime': resolve(__dirname, 'packages/cxx-ast-runtime/lib/index.js'),
+            '@arkanalyzer/cxx-ast-parser': resolve(__dirname, 'packages/cxx-ast-parser/lib/index.js'),
         },
     },
     test: {

@@ -32,7 +32,8 @@ import Logger, { LOG_MODULE_TYPE } from '../../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../../core/model/builder/ArkClassBuilder';
 import type { CxxAstNode, CxxIncludeInfo } from '../../utils/ArkCxxAstNode';
 import { AstKind, CxxTagUsed } from '../../utils/ArkCxxAstNode';
-import type { AstParserClass } from '../../utils/cxxAstRuntimeTypes';
+import type { AstParserClass } from '../../utils/cxxAstParserTypes';
+import { requireCxxAstParser } from '../../utils/cxxAstParserTypes';
 import { ArkExport } from '../../../../core/model/ArkExport';
 import { Scene } from '../../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -42,7 +43,7 @@ import { FrontendParseFailure } from '../../../FrontendBuilder';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
 function getAstParser(): AstParserClass {
-    return require('@arkanalyzer/cxx-ast-runtime').AstParser;
+    return requireCxxAstParser().AstParser;
 }
 
 function applyArkFile(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode): void {

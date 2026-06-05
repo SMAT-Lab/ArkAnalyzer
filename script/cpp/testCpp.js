@@ -17,11 +17,11 @@
 
 const { existsSync } = require('fs');
 const { join, resolve, delimiter } = require('path');
-const { spawnSync } = require('child_process');
+const { spawnCommand, runCommand, isCommandAvailable } = require('./cppPackUtils');
 
-const projectRoot = resolve(__dirname, '..');
+const projectRoot = resolve(__dirname, '..', '..');
 const isWin = process.platform === 'win32';
-const REL_AST_CPP = join('packages', 'cxx-ast-runtime', 'cpp');
+const REL_AST_CPP = join('packages', 'cxx-ast-parser', 'cpp');
 const REL_AST_BUILD = join(REL_AST_CPP, 'build');
 const buildDir = join(projectRoot, REL_AST_BUILD);
 const TEST_TARGET = 'astJsonDumper_unit_tests';
@@ -39,8 +39,8 @@ function collectSystemGoogletestProbePaths() {
         '/usr/local/lib/cmake/GTest/GTestConfig.cmake',
     ];
     if (process.platform === 'darwin') {
-        const brewPrefix = spawnSync('brew', ['--prefix', 'googletest'], { encoding: 'utf8' });
-        if (brewPrefix.status === 0) {
+        const brewPrefix = spawnCommand('brew', ['--prefix', 'googletest'], { encoding: 'utf8' });
+        if (brewPrefix.status === 0 && brewPrefix.stdout) {
             const prefix = brewPrefix.stdout.trim();
             headerPaths.push(join(prefix, 'include', 'gtest', 'gtest.h'));
             cmakeConfigPaths.push(join(prefix, 'lib', 'cmake', 'GTest', 'GTestConfig.cmake'));
@@ -67,7 +67,7 @@ function hasSystemGoogletest() {
         return true;
     }
     if (isCommandAvailable('pkg-config')) {
-        return spawnSync('pkg-config', ['--exists', 'gtest'], { stdio: 'ignore' }).status === 0;
+        return spawnCommand('pkg-config', ['--exists', 'gtest'], { stdio: 'ignore' }).status === 0;
     }
     return false;
 }
@@ -90,37 +90,22 @@ function ensureGoogletest() {
     console.log('[test:cpp] tools/googletest missing and system GTest not found; downloading GoogleTest 1.14.0...');
     const toolsDir = join(projectRoot, 'tools');
     const zipPath = join(toolsDir, 'googletest-1.14.0.zip');
-    runCommand('mkdir', ['-p', toolsDir]);
-    const curl = spawnSync(
+    runCommand('mkdir', ['-p', toolsDir], { cwd: projectRoot });
+    const curl = spawnCommand(
         'curl',
         ['-L', '--retry', '3', '-o', zipPath, 'https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip'],
-        { cwd: projectRoot, stdio: 'inherit' },
+        { cwd: projectRoot },
     );
     if (curl.status !== 0) {
         printGoogletestOfflineHelp();
         process.exit(curl.status ?? 1);
     }
-    runCommand('unzip', ['-q', '-o', zipPath, '-d', toolsDir]);
-    runCommand('mv', ['-f', join(toolsDir, 'googletest-1.14.0'), GTEST_DIR]);
-    runCommand('rm', ['-f', zipPath]);
+    runCommand('unzip', ['-q', '-o', zipPath, '-d', toolsDir], { cwd: projectRoot });
+    runCommand('mv', ['-f', join(toolsDir, 'googletest-1.14.0'), GTEST_DIR], { cwd: projectRoot });
+    runCommand('rm', ['-f', zipPath], { cwd: projectRoot });
 }
 
 const WIN_OUTPUT_SUBDIRS = [[], ['Release'], ['Debug'], ['RelWithDebInfo'], ['x64', 'Release'], ['x64', 'Debug']];
-
-function runCommand(command, args, envExtra) {
-    const result = spawnSync(command, args, {
-        cwd: projectRoot,
-        stdio: 'inherit',
-        env: envExtra ? { ...process.env, ...envExtra } : process.env,
-    });
-    if (result.status !== 0) {
-        process.exit(result.status ?? 1);
-    }
-}
-
-function isCommandAvailable(command) {
-    return spawnSync(command, ['--version'], { stdio: 'ignore' }).status === 0;
-}
 
 function discoverLlvmCmakeDirs() {
     const llvmDirFromEnv = process.env.LLVM_DIR;
@@ -133,8 +118,8 @@ function discoverLlvmCmakeDirs() {
         if (!isCommandAvailable(command)) {
             continue;
         }
-        const cmakeDir = spawnSync(command, ['--cmakedir'], { encoding: 'utf8' });
-        if (cmakeDir.status === 0) {
+        const cmakeDir = spawnCommand(command, ['--cmakedir'], { encoding: 'utf8' });
+        if (cmakeDir.status === 0 && cmakeDir.stdout) {
             const llvmDir = cmakeDir.stdout.trim();
             return { llvmDir, clangDir: join(resolve(llvmDir, '..', '..'), 'clang') };
         }
@@ -196,7 +181,10 @@ function configureCmake({ llvmDir, clangDir, nodeApiDir }) {
     const llvmBin = llvmRoot ? join(llvmRoot, 'bin') : undefined;
     const envForCmake =
         llvmBin && existsSync(llvmBin) ? { PATH: `${llvmBin}${delimiter}${process.env.PATH || ''}` } : undefined;
-    runCommand('cmake', args, envForCmake);
+    runCommand('cmake', args, {
+        cwd: projectRoot,
+        env: envForCmake ? { ...process.env, ...envForCmake } : process.env,
+    });
 }
 
 function main() {
@@ -223,7 +211,7 @@ function main() {
     if (isWin && !isCommandAvailable('ninja')) {
         buildArgs.push('--config', 'Debug');
     }
-    runCommand('cmake', buildArgs);
+    runCommand('cmake', buildArgs, { cwd: projectRoot });
 
     const testBinary = findBuiltTestBinary();
     if (!existsSync(testBinary)) {
@@ -231,7 +219,7 @@ function main() {
         process.exit(1);
     }
     console.log(`[test:cpp] Running ${testBinary}`);
-    runCommand(testBinary, []);
+    runCommand(testBinary, [], { cwd: projectRoot });
 }
 
 main();

@@ -56,11 +56,11 @@ export function findProjectRoot(startDir: string = __dirname): string {
 export function getAstJsonDumperNodePath(): string {
     const projectRoot = findProjectRoot(__dirname);
     const platformArch = `${process.platform}-${process.arch}`;
-    const addonPackageName = `@arkanalyzer/ast-addon-${platformArch}`;
     const candidates = [
         path.join(__dirname, '..', 'dumper', 'astJsonDumper.node'),
-        path.join(projectRoot, 'packages', 'cxx-ast-runtime', 'dumper', 'astJsonDumper.node'),
-        path.join(projectRoot, 'node_modules', addonPackageName, 'runtime', 'astJsonDumper.node'),
+        path.join(projectRoot, 'packages', 'cxx-ast-parser', 'dumper', 'astJsonDumper.node'),
+        path.join(projectRoot, 'node_modules', '@arkanalyzer', 'cxx-ast-parser', 'dumper', 'astJsonDumper.node'),
+        path.join(projectRoot, 'node_modules', '@arkanalyzer', `cxx-ast-parser-${platformArch}`, 'dumper', 'astJsonDumper.node'),
         path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.node'),
     ];
     for (const candidate of candidates) {

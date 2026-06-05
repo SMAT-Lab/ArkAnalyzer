@@ -12,16 +12,13 @@
   "scripts": {
     "prebuild": "node script/npmInstall.js",
     "build": "tsc",
-    "build:cxx-ast-runtime": "npm --prefix packages/cxx-ast-runtime install && npm --prefix packages/cxx-ast-runtime run build",
-    "build:cpp": "node script/buildCpp.js",
-    "test:cpp": "node script/testCpp.js",
-    "sync:addon-optional-deps": "node script/syncAddonOptionalDeps.js",
-    "preversion": "npm run sync:addon-optional-deps && npm run build",
+    "build:cpp": "node script/cpp/buildCpp.js",
+    "test:cpp": "node script/cpp/testCpp.js",
     "prepack": "node script/prepackPack.js",
     "postpack": "node script/postpackPack.js",
-    "test": "npm run build && node script/prepareVitestCpp.js && vitest",
-    "testonce": "npm run build && node script/prepareVitestCpp.js && vitest run",
-    "coverage": "npm run build && node script/prepareVitestCpp.js && vitest run --coverage",
+    "test": "npm run build && node script/cpp/vitestCpp.js && vitest",
+    "testonce": "npm run build && node script/cpp/vitestCpp.js && vitest run",
+    "coverage": "npm run build && node script/cpp/vitestCpp.js && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
     "perf:arkts": "npm run build && node --max-old-space-size=4096 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=photos",
     "perf:cpp": "npm run build && npm run build:cpp && node --max-old-space-size=16384 --expose-gc --perf-basic-prof -r ts-node/register tests/samples/perf/main.ts --project=opencv",
@@ -32,14 +29,6 @@
   "dependencies": {
     "commander": "13.1.0",
     "log4js": "6.9.1"
-  },
-  "peerDependencies": {
-    "@arkanalyzer/cxx-ast-runtime": "1.0.90"
-  },
-  "peerDependenciesMeta": {
-    "@arkanalyzer/cxx-ast-runtime": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

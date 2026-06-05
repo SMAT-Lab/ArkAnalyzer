@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
+'use strict';
+
+const { existsSync } = require('fs');
 const { resolve } = require('path');
 
-const { getProjectRoot, isCppBuildReady } = require('./cppPackUtils');
+const {
+    ensureCxxAstRuntimeInstalled,
+    getProjectRoot,
+    isCppBuildReady,
+    syncCxxAstRuntimeLibIfStale,
+} = require('./cppPackUtils');
 
 const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
     'tests/unit/cppCore/graph/Cfg.test.ts',
@@ -23,9 +31,11 @@ const OHOS_SDK_HOME_DEPENDENT_TEST_FILES = [
 ];
 
 function loadIsCppEnvironmentReady() {
+    const platformPkg = `@arkanalyzer/cxx-ast-parser-${process.platform}-${process.arch}`;
     for (const spec of [
-        '@arkanalyzer/cxx-ast-runtime',
-        resolve(getProjectRoot(), 'packages/cxx-ast-runtime/lib/index.js'),
+        platformPkg,
+        '@arkanalyzer/cxx-ast-parser',
+        resolve(getProjectRoot(), 'packages/cxx-ast-parser/lib/index.js'),
     ]) {
         try {
             const mod = require(spec);
@@ -39,12 +49,10 @@ function loadIsCppEnvironmentReady() {
     return () => false;
 }
 
-/** @returns true when C++ addon and runtime package are loadable (used by vitest.config). */
 function readCppEnvironmentReady() {
     return isCppBuildReady() && loadIsCppEnvironmentReady()();
 }
 
-/** @returns Vitest C++ env flags (addon + optional runtime package). */
 function getVitestCppEnv() {
     const cppEnvironmentReady = readCppEnvironmentReady();
     const sdkHome = process.env.OHOS_SDK_HOME?.trim();
@@ -69,4 +77,17 @@ function logVitestCppWarnings(env) {
     }
 }
 
-module.exports = { readCppEnvironmentReady, getVitestCppEnv, logVitestCppWarnings };
+function prepareVitestCpp() {
+    const addon = resolve(getProjectRoot(), 'packages/cxx-ast-parser/dumper/astJsonDumper.node');
+    if (!existsSync(addon)) {
+        return;
+    }
+    ensureCxxAstRuntimeInstalled();
+    syncCxxAstRuntimeLibIfStale();
+}
+
+if (require.main === module) {
+    prepareVitestCpp();
+}
+
+module.exports = { readCppEnvironmentReady, getVitestCppEnv, logVitestCppWarnings, prepareVitestCpp };
