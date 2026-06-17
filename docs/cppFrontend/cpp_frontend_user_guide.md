@@ -260,7 +260,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ## 8. 与 ArkTS 混编
 
-同一 `Scene` 中可同时存在 ArkTS 与 C++ 文件；TS 侧调用 native 的映射、多语言场景说明见 **[多语言支持](../MultiLanguageSupport.md)**。
+同一 `Scene` 中可同时存在 ArkTS 与 C++ 文件。
 
 要点：
 
