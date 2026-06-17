@@ -15,7 +15,7 @@ ArkAnalyzer C++ 前端基于 LLVM / LibTooling 将 C/C++ 源码解析并映射�
 | [3. 打开 C++ 扫描](#3-打开-c-扫描) | `enabled`、扩展名、限流 |
 | [4. 接入示例](#4-接入示例) | 构建 Scene、`compile_commands`、类型推导 |
 | [5. 测试](#5-测试) | `test:cpp`、`testonce`、fixture 目录 |
-| [6. 构建 Scene 之后](#6-构建-scene-之后) | 取文件、类、方法、`Cfg` |
+| [6. Scene 数据结构](#6-构建-scene-之后) | 取文件、类、方法、`Cfg` |
 | [7. 与 ArkTS 混编](#7-与-arkts-混编) | 多语言说明 |
 | [8. 常见问题](#8-常见问题) | 并行度、扩展名、找不到头等 |
 
@@ -192,7 +192,7 @@ npm run testonce
 
 ---
 
-## 6. 构建 Scene 之后
+## 6. Scene 数据结构
 
 - **`scene.getFiles()`**：得到 `ArkFile` 列表；可用 **`file.getName()`** 匹配路径后缀，或按业务维护的文件列表过滤。
 - **命名空间 / 类 / 方法**：`file.getNamespaces()`、`namespace.getClasses()`、`class.getMethods()` 等与 ArkTS 侧模型一致；许多 C++ 全局函数落在 **`file.getDefaultClass()`** 上。
