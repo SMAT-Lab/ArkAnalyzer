@@ -53,55 +53,7 @@ ArkAnalyzer C++ 前端基于 LLVM / LibTooling 将 C/C++ 源码解析并映射�
 
 ---
 
-## 2. 包组织与 npm 发布
-
-ArkAnalyzer 将 **TypeScript 分析核心**与 **C++ 原生 AST 导出**拆成多个 npm 包，避免主包体积过大，且各平台二进制分开发布。
-
-### 2.1 包关系
-
-```
-arkanalyzer                          ← 主包（lib/ + config/），ArkTS/JS + Scene API
-    │
-    │  optional peer（同 version）
-    ▼
-@arkanalyzer/cxx-ast-parser-<platform>-<arch>   ← 仅含 astJsonDumper.node + 最小 TS 加载层
-    │
-    └── 运行时由主包 CppFrontend 通过 node_modules 解析加载
-```
-
-| 包 | 内容 | 何时需要 |
-|----|------|----------|
-| **`arkanalyzer`** | TS 编译产物、`config/arkanalyzer.json` | 始终 |
-| **`@arkanalyzer/cxx-ast-parser-<platform>-<arch>`** | 当前平台的 **`astJsonDumper.node`** 及 `packages/cxx-ast-parser` 的 `lib/`、`dumper/` | 需要解析 `.cpp`/`.h` 等 |
-| **`@arkanalyzer/cxx-ast-parser`**（workspace 内 `private`） | 开发态子包目录，**不单独对外发布**；CI 打平台包时从此目录取产物 | 仅本仓开发 |
-
-### 2.2 GitHub / npm 上的平台包
-
-Release 流程在**各 OS runner** 上分别 `build:cpp` 并 `packPlatformCxxPackage`，发布到 npm registry（与 [构建指南 §9](./cpp_frontend_build_guide.md#9-本地打包-c-平台包) 一致）。**共 4 个平台包**；**macOS 仅 Apple Silicon（`darwin-arm64`）**，无 `darwin-x64`：
-
-| npm 包名 | 典型环境 | CI runner |
-|----------|----------|-----------|
-| `@arkanalyzer/cxx-ast-parser-linux-x64` | Linux x86_64 | `ubuntu-22.04` |
-| `@arkanalyzer/cxx-ast-parser-linux-arm64` | Linux aarch64 | `ubuntu-22.04-arm` |
-| `@arkanalyzer/cxx-ast-parser-darwin-arm64` | macOS Apple Silicon | `macos-14` |
-| `@arkanalyzer/cxx-ast-parser-win32-x64` | Windows x64 | `windows-2022` |
-
-**macOS Intel** 不在发布矩阵内：请在本机按 [构建指南 §4](./cpp_frontend_build_guide.md#4-macos本机) 执行 **`npm run build:cpp`**，勿安装 `darwin-arm64` 包。
-
-**版本必须与 `arkanalyzer` 主包一致**（例如均为 `1.0.90`），否则 wire 格式或 API 可能不匹配。
-
-安装示例：
-
-```bash
-npm install arkanalyzer@1.0.90
-npm install @arkanalyzer/cxx-ast-parser-linux-x64@1.0.90
-```
-
-从 GitHub Release 下载 **`arkanalyzer-cxx-ast-parser-*.tgz`** 时，可用 **`npm install ./arkanalyzer-cxx-ast-parser-linux-x64-1.0.90.tgz`** 本地安装。
-
----
-
-## 3. `languages.cpp` 配置参考
+## 2. `languages.cpp` 配置参考
 
 `SceneConfig` 读取仓库根 **`config/arkanalyzer.json`**（或通过构造函数传入的对象），与代码侧选项做**浅合并**。C++ 相关段落在 **`languages.cpp`**：
 
@@ -116,7 +68,7 @@ npm install @arkanalyzer/cxx-ast-parser-linux-x64@1.0.90
 }
 ```
 
-### 3.1 字段说明与默认值
+### 2.1 字段说明与默认值
 
 | 字段 | 类型 | 仓库默认 | 未配置时的行为 |
 |------|------|----------|----------------|
@@ -131,7 +83,7 @@ npm install @arkanalyzer/cxx-ast-parser-linux-x64@1.0.90
 
 **若不设置某个子字段**（例如只写 `"cpp": { "enabled": true }`）：其余字段由 `SceneConfig` 合并逻辑填充为与 JSON 文件相同的默认值（扩展名列表、`maxParallelProcesses: -1` 等）。
 
-### 3.2 与 `supportFileExts` 的关系
+### 2.2 与 `supportFileExts` 的关系
 
 - 根配置 **`supportFileExts`** 默认仅含 ArkTS/TS/JS 后缀（`.ets`、`.ts`、`.js` 等）。
 - 开启 **`languages.cpp.enabled`** 后，**`sourceExtensions` + `headerExtensions`** 会**追加**到有效扫描后缀集合。
@@ -139,7 +91,7 @@ npm install @arkanalyzer/cxx-ast-parser-linux-x64@1.0.90
 
 ---
 
-## 4. 打开 C++ 扫描
+## 3. 打开 C++ 扫描
 
 要让 **`.cpp` / `.c` / `.h` 等** 进入 `getAllFiles` 的待解析列表，需要 **`languages.cpp.enabled` 为 `true`**。
 
@@ -178,7 +130,7 @@ const config = new SceneConfig({
 
 ---
 
-## 5. 最小接入示例
+## 4. 最小接入示例
 
 适用于工程内只有自包含 C/C++、系统头路径由 Clang 默认即可解析的场景。
 
@@ -212,9 +164,9 @@ for (const file of scene.getFiles()) {
 
 ---
 
-## 6. 测试
+## 5. 测试
 
-### 6.1 测试分层
+### 5.1 测试分层
 
 | 层级 | 命令 | 目录 / 目标 | 依赖 |
 |------|------|-------------|------|
@@ -224,7 +176,7 @@ for (const file of scene.getFiles()) {
 
 `script/cpp/vitestCpp.js` 在 **`test` / `testonce`** 前检测 addon 是否就绪；未构建则**跳过** `tests/unit/cppCore/**`，不影响 ArkTS 测试。
 
-### 6.2 本地跑单测
+### 5.2 本地跑单测
 
 ```bash
 # 先构建 addon（首次或改 C++ 后）
@@ -240,14 +192,14 @@ npx vitest run tests/unit/cppCore
 npm run testonce
 ```
 
-### 6.3 测试资源布局
+### 5.3 测试资源布局
 
 - **`tests/cppResources/`**：C/C++ 样例工程（namespace、template、lazyImport、opencv 等子目录）。
 - **`tests/unit/cppCore/cppBuildUtils.ts`**：`resolveSdkPaths`、`ensureCompileDb` 等共用工具，业务工程可参考实现等价逻辑。
 
 ---
 
-## 7. 构建 Scene 之后
+## 6. 构建 Scene 之后
 
 - **`scene.getFiles()`**：得到 `ArkFile` 列表；可用 **`file.getName()`** 匹配路径后缀，或按业务维护的文件列表过滤。
 - **命名空间 / 类 / 方法**：`file.getNamespaces()`、`namespace.getClasses()`、`class.getMethods()` 等与 ArkTS 侧模型一致；许多 C++ 全局函数落在 **`file.getDefaultClass()`** 上。
@@ -258,7 +210,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ---
 
-## 8. 与 ArkTS 混编
+## 7. 与 ArkTS 混编
 
 同一 `Scene` 中可同时存在 ArkTS 与 C++ 文件。
 
@@ -269,7 +221,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ---
 
-## 9. 常见问题
+## 8. 常见问题
 
 1. **扫描不到 `.cpp` / `.h`**：检查 **`languages.cpp.enabled`** 或是否在 **`supportFileExts`** 中显式加入了对应后缀；默认 **`enabled: false`**。
 2. **解析标准库或 OHOS 头失败**：配置 **`includeDirs`**，并优先提供准确的 **`compile_commands.json`**（**`setCcjsonPath`**）。
@@ -278,5 +230,3 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 5. **npm 用户报找不到 addon**：确认已安装 **`@arkanalyzer/cxx-ast-parser-<platform>-<arch>`** 且版本与 **`arkanalyzer`** 一致；Linux 注意 glibc 与编译环境差异。
 6. **`testonce` 没有跑 cppCore**：未 **`build:cpp`** 或平台包未安装；先 **`npm run build:cpp`** 再测。
 7. **大仓库 OOM**：将 **`maxParallelProcesses`**、**`maxPendingAstResults`** 设为较小正整数。
-
-更多分析概念（如 Def-Use、CallGraph）见仓库 **`docs/analysis/`** 下各文档；与语言无关的 API 以 TypeScript 声明与源码为准。多语言功能矩阵见 **[MultiLanguageSupport.md](../MultiLanguageSupport.md)**。
