@@ -11,16 +11,13 @@ ArkAnalyzer C++ 前端基于 LLVM / LibTooling 将 C/C++ 源码解析并映射�
 | 主题 | 说明 |
 | --- | --- |
 | [1. 前置条件](#1-前置条件) | 开发机构建或 npm 安装平台包 |
-| [2. 包组织与 npm 发布](#2-包组织与-npm-发布) | 主包 vs `@arkanalyzer/cxx-ast-parser-*` |
-| [3. `languages.cpp` 配置参考](#3-languagescpp-配置参考) | `arkanalyzer.json` 各字段与默认值 |
-| [4. 打开 C++ 扫描](#4-打开-c-扫描) | `enabled`、扩展名、限流 |
-| [5. 最小接入示例](#5-最小接入示例) | `SceneConfig` + `Scene`，仅工程内 `.cpp` |
-| [6. 与单元测试对齐的写法](#6-与单元测试对齐的写法) | `Cfg.test.ts`、`includeDirs`、`compile_commands` |
-| [7. 单元测试与 CI](#7-单元测试与-ci) | `test:cpp`、`testonce`、fixture 目录 |
-| [8. 构建 Scene 之后](#8-构建-scene-之后) | 取文件、类、方法、`Cfg`、`inferTypes()` |
-| [9. 与 ArkTS 混编](#9-与-arkts-混编) | 多语言说明 |
-| [10. 本地打包与发布](#10-本地打包与发布) | 打出平台 tgz、与主包版本对齐 |
-| [11. 常见问题](#11-常见问题) | 并行度、扩展名、找不到头等 |
+| [2. `languages.cpp` 配置参考](#2-languagescpp-配置参考) | `arkanalyzer.json` 各字段与默认值 |
+| [3. 打开 C++ 扫描](#3-打开-c-扫描) | `enabled`、扩展名、限流 |
+| [4. 接入示例](#4-接入示例) | 构建 Scene、`compile_commands`、类型推导 |
+| [5. 测试](#5-测试) | `test:cpp`、`testonce`、fixture 目录 |
+| [6. 构建 Scene 之后](#6-构建-scene-之后) | 取文件、类、方法、`Cfg` |
+| [7. 与 ArkTS 混编](#7-与-arkts-混编) | 多语言说明 |
+| [8. 常见问题](#8-常见问题) | 并行度、扩展名、找不到头等 |
 
 ---
 
@@ -41,13 +38,11 @@ ArkAnalyzer C++ 前端基于 LLVM / LibTooling 将 C/C++ 源码解析并映射�
    npm install arkanalyzer@<version>
    ```
 
-2. 按本机 OS/架构安装**同版本**平台包（见 [§2](#2-包组织与-npm-发布)），例如 Linux x64：
+2. 按本机 OS/架构安装**同版本**平台包（见 [构建指南 §9](./cpp_frontend_build_guide.md#9-本地打包-c-平台包)），例如 Linux x64：
 
    ```bash
    npm install @arkanalyzer/cxx-ast-parser-linux-x64@<version>
    ```
-
-3. 在 **`config/arkanalyzer.json`** 或代码里将 **`languages.cpp.enabled`** 设为 **`true`**（见 [§3–§4](#3-languagescpp-配置参考)）。
 
 未安装平台包时，遇到 C++ 文件会**跳过解析并 warn**，不会导致主包其它功能失败。
 
@@ -87,7 +82,7 @@ ArkAnalyzer C++ 前端基于 LLVM / LibTooling 将 C/C++ 源码解析并映射�
 
 - 根配置 **`supportFileExts`** 默认仅含 ArkTS/TS/JS 后缀（`.ets`、`.ts`、`.js` 等）。
 - 开启 **`languages.cpp.enabled`** 后，**`sourceExtensions` + `headerExtensions`** 会**追加**到有效扫描后缀集合。
-- 测试里也可绕过 JSON，直接在构造函数传入 **`supportFileExts: [...getCxxSourceFileExtensions()]`**（仅常见源文件后缀，**不含头文件**），见 [§6](#6-与单元测试对齐的写法)。
+- 测试里也可绕过 JSON，直接在构造函数传入 **`supportFileExts: [...getCxxSourceFileExtensions()]`**，见 [§4](#4-接入示例)。
 
 ---
 
@@ -126,41 +121,39 @@ const config = new SceneConfig({
 });
 ```
 
-**测试里另一种写法**（不依赖 JSON 里的 `enabled`）：直接把待扫描后缀写进 `supportFileExts`，例如使用导出的 **`getCxxSourceFileExtensions()`**（仅常见「源文件」后缀，不含头文件）。见 `tests/unit/cppCore/graph/Cfg.test.ts` 中 `new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] })`。
+**测试里另一种写法**（不依赖 JSON 里的 `enabled`）：直接把待扫描后缀写进 `supportFileExts`，例如使用导出的 **`getCxxSourceFileExtensions()`**。见 [§4](#4-接入示例)。
 
 ---
 
-## 4. 最小接入示例
-
-适用于工程内只有自包含 C/C++、系统头路径由 Clang 默认即可解析的场景。
-
+## 4. 接入示例
 ```typescript
 import path from 'path';
-import { Scene, SceneConfig } from 'arkanalyzer';
+import { Scene, SceneConfig, getCxxSourceFileExtensions } from 'arkanalyzer';
 
-const projectDir = path.resolve('/path/to/your/cpp/project');
+const projectDir = path.resolve('/path/to/cpp/project');
 
-const config = new SceneConfig();
-// 若未改 JSON，请保证 languages.cpp.enabled 为 true，或见上一节在构造函数中传入。
-config.buildFromProjectDir(projectDir, []); // 第二个参数为额外 -I 目录，可传空数组
+const config = new SceneConfig({
+  supportFileExts: [...getCxxSourceFileExtensions()],
+  languages: { cpp: { enabled: true } },
+});
+
+// 编译数据库（可选）：工程已有 compile_commands.json 时设置；没有可省略
+config.setCcjsonPath(path.join(projectDir, 'build', 'compile_commands.json'));
+
+config.buildFromProjectDir(projectDir, []); // 第二个参数：额外 -I 目录
 
 const scene = new Scene();
 scene.buildSceneFromProjectDir(config);
 
-// 按需：scene.inferTypes();
+scene.inferTypes(); // 可选：需要跨过程类型推导时调用；只看 CFG 可省略
 
 for (const file of scene.getFiles()) {
-  // 按 file.getName() 过滤 .cpp 等，或遍历命名空间 / 类 / 方法
-  for (const cls of file.getClasses()) {
-    for (const method of cls.getMethods()) {
-      const cfg = method.getCfg();
-      // 使用 BasicBlock、Stmt 等做数据流 / CFG 分析
-    }
+  for (const method of file.getDefaultClass().getMethods()) {
+    const cfg = method.getCfg();
+    // ...
   }
 }
 ```
-
-若工程依赖第三方头文件目录，把路径放进 **`buildFromProjectDir` 的第二个参数**（`includeDirs`），等价于为 LibTooling 增加 `-I`。
 
 ---
 
@@ -204,7 +197,7 @@ npm run testonce
 - **`scene.getFiles()`**：得到 `ArkFile` 列表；可用 **`file.getName()`** 匹配路径后缀，或按业务维护的文件列表过滤。
 - **命名空间 / 类 / 方法**：`file.getNamespaces()`、`namespace.getClasses()`、`class.getMethods()` 等与 ArkTS 侧模型一致；许多 C++ 全局函数落在 **`file.getDefaultClass()`** 上。
 - **控制流图**：**`method.getCfg()`** 返回 **`Cfg`**，可遍历 **`getBlocks()`**、**`getStmts()`** 等与 `Cfg.test.ts` 中断言方式一致。
-- **`scene.inferTypes()`**：在需要跨过程类型、调用图或其它依赖 TypeInference 的场景中调用；纯 CFG 冒烟可按需省略（与测试各用例不完全相同）。
+- **`scene.inferTypes()`**：需要类型推导时调用；纯 CFG 分析可省略（见 [§4](#4-接入示例)）。
 
 C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSupport.md) 一致）：`FrontendBuilder` 将 `Language.CXX` 文件分桶 → **`CppFrontend.buildProjectFiles`** → **`astJsonDumper.node`** 产出 FlatBuffers AST → TS 侧转 **`ArkFile`** → **`scene.setFile`**。
 
