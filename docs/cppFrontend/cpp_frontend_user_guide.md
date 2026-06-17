@@ -212,7 +212,7 @@ for (const file of scene.getFiles()) {
 
 ---
 
-## 6. 单元测试与 CI
+## 6. 测试
 
 ### 6.1 测试分层
 
@@ -240,18 +240,7 @@ npx vitest run tests/unit/cppCore
 npm run testonce
 ```
 
-### 6.3 CI / OHOS 相关
-
-与 **`tests/unit/cppCore/graph/Cfg.test.ts`** 行为一致时，流水线需：
-
-1. 安装 LLVM 19 与 [构建指南](./cpp_frontend_build_guide.md) 中的系统依赖；
-2. 执行 **`npm run build:cpp`**；
-3. 设置 **`OHOS_SDK_HOME`**（解析 OHOS NDK / libc++ 头时）；
-4. 可选：预生成 **`compile_commands.json`** 并放入工程或测试 fixture。
-
-主仓 **默认 CI**（仅 ArkTS）**不**强制 `build:cpp`；C++ 测试在 addon 可用时才会纳入 `testonce`。
-
-### 6.4 测试资源布局
+### 6.3 测试资源布局
 
 - **`tests/cppResources/`**：C/C++ 样例工程（namespace、template、lazyImport、opencv 等子目录）。
 - **`tests/unit/cppCore/cppBuildUtils.ts`**：`resolveSdkPaths`、`ensureCompileDb` 等共用工具，业务工程可参考实现等价逻辑。
@@ -280,7 +269,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ---
 
-## 10. 常见问题
+## 9. 常见问题
 
 1. **扫描不到 `.cpp` / `.h`**：检查 **`languages.cpp.enabled`** 或是否在 **`supportFileExts`** 中显式加入了对应后缀；默认 **`enabled: false`**。
 2. **解析标准库或 OHOS 头失败**：配置 **`includeDirs`**，并优先提供准确的 **`compile_commands.json`**（**`setCcjsonPath`**）。
