@@ -212,70 +212,9 @@ for (const file of scene.getFiles()) {
 
 ---
 
-## 6. 与单元测试对齐的写法
+## 6. 单元测试与 CI
 
-集成测试 **`tests/unit/cppCore/graph/Cfg.test.ts`** 中的 `buildScene` 展示了更接近 OpenHarmony / NDK 环境的配置方式，核心步骤如下。
-
-### 6.1 `includeDirs`（libc++ 与 sysroot）
-
-测试从 **`tests/unit/cppCore/cppBuildUtils.ts`** 的 **`resolveSdkPaths()`** 读取环境变量 **`OHOS_SDK_HOME`**，得到：
-
-- **`cxxIncludeDir`**：LLVM 自带 libc++ 头（`.../llvm/include/c++/v1`）
-- **`configSiteDirs`**：带 **`__config_site`** 的目标相关目录（工具会扫描 `llvm/include` 下子目录）
-- **`sysrootIncludeDir`**：sysroot 下的 `usr/include`（懒加载 NAPI 等场景会用到）
-
-典型组合与测试一致：
-
-```typescript
-import path from 'path';
-import fs from 'fs';
-import { Scene, SceneConfig, getCxxSourceFileExtensions } from 'arkanalyzer';
-import { resolveSdkPaths, ensureCompileDb } from './cppBuildUtils'; // 从测试 utils 拷贝或自行实现等价逻辑
-
-const { cxxIncludeDir, sysrootIncludeDir, configSiteDirs } = resolveSdkPaths();
-const includeDirs = [cxxIncludeDir, ...configSiteDirs].filter(Boolean);
-
-// 若用例涉及 lazyImport 下的 NAPI，可追加例如：
-// includeDirs.push(
-//   path.join(sysrootIncludeDir, 'x86_64-linux-ohos'),
-//   sysrootIncludeDir,
-// );
-```
-
-未设置 **`OHOS_SDK_HOME`** 时，`resolveSdkPaths()` 返回空字符串；仅解析不依赖 OHOS 标准库的代码时，可继续使用空或自定义 `-I` 列表。
-
-### 6.2 `compile_commands.json`
-
-当存在 **`CMakeLists.txt`** 且配置了 **`OHOS_SDK_HOME`** 时，测试会调用 **`ensureCompileDb(projectDir, buildDir)`**（内部用 OHOS 的 **`ohos.toolchain.cmake`** 跑 CMake 并 **`CMAKE_EXPORT_COMPILE_COMMANDS=ON`**），然后：
-
-```typescript
-config.setCcjsonPath(path.join(buildDir, 'compile_commands.json'));
-```
-
-若已有现成的 **`compile_commands.json`**（任意 CMake / Bear 生成），可直接 **`config.setCcjsonPath(路径)`**，无需经过 `ensureCompileDb`。
-
-**注意**：`setCcjsonPath` 只需在 **`scene.buildSceneFromProjectDir(config)`** 之前完成即可；与 **`buildFromProjectDir`** 的先后次序无强约束。测试里在存在 `CMakeLists.txt` 且配置了 `OHOS_SDK_HOME` 时，会先 `ensureCompileDb`、`setCcjsonPath`，再 **`buildFromProjectDir`**。
-
-### 6.3 组装 `Scene`
-
-与测试相同的主线：
-
-```typescript
-const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
-// … 按上文设置 includeDirs、setCcjsonPath（可选）…
-config.buildFromProjectDir(projectDir, includeDirs);
-
-const scene = new Scene();
-scene.buildSceneFromProjectDir(config);
-```
-
-测试中部分用例在断言前会调用 **`scene.inferTypes()`**（例如部分 `switch`、懒加载、`namespace` 等），用于补全类型信息或满足特定分析路径。若分析依赖完整类型推导，建议在构建 Scene 后同样调用 **`inferTypes()`**。
-
----
-
-## 7. 单元测试与 CI
-
-### 7.1 测试分层
+### 6.1 测试分层
 
 | 层级 | 命令 | 目录 / 目标 | 依赖 |
 |------|------|-------------|------|
@@ -285,7 +224,7 @@ scene.buildSceneFromProjectDir(config);
 
 `script/cpp/vitestCpp.js` 在 **`test` / `testonce`** 前检测 addon 是否就绪；未构建则**跳过** `tests/unit/cppCore/**`，不影响 ArkTS 测试。
 
-### 7.2 本地跑单测
+### 6.2 本地跑单测
 
 ```bash
 # 先构建 addon（首次或改 C++ 后）
@@ -301,7 +240,7 @@ npx vitest run tests/unit/cppCore
 npm run testonce
 ```
 
-### 7.3 CI / OHOS 相关
+### 6.3 CI / OHOS 相关
 
 与 **`tests/unit/cppCore/graph/Cfg.test.ts`** 行为一致时，流水线需：
 
@@ -312,14 +251,14 @@ npm run testonce
 
 主仓 **默认 CI**（仅 ArkTS）**不**强制 `build:cpp`；C++ 测试在 addon 可用时才会纳入 `testonce`。
 
-### 7.4 测试资源布局
+### 6.4 测试资源布局
 
 - **`tests/cppResources/`**：C/C++ 样例工程（namespace、template、lazyImport、opencv 等子目录）。
 - **`tests/unit/cppCore/cppBuildUtils.ts`**：`resolveSdkPaths`、`ensureCompileDb` 等共用工具，业务工程可参考实现等价逻辑。
 
 ---
 
-## 8. 构建 Scene 之后
+## 7. 构建 Scene 之后
 
 - **`scene.getFiles()`**：得到 `ArkFile` 列表；可用 **`file.getName()`** 匹配路径后缀，或按业务维护的文件列表过滤。
 - **命名空间 / 类 / 方法**：`file.getNamespaces()`、`namespace.getClasses()`、`class.getMethods()` 等与 ArkTS 侧模型一致；许多 C++ 全局函数落在 **`file.getDefaultClass()`** 上。
@@ -330,7 +269,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ---
 
-## 9. 与 ArkTS 混编
+## 8. 与 ArkTS 混编
 
 同一 `Scene` 中可同时存在 ArkTS 与 C++ 文件；TS 侧调用 native 的映射、多语言场景说明见 **[多语言支持](../MultiLanguageSupport.md)**。
 
@@ -341,29 +280,7 @@ C++ 解析流水线概要（与 [MultiLanguageSupport.md](../MultiLanguageSuppor
 
 ---
 
-## 10. 本地打包与发布
-
-### 10.1 开发者本地打平台包
-
-```bash
-npm run build:cpp
-node script/cpp/packPlatformCxxPackage.js --local
-# 或在 build:cpp 后 npm pack，由 postpack 附带平台 tgz
-```
-
-产物为 **`arkanalyzer-cxx-ast-parser-<platform>-<arch>-<version>.tgz`**，可 **`npm publish`** 到私有 registry 或 **`npm install ./xxx.tgz`** 在下游验证。
-
-### 10.2 与主包一起发布
-
-1.  bump 根 **`package.json`** 与 **`packages/cxx-ast-parser/package.json`** 的 **`version`**（保持一致）；
-2.  各平台 CI 执行 **`build:cpp`** + **`packPlatformCxxPackage`**；
-3.  发布 **`arkanalyzer`** 主包与各 **`@arkanalyzer/cxx-ast-parser-*`** 平台包。
-
-用户侧始终：**主包版本 = 平台 C++ 包版本**。
-
----
-
-## 11. 常见问题
+## 10. 常见问题
 
 1. **扫描不到 `.cpp` / `.h`**：检查 **`languages.cpp.enabled`** 或是否在 **`supportFileExts`** 中显式加入了对应后缀；默认 **`enabled: false`**。
 2. **解析标准库或 OHOS 头失败**：配置 **`includeDirs`**，并优先提供准确的 **`compile_commands.json`**（**`setCcjsonPath`**）。
