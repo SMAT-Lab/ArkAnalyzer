@@ -77,15 +77,16 @@ arkanalyzer                          ← 主包（lib/ + config/），ArkTS/JS +
 
 ### 2.2 GitHub / npm 上的平台包
 
-Release 流程在**各 OS runner** 上分别 `build:cpp` 并 `packPlatformCxxPackage`，发布到 npm registry（包名与 [构建指南 §9](./cpp_frontend_build_guide.md#9-本地打包-c-平台包) 表格一致）：
+Release 流程在**各 OS runner** 上分别 `build:cpp` 并 `packPlatformCxxPackage`，发布到 npm registry（与 [构建指南 §9](./cpp_frontend_build_guide.md#9-本地打包-c-平台包) 一致）。**共 4 个平台包**；**macOS 仅 Apple Silicon（`darwin-arm64`）**，无 `darwin-x64`：
 
-| npm 包名 | 典型环境 |
-|----------|----------|
-| `@arkanalyzer/cxx-ast-parser-linux-x64` | Linux x86_64 |
-| `@arkanalyzer/cxx-ast-parser-linux-arm64` | Linux aarch64 |
-| `@arkanalyzer/cxx-ast-parser-darwin-x64` | macOS Intel |
-| `@arkanalyzer/cxx-ast-parser-darwin-arm64` | macOS Apple Silicon |
-| `@arkanalyzer/cxx-ast-parser-win32-x64` | Windows x64 |
+| npm 包名 | 典型环境 | CI runner |
+|----------|----------|-----------|
+| `@arkanalyzer/cxx-ast-parser-linux-x64` | Linux x86_64 | `ubuntu-22.04` |
+| `@arkanalyzer/cxx-ast-parser-linux-arm64` | Linux aarch64 | `ubuntu-22.04-arm` |
+| `@arkanalyzer/cxx-ast-parser-darwin-arm64` | macOS Apple Silicon | `macos-14` |
+| `@arkanalyzer/cxx-ast-parser-win32-x64` | Windows x64 | `windows-2022` |
+
+**macOS Intel** 不在发布矩阵内：请在本机按 [构建指南 §4](./cpp_frontend_build_guide.md#4-macos本机) 执行 **`npm run build:cpp`**，勿安装 `darwin-arm64` 包。
 
 **版本必须与 `arkanalyzer` 主包一致**（例如均为 `1.0.90`），否则 wire 格式或 API 可能不匹配。
 
