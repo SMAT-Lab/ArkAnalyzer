@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -73,10 +73,15 @@ export { ViewTree, ViewTreeNode } from './core/graph/ViewTree';
 export { DominanceFinder } from './core/graph/DominanceFinder';
 export { DominanceTree } from './core/graph/DominanceTree';
 export { NodeID, Kind, BaseEdge, BaseNode, BaseExplicitGraph } from './core/graph/BaseExplicitGraph';
+export { BaseImplicitGraph } from './core/graph/BaseImplicitGraph';
 export { SCCDetection } from './core/graph/Scc';
+export { ModuleDepGraph, DependencyType } from './core/graph/ModuleDepGraph';
 
 // core/model
 export { ArkFile } from './core/model/ArkFile';
+export { ArkModule, ModuleLoadState, ModuleType, ModuleID } from './core/model/ArkModule';
+export { ModuleDepthLevel } from './frontend/common/ModuleDepth';
+export { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
 export { ArkNamespace } from './core/model/ArkNamespace';
 export { ArkClass } from './core/model/ArkClass';
 export { ArkMethod } from './core/model/ArkMethod';
@@ -87,13 +92,7 @@ export { ArkBody } from './core/model/ArkBody';
 export * from './core/model/ArkSignature';
 export * from './core/model/builder/ArkSignatureBuilder';
 
-export {
-    SceneConfig,
-    SceneOptions,
-    buildSceneConfigFromProject,
-    LanguageOptions,
-    SceneLanguagesOptions,
-} from './Config';
+export { SceneConfig, SceneOptions, buildSceneConfigFromProject, LanguageOptions, SceneLanguagesOptions } from './Config';
 export { Scene } from './Scene';
 
 // frontends
@@ -137,6 +136,7 @@ export { default as Logger } from './utils/logger';
 export { IntMap } from './utils/IntMap';
 export { IntWorkList } from './utils/IntWorkList';
 export { PackedSparseMap } from './utils/PackedSparseMap';
+export { Canonicalizer } from './utils/Canonicalizer';
 
 //ohos-typescript
 import ts from 'ohos-typescript';

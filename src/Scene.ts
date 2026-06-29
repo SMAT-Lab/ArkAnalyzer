@@ -23,19 +23,18 @@ import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
+import { ArkModule, ModuleID, ModuleType } from './core/model/ArkModule';
 import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
+import { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
+import { ModuleManager } from './frontend/common/ModuleManager';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively, getFileSignatureMapKey } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
-import {
-    addInitInConstructor,
-    buildDefaultConstructor,
-    replaceSuper2Constructor
-} from './core/model/builder/ArkMethodBuilder';
+import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
 import { clearCxxTypeStringCache } from './frontend/cppFrontend/model/builder/builderUtils';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
@@ -109,11 +108,16 @@ export class Scene {
 
     private options!: SceneOptions;
 
+    /** The SceneConfig used to build this scene, retained for later queries (e.g. SDK list). */
+    private sceneConfig?: SceneConfig;
+
+    /** Module manager for module-level analysis (registration, dependency graph, topo sort). */
+    private moduleManager: ModuleManager = new ModuleManager(this);
+
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() {
-    }
+    constructor() {}
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -202,6 +206,7 @@ export class Scene {
      * @param sceneConfig - the config used to set the basic information of scene.
      */
     public buildBasicInfo(sceneConfig: SceneConfig): void {
+        this.sceneConfig = sceneConfig;
         this.options = sceneConfig.getOptions();
         this.projectName = sceneConfig.getTargetProjectName();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
@@ -581,10 +586,7 @@ export class Scene {
     }
 
     private findDependenciesByRule(originPath: string): void {
-        if (
-            !this.findFilesByPathArray(originPath) &&
-            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)
-        ) {
+        if (!this.findFilesByPathArray(originPath) && !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)) {
             logger.trace(originPath + 'module mapperInfo is not found!');
         }
     }
@@ -695,7 +697,7 @@ export class Scene {
      */
     private buildSdk(sdkName: string, sdkPath: string): void {
         const allFiles = this.collectSdkFiles(sdkName, sdkPath);
-        allFiles.forEach((file) => {
+        allFiles.forEach(file => {
             if (FileUtils.getFileLanguage(file, this.fileLanguages) === Language.CXX) {
                 return;
             }
@@ -749,7 +751,6 @@ export class Scene {
      * it build bodies of all methods, generate extended classes, and add DefaultConstructors.
      */
     public buildScene4HarmonyProject(): void {
-
         this.modulePath2NameMap.forEach((value, key) => {
             let moduleScene = new ModuleScene(this);
             moduleScene.ModuleSceneBuilder(value, key, this.options.supportFileExts!);
@@ -842,6 +843,90 @@ export class Scene {
      */
     public getRealProjectDir(): string {
         return this.realProjectDir;
+    }
+
+    /**
+     * Returns the {@link SceneConfig} used to build this scene, or undefined before
+     * {@link buildBasicInfo} has been called.
+     */
+    public getSceneConfig(): SceneConfig | undefined {
+        return this.sceneConfig;
+    }
+
+    /**
+     * Save the {@link SceneConfig} into the scene for later module-level analysis.
+     * Unlike {@link buildBasicInfo}, this method only stores the config (and derives
+     * the real project directory) without building ArkFiles or performing type inference.
+     * This is the lightweight entry point for {@link analyseByModule}.
+     */
+    public config(sceneConfig: SceneConfig): void {
+        this.sceneConfig = sceneConfig;
+        this.options = sceneConfig.getOptions();
+        const dir = sceneConfig.getTargetProjectDirectory();
+        if (dir) {
+            this.realProjectDir = fs.realpathSync(dir);
+        }
+    }
+
+    /**
+     * Returns all registered {@link ArkModule} objects managed by the {@link ModuleManager}.
+     */
+    public getModules(): ArkModule[] {
+        return Array.from(this.moduleManager.modulesIterator());
+    }
+
+    /**
+     * Perform module-level analysis by iterating modules in topological order and invoking
+     * the callback for each module.
+     *
+     * Flow: prepareSdkModules → prepareModules → analyzeModuleDependencies → iterate topoOrder → loadModule → callback.
+     * Each step is idempotent; repeated calls do not repeat preprocessing.
+     *
+     * - SDK modules are always skipped (callback is never invoked for them).
+     * - When {@link ModuleAnalysisConfig.hasTargetProjectModules} is true, only the target
+     *   PROJECT modules (and their transitive closure) are visited; the callback is invoked
+     *   only for the target modules themselves, not their dependencies.
+     * - When no target modules are specified, the callback is invoked for all PROJECT and
+     *   OH_MODULES modules in topological order.
+     *
+     * @param callback - Invoked for each analyzed module with the module and the scene.
+     * @param config - Optional configuration for target module selection.
+     */
+    public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
+        // 1. Prepare SDK modules (idempotent)
+        if (!this.moduleManager.isSdkBuilt()) {
+            this.moduleManager.prepareSdkModules();
+        }
+        // 2. Prepare project/oh_modules (idempotent)
+        if (!this.moduleManager.isModulesPrepared()) {
+            this.moduleManager.prepareModules();
+        }
+        // 3. Analyze dependencies (idempotent)
+        if (!this.moduleManager.hasTopoOrder()) {
+            this.moduleManager.analyzeModuleDependencies();
+        }
+        // 4. Determine modules to analyze
+        let topoOrder: ModuleID[];
+        let targetPaths: Set<string> | undefined;
+        if (config?.hasTargetProjectModules()) {
+            const closure = this.moduleManager.computeModuleClosure(config.getTargetProjectModules());
+            topoOrder = this.moduleManager.getFilteredTopoOrder(closure);
+            targetPaths = config.getTargetProjectModules();
+        } else {
+            topoOrder = this.moduleManager.getTopoOrder();
+        }
+        // 5. Iterate topoOrder: load each module then call callback
+        for (const moduleId of topoOrder) {
+            const module = this.moduleManager.getModule(moduleId);
+            if (!module) continue;
+            // Load module data at configured depth level (idempotent; SDK modules are just marked LOADED)
+            this.moduleManager.loadModule(moduleId, config);
+            // Skip SDK modules for callback
+            if (module.getModuleType() === ModuleType.SDK) continue;
+            // If target modules specified, only call callback for target PROJECT modules
+            if (targetPaths && !targetPaths.has(module.getModulePath())) continue;
+            callback(module, this);
+        }
     }
 
     /**
@@ -1353,8 +1438,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch {
-                }
+                } catch {}
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
@@ -1415,8 +1499,7 @@ export class Scene {
         while (namespaceStack.length > 0) {
             const ns = namespaceStack.shift()!;
             const nsGlobalLocals: Local[] = [];
-            ns
-                .getDefaultClass()
+            ns.getDefaultClass()
                 .getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1487,8 +1570,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch {
-                }
+                } catch {}
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
@@ -1531,8 +1613,7 @@ export class Scene {
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
             const finalNamespaces: ArkNamespace[] = [];
             const globalLocals: Local[] = [];
-            file
-                .getDefaultClass()
+            file.getDefaultClass()
                 ?.getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()

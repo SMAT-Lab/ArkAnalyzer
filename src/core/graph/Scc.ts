@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { BaseNode } from './BaseExplicitGraph';
 import { NodeID, GraphTraits } from './GraphTraits';
 
 type NodeSet = Set<NodeID>;
@@ -57,7 +56,7 @@ class NodeSCCInfo {
  *   Wave Propagation and Deep Propagation for pointer Analysis
  *   CGO 2009
  */
-export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
+export class SCCDetection<Graph extends GraphTraits<any>> {
     // graph G = (V, E)
     private _G: Graph;
     // counter
@@ -138,23 +137,13 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
         return info.rep;
     }
 
-    private getNode(id: NodeID): BaseNode {
-        let n = this._G.getNode(id);
-        if (!n) {
-            throw new Error('Node is not found');
-        }
-        return n;
-    }
-
     private visit(v: NodeID): void {
         this._I += 1;
         this._D.set(v, this._I);
         this.setRep(v, v);
         this.setVisited(v);
 
-        let node = this.getNode(v);
-        node.getOutgoingEdges()?.forEach(e => {
-            let w: NodeID = e.getDstID();
+        this._G.succ(v)?.forEach(w => {
             if (!this.isVisited(w)) {
                 this.visit(w);
             }
@@ -219,7 +208,7 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
         this.clear();
         let nodeIt = this._G.nodesItor();
         for (let node of nodeIt) {
-            const nodeId: NodeID = node.getID();
+            const nodeId: NodeID = this._G.getNodeID(node);
             if (!this.isVisited(nodeId) && !this._D.has(nodeId)) {
                 this.visit(nodeId);
             }
@@ -243,13 +232,9 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
             return true;
         }
         // self-cycle: a call a
-        let repNode = this._G.getNode(rep)!;
-        const outgoingEdges = repNode?.getOutgoingEdges();
-        if (!outgoingEdges) {
-            return false;
-        }
-        for (const e of outgoingEdges) {
-            if (e.getDstID() === rep) {
+        const successors = this._G.succ(rep);
+        for (const w of successors) {
+            if (w === rep) {
                 return true;
             }
         }
