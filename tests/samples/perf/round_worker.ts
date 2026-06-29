@@ -56,7 +56,9 @@ function printStageSummary(stage: StageMetrics): void {
     console.log(`  Duration      : ${stage.durationMs.toFixed(2)} ms`);
     console.log(`  Heap Growth   : ${(stage.heapGrowthBytes / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  Heap Peak     : ${(stage.heapPeakUsedBytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  Heap Used End : ${(stage.heapAfter.used / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  RSS Peak      : ${((stage.rssPeakBytes ?? 0) / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`  RSS End       : ${((stage.rssAfterBytes ?? 0) / 1024 / 1024).toFixed(2)} MB`);
     console.log(`  GC Pauses     : ${stage.gcPauses.count} (${stage.gcPauses.totalDurationMs.toFixed(2)} ms)`);
     console.log(`  CPU Hot Functions : ${stage.cpuHotFunctions.length}`);
     if (stage.cpuHotFunctions.length > 0) {
