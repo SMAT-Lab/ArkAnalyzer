@@ -1028,7 +1028,7 @@ describe('ModuleManager tests', () => {
             }
         });
 
-        it('SDK modules: just marks LOADED without building files', () => {
+        it('SDK modules: builds ArkFiles at META level like other module types', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sdk-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'sdk'), ['api.ets']);
@@ -1040,8 +1040,31 @@ describe('ModuleManager tests', () => {
                 manager.loadModule(moduleId);
 
                 expect(module.getLoadState()).toBe(ModuleLoadState.LOADED);
-                // SDK modules do not build ArkFiles in loadModule
-                expect(module.getFilesMap().size).toBe(0);
+                // SDK modules build ArkFiles at META level, same as PROJECT/OH_MODULES
+                expect(module.getFilesMap().size).toBe(1);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('builds to META level when configured with higher depth (IMPORTS/SIGNATURES/BODIES)', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-highlevel-'));
+            try {
+                const modulePath = setupModuleDir(path.join(tmpDir, 'entry'), ['main.ets', 'utils.ts']);
+                const manager = new ModuleManager(makeLoadModuleSceneStub());
+                const module = manager.registerModule(modulePath, '@ohos/entry');
+                const moduleId = manager.getModuleCanonicalizer().getId(module);
+
+                const config = new ModuleAnalysisConfig();
+                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+
+                manager.loadModule(moduleId, config);
+
+                // Even with BODIES configured, current phase builds to META only
+                expect(module.getLoadState()).toBe(ModuleLoadState.LOADED);
+                expect(module.getFilesMap().size).toBe(2);
+                // retainLevels records the configured level (BODIES), not the actual built level (META)
+                expect(manager.getRetainLevel(moduleId)).toBe(ModuleDepthLevel.BODIES);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }

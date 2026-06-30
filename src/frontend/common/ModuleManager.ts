@@ -676,16 +676,11 @@ export class ModuleManager {
                 this.loadModule(depId, config);
             }
 
-            // SDK modules are already built in prepareSdkModules; just mark LOADED
-            if (module.getModuleType() === ModuleType.SDK) {
-                module.setLoadState(ModuleLoadState.LOADED);
-                return;
-            }
-
             // Determine the configured load level for this module type
             const loadLevel = config?.getLoadLevel(module.getModuleType()) ?? ModuleDepthLevel.META;
 
-            // Current phase: regardless of the configured depth, always build to META level only
+            // Current phase: regardless of the configured depth, always build to META level only.
+            // Higher levels (IMPORTS/SIGNATURES/BODIES) are not yet implemented and fall back to META.
             this.buildArkFileToLevel(module, ModuleDepthLevel.META);
 
             // Record the configured retain level (even though only META is built for now)
@@ -711,7 +706,9 @@ export class ModuleManager {
      * @param level - The target depth level.
      */
     private buildArkFileToLevel(module: ArkModule, level: ModuleDepthLevel): void {
-        if (level === ModuleDepthLevel.META) {
+        // Current phase: only META is implemented. Higher levels fall back to META.
+        const effectiveLevel = level <= ModuleDepthLevel.META ? level : ModuleDepthLevel.META;
+        if (effectiveLevel === ModuleDepthLevel.META) {
             const modulePath = module.getModulePath();
             const options = this.scene.getOptions();
             const supportFileExts = options?.supportFileExts ?? ['.ets', '.ts'];
@@ -727,8 +724,6 @@ export class ModuleManager {
                     this.scene.setFile(arkFile);
                 }
             }
-        } else {
-            // TODO: IMPORTS/SIGNATURES/BODIES levels are not implemented in this phase.
         }
     }
 
