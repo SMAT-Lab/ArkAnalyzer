@@ -16,7 +16,7 @@
 import path from 'path';
 import { Scene } from '../../src';
 import { Logger, LOG_LEVEL, LOG_MODULE_TYPE } from '../../src';
-import { buildSceneConfigFromProject } from '../../src';
+import { SceneConfig } from '../../src';
 import { ModuleType } from '../../src';
 import { ModuleDepGraph } from '../../src';
 import { SCCDetection } from '../../src';
@@ -24,8 +24,7 @@ import { SCCDetection } from '../../src';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'MODULEANALYSETEST');
 Logger.configure('', LOG_LEVEL.ERROR, LOG_LEVEL.INFO, false);
 
-const PROJECT_DIR = process.env.PHOTOS_PROJECT_DIR || '';
-const OHOS_SDK_HOME = process.env.OHOS_SDK_HOME || '';
+const PROJECT_DIR = 'tests/resources/dependency/exampleProject/MyApplication4Files';
 
 interface ModuleStat {
     name: string;
@@ -48,16 +47,8 @@ function moduleTypeLabel(type: ModuleType): string {
 }
 
 function run(): void {
-    if (!PROJECT_DIR) {
-        logger.error('PHOTOS_PROJECT_DIR env is not set, abort.');
-        process.exit(1);
-    }
-    if (!OHOS_SDK_HOME) {
-        logger.error('OHOS_SDK_HOME env is not set, abort.');
-        process.exit(1);
-    }
-
-    const sceneConfig = buildSceneConfigFromProject(PROJECT_DIR, OHOS_SDK_HOME);
+    const sceneConfig = new SceneConfig();
+    sceneConfig.buildFromProjectDir(PROJECT_DIR);
     const scene = new Scene();
     scene.config(sceneConfig);
 
