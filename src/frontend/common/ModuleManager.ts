@@ -20,6 +20,7 @@ import { Canonicalizer } from '../../utils/Canonicalizer';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../core/model/ArkModule';
 import { ModuleDepGraph, DependencyType } from '../../core/graph/ModuleDepGraph';
 import { BUILD_PROFILE_JSON5, OH_MODULES, MODULE_PREFIX } from '../../core/common/EtsConst';
+import { OH_PKG_DEPENDENCIES, OH_PKG_DEV_DEPENDENCIES, OH_PKG_DYNAMIC_DEPENDENCIES } from '../../core/common/Const';
 import { parseJsonText } from '../../utils/json5parser';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ModuleDepthLevel } from './ModuleDepth';
@@ -140,22 +141,29 @@ export class ModuleManager {
      * Iteration order follows ModuleID assignment order (0, 1, 2, ...).
      */
     public modulesIterator(): IterableIterator<ArkModule> {
-        let i = 0;
+        const cursor = { value: 0 };
         const iterator: IterableIterator<ArkModule> = {
-            next: (): IteratorResult<ArkModule> => {
-                while (i < this.moduleCanonicalizer.size()) {
-                    const m = this.moduleCanonicalizer.get(i++);
-                    if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
-                        return { value: m, done: false };
-                    }
-                }
-                return { value: undefined as unknown as ArkModule, done: true };
-            },
+            next: (): IteratorResult<ArkModule> => this.nextModule(cursor),
             [Symbol.iterator](): IterableIterator<ArkModule> {
                 return this;
             },
         };
         return iterator;
+    }
+
+    /**
+     * Find the next non-DISPOSED module starting from the cursor.
+     * Advances the cursor past any skipped (DISPOSED) modules.
+     */
+    private nextModule(cursor: { value: number }): IteratorResult<ArkModule> {
+        while (cursor.value < this.moduleCanonicalizer.size()) {
+            const m = this.moduleCanonicalizer.get(cursor.value);
+            cursor.value++;
+            if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
+                return { value: m, done: false };
+            }
+        }
+        return { value: undefined as unknown as ArkModule, done: true };
     }
 
     /** The module Canonicalizer instance (shared with ModuleDepGraph). */
@@ -378,8 +386,7 @@ export class ModuleManager {
      *
      * Reads oh-package.json5 to update module names, builds the dependency graph,
      * runs SCC detection with post-processing refinement. The topological order is
-     * populated inside {@link ModuleDepGraph.refineSCCGroups} and accessed via
-     * {@link getTopoOrder}.
+     * populated inside refineSCCGroups and accessed via {@link getTopoOrder}.
      *
      * Idempotent: if dependency analysis has already completed ({@link hasTopoOrder}
      * is true), this method returns immediately.
@@ -419,7 +426,7 @@ export class ModuleManager {
             const depEntries = this.extractDependenciesWithValues(deps);
 
             for (const [alias, depValue, depType] of depEntries) {
-                const depModule = this.resolveDepModule(this.moduleCanonicalizer.getId(module), alias, depValue, module.getModulePath());
+                const depModule = this.resolveDepModule(alias, depValue, module.getModulePath());
                 if (depModule) {
                     const srcId = this.moduleCanonicalizer.getId(module);
                     const dstId = this.moduleCanonicalizer.getId(depModule);
@@ -443,9 +450,9 @@ export class ModuleManager {
     private extractDependenciesWithValues(ohPkgContent: { [k: string]: unknown }): [string, string, DependencyType][] {
         const result: [string, string, DependencyType][] = [];
         const depKeyToType: [string, DependencyType][] = [
-            ['dependencies', DependencyType.DEPENDENCIES],
-            ['devDependencies', DependencyType.DEV_DEPENDENCIES],
-            ['dynamicDependencies', DependencyType.DYNAMIC],
+            [OH_PKG_DEPENDENCIES, DependencyType.DEPENDENCIES],
+            [OH_PKG_DEV_DEPENDENCIES, DependencyType.DEV_DEPENDENCIES],
+            [OH_PKG_DYNAMIC_DEPENDENCIES, DependencyType.DYNAMIC],
         ];
         for (const [key, depType] of depKeyToType) {
             const deps = ohPkgContent[key];
@@ -477,7 +484,7 @@ export class ModuleManager {
      * @param scopeModulePath - The absolute path of the source module (for relative path resolution).
      * @returns The target ArkModule if resolved, undefined otherwise.
      */
-    private resolveDepModule(srcModuleId: ModuleID, alias: string, depValue: string, scopeModulePath: string): ArkModule | undefined {
+    private resolveDepModule(alias: string, depValue: string, scopeModulePath: string): ArkModule | undefined {
         // 1. Module reference dependency: "@module:Foo"
         if (depValue.startsWith(MODULE_PREFIX)) {
             const refName = depValue.slice(MODULE_PREFIX.length);
@@ -527,7 +534,7 @@ export class ModuleManager {
     private updateModuleNamesFromOhPkg(): void {
         for (const module of this.modulesIterator()) {
             const ohPkgContent = module.readOhPkgContent();
-            const name = ohPkgContent['name'];
+            const name = ohPkgContent.name;
             if (typeof name === 'string') {
                 module.setModuleName(name);
             }

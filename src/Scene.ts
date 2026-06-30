@@ -926,13 +926,19 @@ export class Scene {
         // 5. Iterate topoOrder: load each module then call callback
         for (const moduleId of topoOrder) {
             const module = this.moduleManager.getModule(moduleId);
-            if (!module) continue;
+            if (!module) {
+                continue;
+            }
             // Load module data at configured depth level (idempotent; SDK modules are just marked LOADED)
             this.moduleManager.loadModule(moduleId, config);
             // Skip SDK modules for callback
-            if (module.getModuleType() === ModuleType.SDK) continue;
+            if (module.getModuleType() === ModuleType.SDK) {
+                continue;
+            }
             // If target modules specified, only call callback for target PROJECT modules
-            if (targetPaths && !targetPaths.has(module.getModulePath())) continue;
+            if (targetPaths && !targetPaths.has(module.getModulePath())) {
+                continue;
+            }
             callback(module, this);
         }
     }
