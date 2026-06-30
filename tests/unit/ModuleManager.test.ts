@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import { ModuleManager } from '../../src/frontend/common/ModuleManager';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../src/core/model/ArkModule';
-import { DependencyType } from '../../src/core/graph/ModuleDepGraph';
+import { ModuleDepGraph, DependencyType } from '../../src/core/graph/ModuleDepGraph';
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisConfig';
 import { ArkFile } from '../../src/core/model/ArkFile';
@@ -52,6 +52,22 @@ function makeLoadModuleSceneStub(): Scene {
         getSceneConfig: () => undefined,
         getRealProjectDir: () => '',
     } as unknown as Scene;
+}
+
+/**
+ * Build a ModuleDepGraph with the given dependency edges and inject it into the manager.
+ * All currently-registered modules are added as graph nodes.
+ */
+function injectDepGraph(manager: ModuleManager, edges: Array<[ModuleID, ModuleID]>): ModuleDepGraph {
+    const graph = new ModuleDepGraph(manager.getModuleCanonicalizer());
+    for (const module of manager.modulesIterator()) {
+        graph.addModule(module);
+    }
+    for (const [src, dst] of edges) {
+        graph.addDependencyEdge(src, dst);
+    }
+    (manager as unknown as { depGraph: ModuleDepGraph }).depGraph = graph;
+    return graph;
 }
 
 describe('ModuleManager tests', () => {
@@ -203,8 +219,7 @@ describe('ModuleManager tests', () => {
             const idA = manager.getModuleCanonicalizer().getId(a);
             const idB = manager.getModuleCanonicalizer().getId(b);
             const idC = manager.getModuleCanonicalizer().getId(c);
-            a.addDependency(idB);
-            b.addDependency(idC);
+            injectDepGraph(manager, [[idA, idB], [idB, idC]]);
 
             const closure = manager.computeModuleClosure(new Set(['/project/a']));
             expect(closure.has(idA)).toBe(true);
@@ -225,9 +240,7 @@ describe('ModuleManager tests', () => {
             const idC = manager.getModuleCanonicalizer().getId(c);
             const idD = manager.getModuleCanonicalizer().getId(d);
             const idE = manager.getModuleCanonicalizer().getId(e);
-            a.addDependency(idB);
-            b.addDependency(idC);
-            d.addDependency(idE);
+            injectDepGraph(manager, [[idA, idB], [idB, idC], [idD, idE]]);
 
             const closure = manager.computeModuleClosure(new Set(['/project/a', '/project/d']));
             expect(closure.has(idA)).toBe(true);
@@ -254,7 +267,7 @@ describe('ModuleManager tests', () => {
             const idA = manager.getModuleCanonicalizer().getId(a);
             const idSdk = manager.getModuleCanonicalizer().getId(sdk);
             sdk.setModuleType(ModuleType.SDK);
-            a.addDependency(idSdk);
+            injectDepGraph(manager, [[idA, idSdk]]);
 
             const closure = manager.computeModuleClosure(new Set(['/project/a']));
             expect(closure.has(idA)).toBe(true);
@@ -268,8 +281,7 @@ describe('ModuleManager tests', () => {
             const b = manager.registerModule('/project/b');
             const idA = manager.getModuleCanonicalizer().getId(a);
             const idB = manager.getModuleCanonicalizer().getId(b);
-            a.addDependency(idB);
-            b.addDependency(idA);
+            injectDepGraph(manager, [[idA, idB], [idB, idA]]);
 
             const closure = manager.computeModuleClosure(new Set(['/project/a']));
             expect(closure.has(idA)).toBe(true);
@@ -295,9 +307,10 @@ describe('ModuleManager tests', () => {
             const idB = manager.getModuleCanonicalizer().getId(manager.getModuleByPath('/project/b')!);
             const idC = manager.getModuleCanonicalizer().getId(manager.getModuleByPath('/project/c')!);
             const idD = manager.getModuleCanonicalizer().getId(manager.getModuleByPath('/project/d')!);
-            // topoOrder is populated by analyzeModuleDependencies (a later task); inject it here
-            // directly so the filtering behavior can be verified in isolation.
-            (manager as unknown as { topoOrder: number[] }).topoOrder = [idA, idB, idC, idD];
+            // topoOrder is populated by refineSCCGroups inside analyzeModuleDependencies; inject a
+            // depGraph with a preset topoOrder here so the filtering behavior can be verified in isolation.
+            const graph = injectDepGraph(manager, []);
+            (graph as unknown as { topoOrder: ModuleID[] }).topoOrder = [idA, idB, idC, idD];
 
             const filtered = manager.getFilteredTopoOrder(new Set<ModuleID>([idB, idD]));
             expect(filtered).toEqual([idB, idD]);
@@ -307,7 +320,8 @@ describe('ModuleManager tests', () => {
             const manager = new ModuleManager(STUB_SCENE);
             manager.registerModule('/project/a');
             const idA = manager.getModuleCanonicalizer().getId(manager.getModuleByPath('/project/a')!);
-            (manager as unknown as { topoOrder: number[] }).topoOrder = [idA];
+            const graph = injectDepGraph(manager, []);
+            (graph as unknown as { topoOrder: ModuleID[] }).topoOrder = [idA];
             expect(manager.getFilteredTopoOrder(new Set<ModuleID>())).toEqual([]);
         });
 
@@ -693,26 +707,27 @@ describe('ModuleManager tests', () => {
                 const entryPath = path.resolve(tmpDir, './entry');
                 const entryModule = manager.getModuleByPath(entryPath)!;
                 const entryId = manager.getModuleCanonicalizer().getId(entryModule);
+                const graph = manager.getDepGraph()!;
 
                 // ./lib1 resolves to entry/lib1
                 const lib1Path = path.resolve(tmpDir, './entry/lib1');
                 const lib1Module = manager.getModuleByPath(lib1Path)!;
                 const lib1Id = manager.getModuleCanonicalizer().getId(lib1Module);
-                expect(entryModule.hasDependency(lib1Id)).toBe(true);
+                expect(graph.hasDependencyEdge(entryId, lib1Id)).toBe(true);
                 expect(manager.resolveAlias(entryId, 'lib1')).toBe(lib1Module);
 
                 // ../lib2 resolves to lib2
                 const lib2Path = path.resolve(tmpDir, './lib2');
                 const lib2Module = manager.getModuleByPath(lib2Path)!;
                 const lib2Id = manager.getModuleCanonicalizer().getId(lib2Module);
-                expect(entryModule.hasDependency(lib2Id)).toBe(true);
+                expect(graph.hasDependencyEdge(entryId, lib2Id)).toBe(true);
                 expect(manager.resolveAlias(entryId, 'lib2')).toBe(lib2Module);
 
                 // file:../lib3 resolves to lib3
                 const lib3Path = path.resolve(tmpDir, './lib3');
                 const lib3Module = manager.getModuleByPath(lib3Path)!;
                 const lib3Id = manager.getModuleCanonicalizer().getId(lib3Module);
-                expect(entryModule.hasDependency(lib3Id)).toBe(true);
+                expect(graph.hasDependencyEdge(entryId, lib3Id)).toBe(true);
                 expect(manager.resolveAlias(entryId, 'lib3')).toBe(lib3Module);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -742,14 +757,14 @@ describe('ModuleManager tests', () => {
                 const lodashModule = manager.getModuleByPath(lodashRealPath)!;
                 const lodashId = manager.getModuleCanonicalizer().getId(lodashModule);
 
-                expect(entryModule.hasDependency(lodashId)).toBe(true);
+                expect(manager.getDepGraph()!.hasDependencyEdge(entryId, lodashId)).toBe(true);
                 expect(manager.resolveAlias(entryId, 'lodash')).toBe(lodashModule);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
         });
 
-        it('records unresolvable dependencies as external dependencies', () => {
+        it('records unresolvable dependencies as unresolved dependencies', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unresolvable-'));
             try {
                 setupProject(tmpDir, [
@@ -766,9 +781,9 @@ describe('ModuleManager tests', () => {
 
                 const entryPath = path.resolve(tmpDir, './entry');
                 const entryModule = manager.getModuleByPath(entryPath)!;
-                const externalDeps = entryModule.getExternalDependencies();
-                expect(externalDeps.size).toBe(1);
-                expect(externalDeps.get('@nonexistent/pkg')).toBe('^2.0.0');
+                const unresolvedDeps = entryModule.getUnresolvedDependencies();
+                expect(unresolvedDeps.size).toBe(1);
+                expect(unresolvedDeps.get('@nonexistent/pkg')).toBe('^2.0.0');
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -885,7 +900,7 @@ describe('ModuleManager tests', () => {
                 const lib1Id = manager.getModuleCanonicalizer().getId(lib1Module);
 
                 // @module:@lib1 resolves to the module whose oh-package name is '@lib1'
-                expect(entryModule.hasDependency(lib1Id)).toBe(true);
+                expect(manager.getDepGraph()!.hasDependencyEdge(entryId, lib1Id)).toBe(true);
                 expect(manager.resolveAlias(entryId, 'lib')).toBe(lib1Module);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -927,6 +942,7 @@ describe('ModuleManager tests', () => {
 
             expect(manager.hasTopoOrder()).toBe(true);
             expect(manager.getDepGraph()).toBeDefined();
+            const graph = manager.getDepGraph()!;
 
             // 6 PROJECT modules from build-profile.json5 + 2 OH_MODULES (@ohos/hypium, @ohos/model2)
             expect(manager.getTopoOrder().length).toBe(8);
@@ -937,8 +953,8 @@ describe('ModuleManager tests', () => {
             const idModel1 = manager.getModuleCanonicalizer().getId(model1Module);
             const idModel2 = manager.getModuleCanonicalizer().getId(model2Module);
 
-            expect(model1Module.hasDependency(idModel2)).toBe(true);
-            expect(model2Module.hasDependency(idModel1)).toBe(true);
+            expect(graph.hasDependencyEdge(idModel1, idModel2)).toBe(true);
+            expect(graph.hasDependencyEdge(idModel2, idModel1)).toBe(true);
 
             const sccGroups = manager.getSCCGroups();
             expect(sccGroups.get(idModel1)).toEqual(sccGroups.get(idModel2));
@@ -949,16 +965,17 @@ describe('ModuleManager tests', () => {
             expect(model2Module.getModuleName()).toBe('model2');
 
             const libbaseModule = manager.getModuleByPath(path.resolve(projectDir, './libbase'))!;
+            const idLibbase = manager.getModuleCanonicalizer().getId(libbaseModule);
             expect(libbaseModule.getModuleName()).toBe('@libbase');
 
             // libbase depends on model2 (resolved via "../model2")
-            expect(libbaseModule.hasDependency(idModel2)).toBe(true);
+            expect(graph.hasDependencyEdge(idLibbase, idModel2)).toBe(true);
 
-            // libbase's local deps (./lib1, ./log4js) resolve to unregistered subdirs → external
-            const externalDeps = libbaseModule.getExternalDependencies();
-            expect(externalDeps.size).toBe(2);
-            expect(externalDeps.has('@lib1')).toBe(true);
-            expect(externalDeps.has('@log4js')).toBe(true);
+            // libbase's local deps (./lib1, ./log4js) resolve to unregistered subdirs → unresolved
+            const unresolvedDeps = libbaseModule.getUnresolvedDependencies();
+            expect(unresolvedDeps.size).toBe(2);
+            expect(unresolvedDeps.has('@lib1')).toBe(true);
+            expect(unresolvedDeps.has('@log4js')).toBe(true);
         });
     });
 
@@ -1067,7 +1084,7 @@ describe('ModuleManager tests', () => {
                 const library = manager.registerModule(path.join(tmpDir, 'library'), '@ohos/library');
                 const entryId = manager.getModuleCanonicalizer().getId(entry);
                 const libraryId = manager.getModuleCanonicalizer().getId(library);
-                entry.addDependency(libraryId);
+                injectDepGraph(manager, [[entryId, libraryId]]);
 
                 // Load entry — should recursively load library first
                 manager.loadModule(entryId);
@@ -1091,8 +1108,7 @@ describe('ModuleManager tests', () => {
                 const b = manager.registerModule(path.join(tmpDir, 'b'), '@b');
                 const idA = manager.getModuleCanonicalizer().getId(a);
                 const idB = manager.getModuleCanonicalizer().getId(b);
-                a.addDependency(idB);
-                b.addDependency(idA);
+                injectDepGraph(manager, [[idA, idB], [idB, idA]]);
 
                 manager.loadModule(idA);
 

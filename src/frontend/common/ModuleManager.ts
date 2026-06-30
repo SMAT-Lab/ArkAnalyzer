@@ -55,9 +55,6 @@ export class ModuleManager {
     /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
     private depGraph?: ModuleDepGraph;
 
-    /** Topologically sorted module IDs produced by SCC analysis. */
-    private topoOrder: ModuleID[] = [];
-
     /** SCC groups: ModuleID -> all ModuleIDs in the same SCC. */
     private sccGroups: Map<ModuleID, ModuleID[]> = new Map();
 
@@ -103,7 +100,7 @@ export class ModuleManager {
             return this.moduleCanonicalizer.get(existingId)!;
         }
 
-        const module = new ArkModule(this.scene);
+        const module = new ArkModule(this);
         module.setModulePath(modulePath);
         module.setModuleName(moduleName);
 
@@ -175,7 +172,7 @@ export class ModuleManager {
 
     /** Topologically sorted module IDs (empty before dependency analysis completes). */
     public getTopoOrder(): ModuleID[] {
-        return this.topoOrder;
+        return this.depGraph ? this.depGraph.getTopoOrder() : [];
     }
 
     /** SCC groups map: ModuleID -> all ModuleIDs in the same SCC. */
@@ -380,8 +377,9 @@ export class ModuleManager {
      * Main entry point for module dependency analysis.
      *
      * Reads oh-package.json5 to update module names, builds the dependency graph,
-     * runs SCC detection with post-processing refinement, and extracts the
-     * topological order from the resulting SCC groups.
+     * runs SCC detection with post-processing refinement. The topological order is
+     * populated inside {@link ModuleDepGraph.refineSCCGroups} and accessed via
+     * {@link getTopoOrder}.
      *
      * Idempotent: if dependency analysis has already completed ({@link hasTopoOrder}
      * is true), this method returns immediately.
@@ -396,19 +394,6 @@ export class ModuleManager {
 
         this.sccGroups = this.depGraph!.refineSCCGroups(this.maxSCCGroupSize);
 
-        // Extract topoOrder from sccGroups: iterate unique groups in insertion order
-        // (which follows the SCC topological order — depended-on groups first).
-        this.topoOrder = [];
-        const added = new Set<ModuleID>();
-        for (const groupMembers of new Set(this.sccGroups.values())) {
-            for (const memberId of groupMembers) {
-                if (!added.has(memberId)) {
-                    this.topoOrder.push(memberId);
-                    added.add(memberId);
-                }
-            }
-        }
-
         this.dependenciesAnalyzed = true;
     }
 
@@ -417,8 +402,8 @@ export class ModuleManager {
      *
      * Creates a new {@link ModuleDepGraph} with the shared canonicalizer, adds all
      * registered modules as nodes, then resolves dependencies and adds edges.
-     * Resolved dependencies create graph edges and update ArkModule dependency
-     * tracking; unresolved dependencies are recorded as external dependencies.
+     * Resolved dependencies create graph edges and update the module's alias map;
+     * unresolved dependencies are recorded as unresolved dependencies.
      */
     private buildDependencyGraph(): void {
         this.depGraph = new ModuleDepGraph(this.moduleCanonicalizer);
@@ -439,11 +424,9 @@ export class ModuleManager {
                     const srcId = this.moduleCanonicalizer.getId(module);
                     const dstId = this.moduleCanonicalizer.getId(depModule);
                     this.depGraph.addDependencyEdge(srcId, dstId, depType);
-                    module.addDependency(dstId);
-                    depModule.addDependent(srcId);
                     module.addDependencyAlias(alias, dstId);
                 } else {
-                    module.addExternalDependency(alias, depValue);
+                    module.addUnresolvedDependency(alias, depValue);
                 }
             }
         }
@@ -579,11 +562,13 @@ export class ModuleManager {
 
     /**
      * Compute the transitive closure of module IDs reachable from the given target module paths via
-     * dependency edges (BFS over {@link ArkModule.getDependencyIds}).
+     * dependency edges (BFS over {@link ModuleDepGraph.getSuccModuleIds}).
      *
      * Behavior:
      * 1. Each target path is resolved to a ModuleID via the persistent pathToId map.
-     * 2. BFS: for each module in the closure, its dependencyIds are added to the closure.
+     * 2. BFS: for each module in the closure, its successor dependency IDs (from the dependency
+     *    graph) are added to the closure. When the dependency graph has not been built yet, only
+     *    the target modules themselves are included.
      * 3. Paths not present in pathToId (unregistered) are silently skipped.
      * 4. SDK modules are never included in the closure; they are always handled separately by
      *    buildSdkModules and remain resident in memory throughout analysis.
@@ -615,11 +600,8 @@ export class ModuleManager {
 
         while (queue.length > 0) {
             const currentId = queue.shift()!;
-            const module = this.moduleCanonicalizer.get(currentId);
-            if (!module) {
-                continue;
-            }
-            for (const depId of module.getDependencyIds()) {
+            const succIds = this.depGraph ? this.depGraph.getSuccModuleIds(currentId) : [];
+            for (const depId of succIds) {
                 if (closure.has(depId)) {
                     continue;
                 }
@@ -645,7 +627,8 @@ export class ModuleManager {
      * @returns A new array containing topoOrder entries that are in the closure, preserving order.
      */
     public getFilteredTopoOrder(closure: Set<ModuleID>): ModuleID[] {
-        return this.topoOrder.filter(id => closure.has(id));
+        const topo = this.depGraph ? this.depGraph.getTopoOrder() : [];
+        return topo.filter(id => closure.has(id));
     }
 
     // --- Module loading ---
@@ -681,7 +664,8 @@ export class ModuleManager {
         this.loadingModules.add(moduleId);
         try {
             // Recursively load dependencies first
-            for (const depId of module.getDependencyIds()) {
+            const depIds = this.depGraph ? this.depGraph.getSuccModuleIds(moduleId) : [];
+            for (const depId of depIds) {
                 this.loadModule(depId, config);
             }
 

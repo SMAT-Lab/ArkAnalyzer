@@ -13,335 +13,583 @@
  * limitations under the License.
  */
 
-/**
- * Canonicalizer maps values of type `T` to dense, consecutive integer IDs
- * (starting at 0 and never reused). It auto-selects one of three strategies
- * based on the first registered item:
- *
- * - `objectIdentity`: O(1) lookup by storing the ID in a private Symbol
- *   property on the object. Selected for objects/functions when the default
- *   key extractor is used.
- * - `stringIdentity`: FNV-1a hash-based open addressing table backed by an
- *   `Int32Array`. Selected for strings when the default key extractor is used.
- * - `numberWithEquality`: hash-based open addressing that uses an external
- *   equality comparer. Selected when an equality comparer is provided and the
- *   extracted key is a number.
- *
- * IDs are allocated consecutively from 0 and are never reused. The class does
- * not provide `remove(id)` or `iterator()` methods.
- */
+const MIN_TABLE_CAPACITY = 16;
+const DEFAULT_LOAD_FACTOR = 0.7;
+const MAX_TABLE_CAPACITY = 0x40000000;
 
-/** Active storage strategy of a {@link Canonicalizer}. */
-export type CanonicalizerStrategy = 'uninitialized' | 'objectIdentity' | 'numberWithEquality' | 'stringIdentity';
+type CanonicalizerStrategy = 'uninitialized' | 'objectIdentity' | 'numberWithEquality' | 'stringIdentity';
 
-/** Snapshot of the internal state of a {@link Canonicalizer}. */
-export interface CanonicalizerStats {
-    /** Currently active strategy. */
+interface CanonicalizerStats {
     strategy: CanonicalizerStrategy;
-    /** Number of registered items. */
     size: number;
-    /** Number of hash buckets (0 for `objectIdentity`). */
     bucketCount: number;
-    /** Number of probe collisions observed during lookups. */
     collisionCount: number;
+    maxChainLength: number;
+    unsupportedKeyFailures: number;
 }
 
-export class Canonicalizer<T> {
-    private static readonly LOAD_FACTOR = 0.75;
-    private static readonly INITIAL_BUCKET_COUNT = 16;
+function nextPowerOfTwoAtLeast(value: number): number {
+    let capacity = MIN_TABLE_CAPACITY;
+    while (capacity < value) {
+        capacity *= 2;
+        if (capacity > MAX_TABLE_CAPACITY) {
+            throw new Error(`Canonicalizer table capacity ${value} exceeds supported capacity`);
+        }
+    }
+    return capacity;
+}
 
-    private readonly keyExtractor: (item: T) => unknown;
-    private readonly equalityComparer: ((a: T, b: T) => boolean) | undefined;
-    private readonly usingDefaultKeyExtractor: boolean;
-    private readonly idSymbol: symbol;
+function mixNumber(value: number): number {
+    let hash = Math.imul(value ^ 0x9e3779b9, 0x85ebca6b);
+    hash ^= hash >>> 16;
+    hash = Math.imul(hash, 0x7feb352d);
+    hash ^= hash >>> 15;
+    return hash;
+}
+
+function hashString(value: string): number {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < value.length; i++) {
+        hash ^= value.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    hash ^= hash >>> 16;
+    return hash;
+}
+
+/**
+ * Utility class to map objects to dense integer IDs.
+ * Used for performance optimization to replace object-based maps/sets with array-based structures.
+ *
+ * @template T - The type of items to canonicalize
+ */
+export class Canonicalizer<T> {
+    // Array from integer ID to Item
+    private list: T[] = [];
+
+    private keyExtractor: (item: T) => unknown;
+    private equalityComparer?: (a: T, b: T) => boolean;
+    private readonly usesDefaultKeyExtractor: boolean;
 
     private strategy: CanonicalizerStrategy = 'uninitialized';
-    private list: T[] = [];
-    private table: Int32Array | null = null;
-    private tableHash: Int32Array | null = null;
+    private objectIdSymbol: symbol = Symbol('HomeFlowCanonicalizerId');
+
+    private numberKeys: Int32Array = new Int32Array(0);
+    private numberHeads: Int32Array = new Int32Array(0);
+    private numberOccupied: Uint8Array = new Uint8Array(0);
+    private stringHashes: Int32Array = new Int32Array(0);
+    private stringHeads: Int32Array = new Int32Array(0);
+    private stringOccupied: Uint8Array = new Uint8Array(0);
+    private nextById: Int32Array = new Int32Array(0);
+
     private bucketCount: number = 0;
+    private threshold: number = 0;
+    private mask: number = 0;
     private collisionCount: number = 0;
+    private maxChainLength: number = 0;
+    private unsupportedKeyFailures: number = 0;
+
+    private scratchFoundStored: T | undefined = undefined;
 
     /**
-     * @param keyExtractor - Extracts the comparison key from an item. Defaults to the identity function.
-     * @param equalityComparer - Optional equality comparer used by the `numberWithEquality` strategy.
+     * @param keyExtractor - Function to extract a unique key from an item.
+     *                       Defaults to identity (using the item itself as key).
      */
-    constructor(
-        keyExtractor?: (item: T) => unknown,
-        equalityComparer?: (a: T, b: T) => boolean
-    ) {
-        this.usingDefaultKeyExtractor = keyExtractor === undefined;
-        this.keyExtractor = keyExtractor ?? ((item: T) => item);
+    constructor( keyExtractor?: (item: T) => unknown,
+                 equalityComparer?: (a: T, b: T) => boolean) {
+        this.usesDefaultKeyExtractor = keyExtractor === undefined;
+        this.keyExtractor = keyExtractor ?? ((i) => i);
         this.equalityComparer = equalityComparer;
-        this.idSymbol = Symbol('canonicalizerId');
     }
 
     /**
-     * Get the integer ID for `item`, allocating a new consecutive ID if it has
-     * not been registered yet. IDs start at 0, increment consecutively, and are
-     * never reused.
+     * Get the unique integer ID for an item.
+     * If the item (or its key) has been seen before, returns the existing ID.
+     * Otherwise, assigns a new ID.
      */
     public getId(item: T): number {
-        if (this.strategy === 'uninitialized') {
-            this.selectStrategy(this.keyExtractor(item));
+        const key = this.keyExtractor(item);
+        this.ensureStrategy(key, item);
+
+        if (this.strategy === 'objectIdentity') {
+            return this.getObjectIdentityId(item, key);
         }
-        switch (this.strategy) {
-            case 'objectIdentity':
-                return this.getIdObjectIdentity(item);
-            case 'stringIdentity':
-                return this.getIdStringIdentity(item);
-            case 'numberWithEquality':
-                return this.getIdNumberWithEquality(item);
-            default:
-                throw new Error(`Canonicalizer.getId: strategy '${this.strategy}' is not supported`);
+        if (this.strategy === 'numberWithEquality') {
+            return this.getNumberKeyId(key as number, item);
+        }
+        if (this.strategy === 'stringIdentity') {
+            return this.getStringKeyId(key as string, item);
+        }
+
+        return this.failUnsupportedKey(key);
+    }
+
+    private hasDuplicateKeyResolver(item: T): item is T & { preferCanonicalRepresentative(existing: T): T } {
+        return (
+            item !== null &&
+            item !== undefined &&
+            typeof (item as { preferCanonicalRepresentative?: unknown })
+                .preferCanonicalRepresentative === 'function'
+        );
+    }
+
+    private maybeUpdateRepresentative(id: number, incoming: T, stored: T): void {
+        if (this.hasDuplicateKeyResolver(incoming)) {
+            this.list[id] = incoming.preferCanonicalRepresentative(stored);
         }
     }
 
     /**
-     * Get the integer ID for `item` only if it has already been registered.
-     * Returns -1 otherwise. Never allocates a new ID.
+     * Get the integer ID of an item if it already exists.
+     * Returns -1 if the item has not been canonicalized.
      */
     public getExistingId(item: T): number {
-        if (this.strategy === 'uninitialized') {
-            return -1;
+        const key = this.keyExtractor(item);
+        this.ensureStrategy(key, item);
+
+        if (this.strategy === 'objectIdentity') {
+            return this.getExistingObjectIdentityId(item, key);
         }
-        switch (this.strategy) {
-            case 'objectIdentity':
-                return this.getExistingIdObjectIdentity(item);
-            case 'stringIdentity':
-                return this.getExistingIdStringIdentity(item);
-            case 'numberWithEquality':
-                return this.getExistingIdNumberWithEquality(item);
-            default:
-                return -1;
+        if (this.strategy === 'numberWithEquality') {
+            return this.getExistingNumberKeyId(key as number, item);
         }
+        if (this.strategy === 'stringIdentity') {
+            return this.getExistingStringKeyId(key as string, item);
+        }
+
+        return this.failUnsupportedKey(key);
     }
 
     /**
-     * Reverse lookup: return the item registered with `id`, or `undefined` when
-     * `id` is out of bounds.
+     * Get the item associated with an integer ID.
      */
     public get(id: number): T | undefined {
-        if (id < 0 || id >= this.list.length) {
-            return undefined;
-        }
         return this.list[id];
     }
 
-    /** Number of items currently registered. */
+    /**
+     * Get the total number of unique items seen so far.
+     */
     public size(): number {
         return this.list.length;
     }
 
-    /** Snapshot of the internal state. */
     public getStats(): CanonicalizerStats {
         return {
             strategy: this.strategy,
             size: this.list.length,
-            bucketCount: this.strategy === 'objectIdentity' ? 0 : this.bucketCount,
+            bucketCount: this.bucketCount,
             collisionCount: this.collisionCount,
+            maxChainLength: this.maxChainLength,
+            unsupportedKeyFailures: this.unsupportedKeyFailures,
         };
     }
 
     /**
-     * Clear all mappings. For `objectIdentity`, the Symbol markers are removed
-     * from the registered objects. After clearing the strategy resets to
-     * `uninitialized` so the next `getId` re-selects a strategy.
+     * Clear all mappings.
      */
     public clear(): void {
         if (this.strategy === 'objectIdentity') {
-            for (const obj of this.list) {
-                if (obj !== null && obj !== undefined && Object.isExtensible(obj)) {
-                    delete (obj as unknown as Record<symbol, unknown>)[this.idSymbol];
+            for (const item of this.list) {
+                const candidate = item as unknown;
+                if ((typeof candidate === 'object' && candidate !== null) || typeof candidate === 'function') {
+                    delete (candidate as { [key: symbol]: number | undefined })[this.objectIdSymbol];
                 }
             }
         }
         this.list = [];
-        this.table = null;
-        this.tableHash = null;
-        this.bucketCount = 0;
-        this.collisionCount = 0;
         this.strategy = 'uninitialized';
+        this.objectIdSymbol = Symbol('HomeFlowCanonicalizerId');
+        this.numberKeys = new Int32Array(0);
+        this.numberHeads = new Int32Array(0);
+        this.numberOccupied = new Uint8Array(0);
+        this.stringHashes = new Int32Array(0);
+        this.stringHeads = new Int32Array(0);
+        this.stringOccupied = new Uint8Array(0);
+        this.nextById = new Int32Array(0);
+        this.bucketCount = 0;
+        this.threshold = 0;
+        this.mask = 0;
+        this.collisionCount = 0;
+        this.maxChainLength = 0;
+        this.unsupportedKeyFailures = 0;
     }
 
-    // ------------------------------------------------------------------
-    // Strategy selection
-    // ------------------------------------------------------------------
-
-    private selectStrategy(key: unknown): void {
-        if (this.equalityComparer !== undefined && typeof key === 'number') {
-            this.strategy = 'numberWithEquality';
-            this.initHashTable();
+    private ensureStrategy(key: unknown, item: T): void {
+        if (this.strategy !== 'uninitialized') {
             return;
         }
-        if (this.usingDefaultKeyExtractor) {
-            if ((typeof key === 'object' && key !== null) || typeof key === 'function') {
-                this.strategy = 'objectIdentity';
-                return;
-            }
-            if (typeof key === 'string') {
-                this.strategy = 'stringIdentity';
-                this.initHashTable();
-                return;
-            }
+
+        if (!this.equalityComparer && this.usesDefaultKeyExtractor && this.isObjectLike(key) && key === item) {
+            this.strategy = 'objectIdentity';
+            return;
         }
-        throw new Error(
-            `Canonicalizer: cannot select a strategy for key of type '${typeof key}'` +
-                ` (defaultKeyExtractor=${this.usingDefaultKeyExtractor},` +
-                ` hasEqualityComparer=${this.equalityComparer !== undefined})`,
-        );
+
+        if (!this.equalityComparer && this.usesDefaultKeyExtractor && typeof key === 'string') {
+            this.strategy = 'stringIdentity';
+            this.initializeStringTable();
+            return;
+        }
+
+        if (this.equalityComparer && typeof key === 'number' && Number.isInteger(key)) {
+            this.strategy = 'numberWithEquality';
+            this.initializeNumberTable();
+            return;
+        }
+
+        this.failUnsupportedKey(key);
     }
 
-    private initHashTable(): void {
-        this.bucketCount = Canonicalizer.INITIAL_BUCKET_COUNT;
-        this.table = new Int32Array(this.bucketCount).fill(-1);
-        this.tableHash = new Int32Array(this.bucketCount);
-    }
+    private getObjectIdentityId(item: T, key: unknown): number {
+        if (!this.isObjectLike(key) || key !== item) {
+            return this.failUnsupportedKey(key);
+        }
 
-    // ------------------------------------------------------------------
-    // objectIdentity strategy
-    // ------------------------------------------------------------------
-
-    private getIdObjectIdentity(item: T): number {
-        const holder = item as unknown as Record<symbol, unknown>;
-        const existing = holder[this.idSymbol];
-        if (typeof existing === 'number') {
+        const objectKey = key as { [key: symbol]: number | undefined };
+        const existing = objectKey[this.objectIdSymbol];
+        if (existing !== undefined) {
             return existing;
         }
-        if (Object.isFrozen(item)) {
-            throw new Error('Canonicalizer.getId: cannot assign an id to a frozen object');
+
+        if (!Object.isExtensible(key)) {
+            throw new Error('Canonicalizer objectIdentity strategy requires extensible objects');
         }
+
         const id = this.list.length;
-        holder[this.idSymbol] = id;
+        objectKey[this.objectIdSymbol] = id;
         this.list.push(item);
         return id;
     }
 
-    private getExistingIdObjectIdentity(item: T): number {
-        const existing = (item as unknown as Record<symbol, unknown>)[this.idSymbol];
-        return typeof existing === 'number' ? existing : -1;
-    }
-
-    // ------------------------------------------------------------------
-    // stringIdentity strategy
-    // ------------------------------------------------------------------
-
-    private getIdStringIdentity(item: T): number {
-        const hash = this.fnv1aString(item as unknown as string);
-        const { id, slot } = this.findMatchOrSlot(hash, cid => this.list[cid] === item);
-        if (id >= 0) {
-            return id;
+    private getExistingObjectIdentityId(item: T, key: unknown): number {
+        if (!this.isObjectLike(key) || key !== item) {
+            return this.failUnsupportedKey(key);
         }
-        return this.placeNewItem(item, hash, slot);
+        const existing = (key as { [key: symbol]: number | undefined })[this.objectIdSymbol];
+        return existing === undefined ? -1 : existing;
     }
 
-    private getExistingIdStringIdentity(item: T): number {
-        const hash = this.fnv1aString(item as unknown as string);
-        return this.findMatchOrSlot(hash, cid => this.list[cid] === item).id;
-    }
-
-    // ------------------------------------------------------------------
-    // numberWithEquality strategy
-    // ------------------------------------------------------------------
-
-    private getIdNumberWithEquality(item: T): number {
-        const key = this.keyExtractor(item) as number;
-        const hash = this.hashNumber(key);
-        const cmp = this.equalityComparer!;
-        const { id, slot } = this.findMatchOrSlot(hash, cid => cmp(this.list[cid], item));
-        if (id >= 0) {
-            return id;
+    private getNumberKeyId(key: number, item: T): number {
+        if (!Number.isInteger(key)) {
+            return this.failUnsupportedKey(key);
         }
-        return this.placeNewItem(item, hash, slot);
-    }
-
-    private getExistingIdNumberWithEquality(item: T): number {
-        const key = this.keyExtractor(item) as number;
-        const hash = this.hashNumber(key);
-        const cmp = this.equalityComparer!;
-        return this.findMatchOrSlot(hash, cid => cmp(this.list[cid], item)).id;
-    }
-
-    // ------------------------------------------------------------------
-    // Hash table helpers (stringIdentity + numberWithEquality)
-    // ------------------------------------------------------------------
-
-    /**
-     * Probe the open-addressing table. Returns `{ id, slot }` where `id >= 0`
-     * means a matching entry was found (slot is -1) and `id === -1` means no
-     * match was found and `slot` points at the empty slot for insertion.
-     */
-    private findMatchOrSlot(hash: number, matches: (candidateId: number) => boolean): { id: number; slot: number } {
-        const table = this.table!;
-        const tableHash = this.tableHash!;
-        const mask = this.bucketCount - 1;
-        let slot = hash & mask;
-        while (table[slot] !== -1) {
-            if (tableHash[slot] === hash && matches(table[slot])) {
-                return { id: table[slot], slot: -1 };
+        const slot = this.findNumberSlot(key);
+        if (this.numberOccupied[slot] !== 0) {
+            let chainLength = 0;
+            let id = this.numberHeads[slot];
+            while (id !== -1) {
+                chainLength++;
+                const stored = this.list[id]!;
+                if (this.equalityComparer!(item, stored)) {
+                    this.scratchFoundStored = stored;
+                    this.maybeUpdateRepresentative(id, item, stored);
+                    this.updateMaxChainLength(chainLength);
+                    return id;
+                }
+                id = this.nextById[id];
             }
             this.collisionCount++;
-            slot = (slot + 1) & mask;
+            this.updateMaxChainLength(chainLength + 1);
+            return this.appendNumberId(slot, key, item);
         }
-        return { id: -1, slot };
+
+        return this.appendNumberBucket(slot, key, item);
     }
 
-    private placeNewItem(item: T, hash: number, slot: number): number {
+    private getExistingNumberKeyId(key: number, item: T): number {
+        if (!Number.isInteger(key)) {
+            return this.failUnsupportedKey(key);
+        }
+        const slot = this.findExistingNumberSlot(key);
+        if (slot < 0) {
+            return -1;
+        }
+
+        let id = this.numberHeads[slot];
+        while (id !== -1) {
+            if (this.equalityComparer!(item, this.list[id]!)) {
+                return id;
+            }
+            id = this.nextById[id];
+        }
+        return -1;
+    }
+
+    private getStringKeyId(key: string, item: T): number {
+        const hash = hashString(key);
+        const slot = this.findStringSlot(hash, key);
+        if (this.stringOccupied[slot] !== 0) {
+            return this.findStringIdOrAppend(slot, key, item);
+        }
+        return this.appendStringBucket(slot, hash, item);
+    }
+
+    private getExistingStringKeyId(key: string, item: T): number {
+        if (!this.usesDefaultKeyExtractor || item !== key as unknown as T) {
+            return this.failUnsupportedKey(key);
+        }
+
+        const hash = hashString(key);
+        const slot = this.findExistingStringSlot(hash, key);
+        if (slot < 0) {
+            return -1;
+        }
+
+        let id = this.stringHeads[slot];
+        while (id !== -1) {
+            if (this.list[id] === key as unknown as T) {
+                return id;
+            }
+            id = this.nextById[id];
+        }
+        return -1;
+    }
+
+    private findStringIdOrAppend(slot: number, key: string, item: T): number {
+        if (!this.usesDefaultKeyExtractor || item !== key as unknown as T) {
+            return this.failUnsupportedKey(key);
+        }
+
+        let chainLength = 0;
+        let id = this.stringHeads[slot];
+        while (id !== -1) {
+            chainLength++;
+            if (this.list[id] === key as unknown as T) {
+                this.updateMaxChainLength(chainLength);
+                return id;
+            }
+            id = this.nextById[id];
+        }
+        this.collisionCount++;
+        this.updateMaxChainLength(chainLength + 1);
+        return this.appendStringId(slot, item);
+    }
+
+    private appendNumberBucket(slot: number, key: number, item: T): number {
+        this.ensureBucketCapacityForInsert('numberWithEquality');
+        const insertSlot = this.findNumberSlot(key);
         const id = this.list.length;
+        this.ensureNextCapacity(id + 1);
+        this.numberKeys[insertSlot] = key | 0;
+        this.numberHeads[insertSlot] = id;
+        this.numberOccupied[insertSlot] = 1;
+        this.nextById[id] = -1;
+        this.bucketCount++;
+        this.updateMaxChainLength(1);
         this.list.push(item);
-        const table = this.table!;
-        const tableHash = this.tableHash!;
-        table[slot] = id;
-        tableHash[slot] = hash;
-        this.maybeResize();
         return id;
     }
 
-    private maybeResize(): void {
-        if (this.list.length / this.bucketCount < Canonicalizer.LOAD_FACTOR) {
+    private appendNumberId(slot: number, key: number, item: T): number {
+        const id = this.list.length;
+        this.ensureNextCapacity(id + 1);
+        this.nextById[id] = this.numberHeads[slot];
+        this.numberHeads[slot] = id;
+        this.list.push(item);
+        return id;
+    }
+
+    private appendStringBucket(slot: number, hash: number, item: T): number {
+        this.ensureBucketCapacityForInsert('stringIdentity');
+        const insertSlot = this.findStringSlot(hash, item as unknown as string);
+        const id = this.list.length;
+        this.ensureNextCapacity(id + 1);
+        this.stringHashes[insertSlot] = hash;
+        this.stringHeads[insertSlot] = id;
+        this.stringOccupied[insertSlot] = 1;
+        this.nextById[id] = -1;
+        this.bucketCount++;
+        this.updateMaxChainLength(1);
+        this.list.push(item);
+        return id;
+    }
+
+    private appendStringId(slot: number, item: T): number {
+        const id = this.list.length;
+        this.ensureNextCapacity(id + 1);
+        this.nextById[id] = this.stringHeads[slot];
+        this.stringHeads[slot] = id;
+        this.list.push(item);
+        return id;
+    }
+
+    private initializeNumberTable(expectedEntries: number = 1024): void {
+        const capacity = nextPowerOfTwoAtLeast(Math.ceil(expectedEntries / DEFAULT_LOAD_FACTOR));
+        this.numberKeys = new Int32Array(capacity);
+        this.numberHeads = new Int32Array(capacity).fill(-1);
+        this.numberOccupied = new Uint8Array(capacity);
+        this.nextById = new Int32Array(Math.max(16, expectedEntries)).fill(-1);
+        this.mask = capacity - 1;
+        this.threshold = Math.max(1, Math.floor(capacity * DEFAULT_LOAD_FACTOR));
+    }
+
+    private initializeStringTable(expectedEntries: number = 1024): void {
+        const capacity = nextPowerOfTwoAtLeast(Math.ceil(expectedEntries / DEFAULT_LOAD_FACTOR));
+        this.stringHashes = new Int32Array(capacity);
+        this.stringHeads = new Int32Array(capacity).fill(-1);
+        this.stringOccupied = new Uint8Array(capacity);
+        this.nextById = new Int32Array(Math.max(16, expectedEntries)).fill(-1);
+        this.mask = capacity - 1;
+        this.threshold = Math.max(1, Math.floor(capacity * DEFAULT_LOAD_FACTOR));
+    }
+
+    private ensureBucketCapacityForInsert(strategy: 'numberWithEquality' | 'stringIdentity'): void {
+        if (this.bucketCount + 1 <= this.threshold) {
             return;
         }
-        this.bucketCount *= 2;
-        const oldTable = this.table!;
-        const oldHash = this.tableHash!;
-        const newTable = new Int32Array(this.bucketCount).fill(-1);
-        const newHash = new Int32Array(this.bucketCount);
-        const mask = this.bucketCount - 1;
-        for (let i = 0; i < oldTable.length; i++) {
-            const id = oldTable[i];
-            if (id === -1) {
-                continue;
-            }
-            const h = oldHash[i];
-            let slot = h & mask;
-            while (newTable[slot] !== -1) {
-                slot = (slot + 1) & mask;
-            }
-            newTable[slot] = id;
-            newHash[slot] = h;
+
+        if (strategy === 'numberWithEquality') {
+            this.rehashNumberTable(this.numberKeys.length * 2);
+        } else {
+            this.rehashStringTable(this.stringHashes.length * 2);
         }
-        this.table = newTable;
-        this.tableHash = newHash;
     }
 
-    // ------------------------------------------------------------------
-    // Hash functions
-    // ------------------------------------------------------------------
-
-    /** FNV-1a 32-bit hash for strings. */
-    private fnv1aString(s: string): number {
-        let hash = 0x811c9dc5;
-        for (let i = 0; i < s.length; i++) {
-            hash ^= s.charCodeAt(i);
-            hash = Math.imul(hash, 0x01000193);
+    private ensureNextCapacity(required: number): void {
+        if (required <= this.nextById.length) {
+            return;
         }
-        return hash | 0;
+        let newCapacity = this.nextById.length === 0 ? 16 : this.nextById.length;
+        while (newCapacity < required) {
+            newCapacity *= 2;
+        }
+        const next = new Int32Array(newCapacity).fill(-1);
+        next.set(this.nextById);
+        this.nextById = next;
     }
 
-    /** 32-bit mixing hash for number keys. NaN and non-integers map to 0. */
-    private hashNumber(n: number): number {
-        let h = Math.imul(n | 0, 0x9e3779b1);
-        h ^= h >>> 15;
-        return h | 0;
+    private findNumberSlot(key: number): number {
+        let slot = mixNumber(key | 0) & this.mask;
+        while (this.numberOccupied[slot] !== 0 && this.numberKeys[slot] !== (key | 0)) {
+            slot = (slot + 1) & this.mask;
+        }
+        return slot;
+    }
+
+    private findExistingNumberSlot(key: number): number {
+        let slot = mixNumber(key | 0) & this.mask;
+        while (this.numberOccupied[slot] !== 0) {
+            if (this.numberKeys[slot] === (key | 0)) {
+                return slot;
+            }
+            slot = (slot + 1) & this.mask;
+        }
+        return -1;
+    }
+
+    private findStringSlot(hash: number, key: string): number {
+        let slot = mixNumber(hash) & this.mask;
+        while (this.stringOccupied[slot] !== 0) {
+            if (this.stringHashes[slot] === hash && this.stringBucketContainsKey(slot, key)) {
+                return slot;
+            }
+            slot = (slot + 1) & this.mask;
+        }
+        return slot;
+    }
+
+    private findExistingStringSlot(hash: number, key: string): number {
+        let slot = mixNumber(hash) & this.mask;
+        while (this.stringOccupied[slot] !== 0) {
+            if (this.stringHashes[slot] === hash && this.stringBucketContainsKey(slot, key)) {
+                return slot;
+            }
+            slot = (slot + 1) & this.mask;
+        }
+        return -1;
+    }
+
+    private stringBucketContainsKey(slot: number, key: string): boolean {
+        let id = this.stringHeads[slot];
+        while (id !== -1) {
+            if (this.list[id] === key as unknown as T) {
+                return true;
+            }
+            id = this.nextById[id];
+        }
+        return false;
+    }
+
+    private rehashNumberTable(newCapacity: number): void {
+        this.initializeNumberTableWithCapacity(newCapacity);
+        const items = this.list;
+        this.list = [];
+        for (const item of items) {
+            const key = this.keyExtractor(item) as number;
+            const slot = this.findNumberSlot(key);
+            if (this.numberOccupied[slot] === 0) {
+                this.appendNumberBucket(slot, key, item);
+            } else {
+                this.appendNumberId(slot, key, item);
+            }
+        }
+    }
+
+    private rehashStringTable(newCapacity: number): void {
+        this.initializeStringTableWithCapacity(newCapacity);
+        const items = this.list;
+        this.list = [];
+        for (const item of items) {
+            const key = this.keyExtractor(item) as string;
+            const hash = hashString(key);
+            const slot = this.findStringSlot(hash, key);
+            if (this.stringOccupied[slot] === 0) {
+                this.appendStringBucket(slot, hash, item);
+            } else {
+                this.appendStringId(slot, item);
+            }
+        }
+    }
+
+    private initializeNumberTableWithCapacity(capacity: number): void {
+        if (capacity > MAX_TABLE_CAPACITY) {
+            throw new Error(`Canonicalizer number table capacity ${capacity} exceeds supported capacity`);
+        }
+        this.numberKeys = new Int32Array(capacity);
+        this.numberHeads = new Int32Array(capacity).fill(-1);
+        this.numberOccupied = new Uint8Array(capacity);
+        this.nextById = new Int32Array(Math.max(16, this.list.length * 2)).fill(-1);
+        this.mask = capacity - 1;
+        this.threshold = Math.max(1, Math.floor(capacity * DEFAULT_LOAD_FACTOR));
+        this.bucketCount = 0;
+    }
+
+    private initializeStringTableWithCapacity(capacity: number): void {
+        if (capacity > MAX_TABLE_CAPACITY) {
+            throw new Error(`Canonicalizer string table capacity ${capacity} exceeds supported capacity`);
+        }
+        this.stringHashes = new Int32Array(capacity);
+        this.stringHeads = new Int32Array(capacity).fill(-1);
+        this.stringOccupied = new Uint8Array(capacity);
+        this.nextById = new Int32Array(Math.max(16, this.list.length * 2)).fill(-1);
+        this.mask = capacity - 1;
+        this.threshold = Math.max(1, Math.floor(capacity * DEFAULT_LOAD_FACTOR));
+        this.bucketCount = 0;
+    }
+
+    private updateMaxChainLength(length: number): void {
+        if (length > this.maxChainLength) {
+            this.maxChainLength = length;
+        }
+    }
+
+    private isObjectLike(value: unknown): boolean {
+        return (typeof value === 'object' && value !== null) || typeof value === 'function';
+    }
+
+    private failUnsupportedKey(key: unknown): never {
+        this.unsupportedKeyFailures++;
+        const keyType = key === null ? 'null' : typeof key;
+        throw new Error(`Canonicalizer does not support key type '${keyType}' without an explicit optimized strategy`);
+    }
+
+    /**
+     * Returns the stored item that was found during the last successful
+     * {@link getNumberKeyId} lookup, or `undefined` if no such lookup has
+     * occurred. This is a scratch field carried over from the homeflow
+     * implementation.
+     */
+    public getScratchFoundStored(): T | undefined {
+        return this.scratchFoundStored;
     }
 }

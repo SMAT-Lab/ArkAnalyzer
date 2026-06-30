@@ -82,6 +82,7 @@ export { ArkFile } from './core/model/ArkFile';
 export { ArkModule, ModuleLoadState, ModuleType, ModuleID } from './core/model/ArkModule';
 export { ModuleDepthLevel } from './frontend/common/ModuleDepth';
 export { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
+export { ModuleManager } from './frontend/common/ModuleManager';
 export { ArkNamespace } from './core/model/ArkNamespace';
 export { ArkClass } from './core/model/ArkClass';
 export { ArkMethod } from './core/model/ArkMethod';

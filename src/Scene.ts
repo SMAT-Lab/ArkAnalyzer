@@ -876,6 +876,14 @@ export class Scene {
     }
 
     /**
+     * Returns the {@link ModuleManager} embedded in this scene, responsible for module
+     * lifecycle, dependency graph, and topological sort.
+     */
+    public getModuleManager(): ModuleManager {
+        return this.moduleManager;
+    }
+
+    /**
      * Perform module-level analysis by iterating modules in topological order and invoking
      * the callback for each module.
      *

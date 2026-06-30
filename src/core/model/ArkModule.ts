@@ -15,10 +15,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { SparseBitVector } from '../../utils/SparseBitVector';
 import { fetchDependenciesFromFile } from '../../utils/json5parser';
 import type { ArkFile } from './ArkFile';
-import type { ModuleScene, Scene } from '../../Scene';
+import type { ModuleManager } from '../../frontend/common/ModuleManager';
 
 /**
  * Numeric identifier for an {@link ArkModule}, allocated by the module Canonicalizer.
@@ -77,10 +76,6 @@ export class ArkModule {
 
     /** key: {@link FileSignature.toMapKey} */
     private filesMap: Map<string, ArkFile> = new Map();
-    /** IDs of modules this module directly depends on. */
-    private dependencyIds: SparseBitVector = new SparseBitVector();
-    /** IDs of modules that depend on this module. */
-    private dependentIds: SparseBitVector = new SparseBitVector();
 
     /**
      * Alias-to-id mapping for dependencies, defined at the use site.
@@ -90,10 +85,10 @@ export class ArkModule {
     private dependencyAliasToId: Map<string, ModuleID> = new Map();
 
     /**
-     * oh_modules external dependencies (not participating in inter-module topological sort).
+     * Unresolved dependencies (not participating in inter-module topological sort).
      * key: alias, value: version or path.
      */
-    private externalDependencies: Map<string, string> = new Map();
+    private unresolvedDependencies: Map<string, string> = new Map();
 
     /**
      * Bit-field encoding loadState (bits 0-1) and moduleType (bits 2-3).
@@ -101,11 +96,11 @@ export class ArkModule {
      */
     private tags: number = 0;
 
-    /** Back reference to the owning scene. */
-    private scene: Scene;
+    /** Back reference to the owning ModuleManager. */
+    private moduleManager: ModuleManager;
 
-    constructor(scene: Scene) {
-        this.scene = scene;
+    constructor(moduleManager: ModuleManager) {
+        this.moduleManager = moduleManager;
     }
 
     // --- Bit-field helpers (modeled after ArkBaseModel.setTagValue/getTagValue) ---
@@ -156,8 +151,54 @@ export class ArkModule {
         this.setTagValue(MODULE_TYPE_MASK, MODULE_TYPE_SHIFT, type);
     }
 
-    public getScene(): Scene {
-        return this.scene;
+    public getModuleManager(): ModuleManager {
+        return this.moduleManager;
+    }
+
+    // --- Dependency queries ---
+
+    /**
+     * Returns the list of modules this module directly depends on (successor dependencies).
+     * Reads from the module dependency graph maintained by the ModuleManager.
+     * Returns an empty array when the dependency graph has not been built yet.
+     */
+    public getDependencies(): ArkModule[] {
+        const depGraph = this.moduleManager.getDepGraph();
+        if (!depGraph) {
+            return [];
+        }
+        const moduleId = this.moduleManager.getModuleCanonicalizer().getId(this);
+        const succIds = depGraph.getSuccModuleIds(moduleId);
+        const result: ArkModule[] = [];
+        for (const succId of succIds) {
+            const mod = this.moduleManager.getModule(succId);
+            if (mod) {
+                result.push(mod);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns the list of modules that directly depend on this module (predecessor dependents).
+     * Reads from the module dependency graph maintained by the ModuleManager.
+     * Returns an empty array when the dependency graph has not been built yet.
+     */
+    public getDependents(): ArkModule[] {
+        const depGraph = this.moduleManager.getDepGraph();
+        if (!depGraph) {
+            return [];
+        }
+        const moduleId = this.moduleManager.getModuleCanonicalizer().getId(this);
+        const predIds = depGraph.getPredModuleIds(moduleId);
+        const result: ArkModule[] = [];
+        for (const predId of predIds) {
+            const mod = this.moduleManager.getModule(predId);
+            if (mod) {
+                result.push(mod);
+            }
+        }
+        return result;
     }
 
     // --- Dependency management ---
@@ -182,38 +223,14 @@ export class ArkModule {
         return this.dependencyAliasToId;
     }
 
-    public addDependency(depId: ModuleID): void {
-        this.dependencyIds.set(depId);
+    // --- Unresolved dependencies ---
+
+    public addUnresolvedDependency(alias: string, value: string): void {
+        this.unresolvedDependencies.set(alias, value);
     }
 
-    public hasDependency(depId: ModuleID): boolean {
-        return this.dependencyIds.test(depId);
-    }
-
-    public getDependencyIds(): SparseBitVector {
-        return this.dependencyIds;
-    }
-
-    public addDependent(depId: ModuleID): void {
-        this.dependentIds.set(depId);
-    }
-
-    public hasDependent(depId: ModuleID): boolean {
-        return this.dependentIds.test(depId);
-    }
-
-    public getDependentIds(): SparseBitVector {
-        return this.dependentIds;
-    }
-
-    // --- External dependencies ---
-
-    public addExternalDependency(alias: string, value: string): void {
-        this.externalDependencies.set(alias, value);
-    }
-
-    public getExternalDependencies(): Map<string, string> {
-        return this.externalDependencies;
+    public getUnresolvedDependencies(): Map<string, string> {
+        return this.unresolvedDependencies;
     }
 
     // --- File management ---
@@ -246,24 +263,5 @@ export class ArkModule {
             return {};
         }
         return fetchDependenciesFromFile(ohPkgPath);
-    }
-
-    // --- Compatibility ---
-
-    /**
-     * Construct an ArkModule from an existing ModuleScene (for migration).
-     * The ID is allocated by ModuleManager.registerModule via the Canonicalizer;
-     * fromModuleScene only migrates data from the existing ModuleScene.
-     * The alias mapping (dependencyAliasToId) is intentionally NOT migrated here;
-     * it is filled later by buildDependencyGraph based on oh-package.json5 dependencies.
-     */
-    public static fromModuleScene(ms: ModuleScene, scene: Scene): ArkModule {
-        const module = new ArkModule(scene);
-        module.setModulePath(ms.getModulePath());
-        module.setModuleName(ms.getModuleName());
-        for (const [, file] of ms.getModuleFilesMap()) {
-            module.addFile(file);
-        }
-        return module;
     }
 }

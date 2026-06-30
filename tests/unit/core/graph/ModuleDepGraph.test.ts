@@ -17,12 +17,13 @@ import { describe, expect, it } from 'vitest';
 import { ModuleDepGraph, DependencyType } from '../../../../src/core/graph/ModuleDepGraph';
 import { ArkModule } from '../../../../src/core/model/ArkModule';
 import { Canonicalizer } from '../../../../src/utils/Canonicalizer';
+import { ModuleManager } from '../../../../src/frontend/common/ModuleManager';
 import type { Scene } from '../../../../src/Scene';
 
-const STUB_SCENE = {} as Scene;
+const STUB_MANAGER = new ModuleManager({} as Scene);
 
 function makeModule(path: string, name: string): ArkModule {
-    const module = new ArkModule(STUB_SCENE);
+    const module = new ArkModule(STUB_MANAGER);
     module.setModulePath(path);
     module.setModuleName(name);
     return module;

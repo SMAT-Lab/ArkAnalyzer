@@ -67,19 +67,24 @@ describe('Scene integration tests', () => {
         });
     });
 
-    describe('moduleManager privacy', () => {
-        it('is not exposed as a public getter method', () => {
+    describe('getModuleManager()', () => {
+        it('returns the ModuleManager embedded in the scene', () => {
             const scene = new Scene();
-            // There should be no public getModuleManager method
-            expect((scene as unknown as { getModuleManager?: unknown }).getModuleManager).toBeUndefined();
+            const manager = scene.getModuleManager();
+            expect(manager).toBeInstanceOf(ModuleManager);
+        });
+
+        it('returns the same instance on repeated calls', () => {
+            const scene = new Scene();
+            expect(scene.getModuleManager()).toBe(scene.getModuleManager());
         });
 
         it('works internally via getModules() and analyseByModule()', () => {
             const scene = new Scene();
             // getModules() internally uses moduleManager
             expect(scene.getModules()).toEqual([]);
-            // The moduleManager field exists but is private
-            const manager = (scene as unknown as { moduleManager: ModuleManager }).moduleManager;
+            // The moduleManager field exists and is accessible via the public getter
+            const manager = scene.getModuleManager();
             expect(manager).toBeInstanceOf(ModuleManager);
         });
     });

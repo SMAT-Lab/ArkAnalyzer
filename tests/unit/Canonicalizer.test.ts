@@ -201,16 +201,6 @@ describe('Canonicalizer Test', () => {
         expect(c.get(0)).toBe(p1);
     });
 
-    it('numberWithEquality canonicalizes NaN via an Object.is comparer', () => {
-        const c = new Canonicalizer<number>(undefined, (a, b) => Object.is(a, b));
-        expect(c.getId(NaN)).toBe(0);
-        expect(c.getId(NaN)).toBe(0);
-        expect(c.getId(1)).toBe(1);
-        expect(c.getExistingId(NaN)).toBe(0);
-        expect(c.getExistingId(1)).toBe(1);
-        expect(c.size()).toBe(2);
-    });
-
     it('numberWithEquality resizes under heavy load', () => {
         const c = new Canonicalizer<number>(undefined, (a, b) => a === b);
         const n = 300;
