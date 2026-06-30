@@ -192,9 +192,9 @@ describe('ModuleManager tests', () => {
     });
 
     describe('setMaxSCCGroupSize / getMaxSCCGroupSize', () => {
-        it('defaults to 10', () => {
+        it('defaults to 3', () => {
             const manager = new ModuleManager(STUB_SCENE);
-            expect(manager.getMaxSCCGroupSize()).toBe(10);
+            expect(manager.getMaxSCCGroupSize()).toBe(3);
         });
 
         it('stores and returns the configured value', () => {
@@ -333,9 +333,9 @@ describe('ModuleManager tests', () => {
     });
 
     describe('initial state flags', () => {
-        it('reports false for isSdkBuilt, isModulesPrepared and hasTopoOrder before any build step', () => {
+        it('reports false for isSdkRegistered, isModulesPrepared and hasTopoOrder before any build step', () => {
             const manager = new ModuleManager(STUB_SCENE);
-            expect(manager.isSdkBuilt()).toBe(false);
+            expect(manager.isSdkRegistered()).toBe(false);
             expect(manager.isModulesPrepared()).toBe(false);
             expect(manager.hasTopoOrder()).toBe(false);
         });
@@ -368,7 +368,7 @@ describe('ModuleManager tests', () => {
 
             manager.prepareSdkModules();
 
-            expect(manager.isSdkBuilt()).toBe(true);
+            expect(manager.isSdkRegistered()).toBe(true);
             expect(manager.getModuleCount()).toBe(2);
 
             const etsModule = manager.getModuleByPath(path.normalize('/sdk/ets'));
@@ -416,7 +416,7 @@ describe('ModuleManager tests', () => {
 
             manager.prepareSdkModules();
             expect(manager.getModuleCount()).toBe(1);
-            expect(manager.isSdkBuilt()).toBe(true);
+            expect(manager.isSdkRegistered()).toBe(true);
         });
 
         it('handles missing SceneConfig gracefully', () => {
@@ -425,7 +425,7 @@ describe('ModuleManager tests', () => {
 
             manager.prepareSdkModules();
 
-            expect(manager.isSdkBuilt()).toBe(true);
+            expect(manager.isSdkRegistered()).toBe(true);
             expect(manager.getModuleCount()).toBe(0);
         });
     });

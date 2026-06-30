@@ -19,9 +19,9 @@ import path from 'path';
 import { Canonicalizer } from '../../utils/Canonicalizer';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../core/model/ArkModule';
 import { ModuleDepGraph, DependencyType } from '../../core/graph/ModuleDepGraph';
-import { BUILD_PROFILE_JSON5, OH_MODULES, MODULE_PREFIX } from '../../core/common/EtsConst';
+import { BUILD_PROFILE_JSON5, OH_MODULES, MODULE_PREFIX, OH_PACKAGE_JSON5, OHPM } from '../../core/common/EtsConst';
 import { OH_PKG_DEPENDENCIES, OH_PKG_DEV_DEPENDENCIES, OH_PKG_DYNAMIC_DEPENDENCIES } from '../../core/common/Const';
-import { parseJsonText } from '../../utils/json5parser';
+import { fetchDependenciesFromFile, parseJsonText } from '../../utils/json5parser';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ModuleDepthLevel } from './ModuleDepth';
 import { ModuleAnalysisConfig } from './ModuleAnalysisConfig';
@@ -61,12 +61,12 @@ export class ModuleManager {
 
     /**
      * SCC post-processing threshold: the maximum allowed number of modules in a group; SCCs
-     * exceeding this size are split. Default 10; set to Number.MAX_SAFE_INTEGER to disable.
+     * exceeding this size are split. Default 3; set to Number.MAX_SAFE_INTEGER to disable.
      */
-    private maxSCCGroupSize: number = 10;
+    private maxSCCGroupSize: number = 3;
 
-    /** Whether SDK modules have been built (set true after buildSdkModules, idempotent). */
-    private sdkBuilt: boolean = false;
+    /** Whether SDK modules have been registered (set true after prepareSdkModules, idempotent). */
+    private sdkRegistered: boolean = false;
 
     /** Whether module preparation has completed (set true after prepareModules, idempotent). */
     private modulesPrepared: boolean = false;
@@ -193,9 +193,9 @@ export class ModuleManager {
         return this.dependenciesAnalyzed;
     }
 
-    /** Whether SDK modules have been built. */
-    public isSdkBuilt(): boolean {
-        return this.sdkBuilt;
+    /** Whether SDK modules have been registered. */
+    public isSdkRegistered(): boolean {
+        return this.sdkRegistered;
     }
 
     /** Whether module preparation has completed. */
@@ -226,11 +226,11 @@ export class ModuleManager {
      * moduleType=SDK. Only basic info (path, name) is registered — ArkFile building and
      * type inference are NOT performed by this method.
      *
-     * Idempotent: if SDK modules have already been built ({@link isSdkBuilt} is true), this
+     * Idempotent: if SDK modules have already been registered ({@link isSdkRegistered} is true), this
      * method returns immediately.
      */
     public prepareSdkModules(): void {
-        if (this.sdkBuilt) {
+        if (this.sdkRegistered) {
             return;
         }
 
@@ -245,7 +245,7 @@ export class ModuleManager {
             module.setModuleType(ModuleType.SDK);
         }
 
-        this.sdkBuilt = true;
+        this.sdkRegistered = true;
     }
 
     /**
@@ -420,13 +420,16 @@ export class ModuleManager {
             this.depGraph.addModule(module);
         }
 
-        // 2. Process inter-module dependencies via oh-package.json5
+        // 2. Read project-level overrides and overrideDependencyMap from the project root oh-package.json5
+        const { overrides, overrideDependencyMap } = this.readProjectOverrides();
+
+        // 3. Process inter-module dependencies via oh-package.json5
         for (const module of this.modulesIterator()) {
             const deps = module.readOhPkgContent();
             const depEntries = this.extractDependenciesWithValues(deps);
 
             for (const [alias, depValue, depType] of depEntries) {
-                const depModule = this.resolveDepModule(alias, depValue, module.getModulePath());
+                const depModule = this.resolveDepModule(alias, depValue, module.getModulePath(), overrides, overrideDependencyMap);
                 if (depModule) {
                     const srcId = this.moduleCanonicalizer.getId(module);
                     const dstId = this.moduleCanonicalizer.getId(depModule);
@@ -437,6 +440,53 @@ export class ModuleManager {
                 }
             }
         }
+    }
+
+    /**
+     * Read the project root oh-package.json5 and extract `overrides` and `overrideDependencyMap`.
+     *
+     * Both fields are optional dependency override configurations. `overrides` maps a dependency
+     * alias to an override path (local path, file: path, or @module: reference).
+     * `overrideDependencyMap` maps a dependency alias to an override file path. When a dependency
+     * alias is present in either map, the override path is used instead of the original dependency
+     * value during resolution (checked before normal resolution).
+     *
+     * @returns An object with `overrides` and `overrideDependencyMap` string maps (empty when absent).
+     */
+    private readProjectOverrides(): { overrides: { [k: string]: string }; overrideDependencyMap: { [k: string]: string } } {
+        const empty: { [k: string]: string } = {};
+        const projectDir = this.scene.getRealProjectDir();
+        const ohPkgPath = path.join(projectDir, OH_PACKAGE_JSON5);
+        if (!fs.existsSync(ohPkgPath)) {
+            return { overrides: empty, overrideDependencyMap: empty };
+        }
+
+        let ohPkgContent: { [k: string]: unknown };
+        try {
+            ohPkgContent = fetchDependenciesFromFile(ohPkgPath);
+        } catch (error) {
+            logger.error(`Error reading project oh-package.json5: ${error}`);
+            return { overrides: empty, overrideDependencyMap: empty };
+        }
+
+        const overrides = this.toStringMap(ohPkgContent.overrides);
+        const overrideDependencyMap = this.toStringMap(ohPkgContent.overrideDependencyMap);
+        return { overrides, overrideDependencyMap };
+    }
+
+    /**
+     * Coerce a record value to a `{ [k: string]: string }` map, dropping non-string entries.
+     */
+    private toStringMap(value: unknown): { [k: string]: string } {
+        const result: { [k: string]: string } = {};
+        if (value instanceof Object) {
+            for (const [k, v] of Object.entries(value)) {
+                if (typeof v === 'string') {
+                    result[k] = v;
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -471,20 +521,35 @@ export class ModuleManager {
      * Resolve a dependency declaration to its target {@link ArkModule}.
      *
      * Resolution priority:
+     * 0. overrides / overrideDependencyMap — when the alias is present in either project-level
+     *    override map, the override path replaces the original dependency value before resolution.
      * 1. {@link MODULE_PREFIX} prefix — find by moduleName among registered modules
      * 2. "./", "../", or "file:" prefix — resolve as local path relative to
      *    scopeModulePath, look up in pathToId
-     * 3. Version number — look in oh_modules directories
-     *    (scopeModulePath/oh_modules/alias and projectDir/oh_modules/alias),
-     *    resolve symlinks with fs.realpathSync(), look up in pathToId
+     * 3. Version number — look in oh_modules directories in priority order:
+     *    a. current module's oh_modules (scopeModulePath/oh_modules/alias)
+     *    b. project-level oh_modules (projectDir/oh_modules/alias)
+     *    c. .ohpm cache (projectDir/oh_modules/.ohpm/<name>@<version>/oh_modules/<name>)
+     *    Each candidate is verified as a directory, resolved via fs.realpathSync(), then looked
+     *    up in pathToId. For .har dependencies inside the .ohpm cache, the current module's
+     *    oh_modules base is recomputed from the enclosing oh_modules ancestor.
      *
-     * @param srcModuleId - The module ID of the dependent (source) module.
      * @param alias - The dependency alias (key in oh-package.json5 dependencies).
      * @param depValue - The dependency value (path, version, or @module: reference).
      * @param scopeModulePath - The absolute path of the source module (for relative path resolution).
+     * @param overrides - Optional project-level overrides map (alias -> override path).
+     * @param overrideDependencyMap - Optional project-level overrideDependencyMap (alias -> override path).
      * @returns The target ArkModule if resolved, undefined otherwise.
      */
-    private resolveDepModule(alias: string, depValue: string, scopeModulePath: string): ArkModule | undefined {
+    private resolveDepModule(alias: string, depValue: string, scopeModulePath: string,
+        overrides?: { [k: string]: string }, overrideDependencyMap?: { [k: string]: string }): ArkModule | undefined {
+        // 0. Override handling: check overrides and overrideDependencyMap before normal resolution
+        if (overrides && overrides[alias] !== undefined) {
+            depValue = overrides[alias];
+        } else if (overrideDependencyMap && overrideDependencyMap[alias] !== undefined) {
+            depValue = overrideDependencyMap[alias];
+        }
+
         // 1. Module reference dependency: "@module:Foo"
         if (depValue.startsWith(MODULE_PREFIX)) {
             const refName = depValue.slice(MODULE_PREFIX.length);
@@ -509,18 +574,66 @@ export class ModuleManager {
 
         // 3. oh_modules dependency: version number like "^1.0.0"
         const projectDir = this.scene.getRealProjectDir();
-        const candidates = [path.resolve(scopeModulePath, OH_MODULES, alias), path.resolve(projectDir, OH_MODULES, alias)];
+        // For .har dependencies inside the .ohpm cache, recompute the oh_modules base from the
+        // enclosing oh_modules ancestor (mirrors processDependency in ModuleUtils).
+        const moduleBase = depValue.endsWith('.har') && scopeModulePath.includes(OHPM)
+            ? scopeModulePath.substring(0, scopeModulePath.lastIndexOf(OH_MODULES))
+            : scopeModulePath;
+        const candidates = [
+            path.resolve(moduleBase, OH_MODULES, alias),
+            path.resolve(projectDir, OH_MODULES, alias),
+            this.findModulePathInOHPM(projectDir, alias, depValue),
+        ];
         for (const candidate of candidates) {
-            if (fs.existsSync(candidate)) {
-                const realPath = fs.realpathSync(candidate);
-                const id = this.pathToId.get(realPath);
-                if (id !== undefined) {
-                    return this.moduleCanonicalizer.get(id);
-                }
+            if (!candidate || !FileUtils.isDirectory(candidate)) {
+                continue;
+            }
+            const realPath = fs.realpathSync(candidate);
+            const id = this.pathToId.get(realPath);
+            if (id !== undefined) {
+                return this.moduleCanonicalizer.get(id);
             }
         }
 
         return undefined;
+    }
+
+    /**
+     * Find a module path in the .ohpm cache directory.
+     *
+     * Mirrors {@link ModuleUtils.findModulePathInOHPM}: the cache lives at
+     * `<projectDir>/oh_modules/.ohpm` and stores packages as
+     * `<moduleName.replace('/', '+')>@<version>/oh_modules/<moduleName>`. Exact versions are
+     * matched directly; `^`-prefixed ranges pick the first directory whose version is not less
+     * than the requested minimum.
+     *
+     * @param projectDir - The project root directory.
+     * @param moduleName - The dependency alias / module name.
+     * @param version - The dependency version value (exact or `^`-prefixed).
+     * @returns The candidate directory path, or '' when not found.
+     */
+    private findModulePathInOHPM(projectDir: string, moduleName: string, version: string): string {
+        const ohpmPath = path.resolve(projectDir, OH_MODULES, OHPM);
+        const prefix = `${moduleName.replace('/', '+')}@`;
+        // exact version match
+        if (/^\d+(?:\.\d+){2}(?:-[0-9A-Za-z-]+)?$/.test(version)) {
+            return path.resolve(ohpmPath, prefix + version, OH_MODULES, moduleName);
+        }
+        // try to find the best version
+        try {
+            const dirs = fs.readdirSync(ohpmPath, { withFileTypes: true })
+                .filter((dir) => dir.isDirectory() && dir.name.startsWith(prefix));
+            for (const dir of dirs) {
+                const dirName = dir.name;
+                if (version.startsWith('^') && dirName.split('@')[1] < version.substring(1)) {
+                    continue;
+                }
+                return path.resolve(ohpmPath, dirName, OH_MODULES, moduleName);
+            }
+        } catch (e) {
+            logger.warn(`Cannot find module: ${moduleName} in ${ohpmPath}`);
+        }
+        return '';
     }
 
     /**

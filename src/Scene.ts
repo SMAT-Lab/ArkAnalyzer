@@ -902,7 +902,7 @@ export class Scene {
      */
     public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
         // 1. Prepare SDK modules (idempotent)
-        if (!this.moduleManager.isSdkBuilt()) {
+        if (!this.moduleManager.isSdkRegistered()) {
             this.moduleManager.prepareSdkModules();
         }
         // 2. Prepare project/oh_modules (idempotent)

@@ -103,7 +103,7 @@ describe('analyseByModule integration tests', () => {
         });
 
         // Verify preprocessing was done
-        expect(manager.isSdkBuilt()).toBe(true);
+        expect(manager.isSdkRegistered()).toBe(true);
         expect(manager.isModulesPrepared()).toBe(true);
         expect(manager.hasTopoOrder()).toBe(true);
 
@@ -131,7 +131,7 @@ describe('analyseByModule integration tests', () => {
         // First call - does all preprocessing
         scene.analyseByModule(() => {});
 
-        expect(manager.isSdkBuilt()).toBe(true);
+        expect(manager.isSdkRegistered()).toBe(true);
         expect(manager.isModulesPrepared()).toBe(true);
         expect(manager.hasTopoOrder()).toBe(true);
 
