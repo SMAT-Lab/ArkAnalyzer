@@ -137,24 +137,23 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
      * Remove a dependency edge.
      */
     public removeDependencyEdge(srcId: NodeID, dstId: NodeID): void {
-        const succs = this.succMap.get(srcId);
-        if (succs) {
-            const idx = succs.indexOf(dstId);
-            if (idx >= 0) {
-                succs.splice(idx, 1);
-            }
-        }
-
-        const preds = this.predMap.get(dstId);
-        if (preds) {
-            const idx = preds.indexOf(srcId);
-            if (idx >= 0) {
-                preds.splice(idx, 1);
-            }
-        }
-
-        // Clean up the edge type record
+        this.removeFromAdjacencyList(this.succMap, srcId, dstId);
+        this.removeFromAdjacencyList(this.predMap, dstId, srcId);
         this.edgeTypeMap.delete(`${srcId}->${dstId}`);
+    }
+
+    /**
+     * Remove a node ID from an adjacency list entry.
+     */
+    private removeFromAdjacencyList(adjMap: Map<NodeID, NodeID[]>, key: NodeID, value: NodeID): void {
+        const list = adjMap.get(key);
+        if (!list) {
+            return;
+        }
+        const idx = list.indexOf(value);
+        if (idx >= 0) {
+            list.splice(idx, 1);
+        }
     }
 
     /**
@@ -415,39 +414,41 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
         const added = new Set<NodeID>();
 
         for (const repId of topoStack) {
+            const members = scc.nodeIsInCycle(repId)
+                ? Array.from(scc.getMySCCNodes(repId))
+                : [repId];
+
+            const groups = members.length <= maxGroupSize
+                ? [members]
+                : this.splitLargeSCC(members, maxGroupSize);
+
             if (!scc.nodeIsInCycle(repId)) {
-                if (!added.has(repId)) {
-                    added.add(repId);
-                    this.topoOrder.push(repId);
-                }
-                sccGroups.set(repId, [repId]);
-                continue;
-            }
-
-            const members = Array.from(scc.getMySCCNodes(repId));
-            if (members.length <= maxGroupSize) {
-                for (const memberId of members) {
-                    if (!added.has(memberId)) {
-                        added.add(memberId);
-                        this.topoOrder.push(memberId);
-                    }
-                    sccGroups.set(memberId, members);
-                }
-                continue;
-            }
-
-            const refinedGroups = this.splitLargeSCC(members, maxGroupSize);
-            for (const group of refinedGroups) {
-                for (const memberId of group) {
-                    if (!added.has(memberId)) {
-                        added.add(memberId);
-                        this.topoOrder.push(memberId);
-                    }
-                    sccGroups.set(memberId, group);
+                this.addToTopoAndGroups([repId], [repId], sccGroups, added);
+            } else {
+                for (const group of groups) {
+                    this.addToTopoAndGroups(group, group, sccGroups, added);
                 }
             }
         }
 
         return sccGroups;
+    }
+
+    /**
+     * Add members to topoOrder and sccGroups, skipping already-added members.
+     */
+    private addToTopoAndGroups(
+        members: NodeID[],
+        group: NodeID[],
+        sccGroups: Map<NodeID, NodeID[]>,
+        added: Set<NodeID>
+    ): void {
+        for (const memberId of members) {
+            if (!added.has(memberId)) {
+                added.add(memberId);
+                this.topoOrder.push(memberId);
+            }
+            sccGroups.set(memberId, group);
+        }
     }
 }

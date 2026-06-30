@@ -143,12 +143,11 @@ export class ModuleManager {
      * Iteration order follows ModuleID assignment order (0, 1, 2, ...).
      */
     public modulesIterator(): IterableIterator<ArkModule> {
-        const self = this;
         let i = 0;
         const iterator: IterableIterator<ArkModule> = {
-            next(): IteratorResult<ArkModule> {
-                while (i < self.moduleCanonicalizer.size()) {
-                    const m = self.moduleCanonicalizer.get(i++);
+            next: (): IteratorResult<ArkModule> => {
+                while (i < this.moduleCanonicalizer.size()) {
+                    const m = this.moduleCanonicalizer.get(i++);
                     if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
                         return { value: m, done: false };
                     }
@@ -226,11 +225,15 @@ export class ModuleManager {
      * method returns immediately.
      */
     public prepareSdkModules(): void {
-        if (this.sdkBuilt) return;
+        if (this.sdkBuilt) {
+            return;
+        }
 
         const sdks = this.scene.getSceneConfig()?.getSdksObj() ?? [];
         for (const sdk of sdks) {
-            if (sdk.moduleName) continue; // skip module-level SDKs
+            if (sdk.moduleName) {
+                continue; // skip module-level SDKs
+            }
 
             const sdkPath = path.normalize(sdk.path);
             const module = this.registerModule(sdkPath, sdk.name);
@@ -251,7 +254,9 @@ export class ModuleManager {
      * true), this method returns immediately.
      */
     public prepareModules(): void {
-        if (this.modulesPrepared) return;
+        if (this.modulesPrepared) {
+            return;
+        }
 
         this.registerProjectModules();
         this.registerOhModulesModules();
@@ -314,7 +319,9 @@ export class ModuleManager {
 
         // 2. Scan each PROJECT module's oh_modules/
         for (const module of this.modulesIterator()) {
-            if (module.getModuleType() !== ModuleType.PROJECT) continue;
+            if (module.getModuleType() !== ModuleType.PROJECT) {
+                continue;
+            }
 
             const moduleOhModulesDir = path.join(module.getModulePath(), OH_MODULES);
             if (fs.existsSync(moduleOhModulesDir) && !scannedDirs.has(moduleOhModulesDir)) {
@@ -347,7 +354,9 @@ export class ModuleManager {
             const entryPath = path.join(ohModulesDir, entry.name);
             // Accept both real directories and symlinks (which may point to directories).
             // Dirent.isDirectory() returns false for symlinks, so check isSymbolicLink() too.
-            if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+            if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+                continue;
+            }
 
             if (entry.name.startsWith('@')) {
                 // Scoped package (e.g. @ohos/library): recurse into the scope directory
@@ -355,7 +364,9 @@ export class ModuleManager {
             } else {
                 // Regular package: resolve symlinks and register
                 const realPath = fs.realpathSync(entryPath);
-                if (this.getModuleByPath(realPath)) continue;
+                if (this.getModuleByPath(realPath)) {
+                    continue;
+                }
 
                 const module = this.registerModule(realPath, entry.name);
                 module.setModuleType(ModuleType.OH_MODULES);
@@ -376,7 +387,9 @@ export class ModuleManager {
      * is true), this method returns immediately.
      */
     public analyzeModuleDependencies(): void {
-        if (this.dependenciesAnalyzed) return;
+        if (this.dependenciesAnalyzed) {
+            return;
+        }
 
         this.updateModuleNamesFromOhPkg();
         this.buildDependencyGraph();
@@ -655,9 +668,15 @@ export class ModuleManager {
      */
     public loadModule(moduleId: ModuleID, config?: ModuleAnalysisConfig): void {
         const module = this.getModule(moduleId);
-        if (!module) return;
-        if (module.getLoadState() === ModuleLoadState.LOADED) return;
-        if (this.loadingModules.has(moduleId)) return;
+        if (!module) {
+            return;
+        }
+        if (module.getLoadState() === ModuleLoadState.LOADED) {
+            return;
+        }
+        if (this.loadingModules.has(moduleId)) {
+            return;
+        }
 
         this.loadingModules.add(moduleId);
         try {

@@ -209,8 +209,8 @@ describe('ArkModule tests', () => {
                 const module = new ArkModule(STUB_SCENE);
                 module.setModulePath(tmpDir);
                 const content = module.readOhPkgContent();
-                expect(content['name']).toBe('@ohos/lib');
-                expect(content['version']).toBe('1.0.0');
+                expect(content.name).toBe('@ohos/lib');
+                expect(content.version).toBe('1.0.0');
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
