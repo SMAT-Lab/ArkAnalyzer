@@ -362,6 +362,12 @@
                 }
                 return 0;
             }
+            function getRssAfter(stage) {
+                if (Number.isFinite(stage.rssAfterBytes)) {
+                    return stage.rssAfterBytes;
+                }
+                return 0;
+            }
             function getGcBreakdown(stage) {
                 return normalizeGcStats(stage).breakdown;
             }
@@ -400,7 +406,8 @@
                         gcTime: getGcTotalMs(stage),
                         gcBreakdown,
                         heapPeakUsed: getHeapPeakUsed(stage),
-                        rssPeak: getRssPeak(stage)
+                        rssPeak: getRssPeak(stage),
+                        rssAfter: getRssAfter(stage)
                     };
                 });
             }
@@ -429,9 +436,11 @@
                     const usedEnd = item.stage.heapAfter?.used || 0;
                     return `<div class="kpi-item">
                                     <div class="kpi-label">${item.stage.stageName}</div>
-                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(item.rssPeak)}</div>
-                                    <div style="font-size:0.8rem;color:#64748b;">peak ${formatMB(item.heapPeakUsed)}</div>
-                                    <div style="font-size:0.8rem;color:#64748b;">used end ${formatMB(usedEnd)}</div>
+                                    <div class="kpi-value" style="font-size:1.6rem;">${formatMB(usedEnd)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">heap used end ${formatMB(usedEnd)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">heap peak ${formatMB(item.heapPeakUsed)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">RSS end ${formatMB(item.rssAfter)}</div>
+                                    <div style="font-size:0.8rem;color:#64748b;">RSS peak ${formatMB(item.rssPeak)}</div>
                                     <div style="font-size:0.8rem;">heap growth ${item.stage.heapGrowthBytes > 0 ? '+' : '-'}${formatBytes(Math.abs(item.stage.heapGrowthBytes))}</div>
                                 </div>`;
                 }).join('');
@@ -444,6 +453,7 @@
                     const heapAfterMB = (stage.heapAfter?.used || 0) / BYTES_PER_MB;
                     const heapPeakMB = item.heapPeakUsed / BYTES_PER_MB;
                     const rssPeakMB = item.rssPeak / BYTES_PER_MB;
+                    const rssAfterMB = item.rssAfter / BYTES_PER_MB;
                     const growthMB = stage.heapGrowthBytes / BYTES_PER_MB;
                     const topCpuHotFunc = stage.cpuHotFunctions?.[0] || null;
                     const topAllocFunc = stage.allocationHotFunctions?.[0] || null;
@@ -454,6 +464,7 @@
                                     <td>${heapAfterMB.toFixed(2)}</td>
                                     <td>${heapPeakMB.toFixed(2)}</td>
                                     <td style="color:${growthMB > 0.5 ? '#b91c1c' : '#15803d'};">${growthMB > 0 ? '+' : ''}${growthMB.toFixed(2)}</td>
+                                    <td>${rssAfterMB.toFixed(2)}</td>
                                     <td>${rssPeakMB.toFixed(2)}</td>
                                     <td>${normalizeGcStats(stage).count}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.count} / M:${item.gcBreakdown.manual.count}</span></td>
                                     <td>${item.gcTime.toFixed(2)}<br><span style="font-size:0.8rem;color:#64748b;">N:${item.gcBreakdown.natural.timeMs.toFixed(2)} / M:${item.gcBreakdown.manual.timeMs.toFixed(2)}</span></td>
@@ -693,6 +704,7 @@
                                 <th>Heap End (MB)</th>
                                 <th>Heap Peak (MB)</th>
                                 <th>Heap Growth (MB)</th>
+                                <th>RSS End (MB)</th>
                                 <th>RSS Peak per Round (MB)</th>
                                 <th>GC Count</th>
                                 <th>GC Time (ms)</th>

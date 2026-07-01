@@ -119,6 +119,7 @@ interface StageAccumulator {
     heapGrowths: number[];
     heapPeakUsedBytes: number[];
     rssPeakBytes: number[];
+    rssAfterBytes: number[];
     heapBeforeUsed: number[];
     heapBeforeTotal: number[];
     heapBeforeLimit: number[];
@@ -224,6 +225,7 @@ function createStageAccumulator(stageName: string): StageAccumulator {
         heapGrowths: [],
         heapPeakUsedBytes: [],
         rssPeakBytes: [],
+        rssAfterBytes: [],
         heapBeforeUsed: [],
         heapBeforeTotal: [],
         heapBeforeLimit: [],
@@ -344,6 +346,7 @@ function appendStageMetrics(accumulator: StageAccumulator, stage: StageMetrics):
     accumulator.heapGrowths.push(stage.heapGrowthBytes);
     accumulator.heapPeakUsedBytes.push(stage.heapPeakUsedBytes);
     accumulator.rssPeakBytes.push(stage.rssPeakBytes ?? 0);
+    accumulator.rssAfterBytes.push(stage.rssAfterBytes ?? 0);
     accumulator.heapBeforeUsed.push(stage.heapBefore.used);
     accumulator.heapBeforeTotal.push(stage.heapBefore.total);
     accumulator.heapBeforeLimit.push(stage.heapBefore.limit);
@@ -397,6 +400,7 @@ function buildAverageResult(
             heapPeakUsedBytes: average(accumulator.heapPeakUsedBytes),
             // RSS peak is a high-water mark metric; averaging multiple rounds underestimates the real peak.
             rssPeakBytes: maximum(accumulator.rssPeakBytes),
+            rssAfterBytes: average(accumulator.rssAfterBytes),
             heapBefore: {
                 used: average(accumulator.heapBeforeUsed),
                 total: average(accumulator.heapBeforeTotal),

@@ -154,6 +154,7 @@ export interface StageMetrics {
     heapGrowthBytes: number;
     heapPeakUsedBytes: number;
     rssPeakBytes: number;
+    rssAfterBytes?: number;
     gcPauses: GcPauseStats;
     cpuHotFunctions: CpuHotFunctionStat[]; // Top N functions by self time
     allocationHotFunctions: AllocationStat[];
@@ -369,6 +370,7 @@ class StageProfiler {
                 heapGrowthBytes: this.heapAfter.used - this.heapBefore.used,
                 heapPeakUsedBytes: this.heapPeakUsedBytes,
                 rssPeakBytes: this.rssPeakBytes,
+                rssAfterBytes: rssAfter,
                 gcPauses: summarizeGcPauses(this.gcEvents),
                 cpuHotFunctions,
                 allocationHotFunctions,

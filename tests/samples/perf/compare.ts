@@ -30,6 +30,14 @@ interface StageDiff {
     heapPeakDeltaPercent: number;
     rssPeakDelta: number; // Delta in bytes
     rssPeakDeltaPercent: number;
+    baselineHeapAfterUsedBytes: number;
+    currentHeapAfterUsedBytes: number;
+    heapAfterUsedDelta: number;
+    heapAfterUsedDeltaPercent: number;
+    baselineRssAfterBytes: number;
+    currentRssAfterBytes: number;
+    rssAfterDelta: number;
+    rssAfterDeltaPercent: number;
     gcTimeDelta: number; // Delta in milliseconds
     gcTimeDeltaPercent: number;
     gcCountDelta: number;
@@ -46,6 +54,10 @@ interface ComparisonResult {
     currentMaxHeapPeakBytes: number;
     baselineMaxRssPeakBytes: number;
     currentMaxRssPeakBytes: number;
+    baselineResidentHeapUsedBytes: number;
+    currentResidentHeapUsedBytes: number;
+    baselineResidentRssBytes: number;
+    currentResidentRssBytes: number;
     baselineTotalGcTimeMs: number;
     currentTotalGcTimeMs: number;
     baselineTotalGcCount: number;
@@ -58,6 +70,10 @@ interface ComparisonResult {
     maxHeapPeakDeltaPercent: number;
     maxRssPeakDelta: number;
     maxRssPeakDeltaPercent: number;
+    residentHeapUsedDelta: number;
+    residentHeapUsedDeltaPercent: number;
+    residentRssDelta: number;
+    residentRssDeltaPercent: number;
     totalGcTimeDelta: number;
     totalGcTimeDeltaPercent: number;
     totalGcCountDelta: number;
@@ -85,6 +101,10 @@ function getHeapPeakUsed(stage: StageMetrics): number {
     return stage.heapPeakUsedBytes ?? Math.max(stage.heapBefore.used, stage.heapAfter.used);
 }
 
+function getRssAfter(stage: StageMetrics): number {
+    return stage.rssAfterBytes ?? 0;
+}
+
 /**
  * Calculate percent change with zero handling.
  */
@@ -99,15 +119,20 @@ interface RunAggregates {
     totalHeapGrowthBytes: number;
     maxHeapPeakBytes: number;
     maxRssPeakBytes: number;
+    residentHeapUsedBytes: number;
+    residentRssBytes: number;
     totalGcTimeMs: number;
     totalGcCount: number;
 }
 
 function computeRunAggregates(stages: StageMetrics[]): RunAggregates {
+    const finalStage = stages[stages.length - 1];
     return {
         totalHeapGrowthBytes: stages.reduce((sum, stage) => sum + stage.heapGrowthBytes, 0),
         maxHeapPeakBytes: stages.reduce((max, stage) => Math.max(max, getHeapPeakUsed(stage)), 0),
         maxRssPeakBytes: stages.reduce((max, stage) => Math.max(max, stage.rssPeakBytes ?? 0), 0),
+        residentHeapUsedBytes: finalStage?.heapAfter.used ?? 0,
+        residentRssBytes: finalStage ? getRssAfter(finalStage) : 0,
         totalGcTimeMs: stages.reduce((sum, stage) => sum + getGcTotalTime(stage), 0),
         totalGcCount: stages.reduce((sum, stage) => sum + stage.gcPauses.count, 0),
     };
@@ -134,6 +159,10 @@ function buildStageDiffs(
         const currPeak = getHeapPeakUsed(curr);
         const baseRssPeak = base.rssPeakBytes ?? 0;
         const currRssPeak = curr.rssPeakBytes ?? 0;
+        const baseHeapAfterUsed = base.heapAfter.used;
+        const currHeapAfterUsed = curr.heapAfter.used;
+        const baseRssAfter = getRssAfter(base);
+        const currRssAfter = getRssAfter(curr);
 
         stagesDiff.push({
             stageName,
@@ -145,6 +174,14 @@ function buildStageDiffs(
             heapPeakDeltaPercent: calcPercentChange(basePeak, currPeak),
             rssPeakDelta: currRssPeak - baseRssPeak,
             rssPeakDeltaPercent: calcPercentChange(baseRssPeak, currRssPeak),
+            baselineHeapAfterUsedBytes: baseHeapAfterUsed,
+            currentHeapAfterUsedBytes: currHeapAfterUsed,
+            heapAfterUsedDelta: currHeapAfterUsed - baseHeapAfterUsed,
+            heapAfterUsedDeltaPercent: calcPercentChange(baseHeapAfterUsed, currHeapAfterUsed),
+            baselineRssAfterBytes: baseRssAfter,
+            currentRssAfterBytes: currRssAfter,
+            rssAfterDelta: currRssAfter - baseRssAfter,
+            rssAfterDeltaPercent: calcPercentChange(baseRssAfter, currRssAfter),
             gcTimeDelta: currGcTime - baseGcTime,
             gcTimeDeltaPercent: calcPercentChange(baseGcTime, currGcTime),
             gcCountDelta: curr.gcPauses.count - base.gcPauses.count,
@@ -172,6 +209,10 @@ function buildComparisonResult(
         currentMaxHeapPeakBytes: currAgg.maxHeapPeakBytes,
         baselineMaxRssPeakBytes: baseAgg.maxRssPeakBytes,
         currentMaxRssPeakBytes: currAgg.maxRssPeakBytes,
+        baselineResidentHeapUsedBytes: baseAgg.residentHeapUsedBytes,
+        currentResidentHeapUsedBytes: currAgg.residentHeapUsedBytes,
+        baselineResidentRssBytes: baseAgg.residentRssBytes,
+        currentResidentRssBytes: currAgg.residentRssBytes,
         baselineTotalGcTimeMs: baseAgg.totalGcTimeMs,
         currentTotalGcTimeMs: currAgg.totalGcTimeMs,
         baselineTotalGcCount: baseAgg.totalGcCount,
@@ -184,6 +225,13 @@ function buildComparisonResult(
         maxHeapPeakDeltaPercent: calcPercentChange(baseAgg.maxHeapPeakBytes, currAgg.maxHeapPeakBytes),
         maxRssPeakDelta: currAgg.maxRssPeakBytes - baseAgg.maxRssPeakBytes,
         maxRssPeakDeltaPercent: calcPercentChange(baseAgg.maxRssPeakBytes, currAgg.maxRssPeakBytes),
+        residentHeapUsedDelta: currAgg.residentHeapUsedBytes - baseAgg.residentHeapUsedBytes,
+        residentHeapUsedDeltaPercent: calcPercentChange(
+            baseAgg.residentHeapUsedBytes,
+            currAgg.residentHeapUsedBytes
+        ),
+        residentRssDelta: currAgg.residentRssBytes - baseAgg.residentRssBytes,
+        residentRssDeltaPercent: calcPercentChange(baseAgg.residentRssBytes, currAgg.residentRssBytes),
         totalGcTimeDelta: currAgg.totalGcTimeMs - baseAgg.totalGcTimeMs,
         totalGcTimeDeltaPercent: calcPercentChange(baseAgg.totalGcTimeMs, currAgg.totalGcTimeMs),
         totalGcCountDelta: currAgg.totalGcCount - baseAgg.totalGcCount,
@@ -349,6 +397,18 @@ function appendMarkdownOverallSection(lines: string[], result: ComparisonResult)
         `${formatPercent(result.maxRssPeakDeltaPercent)} |`
     );
     lines.push(
+        `| Resident Heap Used | ${(result.baselineResidentHeapUsedBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${(result.currentResidentHeapUsedBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${formatSigned(result.residentHeapUsedDelta / 1024 / 1024, 'MB')} | ` +
+        `${formatPercent(result.residentHeapUsedDeltaPercent)} |`
+    );
+    lines.push(
+        `| Resident RSS | ${(result.baselineResidentRssBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${(result.currentResidentRssBytes / 1024 / 1024).toFixed(2)} MB | ` +
+        `${formatSigned(result.residentRssDelta / 1024 / 1024, 'MB')} | ` +
+        `${formatPercent(result.residentRssDeltaPercent)} |`
+    );
+    lines.push(
         `| Total GC Time | ${result.baselineTotalGcTimeMs.toFixed(2)} ms | ${result.currentTotalGcTimeMs.toFixed(2)} ms | ` +
         `${formatSigned(result.totalGcTimeDelta, 'ms')} | ${formatPercent(result.totalGcTimeDeltaPercent)} |`
     );
@@ -372,6 +432,31 @@ function appendMarkdownStageSection(lines: string[], result: ComparisonResult): 
     }
 }
 
+function appendMarkdownStageEndMemorySection(lines: string[], result: ComparisonResult): void {
+    lines.push('');
+    lines.push('## Stage End Memory');
+    lines.push('');
+    lines.push('| Metric | Baseline | Current | Delta | % |');
+    lines.push('|--------|----------|---------|-------|---|');
+
+    for (const stage of result.stages) {
+        lines.push(
+            `| ${stage.stageName} Heap Used End | ` +
+            `${(stage.baselineHeapAfterUsedBytes / 1024 / 1024).toFixed(2)} MB | ` +
+            `${(stage.currentHeapAfterUsedBytes / 1024 / 1024).toFixed(2)} MB | ` +
+            `${formatSigned(stage.heapAfterUsedDelta / 1024 / 1024, 'MB')} | ` +
+            `${formatPercent(stage.heapAfterUsedDeltaPercent)} |`
+        );
+        lines.push(
+            `| ${stage.stageName} RSS End | ` +
+            `${(stage.baselineRssAfterBytes / 1024 / 1024).toFixed(2)} MB | ` +
+            `${(stage.currentRssAfterBytes / 1024 / 1024).toFixed(2)} MB | ` +
+            `${formatSigned(stage.rssAfterDelta / 1024 / 1024, 'MB')} | ` +
+            `${formatPercent(stage.rssAfterDeltaPercent)} |`
+        );
+    }
+}
+
 /**
  * Generate a Markdown report and write to file.
  */
@@ -387,6 +472,7 @@ function writeMarkdownReport(result: ComparisonResult, baselineId: string, curre
 
     appendMarkdownOverallSection(lines, result);
     appendMarkdownStageSection(lines, result);
+    appendMarkdownStageEndMemorySection(lines, result);
 
     fs.writeFileSync(outputPath, lines.join('\n'), 'utf-8');
 }
