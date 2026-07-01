@@ -80,6 +80,7 @@ function run(): void {
     logger.info('======================================================');
 
     detectCircularDependencies(scene);
+    printTopoDependencyGraph(scene);
 }
 
 function detectCircularDependencies(scene: Scene): void {
@@ -117,6 +118,38 @@ function detectCircularDependencies(scene: Scene): void {
         }
     }
     logger.info('=============================================================');
+}
+
+function printTopoDependencyGraph(scene: Scene): void {
+    const depGraph: ModuleDepGraph | undefined = scene.getModuleManager().getDepGraph();
+    if (!depGraph) {
+        logger.warn('ModuleDepGraph is not available, skip topo dependency graph.');
+        return;
+    }
+
+    const topo = depGraph.getTopoOrder();
+    if (topo.length === 0) {
+        logger.warn('Topo order is empty, skip topo dependency graph.');
+        return;
+    }
+
+    logger.info('============ Topological Dependency Graph ============');
+    logger.info('Modules in topological order (depended-on first):');
+    logger.info('------------------------------------------------------');
+    for (const id of topo) {
+        const module = depGraph.getNode(id);
+        const name = module?.getModuleName() ?? String(id);
+        const succIds = depGraph.getSuccModuleIds(id);
+        if (succIds.length === 0) {
+            logger.info(`  ${name}`);
+        } else {
+            const succNames = succIds
+                .map(sid => depGraph.getNode(sid)?.getModuleName() ?? String(sid))
+                .join(', ');
+            logger.info(`  ${name} -> [${succNames}]`);
+        }
+    }
+    logger.info('======================================================');
 }
 
 run();
