@@ -74,3 +74,8 @@ export const COMPONENT_DISAPPEAR_METHOD = 'aboutToDisappear';
 export const COMPONENT_DETACHED_METHOD = 'onDetached';
 export const COMPONENT_RECYCLE_METHOD = 'aboutToRecycle';
 export const COMPONENT_REUSE_METHOD = 'aboutToReuse';
+
+// oh-package.json5 dependency keys
+export const OH_PKG_DEPENDENCIES = 'dependencies';
+export const OH_PKG_DEV_DEPENDENCIES = 'devDependencies';
+export const OH_PKG_DYNAMIC_DEPENDENCIES = 'dynamicDependencies';

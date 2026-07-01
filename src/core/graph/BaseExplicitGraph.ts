@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -173,6 +173,19 @@ export abstract class BaseExplicitGraph implements GraphTraits<BaseNode> {
         }
 
         return this.idToNodeMap.get(id);
+    }
+
+    public getNodeID(node: BaseNode): NodeID {
+        return node.getID();
+    }
+
+    public succ(id: NodeID): NodeID[] {
+        const node = this.getNode(id);
+        const outgoingEdges = node?.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return [];
+        }
+        return Array.from(outgoingEdges).map(e => e.getDstID());
     }
 
     public hasNode(id: NodeID): boolean {
