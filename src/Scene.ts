@@ -317,8 +317,9 @@ export class Scene {
 
     private findTsConfigInfoDeeply(tsConfigObj: TsConfig, tsConfigFilePath: string): void {
         if (tsConfigObj.extends) {
-            const extTsConfigObj: TsConfig = fetchDependenciesFromFile(path.join(path.dirname(tsConfigFilePath), tsConfigObj.extends));
-            this.findTsConfigInfoDeeply(extTsConfigObj, tsConfigFilePath);
+            const extTsConfigFilePath = path.join(path.dirname(tsConfigFilePath), tsConfigObj.extends);
+            const extTsConfigObj: TsConfig = fetchDependenciesFromFile(extTsConfigFilePath);
+            this.findTsConfigInfoDeeply(extTsConfigObj, extTsConfigFilePath);
             if (!this.baseUrl && !this.globalModule2PathMapping) {
                 this.addTsConfigInfo(extTsConfigObj);
             }
