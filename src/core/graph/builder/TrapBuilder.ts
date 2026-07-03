@@ -465,23 +465,29 @@ export class TrapBuilder {
     }
 
     private copyStmt(sourceStmt: Stmt): Stmt | null {
+        let targetStmt: Stmt | null = null;
         if (sourceStmt instanceof ArkAssignStmt) {
-            return new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
+            targetStmt = new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
         } else if (sourceStmt instanceof ArkInvokeStmt) {
-            return new ArkInvokeStmt(sourceStmt.getInvokeExpr());
+            targetStmt = new ArkInvokeStmt(sourceStmt.getInvokeExpr());
         } else if (sourceStmt instanceof ArkIfStmt) {
-            return new ArkIfStmt(sourceStmt.getConditionExpr());
+            targetStmt = new ArkIfStmt(sourceStmt.getConditionExpr());
         } else if (sourceStmt instanceof ArkReturnStmt) {
-            return new ArkReturnStmt(sourceStmt.getOp());
+            targetStmt = new ArkReturnStmt(sourceStmt.getOp());
         } else if (sourceStmt instanceof ArkReturnVoidStmt) {
-            return new ArkReturnVoidStmt();
+            targetStmt = new ArkReturnVoidStmt();
         } else if (sourceStmt instanceof ArkThrowStmt) {
-            return new ArkThrowStmt(sourceStmt.getOp());
+            targetStmt = new ArkThrowStmt(sourceStmt.getOp());
         } else if (sourceStmt instanceof ArkAliasTypeDefineStmt) {
-            return new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
+            targetStmt = new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
         } else {
             logger.error(`unsupported statement type`);
             return null;
         }
+        const originPos = sourceStmt.getOriginFullPosition();
+        if (originPos) {
+            targetStmt.setOriginFullPosition(originPos);
+        }
+        return targetStmt;
     }
 }
