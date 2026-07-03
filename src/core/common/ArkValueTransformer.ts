@@ -879,7 +879,7 @@ export class ArkValueTransformer {
         }
 
         let elementAccessExpr: Value;
-        if (baseValue.getType() instanceof ArrayType) {
+        if (baseValue.getType() instanceof ArrayType || baseValue.getType() instanceof StringType) {
             elementAccessExpr = new ArkArrayRef(baseValue as Local, argumentValue);
         } else {
             // TODO: deal with ArkStaticFieldRef

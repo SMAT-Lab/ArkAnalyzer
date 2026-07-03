@@ -16,7 +16,7 @@
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { FieldSignature } from '../model/ArkSignature';
 import { Local } from './Local';
-import { ArrayType, ClassType, LexicalEnvType, Type, UnknownType } from './Type';
+import { ArrayType, ClassType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../model/ArkMethod';
@@ -99,6 +99,8 @@ export class ArkArrayRef extends AbstractRef {
         let baseType = TypeInference.replaceTypeWithReal(this.base.getType());
         if (baseType instanceof ArrayType) {
             return baseType.getBaseType();
+        } else if (baseType instanceof StringType) {
+            return StringType.getInstance();
         } else {
             logger.warn(`the type of base in ArrayRef is not ArrayType`);
             return UnknownType.getInstance();
