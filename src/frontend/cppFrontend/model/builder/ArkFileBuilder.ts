@@ -63,6 +63,69 @@ function applyArkFile(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode)
     buildArkFile(arkFile, astRoot);
 }
 
+/**
+ * Lightweight variant of {@link applyArkFile} that only sets basic file metadata and
+ * fills ImportInfo from #include / using-namespace directives. It does NOT build
+ * ArkClass, ArkMethod, ArkNamespace, or ArkBody.
+ *
+ * @param arkFile - Target ArkFile to populate.
+ * @param sourceFile - Absolute path of the C++ source file.
+ * @param astRoot - Root AST node returned by the C++ AST parser.
+ */
+function applyArkFileForImports(arkFile: ArkFile, sourceFile: string, astRoot: CxxAstNode): void {
+    const scene = arkFile.getScene();
+    const projectDir = scene.getRealProjectDir();
+    const projectName = scene.getProjectName();
+    arkFile.setFilePath(sourceFile);
+    arkFile.setProjectDir(projectDir);
+    arkFile.setFileSignature(new FileSignature(projectName, path.relative(projectDir, sourceFile)));
+    const sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+    const options = scene.getOptions();
+    const eagerLoad = options.saveSourceCodeByDefault ?? false;
+    if (eagerLoad && scene.getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
+    buildImportsOnly(arkFile, astRoot);
+}
+
+/**
+ * Imports-only subset of {@link buildArkFile}. Processes #include directives from
+ * header units and using-namespace directives from the top-level statement list.
+ * Recurses into LinkageSpecDecl nodes which may contain their own includes/usings.
+ *
+ * @param arkFile - Target ArkFile to populate with ImportInfo.
+ * @param astRoot - Root AST node returned by the C++ AST parser.
+ */
+function buildImportsOnly(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    // handle header units - process #include directives
+    astRoot.headerUnits?.forEach((child: CxxAstNode) => {
+        if (!child.includes) {
+            return;
+        }
+        for (const includeInfo of child.includes) {
+            if (includeInfo.kind !== AstKind.InclusionDirective) {
+                logger.trace('Unprocess kind of header unit: ', includeInfo.kind ?? includeInfo.includeName);
+                continue;
+            }
+            buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
+        }
+    });
+    // handle non-header unit - only import-related declarations
+    const statements = astRoot.inner ?? [];
+    statements.forEach((child: CxxAstNode) => {
+        switch (child.kind) {
+            case AstKind.UsingDirectiveDecl:
+                buildImportInfoFromUsing(child, astRoot, arkFile);
+                break;
+            case AstKind.LinkageSpecDecl:
+                buildImportsOnly(arkFile, child);
+                break;
+            default:
+                break;
+        }
+    });
+}
+
 export interface CppStreamBuildResult {
     arkFiles: ArkFile[];
     failedFiles: FrontendParseFailure[];
@@ -76,11 +139,11 @@ export function prepareArkFiles(
     absoluteSourceFiles: string[],
     maxParallelProcesses: number = 1,
     maxPendingAstResults: number = 2,
-    logAstInfo: boolean = false,
+    logAstInfo: boolean = false
 ): CppStreamBuildResult {
     const arkFiles: ArkFile[] = [];
     const failedFiles: FrontendParseFailure[] = [];
-    const sources = absoluteSourceFiles.map((f) => path.resolve(f));
+    const sources = absoluteSourceFiles.map(f => path.resolve(f));
     if (sources.length === 0) {
         return { arkFiles, failedFiles };
     }
@@ -113,12 +176,7 @@ export function prepareArkFiles(
     return { arkFiles, failedFiles };
 }
 
-export function prepareArkFile(
-    scene: Scene,
-    absoluteFilePath: string,
-    targetArkFile: ArkFile,
-    logAstInfo: boolean = false,
-): void {
+export function prepareArkFile(scene: Scene, absoluteFilePath: string, targetArkFile: ArkFile, logAstInfo: boolean = false): void {
     const sourceFile = path.resolve(absoluteFilePath);
     const projectDir = scene.getRealProjectDir();
     const includeDirs = scene.getIncludeDirs();
@@ -135,6 +193,43 @@ export function prepareArkFile(
                 applyArkFile(targetArkFile, source, astRoot);
             } catch (err) {
                 logger.warn(`Failed to apply C++ AST to ArkFile: ${source}`, err as Error);
+            }
+        },
+    });
+    for (const e of result.dumpErrors) {
+        logger.warn(`C++ AST dump error for ${e.filePath}`, e.reason);
+    }
+    if (result.exitCode !== 0) {
+        logger.warn(`C++ single-file AST parse not completed successfully: ${sourceFile}`);
+    }
+}
+
+/**
+ * Imports-only variant of {@link prepareArkFile}. Parses the C++ AST for the given
+ * file and populates only basic file metadata and ImportInfo (#include directives
+ * and using-namespace declarations). Does NOT build ArkClass/ArkMethod/ArkNamespace/ArkBody.
+ *
+ * @param arkFile - Pre-allocated ArkFile to populate (must have scene and file path set).
+ */
+export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
+    const scene = arkFile.getScene();
+    const sourceFile = path.resolve(arkFile.getFilePath());
+    const projectDir = scene.getRealProjectDir();
+    const includeDirs = scene.getIncludeDirs();
+    const logAstInfo = scene.getOptions().languages?.cpp?.logAstInfo === true;
+    const result = getAstParser().runCppAst({
+        scene,
+        sources: [sourceFile],
+        projectDir,
+        includeDirs,
+        maxParallelProcesses: 1,
+        maxPendingAstResults: 2,
+        logAstInfo,
+        onSourceAst: (source, astRoot) => {
+            try {
+                applyArkFileForImports(arkFile, source, astRoot);
+            } catch (err) {
+                logger.warn(`Failed to apply C++ AST (imports-only) to ArkFile: ${source}`, err as Error);
             }
         },
     });

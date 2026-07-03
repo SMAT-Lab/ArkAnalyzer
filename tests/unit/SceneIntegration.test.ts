@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { Scene } from '../../src/Scene';
 import { SceneConfig } from '../../src/Config';
 import { ArkModule } from '../../src/core/model/ArkModule';
-import { ModuleManager } from '../../src/frontend/common/ModuleManager';
+import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 
 describe('Scene integration tests', () => {
     describe('config(sceneConfig)', () => {
@@ -54,38 +54,16 @@ describe('Scene integration tests', () => {
 
         it('returns registered ArkModule list', () => {
             const scene = new Scene();
-            const manager = (scene as unknown as { moduleManager: ModuleManager }).moduleManager;
+            const builder = new ModuleBuilder(scene);
 
-            const moduleA = manager.registerModule('/project/a', 'moduleA');
-            const moduleB = manager.registerModule('/project/b', 'moduleB');
+            const moduleA = builder.registerModule('/project/a', 'moduleA');
+            const moduleB = builder.registerModule('/project/b', 'moduleB');
 
             const modules = scene.getModules();
             expect(modules.length).toBe(2);
             expect(modules).toContain(moduleA);
             expect(modules).toContain(moduleB);
             expect(modules[0]).toBeInstanceOf(ArkModule);
-        });
-    });
-
-    describe('getModuleManager()', () => {
-        it('returns the ModuleManager embedded in the scene', () => {
-            const scene = new Scene();
-            const manager = scene.getModuleManager();
-            expect(manager).toBeInstanceOf(ModuleManager);
-        });
-
-        it('returns the same instance on repeated calls', () => {
-            const scene = new Scene();
-            expect(scene.getModuleManager()).toBe(scene.getModuleManager());
-        });
-
-        it('works internally via getModules() and analyseByModule()', () => {
-            const scene = new Scene();
-            // getModules() internally uses moduleManager
-            expect(scene.getModules()).toEqual([]);
-            // The moduleManager field exists and is accessible via the public getter
-            const manager = scene.getModuleManager();
-            expect(manager).toBeInstanceOf(ModuleManager);
         });
     });
 });

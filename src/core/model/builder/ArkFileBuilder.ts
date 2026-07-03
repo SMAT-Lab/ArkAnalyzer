@@ -181,3 +181,52 @@ function genDefaultArkClass(arkFile: ArkFile, astRoot: ts.SourceFile): void {
     arkFile.setDefaultClass(defaultClass);
     arkFile.addArkClass(defaultClass);
 }
+
+/**
+ * Lightweight entry of building ImportInfo/ExportInfo on ArkFile without building ArkClass/ArkMethod/ArkNamespace/ArkBody.
+ *
+ * @param arkFile
+ * @returns
+ */
+export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
+    let sourceText: string;
+    try {
+        sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+    } catch (error) {
+        logger.error('Failed to read file: ${error}');
+        return;
+    }
+    arkFile.setCode(sourceText);
+    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    buildImportExportInfo(arkFile, sourceFile);
+}
+
+/**
+ * Building ImportInfo/ExportInfo on ArkFile from AST, skipping class/interface/enum/struct/namespace declarations.
+ *
+ * @param arkFile
+ * @param astRoot
+ * @returns
+ */
+function buildImportExportInfo(arkFile: ArkFile, astRoot: ts.SourceFile): void {
+    const statements = astRoot.statements;
+    statements.forEach(child => {
+        if (ts.isImportEqualsDeclaration(child) || ts.isImportDeclaration(child)) {
+            let importInfos = buildImportInfo(child, astRoot, arkFile);
+            importInfos?.forEach(element => {
+                element.setDeclaringArkFile(arkFile);
+                arkFile.addImportInfo(element);
+            });
+        } else if (ts.isExportDeclaration(child)) {
+            buildExportDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
+        } else if (ts.isExportAssignment(child)) {
+            buildExportAssignment(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
+        } else if (ts.isVariableStatement(child) && isExported(child.modifiers)) {
+            buildExportVariableStatement(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
+        } else if (ts.isTypeAliasDeclaration(child) && isExported(child.modifiers)) {
+            buildExportTypeAliasDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
+        } else if (ts.isExpressionStatement(child) && ts.isStringLiteral(child.expression)) {
+            cloneText(child.expression.text).trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
+        }
+    });
+}

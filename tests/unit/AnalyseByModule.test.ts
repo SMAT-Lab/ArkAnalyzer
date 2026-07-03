@@ -20,8 +20,9 @@ import path from 'path';
 import { Scene } from '../../src/Scene';
 import { SceneConfig } from '../../src/Config';
 import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisConfig';
+import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 import { ArkModule, ModuleLoadState, ModuleType } from '../../src/core/model/ArkModule';
-import { ModuleManager } from '../../src/frontend/common/ModuleManager';
+import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 
 /**
  * Create a temp project with 2 PROJECT modules (entry depends on library) and 1 OH_MODULES package.
@@ -88,14 +89,8 @@ describe('analyseByModule integration tests', () => {
         return scene;
     }
 
-    /** Access the private moduleManager field for testing. */
-    function getModuleManager(scene: Scene): ModuleManager {
-        return (scene as unknown as { moduleManager: ModuleManager }).moduleManager;
-    }
-
     it('flow: prepareSdkModules -> prepareModules -> analyzeModuleDependencies -> callback called in topo order', () => {
         const scene = createScene();
-        const manager = getModuleManager(scene);
 
         const calledModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -103,9 +98,9 @@ describe('analyseByModule integration tests', () => {
         });
 
         // Verify preprocessing was done
-        expect(manager.isSdkRegistered()).toBe(true);
-        expect(manager.isModulesPrepared()).toBe(true);
-        expect(manager.hasTopoOrder()).toBe(true);
+        expect(scene.isSdkRegistered()).toBe(true);
+        expect(scene.isModulesRegistered()).toBe(true);
+        expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
         // Verify callback was called for exactly 3 non-SDK modules (2 PROJECT + 1 OH_MODULES)
         expect(calledModules.length).toBe(3);
@@ -126,19 +121,18 @@ describe('analyseByModule integration tests', () => {
 
     it('idempotent: second call does not repeat preprocessing', () => {
         const scene = createScene();
-        const manager = getModuleManager(scene);
 
         // First call - does all preprocessing
         scene.analyseByModule(() => {});
 
-        expect(manager.isSdkRegistered()).toBe(true);
-        expect(manager.isModulesPrepared()).toBe(true);
-        expect(manager.hasTopoOrder()).toBe(true);
+        expect(scene.isSdkRegistered()).toBe(true);
+        expect(scene.isModulesRegistered()).toBe(true);
+        expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
-        // Spy on preprocessing methods after first call
-        const spySdk = vi.spyOn(manager, 'prepareSdkModules');
-        const spyModules = vi.spyOn(manager, 'prepareModules');
-        const spyDeps = vi.spyOn(manager, 'analyzeModuleDependencies');
+        // Spy on preprocessing methods on the prototype (analyseByModule creates its own builder)
+        const spySdk = vi.spyOn(ModuleBuilder.prototype, 'prepareSdkModules');
+        const spyModules = vi.spyOn(ModuleBuilder.prototype, 'prepareModules');
+        const spyDeps = vi.spyOn(ModuleBuilder.prototype, 'analyzeModuleDependencies');
 
         // Second call - should skip all preprocessing
         scene.analyseByModule(() => {});
@@ -154,12 +148,12 @@ describe('analyseByModule integration tests', () => {
 
     it('SDK modules: not in callback', () => {
         const scene = createScene();
-        const manager = getModuleManager(scene);
+        const builder = new ModuleBuilder(scene);
 
         // Register an SDK module before calling analyseByModule
         const sdkPath = path.join(realProjectDir, 'fake-sdk');
         fs.mkdirSync(sdkPath, { recursive: true });
-        const sdkModule = manager.registerModule(sdkPath, 'fakeSdk');
+        const sdkModule = builder.registerModule(sdkPath, 'fakeSdk');
         sdkModule.setModuleType(ModuleType.SDK);
 
         const calledModules: ArkModule[] = [];
@@ -218,18 +212,17 @@ describe('analyseByModule integration tests', () => {
         });
     });
 
-    it('modules are LOADED before callback is called', () => {
+    it('modules are META before callback is called', () => {
         const scene = createScene();
 
         scene.analyseByModule(module => {
-            // Every module passed to the callback must already be in the LOADED state
-            expect(module.getLoadState()).toBe(ModuleLoadState.LOADED);
+            // Every module passed to the callback must already be in the META state
+            expect(module.getLoadState()).toBe(ModuleLoadState.META);
         });
     });
 
     it('loadModule is called for all modules in topoOrder, including non-target dependencies', () => {
         const scene = createScene();
-        const manager = getModuleManager(scene);
 
         const entryPath = path.resolve(realProjectDir, 'entry');
         const libraryPath = path.resolve(realProjectDir, 'library');
@@ -239,15 +232,46 @@ describe('analyseByModule integration tests', () => {
 
         scene.analyseByModule(() => {}, config);
 
-        // The target (entry) must be LOADED
-        const entryModule = manager.getModuleByPath(entryPath)!;
-        expect(entryModule).toBeDefined();
-        expect(entryModule.getLoadState()).toBe(ModuleLoadState.LOADED);
+        const builder = new ModuleBuilder(scene);
 
-        // The non-target dependency (library) must also be LOADED, even though
+        // The target (entry) must be META
+        const entryModule = builder.getModuleByPath(entryPath)!;
+        expect(entryModule).toBeDefined();
+        expect(entryModule.getLoadState()).toBe(ModuleLoadState.META);
+
+        // The non-target dependency (library) must also be META, even though
         // the callback was not invoked for it.
-        const libraryModule = manager.getModuleByPath(libraryPath)!;
+        const libraryModule = builder.getModuleByPath(libraryPath)!;
         expect(libraryModule).toBeDefined();
-        expect(libraryModule.getLoadState()).toBe(ModuleLoadState.LOADED);
+        expect(libraryModule.getLoadState()).toBe(ModuleLoadState.META);
+    });
+
+    it('IMPORTS level: SDK and non-SDK modules have file dependency graphs', () => {
+        // Add .ets source files to the entry and library modules so file dependency analysis
+        // has something to analyze.
+        fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'a.ets'), "import { foo } from './b';\n");
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'b.ets'), 'export const foo = 1;\n');
+        fs.mkdirSync(path.join(tmpDir, 'library', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'library', 'src', 'c.ets'), 'export const bar = 2;\n');
+
+        const scene = createScene();
+        const config = new ModuleAnalysisConfig();
+        config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS);
+        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
+
+        const verifiedModules: ArkModule[] = [];
+        scene.analyseByModule(module => {
+            // PROJECT modules are loaded at IMPORTS level with source files, so they must have
+            // file dependency graphs and a file topological order.
+            if (module.getModuleType() === ModuleType.PROJECT) {
+                expect(module.hasFileTopoOrder()).toBe(true);
+                expect(module.getFileDepGraph()).toBeDefined();
+                verifiedModules.push(module);
+            }
+        }, config);
+
+        // Both PROJECT modules (entry and library) must have been verified.
+        expect(verifiedModules.length).toBe(2);
     });
 });

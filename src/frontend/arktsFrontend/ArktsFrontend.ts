@@ -15,10 +15,9 @@
 
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
-import { buildArkFileFromFile } from '../../core/model/builder/ArkFileBuilder';
+import { buildArkFileFromFile, buildImportExportInfoFromFile } from '../../core/model/builder/ArkFileBuilder';
 import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
 import { FileUtils } from '../../utils/FileUtils';
-
 
 /**
  * ArkTS/TS/JS: builds {@link ArkFile}s using the core TS/ArkTS pipeline (see {@link buildArkFileFromFile}).
@@ -28,6 +27,14 @@ export class ArktsFrontend {
     /** Fills a project {@link ArkFile} from a source file; delegates to {@link buildArkFileFromFile}. */
     public buildProjectFile(scene: Scene, filePath: string, arkFile: ArkFile): void {
         buildArkFileFromFile(filePath, scene.getRealProjectDir(), arkFile, scene.getProjectName());
+    }
+
+    /**
+     * Imports-only build for a single ArkTS file: fills ImportInfo/ExportInfo
+     * without building ArkClass/ArkMethod/ArkBody.
+     */
+    public buildProjectFileForImports(arkFile: ArkFile): void {
+        buildImportExportInfoFromFile(arkFile);
     }
 
     /**

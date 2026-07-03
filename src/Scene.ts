@@ -23,11 +23,11 @@ import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
-import { ArkModule, ModuleID, ModuleType } from './core/model/ArkModule';
+import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from './core/model/ArkModule';
 import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
 import { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
-import { ModuleManager } from './frontend/common/ModuleManager';
+import { ModuleBuilder } from './frontend/common/ModuleBuilder';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
@@ -53,6 +53,8 @@ import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
 import { sortByDependency } from './utils/DependenciesSort';
+import { Canonicalizer } from './utils/Canonicalizer';
+import { ModuleDepGraph } from './core/graph/ModuleDepGraph';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -111,8 +113,20 @@ export class Scene {
     /** The SceneConfig used to build this scene, retained for later queries (e.g. SDK list). */
     private sceneConfig?: SceneConfig;
 
-    /** Module manager for module-level analysis (registration, dependency graph, topo sort). */
-    private moduleManager: ModuleManager = new ModuleManager(this);
+    /** Maps ArkModule objects to dense integer ModuleIDs via the objectIdentity strategy. */
+    private moduleCanonicalizer: Canonicalizer<ArkModule> = new Canonicalizer<ArkModule>();
+
+    /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
+    private moduleDepGraph?: ModuleDepGraph;
+
+    /** Whether SDK modules have been registered (set true after prepareSdkModules, idempotent). */
+    private sdkRegistered: boolean = false;
+
+    /** Whether module preparation has completed (set true after prepareModules, idempotent). */
+    private modulesRegistered: boolean = false;
+
+    /** Whether module dependency analysis has completed (set true after analyzeModuleDependencies). */
+    private moduleDependenciesAnalyzed: boolean = false;
 
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
@@ -869,18 +883,62 @@ export class Scene {
     }
 
     /**
-     * Returns all registered {@link ArkModule} objects managed by the {@link ModuleManager}.
+     * Returns all registered {@link ArkModule} objects. Modules whose loadState is DISPOSED are skipped.
      */
     public getModules(): ArkModule[] {
-        return Array.from(this.moduleManager.modulesIterator());
+        const result: ArkModule[] = [];
+        for (let i = 0; i < this.moduleCanonicalizer.size(); i++) {
+            const m = this.moduleCanonicalizer.get(i);
+            if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
+                result.push(m);
+            }
+        }
+        return result;
     }
 
-    /**
-     * Returns the {@link ModuleManager} embedded in this scene, responsible for module
-     * lifecycle, dependency graph, and topological sort.
-     */
-    public getModuleManager(): ModuleManager {
-        return this.moduleManager;
+    // --- Module query methods (Scene is a lightweight result container) ---
+
+    /** The module dependency graph, or undefined before dependency analysis. */
+    public getModuleDepGraph(): ModuleDepGraph | undefined {
+        return this.moduleDepGraph;
+    }
+
+    /** Whether SDK modules have been registered. */
+    public isSdkRegistered(): boolean {
+        return this.sdkRegistered;
+    }
+
+    /** Whether module preparation has completed. */
+    public isModulesRegistered(): boolean {
+        return this.modulesRegistered;
+    }
+
+    /** Whether module dependency analysis has completed. */
+    public isModuleDependenciesAnalyzed(): boolean {
+        return this.moduleDependenciesAnalyzed;
+    }
+
+    // --- Internal accessors used by ModuleBuilder to read/write persistent state ---
+
+    /** The module Canonicalizer instance (shared with ModuleDepGraph). */
+    public getModuleCanonicalizer(): Canonicalizer<ArkModule> {
+        return this.moduleCanonicalizer;
+    }
+
+    public setModuleDepGraph(graph: ModuleDepGraph): void {
+        this.moduleDepGraph = graph;
+    }
+
+    public setSdkRegistered(value: boolean): void {
+        this.sdkRegistered = value;
+    }
+
+    public setModulesRegistered(value: boolean): void {
+        this.modulesRegistered = value;
+    }
+
+    public setModuleDependenciesAnalyzed(value: boolean): void {
+        this.moduleDependenciesAnalyzed = value;
     }
 
     /**
@@ -901,36 +959,37 @@ export class Scene {
      * @param config - Optional configuration for target module selection.
      */
     public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
+        const builder = new ModuleBuilder(this);
         // 1. Prepare SDK modules (idempotent)
-        if (!this.moduleManager.isSdkRegistered()) {
-            this.moduleManager.prepareSdkModules();
+        if (!this.isSdkRegistered()) {
+            builder.prepareSdkModules();
         }
         // 2. Prepare project/oh_modules (idempotent)
-        if (!this.moduleManager.isModulesPrepared()) {
-            this.moduleManager.prepareModules();
+        if (!this.isModulesRegistered()) {
+            builder.prepareModules();
         }
         // 3. Analyze dependencies (idempotent)
-        if (!this.moduleManager.hasTopoOrder()) {
-            this.moduleManager.analyzeModuleDependencies();
+        if (!this.isModuleDependenciesAnalyzed()) {
+            builder.analyzeModuleDependencies();
         }
         // 4. Determine modules to analyze
         let topoOrder: ModuleID[];
         let targetPaths: Set<string> | undefined;
         if (config?.hasTargetProjectModules()) {
-            const closure = this.moduleManager.computeModuleClosure(config.getTargetProjectModules());
-            topoOrder = this.moduleManager.getFilteredTopoOrder(closure);
+            const closure = builder.computeModuleClosure(config.getTargetProjectModules());
+            topoOrder = builder.getFilteredTopoOrder(closure);
             targetPaths = config.getTargetProjectModules();
         } else {
-            topoOrder = this.moduleManager.getTopoOrder();
+            topoOrder = builder.getTopoOrder();
         }
         // 5. Iterate topoOrder: load each module then call callback
         for (const moduleId of topoOrder) {
-            const module = this.moduleManager.getModule(moduleId);
+            const module = builder.getModule(moduleId);
             if (!module) {
                 continue;
             }
-            // Load module data at configured depth level (idempotent; SDK modules are just marked LOADED)
-            this.moduleManager.loadModule(moduleId, config);
+            // Load module data at configured depth level (idempotent; SDK modules are just marked META)
+            builder.loadModule(moduleId, config);
             // Skip SDK modules for callback
             if (module.getModuleType() === ModuleType.SDK) {
                 continue;

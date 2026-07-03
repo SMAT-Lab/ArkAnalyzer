@@ -50,7 +50,7 @@ export enum DependencyType {
 export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
     /**
      * Module Canonicalizer for bidirectional ArkModule <-> ModuleID(NodeID) mapping.
-     * Shares the same instance with ModuleManager's moduleCanonicalizer.
+     * Shares the same instance with the owning Scene's moduleCanonicalizer.
      */
     private moduleCanonicalizer: Canonicalizer<ArkModule>;
 
@@ -65,6 +65,18 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
      * Depended-on modules appear before their dependents.
      */
     private topoOrder: NodeID[] = [];
+
+    /**
+     * SCC groups: NodeID -> all NodeIDs in the same SCC group.
+     * Populated by refineSCCGroups and retained for later queries.
+     */
+    private sccGroups: Map<NodeID, NodeID[]> = new Map();
+
+    /**
+     * SCC post-processing threshold: the maximum allowed number of modules in a group; SCCs
+     * exceeding this size are split. Default 3; set to Number.MAX_SAFE_INTEGER to disable.
+     */
+    private maxSCCGroupSize: number = 3;
 
     constructor(moduleCanonicalizer: Canonicalizer<ArkModule>) {
         super();
@@ -206,6 +218,27 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
     }
 
     /**
+     * Get the SCC groups map (NodeID -> all NodeIDs in the same SCC group) produced by the last
+     * refineSCCGroups call.
+     */
+    public getSCCGroups(): Map<NodeID, NodeID[]> {
+        return this.sccGroups;
+    }
+
+    /**
+     * Set the SCC post-processing threshold. SCCs larger than this size are split.
+     * Set to Number.MAX_SAFE_INTEGER to disable post-processing.
+     */
+    public setMaxSCCGroupSize(maxGroupSize: number): void {
+        this.maxSCCGroupSize = maxGroupSize;
+    }
+
+    /** Current SCC post-processing threshold. */
+    public getMaxSCCGroupSize(): number {
+        return this.maxSCCGroupSize;
+    }
+
+    /**
      * Detect strong bridges in the SCC subgraph.
      * A strong bridge is a directed edge whose removal increases the number of SCCs.
      * For each edge u->v, check if removing it causes u and v to no longer be
@@ -247,13 +280,7 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
      * Check if 'from' can reach 'to' in the subgraph, excluding edge excludedSrc->excludedDst.
      * Uses DFS over successor edges within the member set.
      */
-    private canReachWithoutEdge(
-        from: NodeID,
-        to: NodeID,
-        excludedSrc: NodeID,
-        excludedDst: NodeID,
-        memberSet: Set<NodeID>
-    ): boolean {
+    private canReachWithoutEdge(from: NodeID, to: NodeID, excludedSrc: NodeID, excludedDst: NodeID, memberSet: Set<NodeID>): boolean {
         if (from === to) {
             return true;
         }
@@ -354,14 +381,14 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
 
         for (const bridge of bridges) {
             const currentGroups = this.recomputeSCC(members, excludedEdges);
-            if (currentGroups.every((g) => g.length <= maxGroupSize)) {
+            if (currentGroups.every(g => g.length <= maxGroupSize)) {
                 return currentGroups;
             }
 
             excludedEdges.add(`${bridge.src}->${bridge.dst}`);
 
             const newGroups = this.recomputeSCC(members, excludedEdges);
-            if (newGroups.every((g) => g.length <= maxGroupSize)) {
+            if (newGroups.every(g => g.length <= maxGroupSize)) {
                 return newGroups;
             }
         }
@@ -381,14 +408,14 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
 
         for (const edge of edges) {
             const currentGroups = this.recomputeSCC(members, excludedEdges);
-            if (currentGroups.every((g) => g.length <= maxGroupSize)) {
+            if (currentGroups.every(g => g.length <= maxGroupSize)) {
                 return currentGroups;
             }
 
             excludedEdges.add(`${edge.src}->${edge.dst}`);
 
             const newGroups = this.recomputeSCC(members, excludedEdges);
-            if (newGroups.every((g) => g.length <= maxGroupSize)) {
+            if (newGroups.every(g => g.length <= maxGroupSize)) {
                 return newGroups;
             }
         }
@@ -399,7 +426,7 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
     /**
      * Refine SCC groups: split groups exceeding maxGroupSize using strong bridge
      * detection and dependency type priority fallback.
-     * Returns a map from each member NodeID to its group members array.
+     * Stores the resulting groups in {@link sccGroups} and returns the same map.
      * Also populates the topoOrder field with nodes in dependency order (depended-on first).
      * @param maxGroupSize Maximum allowed group size; Number.MAX_SAFE_INTEGER disables post-processing
      * @returns Map from each member NodeID to its group members array
@@ -414,13 +441,9 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
         const added = new Set<NodeID>();
 
         for (const repId of topoStack) {
-            const members = scc.nodeIsInCycle(repId)
-                ? Array.from(scc.getMySCCNodes(repId))
-                : [repId];
+            const members = scc.nodeIsInCycle(repId) ? Array.from(scc.getMySCCNodes(repId)) : [repId];
 
-            const groups = members.length <= maxGroupSize
-                ? [members]
-                : this.splitLargeSCC(members, maxGroupSize);
+            const groups = members.length <= maxGroupSize ? [members] : this.splitLargeSCC(members, maxGroupSize);
 
             if (!scc.nodeIsInCycle(repId)) {
                 this.addToTopoAndGroups([repId], [repId], sccGroups, added);
@@ -431,18 +454,14 @@ export class ModuleDepGraph extends BaseImplicitGraph<ArkModule> {
             }
         }
 
+        this.sccGroups = sccGroups;
         return sccGroups;
     }
 
     /**
      * Add members to topoOrder and sccGroups, skipping already-added members.
      */
-    private addToTopoAndGroups(
-        members: NodeID[],
-        group: NodeID[],
-        sccGroups: Map<NodeID, NodeID[]>,
-        added: Set<NodeID>
-    ): void {
+    private addToTopoAndGroups(members: NodeID[], group: NodeID[], sccGroups: Map<NodeID, NodeID[]>, added: Set<NodeID>): void {
         for (const memberId of members) {
             if (!added.has(memberId)) {
                 added.add(memberId);
