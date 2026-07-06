@@ -13,13 +13,19 @@
  * limitations under the License.
  */
 
+import path from 'path';
+
 import { Language } from '../core/model/ArkFile';
 import { ModuleScene, Scene } from '../Scene';
 import { ArktsFrontend } from './arktsFrontend/ArktsFrontend';
 import { CppFrontend } from './cppFrontend/CppFrontend';
 import { ArkFile } from '../core/model/ArkFile';
+import { ArkModule } from '../core/model/ArkModule';
+import { FileSignature } from '../core/model/ArkSignature';
 import { FileUtils } from '../utils/FileUtils';
+import { getAllFiles } from '../utils/getAllFiles';
 import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
+import { ModuleDepthLevel } from './common/ModuleDepth';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FrontendBuilder');
 
@@ -93,6 +99,87 @@ export class FrontendBuilder {
             new CppFrontend().buildProjectFile(scene, filePath, arkFile);
         } else {
             new ArktsFrontend().buildProjectFile(scene, filePath, arkFile);
+        }
+    }
+
+    /**
+     * Build all source files of an {@link ArkModule} up to the given {@link ModuleDepthLevel}.
+     *
+     * Scans the module directory for source files using scene options
+     * (supportFileExts / ignoreFileNames), creates an {@link ArkFile} for each file, registers it
+     * with the module and scene, and builds it to the requested level. Errors on individual files
+     * are logged and do not abort the loop.
+     *
+     * @param scene - The owning {@link Scene}.
+     * @param module - The module whose files are built.
+     * @param level - The target depth level.
+     */
+    public static buildModuleFilesToLevel(scene: Scene, module: ArkModule, level: ModuleDepthLevel): void {
+        const modulePath = module.getModulePath();
+        const options = scene.getOptions();
+        const supportFileExts = options?.supportFileExts ?? ['.ets', '.ts'];
+        const ignoreFileNames = options?.ignoreFileNames ?? [];
+        const filePaths = getAllFiles(modulePath, supportFileExts, ignoreFileNames);
+
+        for (const filePath of filePaths) {
+            try {
+                FrontendBuilder.buildSingleModuleFile(scene, module, filePath, level);
+            } catch (error) {
+                logger.error(`Error building ArkFile for ${filePath}: ${error}`);
+            }
+        }
+    }
+
+    /**
+     * Create an ArkFile for a single module file, register it, and build it to the given level.
+     */
+    private static buildSingleModuleFile(
+        scene: Scene,
+        module: ArkModule,
+        filePath: string,
+        level: ModuleDepthLevel
+    ): void {
+        const language = FileUtils.getFileLanguage(filePath, scene.getFileLanguages());
+        const arkFile = new ArkFile(language);
+        arkFile.setScene(scene);
+        arkFile.setFilePath(filePath);
+        arkFile.setProjectDir(module.getModulePath());
+
+        const fileSignature = new FileSignature(scene.getProjectName(), path.relative(module.getModulePath(), filePath));
+        arkFile.setFileSignature(fileSignature);
+
+        module.addFile(arkFile);
+        scene.setFile(arkFile);
+
+        FrontendBuilder.buildArkFileToLevel(scene, filePath, arkFile, language, level);
+    }
+
+    /**
+     * Dispatch level-aware building to the appropriate frontend.
+     * SIGNATURES and BODIES are capped at IMPORTS (not yet implemented).
+     */
+    private static buildArkFileToLevel(
+        scene: Scene,
+        filePath: string,
+        arkFile: ArkFile,
+        language: Language,
+        level: ModuleDepthLevel
+    ): void {
+        if (level <= ModuleDepthLevel.META) {
+            return;
+        }
+        // Cap at IMPORTS: SIGNATURES/BODIES are treated as IMPORTS for now
+        FrontendBuilder.buildImports(arkFile, language);
+    }
+
+    /**
+     * IMPORTS level: lightweight import/export parsing only.
+     */
+    private static buildImports(arkFile: ArkFile, language: Language): void {
+        if (language === Language.CXX) {
+            new CppFrontend().buildProjectFileForImports(arkFile);
+        } else {
+            new ArktsFrontend().buildProjectFileForImports(arkFile);
         }
     }
 }

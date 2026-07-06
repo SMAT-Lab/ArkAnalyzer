@@ -76,13 +76,14 @@ export { NodeID, Kind, BaseEdge, BaseNode, BaseExplicitGraph } from './core/grap
 export { BaseImplicitGraph } from './core/graph/BaseImplicitGraph';
 export { SCCDetection } from './core/graph/Scc';
 export { ModuleDepGraph, DependencyType } from './core/graph/ModuleDepGraph';
+export { FileDepGraph } from './core/graph/FileDepGraph';
 
 // core/model
 export { ArkFile } from './core/model/ArkFile';
 export { ArkModule, ModuleLoadState, ModuleType, ModuleID } from './core/model/ArkModule';
 export { ModuleDepthLevel } from './frontend/common/ModuleDepth';
 export { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
-export { ModuleManager } from './frontend/common/ModuleManager';
+export { ModuleBuilder } from './frontend/common/ModuleBuilder';
 export { ArkNamespace } from './core/model/ArkNamespace';
 export { ArkClass } from './core/model/ArkClass';
 export { ArkMethod } from './core/model/ArkMethod';

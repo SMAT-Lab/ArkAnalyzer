@@ -17,13 +17,12 @@ import { describe, expect, it } from 'vitest';
 import { ModuleDepGraph, DependencyType } from '../../../../src/core/graph/ModuleDepGraph';
 import { ArkModule } from '../../../../src/core/model/ArkModule';
 import { Canonicalizer } from '../../../../src/utils/Canonicalizer';
-import { ModuleManager } from '../../../../src/frontend/common/ModuleManager';
-import type { Scene } from '../../../../src/Scene';
+import { Scene } from '../../../../src/Scene';
 
-const STUB_MANAGER = new ModuleManager({} as Scene);
+const STUB_SCENE: Scene = new Scene();
 
 function makeModule(path: string, name: string): ArkModule {
-    const module = new ArkModule(STUB_MANAGER);
+    const module = new ArkModule(STUB_SCENE);
     module.setModulePath(path);
     module.setModuleName(name);
     return module;
@@ -547,7 +546,7 @@ describe('ModuleDepGraph tests', () => {
                 graph.addModule(m);
                 mods.push(m);
             }
-            const ids = mods.map((m) => canon.getId(m));
+            const ids = mods.map(m => canon.getId(m));
             // 5-node cycle
             for (let i = 0; i < 5; i++) {
                 graph.addDependencyEdge(ids[i], ids[(i + 1) % 5]);
@@ -572,7 +571,7 @@ describe('ModuleDepGraph tests', () => {
                 graph.addModule(m);
                 mods.push(m);
             }
-            const ids = mods.map((m) => canon.getId(m));
+            const ids = mods.map(m => canon.getId(m));
             // SCC1: 4-node cycle 0 -> 1 -> 2 -> 3 -> 0
             graph.addDependencyEdge(ids[0], ids[1]);
             graph.addDependencyEdge(ids[1], ids[2]);
@@ -598,8 +597,8 @@ describe('ModuleDepGraph tests', () => {
             const scc1Set = new Set([ids[0], ids[1], ids[2], ids[3]]);
             const scc2Set = new Set([ids[4], ids[5], ids[6], ids[7]]);
             for (const group of new Set(groups.values())) {
-                const hasSCC1 = group.some((id) => scc1Set.has(id));
-                const hasSCC2 = group.some((id) => scc2Set.has(id));
+                const hasSCC1 = group.some(id => scc1Set.has(id));
+                const hasSCC2 = group.some(id => scc2Set.has(id));
                 expect(hasSCC1 && hasSCC2).toBe(false);
             }
         });
@@ -648,16 +647,26 @@ describe('ModuleDepGraph tests', () => {
                 graph.addModule(m);
                 mods.push(m);
             }
-            const ids = mods.map((m) => canon.getId(m));
+            const ids = mods.map(m => canon.getId(m));
             // K_3 on {0,1,2}: all 6 directed edges (no internal strong bridges)
             for (const [i, j] of [
-                [0, 1], [1, 0], [0, 2], [2, 0], [1, 2], [2, 1]
+                [0, 1],
+                [1, 0],
+                [0, 2],
+                [2, 0],
+                [1, 2],
+                [2, 1],
             ]) {
                 graph.addDependencyEdge(ids[i], ids[j]);
             }
             // K_3 on {3,4,5}: all 6 directed edges
             for (const [i, j] of [
-                [3, 4], [4, 3], [3, 5], [5, 3], [4, 5], [5, 4]
+                [3, 4],
+                [4, 3],
+                [3, 5],
+                [5, 3],
+                [4, 5],
+                [5, 4],
             ]) {
                 graph.addDependencyEdge(ids[i], ids[j]);
             }
@@ -669,7 +678,7 @@ describe('ModuleDepGraph tests', () => {
 
             // Only the connecting edges should be strong bridges
             expect(bridges.length).toBe(2);
-            const bridgeKeys = new Set(bridges.map((br) => `${br.src}->${br.dst}`));
+            const bridgeKeys = new Set(bridges.map(br => `${br.src}->${br.dst}`));
             expect(bridgeKeys.has(`${ids[2]}->${ids[3]}`)).toBe(true);
             expect(bridgeKeys.has(`${ids[5]}->${ids[0]}`)).toBe(true);
         });

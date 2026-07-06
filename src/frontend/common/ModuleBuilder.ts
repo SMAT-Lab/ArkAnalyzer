@@ -19,121 +19,68 @@ import path from 'path';
 import { Canonicalizer } from '../../utils/Canonicalizer';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../core/model/ArkModule';
 import { ModuleDepGraph, DependencyType } from '../../core/graph/ModuleDepGraph';
+import { FileDepGraph } from '../../core/graph/FileDepGraph';
 import { BUILD_PROFILE_JSON5, OH_MODULES, MODULE_PREFIX, OH_PACKAGE_JSON5, OHPM } from '../../core/common/EtsConst';
 import { OH_PKG_DEPENDENCIES, OH_PKG_DEV_DEPENDENCIES, OH_PKG_DYNAMIC_DEPENDENCIES } from '../../core/common/Const';
 import { fetchDependenciesFromFile, parseJsonText } from '../../utils/json5parser';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ModuleDepthLevel } from './ModuleDepth';
 import { ModuleAnalysisConfig } from './ModuleAnalysisConfig';
+import { FrontendBuilder } from '../FrontendBuilder';
 import { ArkFile } from '../../core/model/ArkFile';
-import { FileSignature } from '../../core/model/ArkSignature';
 import { FileUtils } from '../../utils/FileUtils';
-import { getAllFiles } from '../../utils/getAllFiles';
 import type { Scene } from '../../Scene';
 
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleManager');
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleBuilder');
 
 /**
- * ModuleManager is the core management class embedded in {@link Scene}, responsible for the full
- * lifecycle of modules: registration, SDK build, module preparation, dependency graph construction
- * and SCC analysis, module load/unload, and cache management.
+ * ModuleBuilder holds the build logic for module-level analysis embedded in {@link Scene}.
+ *
+ * It is responsible for the build side of the module lifecycle: registration, SDK build, module
+ * preparation, dependency graph construction and SCC analysis, and module loading. Persistent
+ * state (the Canonicalizer, pathToId map, dependency graph, and progress flags) lives on the
+ * owning {@link Scene}; this class reads and writes that state through the Scene accessors.
  *
  * Each module is identified by its absolute path and assigned a dense integer {@link ModuleID} via
- * a {@link Canonicalizer} using the objectIdentity strategy. The `pathToId` map is a persistent
- * cache that survives graph construction, allowing runtime path-based lookups.
+ * the Scene's Canonicalizer using the objectIdentity strategy. The `pathToId` map on the Scene is
+ * a persistent cache that survives graph construction, allowing runtime path-based lookups.
  *
  * @category core/model
  */
-export class ModuleManager {
+export class ModuleBuilder {
     private scene: Scene;
-
-    /** Maps ArkModule objects to dense integer ModuleIDs via the objectIdentity strategy. */
-    private moduleCanonicalizer: Canonicalizer<ArkModule> = new Canonicalizer<ArkModule>();
 
     /** Persistent map from absolute module path to ModuleID (survives graph construction). */
     private pathToId: Map<string, ModuleID> = new Map();
 
-    /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
-    private depGraph?: ModuleDepGraph;
-
-    /** SCC groups: ModuleID -> all ModuleIDs in the same SCC. */
-    private sccGroups: Map<ModuleID, ModuleID[]> = new Map();
-
-    /**
-     * SCC post-processing threshold: the maximum allowed number of modules in a group; SCCs
-     * exceeding this size are split. Default 3; set to Number.MAX_SAFE_INTEGER to disable.
-     */
-    private maxSCCGroupSize: number = 3;
-
-    /** Whether SDK modules have been registered (set true after prepareSdkModules, idempotent). */
-    private sdkRegistered: boolean = false;
-
-    /** Whether module preparation has completed (set true after prepareModules, idempotent). */
-    private modulesPrepared: boolean = false;
-
-    /** Whether module dependency analysis has completed (set true after analyzeModuleDependencies). */
-    private dependenciesAnalyzed: boolean = false;
-
-    /** Per-module retain level (configured load level) recorded during loadModule. */
-    private retainLevels: Map<ModuleID, ModuleDepthLevel> = new Map();
-
-    /** Modules currently being loaded, used to break recursion in cyclic dependencies. */
-    private loadingModules: Set<ModuleID> = new Set();
-
     constructor(scene: Scene) {
         this.scene = scene;
-    }
-
-    // --- Module registration ---
-
-    /**
-     * Register a module by its absolute path. If the same path has already been registered, the
-     * existing {@link ArkModule} is returned unchanged. A new ModuleID is allocated via the
-     * Canonicalizer for first-time registrations.
-     *
-     * @param modulePath - Absolute path of the module (primary identifier).
-     * @param moduleName - Optional module name (auxiliary field, e.g. "@ohos/entry").
-     * @returns The registered ArkModule (newly created or previously registered).
-     */
-    public registerModule(modulePath: string, moduleName: string = ''): ArkModule {
-        const existingId = this.pathToId.get(modulePath);
-        if (existingId !== undefined) {
-            return this.moduleCanonicalizer.get(existingId)!;
+        // Initialize pathToId from existing modules (supports idempotent calls)
+        const canon = scene.getModuleCanonicalizer();
+        for (const module of scene.getModules()) {
+            this.pathToId.set(module.getModulePath(), canon.getId(module));
         }
-
-        const module = new ArkModule(this);
-        module.setModulePath(modulePath);
-        module.setModuleName(moduleName);
-
-        const id = this.moduleCanonicalizer.getId(module);
-        this.pathToId.set(modulePath, id);
-
-        return module;
     }
 
-    /**
-     * Get a registered module by its ModuleID.
-     * @returns The ArkModule, or undefined when the id is out of bounds.
-     */
+    // --- Module query methods (moved from Scene) ---
+
+    /** Get a registered module by its ModuleID. Returns undefined when the id is out of bounds. */
     public getModule(id: ModuleID): ArkModule | undefined {
-        return this.moduleCanonicalizer.get(id);
+        return this.scene.getModuleCanonicalizer().get(id);
     }
 
-    /**
-     * Look up a module by its absolute path using the persistent pathToId cache.
-     * @returns The ArkModule, or undefined when the path has not been registered.
-     */
+    /** Look up a module by its absolute path using the pathToId cache. */
     public getModuleByPath(modulePath: string): ArkModule | undefined {
         const id = this.pathToId.get(modulePath);
         if (id === undefined) {
             return undefined;
         }
-        return this.moduleCanonicalizer.get(id);
+        return this.scene.getModuleCanonicalizer().get(id);
     }
 
     /** Total number of registered modules. */
     public getModuleCount(): number {
-        return this.moduleCanonicalizer.size();
+        return this.scene.getModuleCanonicalizer().size();
     }
 
     /**
@@ -151,13 +98,11 @@ export class ModuleManager {
         return iterator;
     }
 
-    /**
-     * Find the next non-DISPOSED module starting from the cursor.
-     * Advances the cursor past any skipped (DISPOSED) modules.
-     */
+    /** Find the next non-DISPOSED module starting from the cursor. */
     private nextModule(cursor: { value: number }): IteratorResult<ArkModule> {
-        while (cursor.value < this.moduleCanonicalizer.size()) {
-            const m = this.moduleCanonicalizer.get(cursor.value);
+        const canon = this.scene.getModuleCanonicalizer();
+        while (cursor.value < canon.size()) {
+            const m = canon.get(cursor.value);
             cursor.value++;
             if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
                 return { value: m, done: false };
@@ -166,54 +111,117 @@ export class ModuleManager {
         return { value: undefined as unknown as ArkModule, done: true };
     }
 
-    /** The module Canonicalizer instance (shared with ModuleDepGraph). */
-    public getModuleCanonicalizer(): Canonicalizer<ArkModule> {
-        return this.moduleCanonicalizer;
-    }
-
-    // --- Query methods ---
-
-    /** The module dependency graph, or undefined before dependency analysis. */
-    public getDepGraph(): ModuleDepGraph | undefined {
-        return this.depGraph;
-    }
-
     /** Topologically sorted module IDs (empty before dependency analysis completes). */
     public getTopoOrder(): ModuleID[] {
-        return this.depGraph ? this.depGraph.getTopoOrder() : [];
-    }
-
-    /** SCC groups map: ModuleID -> all ModuleIDs in the same SCC. */
-    public getSCCGroups(): Map<ModuleID, ModuleID[]> {
-        return this.sccGroups;
-    }
-
-    /** Whether the topological order is available (dependency analysis has completed). */
-    public hasTopoOrder(): boolean {
-        return this.dependenciesAnalyzed;
-    }
-
-    /** Whether SDK modules have been registered. */
-    public isSdkRegistered(): boolean {
-        return this.sdkRegistered;
-    }
-
-    /** Whether module preparation has completed. */
-    public isModulesPrepared(): boolean {
-        return this.modulesPrepared;
+        const graph = this.scene.getModuleDepGraph();
+        return graph ? graph.getTopoOrder() : [];
     }
 
     /**
-     * Set the SCC post-processing threshold. SCCs larger than this size are split.
-     * Set to Number.MAX_SAFE_INTEGER to disable post-processing.
+     * Resolve a dependency alias within the scope of the given module.
+     * Looks up the alias in the module's per-module alias map, then resolves the
+     * resulting ModuleID back to the depended-on ArkModule.
      */
-    public setMaxSCCGroupSize(maxGroupSize: number): void {
-        this.maxSCCGroupSize = maxGroupSize;
+    public resolveAlias(moduleId: ModuleID, alias: string): ArkModule | undefined {
+        const module = this.getModule(moduleId);
+        if (!module) {
+            return undefined;
+        }
+        const depId = module.resolveDependencyAlias(alias);
+        if (depId === undefined) {
+            return undefined;
+        }
+        return this.getModule(depId);
     }
 
-    /** Current SCC post-processing threshold. */
-    public getMaxSCCGroupSize(): number {
-        return this.maxSCCGroupSize;
+    /**
+     * Compute the transitive closure of module IDs reachable from the given target module paths via
+     * dependency edges (BFS over {@link ModuleDepGraph.getSuccModuleIds}).
+     * SDK modules are never included in the closure.
+     */
+    public computeModuleClosure(targetModulePaths: Set<string>): Set<ModuleID> {
+        const closure: Set<ModuleID> = new Set();
+        const queue: ModuleID[] = [];
+
+        for (const targetPath of targetModulePaths) {
+            const id = this.pathToId.get(targetPath);
+            if (id === undefined) {
+                continue;
+            }
+            const module = this.scene.getModuleCanonicalizer().get(id);
+            if (!module) {
+                continue;
+            }
+            if (module.getModuleType() === ModuleType.SDK) {
+                continue;
+            }
+            if (!closure.has(id)) {
+                closure.add(id);
+                queue.push(id);
+            }
+        }
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            const graph = this.scene.getModuleDepGraph();
+            const succIds = graph ? graph.getSuccModuleIds(currentId) : [];
+            for (const depId of succIds) {
+                if (closure.has(depId)) {
+                    continue;
+                }
+                const depModule = this.scene.getModuleCanonicalizer().get(depId);
+                if (!depModule) {
+                    continue;
+                }
+                if (depModule.getModuleType() === ModuleType.SDK) {
+                    continue;
+                }
+                closure.add(depId);
+                queue.push(depId);
+            }
+        }
+
+        return closure;
+    }
+
+    /** Filter the topological order to only include module IDs present in the given closure. */
+    public getFilteredTopoOrder(closure: Set<ModuleID>): ModuleID[] {
+        const graph = this.scene.getModuleDepGraph();
+        const topo = graph ? graph.getTopoOrder() : [];
+        return topo.filter(id => closure.has(id));
+    }
+
+    /** The module Canonicalizer instance (shared with ModuleDepGraph). */
+    public getModuleCanonicalizer(): Canonicalizer<ArkModule> {
+        return this.scene.getModuleCanonicalizer();
+    }
+
+    // --- Module registration ---
+
+    /**
+     * Register a module by its absolute path. If the same path has already been registered, the
+     * existing {@link ArkModule} is returned unchanged. A new ModuleID is allocated via the
+     * Scene's Canonicalizer for first-time registrations, and cached on the module.
+     *
+     * @param modulePath - Absolute path of the module (primary identifier).
+     * @param moduleName - Optional module name (auxiliary field, e.g. "@ohos/entry").
+     * @returns The registered ArkModule (newly created or previously registered).
+     */
+    public registerModule(modulePath: string, moduleName: string = ''): ArkModule {
+        const canonicalizer = this.scene.getModuleCanonicalizer();
+        const existingId = this.pathToId.get(modulePath);
+        if (existingId !== undefined) {
+            return canonicalizer.get(existingId)!;
+        }
+
+        const module = new ArkModule(this.scene);
+        module.setModulePath(modulePath);
+        module.setModuleName(moduleName);
+
+        const id = canonicalizer.getId(module);
+        this.pathToId.set(modulePath, id);
+
+        return module;
     }
 
     // --- SDK and module preparation ---
@@ -221,16 +229,16 @@ export class ModuleManager {
     /**
      * Register SDK modules from the {@link SceneConfig}.
      *
-     * Iterates the SDK list obtained from {@link Scene.getSceneConfig}, registering each
+     * Iterates the SDK list obtained from `Scene.getSceneConfig`, registering each
      * project-level SDK (those without a {@link Sdk.moduleName}) as an ArkModule with
      * moduleType=SDK. Only basic info (path, name) is registered — ArkFile building and
      * type inference are NOT performed by this method.
      *
-     * Idempotent: if SDK modules have already been registered ({@link isSdkRegistered} is true), this
-     * method returns immediately.
+     * Idempotent: if SDK modules have already been registered (`Scene.isSdkRegistered()` is
+     * true), this method returns immediately.
      */
     public prepareSdkModules(): void {
-        if (this.sdkRegistered) {
+        if (this.scene.isSdkRegistered()) {
             return;
         }
 
@@ -245,7 +253,7 @@ export class ModuleManager {
             module.setModuleType(ModuleType.SDK);
         }
 
-        this.sdkRegistered = true;
+        this.scene.setSdkRegistered(true);
     }
 
     /**
@@ -255,18 +263,18 @@ export class ModuleManager {
      * to discover third-party dependencies. Only basic info (paths) is registered —
      * oh-package.json5 is NOT read and no dependency graph is built.
      *
-     * Idempotent: if module preparation has already completed ({@link isModulesPrepared} is
-     * true), this method returns immediately.
+     * Idempotent: if module preparation has already completed (`Scene.isModulesRegistered()`
+     * is true), this method returns immediately.
      */
     public prepareModules(): void {
-        if (this.modulesPrepared) {
+        if (this.scene.isModulesRegistered()) {
             return;
         }
 
         this.registerProjectModules();
         this.registerOhModulesModules();
 
-        this.modulesPrepared = true;
+        this.scene.setModulesRegistered(true);
     }
 
     /**
@@ -385,23 +393,24 @@ export class ModuleManager {
      * Main entry point for module dependency analysis.
      *
      * Reads oh-package.json5 to update module names, builds the dependency graph,
-     * runs SCC detection with post-processing refinement. The topological order is
-     * populated inside refineSCCGroups and accessed via {@link getTopoOrder}.
+     * runs SCC detection with post-processing refinement. The topological order and SCC groups
+     * are stored inside the dependency graph on the Scene, accessed via `ModuleBuilder.getTopoOrder()`.
      *
-     * Idempotent: if dependency analysis has already completed ({@link hasTopoOrder}
-     * is true), this method returns immediately.
+     * Idempotent: if dependency analysis has already completed
+     * (`Scene.isModuleDependenciesAnalyzed()` is true), this method returns immediately.
      */
     public analyzeModuleDependencies(): void {
-        if (this.dependenciesAnalyzed) {
+        if (this.scene.isModuleDependenciesAnalyzed()) {
             return;
         }
 
         this.updateModuleNamesFromOhPkg();
         this.buildDependencyGraph();
 
-        this.sccGroups = this.depGraph!.refineSCCGroups(this.maxSCCGroupSize);
+        const graph = this.scene.getModuleDepGraph()!;
+        graph.refineSCCGroups(graph.getMaxSCCGroupSize());
 
-        this.dependenciesAnalyzed = true;
+        this.scene.setModuleDependenciesAnalyzed(true);
     }
 
     /**
@@ -410,14 +419,16 @@ export class ModuleManager {
      * Creates a new {@link ModuleDepGraph} with the shared canonicalizer, adds all
      * registered modules as nodes, then resolves dependencies and adds edges.
      * Resolved dependencies create graph edges and update the module's alias map;
-     * unresolved dependencies are recorded as unresolved dependencies.
+     * unresolved dependencies are recorded as unresolved dependencies. The built graph is
+     * stored on the Scene via `Scene.setModuleDepGraph()`.
      */
     private buildDependencyGraph(): void {
-        this.depGraph = new ModuleDepGraph(this.moduleCanonicalizer);
+        const canonicalizer = this.scene.getModuleCanonicalizer();
+        const graph = new ModuleDepGraph(canonicalizer);
 
         // 1. Add all registered modules as graph nodes
         for (const module of this.modulesIterator()) {
-            this.depGraph.addModule(module);
+            graph.addModule(module);
         }
 
         // 2. Read project-level overrides and overrideDependencyMap from the project root oh-package.json5
@@ -431,15 +442,17 @@ export class ModuleManager {
             for (const [alias, depValue, depType] of depEntries) {
                 const depModule = this.resolveDepModule(alias, depValue, module.getModulePath(), overrides, overrideDependencyMap);
                 if (depModule) {
-                    const srcId = this.moduleCanonicalizer.getId(module);
-                    const dstId = this.moduleCanonicalizer.getId(depModule);
-                    this.depGraph.addDependencyEdge(srcId, dstId, depType);
+                    const srcId = canonicalizer.getId(module);
+                    const dstId = canonicalizer.getId(depModule);
+                    graph.addDependencyEdge(srcId, dstId, depType);
                     module.addDependencyAlias(alias, dstId);
                 } else {
                     module.addUnresolvedDependency(alias, depValue);
                 }
             }
         }
+
+        this.scene.setModuleDepGraph(graph);
     }
 
     /**
@@ -541,8 +554,15 @@ export class ModuleManager {
      * @param overrideDependencyMap - Optional project-level overrideDependencyMap (alias -> override path).
      * @returns The target ArkModule if resolved, undefined otherwise.
      */
-    private resolveDepModule(alias: string, depValue: string, scopeModulePath: string,
-        overrides?: { [k: string]: string }, overrideDependencyMap?: { [k: string]: string }): ArkModule | undefined {
+    private resolveDepModule(
+        alias: string,
+        depValue: string,
+        scopeModulePath: string,
+        overrides?: { [k: string]: string },
+        overrideDependencyMap?: { [k: string]: string }
+    ): ArkModule | undefined {
+        const canonicalizer = this.scene.getModuleCanonicalizer();
+
         // 0. Override handling: check overrides and overrideDependencyMap before normal resolution
         if (overrides && overrides[alias] !== undefined) {
             depValue = overrides[alias];
@@ -567,7 +587,7 @@ export class ModuleManager {
             const resolvedPath = path.resolve(scopeModulePath, pathPart);
             const id = this.pathToId.get(resolvedPath);
             if (id !== undefined) {
-                return this.moduleCanonicalizer.get(id);
+                return canonicalizer.get(id);
             }
             return undefined;
         }
@@ -576,9 +596,10 @@ export class ModuleManager {
         const projectDir = this.scene.getRealProjectDir();
         // For .har dependencies inside the .ohpm cache, recompute the oh_modules base from the
         // enclosing oh_modules ancestor (mirrors processDependency in ModuleUtils).
-        const moduleBase = depValue.endsWith('.har') && scopeModulePath.includes(OHPM)
-            ? scopeModulePath.substring(0, scopeModulePath.lastIndexOf(OH_MODULES))
-            : scopeModulePath;
+        const moduleBase =
+            depValue.endsWith('.har') && scopeModulePath.includes(OHPM)
+                ? scopeModulePath.substring(0, scopeModulePath.lastIndexOf(OH_MODULES))
+                : scopeModulePath;
         const candidates = [
             path.resolve(moduleBase, OH_MODULES, alias),
             path.resolve(projectDir, OH_MODULES, alias),
@@ -591,7 +612,7 @@ export class ModuleManager {
             const realPath = fs.realpathSync(candidate);
             const id = this.pathToId.get(realPath);
             if (id !== undefined) {
-                return this.moduleCanonicalizer.get(id);
+                return canonicalizer.get(id);
             }
         }
 
@@ -621,8 +642,7 @@ export class ModuleManager {
         }
         // try to find the best version
         try {
-            const dirs = fs.readdirSync(ohpmPath, { withFileTypes: true })
-                .filter((dir) => dir.isDirectory() && dir.name.startsWith(prefix));
+            const dirs = fs.readdirSync(ohpmPath, { withFileTypes: true }).filter(dir => dir.isDirectory() && dir.name.startsWith(prefix));
             for (const dir of dirs) {
                 const dirName = dir.name;
                 if (version.startsWith('^') && dirName.split('@')[1] < version.substring(1)) {
@@ -654,117 +674,43 @@ export class ModuleManager {
         }
     }
 
-    // --- Alias resolution ---
-
-    /**
-     * Resolve a dependency alias within the scope of the given module.
-     *
-     * Looks up the alias in the module's per-module alias map (dependencyAliasToId), then resolves
-     * the resulting ModuleID back to the depended-on ArkModule.
-     *
-     * @param moduleId - ID of the module whose scope the alias is resolved in.
-     * @param alias - Alias defined in the module's oh-package.json5 dependencies.
-     * @returns The depended-on ArkModule, or undefined when the module or alias is unknown.
-     */
-    public resolveAlias(moduleId: ModuleID, alias: string): ArkModule | undefined {
-        const module = this.getModule(moduleId);
-        if (!module) {
-            return undefined;
-        }
-        const depId = module.resolveDependencyAlias(alias);
-        if (depId === undefined) {
-            return undefined;
-        }
-        return this.getModule(depId);
-    }
-
-    // --- Module closure computation ---
-
-    /**
-     * Compute the transitive closure of module IDs reachable from the given target module paths via
-     * dependency edges (BFS over {@link ModuleDepGraph.getSuccModuleIds}).
-     *
-     * Behavior:
-     * 1. Each target path is resolved to a ModuleID via the persistent pathToId map.
-     * 2. BFS: for each module in the closure, its successor dependency IDs (from the dependency
-     *    graph) are added to the closure. When the dependency graph has not been built yet, only
-     *    the target modules themselves are included.
-     * 3. Paths not present in pathToId (unregistered) are silently skipped.
-     * 4. SDK modules are never included in the closure; they are always handled separately by
-     *    buildSdkModules and remain resident in memory throughout analysis.
-     *
-     * @param targetModulePaths - Absolute paths of the modules to start the closure from.
-     * @returns Set of ModuleIDs in the transitive closure (excluding SDK modules).
-     */
-    public computeModuleClosure(targetModulePaths: Set<string>): Set<ModuleID> {
-        const closure: Set<ModuleID> = new Set();
-        const queue: ModuleID[] = [];
-
-        for (const targetPath of targetModulePaths) {
-            const id = this.pathToId.get(targetPath);
-            if (id === undefined) {
-                continue;
-            }
-            const module = this.moduleCanonicalizer.get(id);
-            if (!module) {
-                continue;
-            }
-            if (module.getModuleType() === ModuleType.SDK) {
-                continue;
-            }
-            if (!closure.has(id)) {
-                closure.add(id);
-                queue.push(id);
-            }
-        }
-
-        while (queue.length > 0) {
-            const currentId = queue.shift()!;
-            const succIds = this.depGraph ? this.depGraph.getSuccModuleIds(currentId) : [];
-            for (const depId of succIds) {
-                if (closure.has(depId)) {
-                    continue;
-                }
-                const depModule = this.moduleCanonicalizer.get(depId);
-                if (!depModule) {
-                    continue;
-                }
-                if (depModule.getModuleType() === ModuleType.SDK) {
-                    continue;
-                }
-                closure.add(depId);
-                queue.push(depId);
-            }
-        }
-
-        return closure;
-    }
-
-    /**
-     * Filter the topological order to only include module IDs present in the given closure.
-     *
-     * @param closure - Set of ModuleIDs to retain.
-     * @returns A new array containing topoOrder entries that are in the closure, preserving order.
-     */
-    public getFilteredTopoOrder(closure: Set<ModuleID>): ModuleID[] {
-        const topo = this.depGraph ? this.depGraph.getTopoOrder() : [];
-        return topo.filter(id => closure.has(id));
-    }
-
     // --- Module loading ---
+
+    /**
+     * Map a {@link ModuleDepthLevel} to the corresponding {@link ModuleLoadState}.
+     * Used by {@link loadModule} to translate the configured depth level into a load state.
+     */
+    private depthLevelToLoadState(level: ModuleDepthLevel): ModuleLoadState {
+        switch (level) {
+            case ModuleDepthLevel.META:
+                return ModuleLoadState.META;
+            case ModuleDepthLevel.IMPORTS:
+                return ModuleLoadState.IMPORTS;
+            case ModuleDepthLevel.SIGNATURES:
+                return ModuleLoadState.SIGNATURES;
+            case ModuleDepthLevel.BODIES:
+                return ModuleLoadState.BODIES;
+            default:
+                return ModuleLoadState.META;
+        }
+    }
 
     /**
      * Load module data at the configured depth level.
      *
      * Flow:
-     * 1. Idempotent: skip if the module is already LOADED.
-     * 2. Recursively load dependencies first (so dependees are available).
-     * 3. SDK modules are just marked LOADED (already built in prepareSdkModules).
-     * 4. Build ArkFile objects to the configured level (current phase: META only).
-     * 5. Record the configured retain level and set state to LOADED.
+     * 1. Determine the configured load level for this module type, then cap the effective build
+     *    level at {@link ModuleDepthLevel.IMPORTS} (higher levels are not built in this phase).
+     * 2. Idempotent: skip if the module's loadState already reaches the target load state.
+     * 3. Set the target load state early to break cyclic dependency recursion (replaces the
+     *    former `loadingModules` guard): when a module currently being loaded is encountered
+     *    again, its loadState already meets the target, so the recursion stops immediately.
+     * 4. Recursively load dependencies first (so dependees are available).
+     * 5. Build ArkFile objects to the effective level (META scan always; IMPORTS adds import/export info).
+     * 6. When the effective level reaches IMPORTS, analyze intra-module file dependencies.
      *
-     * Cyclic dependencies are handled via the {@link loadingModules} guard: when a module
-     * currently being loaded is encountered again, the recursion stops immediately.
+     * SDK modules are handled the same as other modules (no special early-return): they are built
+     * to the effective level like any other module type.
      *
      * @param moduleId - ID of the module to load.
      * @param config - Optional configuration providing per-type load levels.
@@ -774,112 +720,180 @@ export class ModuleManager {
         if (!module) {
             return;
         }
-        if (module.getLoadState() === ModuleLoadState.LOADED) {
+
+        // Determine the configured load level and cap the effective level at IMPORTS
+        const loadLevel = config?.getLoadLevel(module.getModuleType()) ?? ModuleDepthLevel.META;
+        const effectiveLevel = Math.min(loadLevel, ModuleDepthLevel.IMPORTS);
+        const targetLoadState = this.depthLevelToLoadState(effectiveLevel);
+
+        // Idempotent: skip if already loaded to the target level
+        if (module.getLoadState() >= targetLoadState) {
             return;
         }
-        if (this.loadingModules.has(moduleId)) {
-            return;
+
+        // Set target state early to break cyclic dependency recursion
+        module.setLoadState(targetLoadState);
+
+        // Recursively load dependencies first
+        const depGraph = this.scene.getModuleDepGraph();
+        const depIds = depGraph ? depGraph.getSuccModuleIds(moduleId) : [];
+        for (const depId of depIds) {
+            this.loadModule(depId, config);
         }
 
-        this.loadingModules.add(moduleId);
-        try {
-            // Recursively load dependencies first
-            const depIds = this.depGraph ? this.depGraph.getSuccModuleIds(moduleId) : [];
-            for (const depId of depIds) {
-                this.loadModule(depId, config);
-            }
+        // Build ArkFile objects to the effective level
+        FrontendBuilder.buildModuleFilesToLevel(this.scene, module, effectiveLevel);
 
-            // Determine the configured load level for this module type
-            const loadLevel = config?.getLoadLevel(module.getModuleType()) ?? ModuleDepthLevel.META;
-
-            // Current phase: regardless of the configured depth, always build to META level only.
-            // Higher levels (IMPORTS/SIGNATURES/BODIES) are not yet implemented and fall back to META.
-            this.buildArkFileToLevel(module, ModuleDepthLevel.META);
-
-            // Record the configured retain level (even though only META is built for now)
-            this.retainLevels.set(moduleId, loadLevel);
-
-            module.setLoadState(ModuleLoadState.LOADED);
-        } finally {
-            this.loadingModules.delete(moduleId);
+        // Analyze intra-module file dependencies when IMPORTS level was reached
+        if (effectiveLevel >= ModuleDepthLevel.IMPORTS) {
+            this.analyzeFileDependencies(module);
         }
     }
 
-    /**
-     * Build ArkFile objects for a module at the given depth level.
-     *
-     * META level (current phase, the only implemented level):
-     * - Scans the module directory for source files using scene options
-     *   (supportFileExts / ignoreFileNames).
-     * - For each file, creates an ArkFile with path basic info only (no parsing).
-     * - Index files (index.ets/index.ts) should eventually include export/import info;
-     *   for now they are treated the same as regular files (TODO).
-     *
-     * @param module - The module whose files are built.
-     * @param level - The target depth level.
-     */
-    private buildArkFileToLevel(module: ArkModule, level: ModuleDepthLevel): void {
-        // Current phase: only META is implemented. Higher levels fall back to META.
-        const effectiveLevel = level <= ModuleDepthLevel.META ? level : ModuleDepthLevel.META;
-        if (effectiveLevel === ModuleDepthLevel.META) {
-            const modulePath = module.getModulePath();
-            const options = this.scene.getOptions();
-            const supportFileExts = options?.supportFileExts ?? ['.ets', '.ts'];
-            const ignoreFileNames = options?.ignoreFileNames ?? [];
-            const filePaths = getAllFiles(modulePath, supportFileExts, ignoreFileNames);
+    // --- Intra-module file dependency analysis ---
 
-            for (const filePath of filePaths) {
-                const arkFile = this.buildArkFile(filePath, module);
-                if (arkFile) {
-                    // TODO: For index files (index.ets/index.ts), the ArkFile should eventually
-                    // include export/import info. For now, only path basic info is set (no parsing).
-                    module.addFile(arkFile);
-                    this.scene.setFile(arkFile);
+    /**
+     * Analyze file-to-file dependencies within a module using the import/export `from` specifiers
+     * populated at IMPORTS level.
+     *
+     * Builds a {@link FileDepGraph}, resolves relative `from` specifiers to file paths within the
+     * same module, adds dependency edges, computes a topological order via SCC detection, and
+     * stores the graph on the {@link ArkModule}. The topological order is retained inside the
+     * FileDepGraph and queried via {@link ArkModule.hasFileTopoOrder}.
+     *
+     * - Only relative `from` specifiers (`./`, `../`) are resolved; bare specifiers are ignored.
+     * - Resolution matches the specifier against already-existing ArkFile paths in the module's filesMap.
+     * - Only files within the module (present in the module's filesMap) get edges; external files are ignored.
+     *
+     * @param module - The module whose files are analyzed.
+     */
+    public analyzeFileDependencies(module: ArkModule): void {
+        const filesMap = module.getFilesMap();
+        if (filesMap.size === 0) {
+            return;
+        }
+
+        // Build a path-to-ArkFile lookup for this module
+        const pathToFile: Map<string, ArkFile> = new Map();
+        for (const arkFile of filesMap.values()) {
+            pathToFile.set(arkFile.getFilePath(), arkFile);
+        }
+
+        // Create a canonicalizer for ArkFile <-> NodeID mapping
+        const fileCanonicalizer = new Canonicalizer<ArkFile>();
+        const fileDepGraph = new FileDepGraph(fileCanonicalizer);
+
+        // Add all files as graph nodes
+        for (const arkFile of filesMap.values()) {
+            fileDepGraph.addFile(arkFile);
+        }
+
+        // Process import/export from specifiers to add dependency edges
+        for (const arkFile of filesMap.values()) {
+            const srcId = fileCanonicalizer.getId(arkFile);
+            const fromSpecifiers = this.collectFromSpecifiers(arkFile);
+
+            for (const from of fromSpecifiers) {
+                // Only resolve relative specifiers
+                if (!from.startsWith('./') && !from.startsWith('../')) {
+                    continue;
+                }
+
+                const resolvedPath = this.resolveFromSpecifier(from, arkFile, pathToFile);
+                if (!resolvedPath) {
+                    continue;
+                }
+
+                const dstFile = pathToFile.get(resolvedPath);
+                if (!dstFile) {
+                    continue;
+                }
+
+                const dstId = fileCanonicalizer.getId(dstFile);
+                fileDepGraph.addDependencyEdge(srcId, dstId);
+            }
+        }
+
+        // Compute topological order (stored inside the FileDepGraph)
+        fileDepGraph.computeTopoOrder();
+
+        module.setFileDepGraph(fileDepGraph);
+    }
+
+    /**
+     * Collect all `from` specifiers from an ArkFile's import and export infos.
+     * Duplicate specifiers are deduplicated.
+     */
+    private collectFromSpecifiers(arkFile: ArkFile): Set<string> {
+        const fromSet: Set<string> = new Set();
+        for (const importInfo of arkFile.getImportInfos()) {
+            const from = importInfo.getFrom();
+            if (from) {
+                fromSet.add(from);
+            }
+        }
+        for (const exportInfo of arkFile.getExportInfos()) {
+            const from = exportInfo.getFrom();
+            if (from) {
+                fromSet.add(from);
+            }
+        }
+        return fromSet;
+    }
+
+    /**
+     * Resolve a relative `from` specifier (e.g. `./b`, `../utils/helper`) to an absolute file path
+     * that exists as an already-built ArkFile in the module.
+     *
+     * Resolution matches against the keys of {@link pathToFile} (the module's already-generated
+     * ArkFile paths) instead of probing the filesystem:
+     *
+     * 1. The specifier as-is (may already include an extension).
+     * 2. The specifier with each unique extension found among existing ArkFile paths appended.
+     * 3. The specifier as a directory: look for an index file whose path is in {@link pathToFile}.
+     *
+     * @param from - The relative from specifier (starts with `./` or `../`).
+     * @param arkFile - The file containing the import/export (base for relative resolution).
+     * @param pathToFile - Map of already-built ArkFile paths in the module.
+     * @returns The resolved absolute file path, or undefined if not found.
+     */
+    private resolveFromSpecifier(from: string, arkFile: ArkFile, pathToFile: Map<string, ArkFile>): string | undefined {
+        const baseDir = path.dirname(arkFile.getFilePath());
+        const resolvedPath = path.resolve(baseDir, from);
+
+        // 1. Try as-is (specifier may already include an extension)
+        if (pathToFile.has(resolvedPath)) {
+            return resolvedPath;
+        }
+
+        // 2. Try appending extensions collected from existing files in the module
+        const exts = new Set<string>();
+        for (const filePath of pathToFile.keys()) {
+            const ext = path.extname(filePath);
+            if (ext) {
+                exts.add(ext);
+            }
+        }
+        for (const ext of exts) {
+            const candidate = resolvedPath + ext;
+            if (pathToFile.has(candidate)) {
+                return candidate;
+            }
+        }
+
+        // 3. Try as a directory with an index file
+        try {
+            const indexFileName = FileUtils.getIndexFileName(resolvedPath);
+            if (indexFileName) {
+                const indexPath = path.join(resolvedPath, indexFileName);
+                if (pathToFile.has(indexPath)) {
+                    return indexPath;
                 }
             }
+        } catch {
+            // resolvedPath is not a readable directory; skip index file resolution
         }
-    }
 
-    /**
-     * Create an ArkFile with basic info only (no parsing).
-     *
-     * Sets the language (from FileUtils), scene, file path, project directory, and file
-     * signature. The file content is NOT read or parsed.
-     *
-     * @param filePath - Absolute path of the source file.
-     * @param module - The owning ArkModule (provides project dir and module name).
-     * @returns The created ArkFile, or null on error.
-     */
-    private buildArkFile(filePath: string, module: ArkModule): ArkFile | null {
-        try {
-            const language = FileUtils.getFileLanguage(filePath, this.scene.getFileLanguages());
-            const arkFile = new ArkFile(language);
-            arkFile.setScene(this.scene);
-            arkFile.setFilePath(filePath);
-            arkFile.setProjectDir(module.getModulePath());
-
-            const projectName = module.getModuleName() || module.getModulePath();
-            const fileSignature = new FileSignature(projectName, path.relative(module.getModulePath(), filePath));
-            arkFile.setFileSignature(fileSignature);
-
-            return arkFile;
-        } catch (error) {
-            logger.error(`Error building ArkFile for ${filePath}: ${error}`);
-            return null;
-        }
-    }
-
-    /**
-     * Get the configured retain level for a module.
-     *
-     * The retain level is the configured load level (from {@link ModuleAnalysisConfig}) recorded
-     * during {@link loadModule}. Falls back to {@link ModuleDepthLevel.META} when the module has
-     * not been loaded or has no explicit level configured.
-     *
-     * @param moduleId - ID of the module to query.
-     * @returns The retain level (defaults to META).
-     */
-    public getRetainLevel(moduleId: ModuleID): ModuleDepthLevel {
-        return this.retainLevels.get(moduleId) ?? ModuleDepthLevel.META;
+        return undefined;
     }
 }

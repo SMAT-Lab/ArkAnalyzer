@@ -82,6 +82,28 @@ export abstract class BaseImplicitGraph<Node> implements GraphTraits<Node> {
         return this.idToNodeMap.get(id)!;
     }
 
+    /**
+     * Safely gets the node object corresponding to a given node ID.
+     * Unlike {@link getNode}, this method does not throw; it returns undefined when the
+     * idToNodeMap is not initialized or the node is not found.
+     * @param id The node ID.
+     * @returns The corresponding node object, or undefined when not found.
+     */
+    public tryGetNode(id: NodeID): Node | undefined {
+        return this.idToNodeMap?.get(id);
+    }
+
+    /**
+     * Safely gets the node ID corresponding to a given node object.
+     * Unlike {@link getNodeID}, this method does not throw; it returns undefined
+     * when the node is not found in the nodeToIdMap.
+     * @param node The node object.
+     * @returns The corresponding NodeID, or undefined when not found.
+     */
+    public tryGetNodeID(node: Node): NodeID | undefined {
+        return this.nodeToIdMap.get(node);
+    }
+
     public getNodeID(s: Node): NodeID {
         if (!this.nodeToIdMap.has(s)) {
             throw new Error(`Can find Node # ${s}`);

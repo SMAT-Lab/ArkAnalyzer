@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
+import os from 'os';
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { prepareArkFile, prepareArkFiles } from './model/builder/ArkFileBuilder';
+import { prepareArkFile, prepareArkFiles, buildImportExportInfoFromFile } from './model/builder/ArkFileBuilder';
 import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
 import { requireCxxAstParser } from './utils/cxxAstParserTypes';
-import os from 'os';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CppFrontend');
 
@@ -35,6 +35,17 @@ export class CppFrontend {
             return;
         }
         prepareArkFile(scene, filePath, arkFile, this.resolveLogAstInfo(scene));
+    }
+
+    /**
+     * Imports-only build for a single C++ file: parses #include directives and fills
+     * ImportInfo without building ArkClass/ArkMethod/ArkBody.
+     */
+    public buildProjectFileForImports(arkFile: ArkFile): void {
+        if (!this.requireAstJsonDumper()) {
+            return;
+        }
+        buildImportExportInfoFromFile(arkFile);
     }
 
     public buildProjectFiles(scene: Scene, filePaths: string[]): FrontendParseResult {
@@ -55,15 +66,13 @@ export class CppFrontend {
             const runtime = requireCxxAstParser();
             if (!runtime.isCppEnvironmentReady()) {
                 logger.warn(
-                    'C++ environment is not ready (astJsonDumper.node or @arkanalyzer/cxx-ast-parser); skip C++ frontend build. Run: npm run build:cpp',
+                    'C++ environment is not ready (astJsonDumper.node or @arkanalyzer/cxx-ast-parser); skip C++ frontend build. Run: npm run build:cpp'
                 );
                 return false;
             }
             return true;
         } catch {
-            logger.warn(
-                '@arkanalyzer/cxx-ast-parser is not installed; skip C++ frontend build. Run: npm run build:cpp',
-            );
+            logger.warn('@arkanalyzer/cxx-ast-parser is not installed; skip C++ frontend build. Run: npm run build:cpp');
             return false;
         }
     }
@@ -81,7 +90,7 @@ export class CppFrontend {
         if (configured !== undefined && !Number.isInteger(configured)) {
             logger.warn(
                 `languages.cpp.maxParallelProcesses must be a positive integer or ` +
-                `${CppFrontend.AUTO_MAX_PARALLEL_PROCESSES} for auto; got ${JSON.stringify(configured)}, using 1.`,
+                    `${CppFrontend.AUTO_MAX_PARALLEL_PROCESSES} for auto; got ${JSON.stringify(configured)}, using 1.`
             );
         }
         if (Number.isInteger(configured) && configured !== undefined && configured > 0) {
@@ -99,8 +108,8 @@ export class CppFrontend {
         if (!Number.isInteger(configured)) {
             logger.warn(
                 `languages.cpp.maxPendingAstResults must be a positive integer or ` +
-                `${CppFrontend.AUTO_MAX_PENDING_AST_RESULTS} for auto; got ${JSON.stringify(configured)}, using ` +
-                `${fallback}.`,
+                    `${CppFrontend.AUTO_MAX_PENDING_AST_RESULTS} for auto; got ${JSON.stringify(configured)}, using ` +
+                    `${fallback}.`
             );
             return fallback;
         }
