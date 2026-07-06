@@ -96,11 +96,14 @@ export class ArkArrayRef extends AbstractRef {
     }
 
     public getType(): Type {
-        let baseType = TypeInference.replaceTypeWithReal(this.base.getType());
+        const rawType = this.base.getType();
+        // StringType is primitive, never generic — skip replaceTypeWithReal to avoid wasted Set allocation
+        if (rawType instanceof StringType) {
+            return StringType.getInstance();
+        }
+        const baseType = TypeInference.replaceTypeWithReal(rawType);
         if (baseType instanceof ArrayType) {
             return baseType.getBaseType();
-        } else if (baseType instanceof StringType) {
-            return StringType.getInstance();
         } else {
             logger.warn(`the type of base in ArrayRef is not ArrayType`);
             return UnknownType.getInstance();
