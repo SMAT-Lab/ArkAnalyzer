@@ -465,29 +465,44 @@ export class TrapBuilder {
     }
 
     private copyStmt(sourceStmt: Stmt): Stmt | null {
-        let targetStmt: Stmt | null = null;
         if (sourceStmt instanceof ArkAssignStmt) {
-            targetStmt = new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
+            const target = new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkInvokeStmt) {
-            targetStmt = new ArkInvokeStmt(sourceStmt.getInvokeExpr());
+            const target = new ArkInvokeStmt(sourceStmt.getInvokeExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkIfStmt) {
-            targetStmt = new ArkIfStmt(sourceStmt.getConditionExpr());
+            const target = new ArkIfStmt(sourceStmt.getConditionExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkReturnStmt) {
-            targetStmt = new ArkReturnStmt(sourceStmt.getOp());
+            const target = new ArkReturnStmt(sourceStmt.getOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkReturnVoidStmt) {
-            targetStmt = new ArkReturnVoidStmt();
+            const target = new ArkReturnVoidStmt();
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkThrowStmt) {
-            targetStmt = new ArkThrowStmt(sourceStmt.getOp());
+            const target = new ArkThrowStmt(sourceStmt.getOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkAliasTypeDefineStmt) {
-            targetStmt = new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
+            const target = new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else {
             logger.error(`unsupported statement type`);
             return null;
         }
-        const originPos = sourceStmt.getOriginFullPosition();
+    }
+
+    private copyOriginPosition(source: Stmt, target: Stmt): void {
+        const originPos = source.getOriginFullPosition();
         if (originPos) {
-            targetStmt.setOriginFullPosition(originPos);
+            target.setOriginFullPosition(originPos);
         }
-        return targetStmt;
     }
 }
