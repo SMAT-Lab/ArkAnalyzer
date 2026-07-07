@@ -42,7 +42,7 @@ function makeArkFile(projectName: string, fileName: string): ArkFile {
  * All currently-registered modules are added as graph nodes.
  */
 function injectDepGraph(scene: Scene, builder: ModuleBuilder, edges: Array<[ModuleID, ModuleID]>): ModuleDepGraph {
-    const graph = new ModuleDepGraph(builder.getModuleCanonicalizer());
+    const graph = builder.createModuleDepGraph();
     for (const module of builder.modulesIterator()) {
         graph.addModule(module);
     }
@@ -213,8 +213,8 @@ describe('ArkModule tests', () => {
             const builder = new ModuleBuilder(scene);
             const entry = builder.registerModule('/project/entry', '@ohos/entry');
             const library = builder.registerModule('/project/library', '@ohos/library');
-            const entryId = builder.getModuleCanonicalizer().getId(entry);
-            const libraryId = builder.getModuleCanonicalizer().getId(library);
+            const entryId = builder.getModuleId(entry);
+            const libraryId = builder.getModuleId(library);
             injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
             const deps = entry.getDependencies();
@@ -230,8 +230,8 @@ describe('ArkModule tests', () => {
             const builder = new ModuleBuilder(scene);
             const entry = builder.registerModule('/project/entry', '@ohos/entry');
             const library = builder.registerModule('/project/library', '@ohos/library');
-            const entryId = builder.getModuleCanonicalizer().getId(entry);
-            const libraryId = builder.getModuleCanonicalizer().getId(library);
+            const entryId = builder.getModuleId(entry);
+            const libraryId = builder.getModuleId(library);
             injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
             const dependents = library.getDependents();
@@ -248,9 +248,9 @@ describe('ArkModule tests', () => {
             const a = builder.registerModule('/project/a', '@a');
             const b = builder.registerModule('/project/b', '@b');
             const c = builder.registerModule('/project/c', '@c');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
-            const idC = builder.getModuleCanonicalizer().getId(c);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
+            const idC = builder.getModuleId(c);
             // a -> b, a -> c
             injectDepGraph(scene, builder, [
                 [idA, idB],

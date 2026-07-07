@@ -117,6 +117,11 @@ export class ArkModule {
         this.scene = scene;
     }
 
+    /** Returns the owning {@link Scene} of this module. */
+    public getScene(): Scene {
+        return this.scene;
+    }
+
     // --- Bit-field helpers (modeled after ArkBaseModel.setTagValue/getTagValue) ---
 
     private setTagValue(mask: number, shift: number, value: number): void {

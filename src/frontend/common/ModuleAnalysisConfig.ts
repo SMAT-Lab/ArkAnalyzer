@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import * as path from 'path';
+import { SparseBitVector } from '../../utils/SparseBitVector';
 import { ModuleType } from '../../core/model/ArkModule';
 import { ModuleDepthLevel } from './ModuleDepth';
+import type { ModuleID } from '../../core/model/ArkModule';
 import type { ArkModule } from '../../core/model/ArkModule';
 import type { Scene } from '../../Scene';
 
@@ -25,54 +26,117 @@ import type { Scene } from '../../Scene';
 export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
 
 /**
- * ModuleAnalysisConfig configures target project module selection and per-module-type load
+ * ModuleAnalysisConfig configures target module selection and per-module-type load
  * levels for module-level analysis.
  *
- * Target project module paths are stored as absolute paths: relative inputs are normalized via
- * `path.resolve` so that equality comparisons remain stable. Load levels ({@link ModuleDepthLevel})
- * control how much data is built for ArkFile objects of each {@link ModuleType}; all module types
- * default to {@link ModuleDepthLevel.META} and can be overridden via {@link ModuleAnalysisConfig.setLoadLevel}.
+ * Target module selection uses three dimensions combined as:
+ * ```
+ * module is target ⟺ !excludedModuleIds.has(id)
+ *                    && (includedTypes.has(type) || targetModuleIds.has(id))
+ * ```
+ * Priority: exclude > type filter / ID include (union).
+ *
+ * All three dimensions use {@link SparseBitVector} for efficient O(1) membership tests.
+ * Bit indices are {@link ModuleID} (for ID include/exclude) or {@link ModuleType} enum values
+ * (for type filter).
+ *
+ * Load levels ({@link ModuleDepthLevel}) control how much data is built for ArkFile objects of
+ * each {@link ModuleType}; all module types default to {@link ModuleDepthLevel.META} and can be
+ * overridden via {@link ModuleAnalysisConfig.setLoadLevel}.
  *
  * @category core/model
  */
 export class ModuleAnalysisConfig {
-    private targetProjectModules: Set<string> = new Set();
+    /** Type filter: bit index = ModuleType enum value (0=PROJECT, 1=SDK, 2=OH_MODULES). */
+    private includedTypes: SparseBitVector = new SparseBitVector();
+    /** Explicit include IDs: bit index = ModuleID (additive to type filter). */
+    private targetModuleIds: SparseBitVector = new SparseBitVector();
+    /** Explicit exclude IDs: bit index = ModuleID (highest priority, overrides everything). */
+    private excludedModuleIds: SparseBitVector = new SparseBitVector();
     private loadLevels: Map<ModuleType, ModuleDepthLevel> = new Map();
+    private enableTypeInference: boolean = false;
 
     constructor() {
+        this.includedTypes.set(ModuleType.PROJECT);
         this.loadLevels.set(ModuleType.SDK, ModuleDepthLevel.META);
         this.loadLevels.set(ModuleType.OH_MODULES, ModuleDepthLevel.META);
         this.loadLevels.set(ModuleType.PROJECT, ModuleDepthLevel.META);
     }
 
+    // --- Type filter ---
+
     /**
-     * Replace the current target project module set with the given paths.
-     * Relative paths are normalized to absolute paths via `path.resolve`.
+     * Set whether all modules of the given type are included as targets.
+     * Returns this config to allow chaining.
      */
-    public setTargetProjectModules(modulePaths: string[]): ModuleAnalysisConfig {
-        this.targetProjectModules = new Set();
-        for (const p of modulePaths) {
-            this.targetProjectModules.add(path.isAbsolute(p) ? p : path.resolve(p));
+    public setIncludeType(type: ModuleType, include: boolean): ModuleAnalysisConfig {
+        if (include) {
+            this.includedTypes.set(type);
+        } else {
+            this.includedTypes.reset(type);
         }
         return this;
     }
 
+    /** Check whether modules of the given type are included by the type filter. */
+    public isTypeIncluded(type: ModuleType): boolean {
+        return this.includedTypes.test(type);
+    }
+
+    // --- ID include (additive to type filter) ---
+
     /**
-     * Append a single target project module path. Relative paths are normalized to absolute
-     * paths via `path.resolve`.
+     * Replace the current explicit include ID set with the given IDs.
+     * Returns this config to allow chaining.
      */
-    public addTargetProjectModule(modulePath: string): ModuleAnalysisConfig {
-        this.targetProjectModules.add(path.isAbsolute(modulePath) ? modulePath : path.resolve(modulePath));
+    public setTargetModuleIds(ids: ModuleID[]): ModuleAnalysisConfig {
+        this.targetModuleIds.clear();
+        ids.forEach(id => this.targetModuleIds.set(id));
         return this;
     }
 
-    public getTargetProjectModules(): Set<string> {
-        return this.targetProjectModules;
+    /**
+     * Add a single module ID to the explicit include set.
+     * Returns this config to allow chaining.
+     */
+    public addTargetModuleId(id: ModuleID): ModuleAnalysisConfig {
+        this.targetModuleIds.set(id);
+        return this;
     }
 
-    public hasTargetProjectModules(): boolean {
-        return this.targetProjectModules.size > 0;
+    /** Returns the explicit include ID set as a {@link SparseBitVector} (read-only, do not modify). */
+    public getTargetModuleIds(): SparseBitVector {
+        return this.targetModuleIds;
     }
+
+    // --- ID exclude (highest priority) ---
+
+    /**
+     * Replace the current explicit exclude ID set with the given IDs.
+     * Returns this config to allow chaining.
+     */
+    public setExcludedModuleIds(ids: ModuleID[]): ModuleAnalysisConfig {
+        this.excludedModuleIds.clear();
+        ids.forEach(id => this.excludedModuleIds.set(id));
+        return this;
+    }
+
+    /**
+     * Add a single module ID to the explicit exclude set.
+     * Excluded modules are never targets, regardless of type filter or explicit include.
+     * Returns this config to allow chaining.
+     */
+    public excludeModuleId(id: ModuleID): ModuleAnalysisConfig {
+        this.excludedModuleIds.set(id);
+        return this;
+    }
+
+    /** Returns the explicit exclude ID set as a {@link SparseBitVector} (read-only, do not modify). */
+    public getExcludedModuleIds(): SparseBitVector {
+        return this.excludedModuleIds;
+    }
+
+    // --- Load levels ---
 
     /**
      * Set the {@link ModuleDepthLevel} for a given {@link ModuleType}.
@@ -89,5 +153,23 @@ export class ModuleAnalysisConfig {
      */
     public getLoadLevel(type: ModuleType): ModuleDepthLevel {
         return this.loadLevels.get(type) ?? ModuleDepthLevel.META;
+    }
+
+    // --- Type inference ---
+
+    /**
+     * Enable or disable type inference for module-level analysis. When enabled and the load level
+     * for a module type reaches {@link ModuleDepthLevel.SIGNATURES} or above, type inference runs
+     * on each module's files after building to the configured depth. Defaults to `false`.
+     *
+     * Returns this config to allow chaining.
+     */
+    public setEnableTypeInference(enabled: boolean): ModuleAnalysisConfig {
+        this.enableTypeInference = enabled;
+        return this;
+    }
+
+    public isTypeInferenceEnabled(): boolean {
+        return this.enableTypeInference;
     }
 }

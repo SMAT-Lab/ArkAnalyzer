@@ -95,13 +95,16 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 }
 
 /**
- * Building ArkFile instance
+ * Building ArkFile instance.
  *
- * @param arkFile
- * @param astRoot
- * @returns
+ * @param arkFile - The ArkFile to populate.
+ * @param astRoot - The parsed TypeScript source file AST.
+ * @param skipImportExport - When true, skip the import/export statement branches so that
+ *   existing ImportInfo/ExportInfo (populated earlier at IMPORTS level) is preserved and only
+ *   class/method/namespace signatures are built on top. This avoids re-parsing import/export
+ *   which would duplicate `export *` entries (their temp keys are process-level auto-increment).
  */
-function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
+function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport: boolean = false): void {
     const statements = astRoot.statements;
     const namespaces: ArkNamespace[] = [];
     statements.forEach(child => {
@@ -141,19 +144,19 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             if (mthd.isExported()) {
                 arkFile.addExportInfo(buildExportInfo(mthd, arkFile, FullPosition.buildFromNode(child, astRoot)));
             }
-        } else if (ts.isImportEqualsDeclaration(child) || ts.isImportDeclaration(child)) {
+        } else if (!skipImportExport && (ts.isImportEqualsDeclaration(child) || ts.isImportDeclaration(child))) {
             let importInfos = buildImportInfo(child, astRoot, arkFile);
             importInfos?.forEach(element => {
                 element.setDeclaringArkFile(arkFile);
                 arkFile.addImportInfo(element);
             });
-        } else if (ts.isExportDeclaration(child)) {
+        } else if (!skipImportExport && ts.isExportDeclaration(child)) {
             buildExportDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
-        } else if (ts.isExportAssignment(child)) {
+        } else if (!skipImportExport && ts.isExportAssignment(child)) {
             buildExportAssignment(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
-        } else if (ts.isVariableStatement(child) && isExported(child.modifiers)) {
+        } else if (!skipImportExport && ts.isVariableStatement(child) && isExported(child.modifiers)) {
             buildExportVariableStatement(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
-        } else if (ts.isTypeAliasDeclaration(child) && isExported(child.modifiers)) {
+        } else if (!skipImportExport && ts.isTypeAliasDeclaration(child) && isExported(child.modifiers)) {
             buildExportTypeAliasDeclaration(child, astRoot, arkFile).forEach(item => arkFile.addExportInfo(item));
         } else if (ts.isExpressionStatement(child) && ts.isStringLiteral(child.expression)) {
             cloneText(child.expression.text).trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
@@ -229,4 +232,31 @@ function buildImportExportInfo(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             cloneText(child.expression.text).trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
         }
     });
+}
+
+/**
+ * Signatures-only upgrade entry: builds ArkClass/ArkMethod/ArkNamespace signatures on top of an
+ * ArkFile whose ImportInfo/ExportInfo were already populated (e.g. by {@link buildImportExportInfoFromFile}).
+ *
+ * Unlike {@link buildArkFileFromFile}, this function calls {@link buildArkFile} with
+ * `skipImportExport = true`, so existing import/export data is preserved and not re-parsed. This
+ * avoids duplicating `export *` re-export entries whose temp clause keys are process-level
+ * auto-increment values that cannot be overwritten by `Map.set`.
+ *
+ * @param arkFile - The ArkFile to upgrade. Must already have filePath set.
+ */
+export function buildArkFileSignaturesFromFile(arkFile: ArkFile): void {
+    let sourceText: string;
+    try {
+        sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+    } catch (error) {
+        logger.error('Failed to read file: ${error}');
+        return;
+    }
+    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
+        arkFile.setAST(sourceFile);
+    }
+    genDefaultArkClass(arkFile, sourceFile);
+    buildArkFile(arkFile, sourceFile, true);
 }

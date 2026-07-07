@@ -23,7 +23,7 @@ import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
-import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from './core/model/ArkModule';
+import { ArkModule, ModuleID, ModuleLoadState } from './core/model/ArkModule';
 import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
 import { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
@@ -119,9 +119,6 @@ export class Scene {
     /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
     private moduleDepGraph?: ModuleDepGraph;
 
-    /** Whether SDK modules have been registered (set true after prepareSdkModules, idempotent). */
-    private sdkRegistered: boolean = false;
-
     /** Whether module preparation has completed (set true after prepareModules, idempotent). */
     private modulesRegistered: boolean = false;
 
@@ -183,6 +180,16 @@ export class Scene {
 
     public getStage(): SceneBuildStage {
         return this.buildStage;
+    }
+
+    /**
+     * Set the current {@link SceneBuildStage}. Used by module-level builders (e.g.
+     * {@link FrontendBuilder.buildModuleMethodBody}) to temporarily open the
+     * {@link buildClassDone} gate so that nested/anonymous method bodies are built
+     * immediately during body construction, then restore the previous stage.
+     */
+    public setBuildStage(stage: SceneBuildStage): void {
+        this.buildStage = stage;
     }
 
     /**
@@ -876,10 +883,12 @@ export class Scene {
     public config(sceneConfig: SceneConfig): void {
         this.sceneConfig = sceneConfig;
         this.options = sceneConfig.getOptions();
+        this.projectName = sceneConfig.getTargetProjectName();
         const dir = sceneConfig.getTargetProjectDirectory();
         if (dir) {
             this.realProjectDir = fs.realpathSync(dir);
         }
+        this.fileLanguages = sceneConfig.getFileLanguages();
     }
 
     /**
@@ -903,11 +912,6 @@ export class Scene {
         return this.moduleDepGraph;
     }
 
-    /** Whether SDK modules have been registered. */
-    public isSdkRegistered(): boolean {
-        return this.sdkRegistered;
-    }
-
     /** Whether module preparation has completed. */
     public isModulesRegistered(): boolean {
         return this.modulesRegistered;
@@ -920,17 +924,28 @@ export class Scene {
 
     // --- Internal accessors used by ModuleBuilder to read/write persistent state ---
 
-    /** The module Canonicalizer instance (shared with ModuleDepGraph). */
-    public getModuleCanonicalizer(): Canonicalizer<ArkModule> {
-        return this.moduleCanonicalizer;
+    /** Get a registered module by its ModuleID. Returns undefined when the id is out of bounds. */
+    public getModule(id: ModuleID): ArkModule | undefined {
+        return this.moduleCanonicalizer.get(id);
+    }
+
+    /** Get the ModuleID assigned to a registered ArkModule. */
+    public getModuleId(module: ArkModule): ModuleID {
+        return this.moduleCanonicalizer.getId(module);
+    }
+
+    /** Total number of registered modules. */
+    public getModuleCount(): number {
+        return this.moduleCanonicalizer.size();
+    }
+
+    /** Create a {@link ModuleDepGraph} sharing the internal module canonicalizer. */
+    public createModuleDepGraph(): ModuleDepGraph {
+        return new ModuleDepGraph(this.moduleCanonicalizer);
     }
 
     public setModuleDepGraph(graph: ModuleDepGraph): void {
         this.moduleDepGraph = graph;
-    }
-
-    public setSdkRegistered(value: boolean): void {
-        this.sdkRegistered = value;
     }
 
     public setModulesRegistered(value: boolean): void {
@@ -945,57 +960,52 @@ export class Scene {
      * Perform module-level analysis by iterating modules in topological order and invoking
      * the callback for each module.
      *
-     * Flow: prepareSdkModules → prepareModules → analyzeModuleDependencies → iterate topoOrder → loadModule → callback.
+     * Flow: prepareModules → analyzeModuleDependencies → buildSdkModules (SDK files parsed +
+     * inferred first) → resolveTargetModuleIds → computeModuleClosureByIds → iterate topoOrder
+     * → loadModule → callback.
      * Each step is idempotent; repeated calls do not repeat preprocessing.
      *
-     * - SDK modules are always skipped (callback is never invoked for them).
-     * - When {@link ModuleAnalysisConfig.hasTargetProjectModules} is true, only the target
-     *   PROJECT modules (and their transitive closure) are visited; the callback is invoked
-     *   only for the target modules themselves, not their dependencies.
-     * - When no target modules are specified, the callback is invoked for all PROJECT and
-     *   OH_MODULES modules in topological order.
+     * - SDK modules are registered and built in one fused step by {@link ModuleBuilder.buildSdkModules}
+     *   before the topoOrder loop, so that global APIs are available when project/oh_modules modules
+     *   are loaded. SDK modules are not in the module dependency graph and thus never appear in the
+     *   topoOrder or callback.
+     * - Target modules are resolved from the config's type filter, explicit include IDs, and
+     *   explicit exclude IDs. The transitive closure (targets + dependencies) determines which
+     *   modules are loaded. The callback is invoked only for target modules, not their dependencies.
+     * - By default (no explicit selection), all PROJECT and OH_MODULES modules are targets.
      *
-     * @param callback - Invoked for each analyzed module with the module and the scene.
-     * @param config - Optional configuration for target module selection.
+     * @param callback - Invoked for each target module with the module and the scene.
+     * @param config - Optional configuration for target module selection and load levels.
      */
     public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
         const builder = new ModuleBuilder(this);
-        // 1. Prepare SDK modules (idempotent)
-        if (!this.isSdkRegistered()) {
-            builder.prepareSdkModules();
-        }
-        // 2. Prepare project/oh_modules (idempotent)
+        // 1. Prepare project/oh_modules (idempotent)
         if (!this.isModulesRegistered()) {
             builder.prepareModules();
         }
-        // 3. Analyze dependencies (idempotent)
+        // 2. Analyze dependencies (idempotent)
         if (!this.isModuleDependenciesAnalyzed()) {
             builder.analyzeModuleDependencies();
         }
-        // 4. Determine modules to analyze
-        let topoOrder: ModuleID[];
-        let targetPaths: Set<string> | undefined;
-        if (config?.hasTargetProjectModules()) {
-            const closure = builder.computeModuleClosure(config.getTargetProjectModules());
-            topoOrder = builder.getFilteredTopoOrder(closure);
-            targetPaths = config.getTargetProjectModules();
-        } else {
-            topoOrder = builder.getTopoOrder();
-        }
-        // 5. Iterate topoOrder: load each module then call callback
+        // 3. Build SDK modules — fused registration + building (idempotent). SDK loaded FIRST so
+        //    that global APIs are available when project/oh_modules modules are loaded.
+        builder.buildSdkModules(config);
+        // 4. Resolve target modules and compute closure (unified flow, no branching)
+        const effectiveConfig = config ?? new ModuleAnalysisConfig();
+        const targetIds = builder.resolveTargetModuleIds(effectiveConfig);
+        const closure = builder.computeModuleClosureByIds(targetIds);
+        const topoOrder = builder.getFilteredTopoOrder(closure);
+        // 5. Iterate topoOrder: load each module then call callback for targets only
         for (const moduleId of topoOrder) {
+            // Load module data at configured depth level (idempotent; SDK modules are skipped by
+            // loadModule — their content is built by buildSdkModules above).
+            builder.loadModule(moduleId, config);
+            // Only call callback for target modules (not their dependencies)
+            if (!targetIds.test(moduleId)) {
+                continue;
+            }
             const module = builder.getModule(moduleId);
             if (!module) {
-                continue;
-            }
-            // Load module data at configured depth level (idempotent; SDK modules are just marked META)
-            builder.loadModule(moduleId, config);
-            // Skip SDK modules for callback
-            if (module.getModuleType() === ModuleType.SDK) {
-                continue;
-            }
-            // If target modules specified, only call callback for target PROJECT modules
-            if (targetPaths && !targetPaths.has(module.getModulePath())) {
                 continue;
             }
             callback(module, this);
@@ -1069,6 +1079,14 @@ export class Scene {
 
     public setFile(file: ArkFile): void {
         this.filesMap.set(file.getFileSignature().toMapKey(), file);
+    }
+
+    /**
+     * Add an SDK ArkFile to the scene's `sdkArkFilesMap`, keyed by its file signature.
+     * Used by {@link ModuleBuilder.parseAndRegisterSdkFile} during SDK file registration.
+     */
+    public addSdkArkFile(arkFile: ArkFile): void {
+        this.sdkArkFilesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
     }
 
     public hasSdkFile(fileSignature: FileSignature): boolean {
