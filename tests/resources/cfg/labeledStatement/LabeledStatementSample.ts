@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+function labelFor(n: number): number {
+    let r = 0;
+    outer: for (let i = 0; i < n; i = i + 1) {
+        r = r + i;
+    }
+    return r;
+}
+
+function labelSwitch(n: number): number {
+    let r = 0;
+    sw: switch (n) {
+        case 0: r = 1; break sw;
+        default: r = 2;
+    }
+    return r;
+}
+
+function labelWhile(n: number): number {
+    let r = 0;
+    loop: while (r < n) {
+        r = r + 1;
+    }
+    return r;
+}
+
+function labelDoWhile(n: number): number {
+    let r = 0;
+    loop: do {
+        r = r + 1;
+    } while (r < n);
+    return r;
+}
+
+function labelForOf(arr: number[]): number {
+    let r = 0;
+    iter: for (const item of arr) {
+        r = r + item;
+    }
+    return r;
+}

@@ -101,6 +101,13 @@ import {
     IF_BUILDER_EXPECT_CASE4,
     IF_BUILDER_EXPECT_CASE5,
 } from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
+import {
+    LABEL_FOR_EXPECT,
+    LABEL_SWITCH_EXPECT,
+    LABEL_WHILE_EXPECT,
+    LABEL_DO_WHILE_EXPECT,
+    LABEL_FOR_OF_EXPECT,
+} from '../../../resources/cfg/labeledStatement/LabeledStatementExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -278,6 +285,16 @@ describe('CfgTest', () => {
         testBlocks(scene, 'IfBuilderSample.ts', 'case3', IF_BUILDER_EXPECT_CASE3.blocks);
         testBlocks(scene, 'IfBuilderSample.ts', 'case4', IF_BUILDER_EXPECT_CASE4.blocks);
         testBlocks(scene, 'IfBuilderSample.ts', 'case5', IF_BUILDER_EXPECT_CASE5.blocks);
+    });
+
+    it('case11: labeled statements (for, while, do-while, for-of, switch)', () => {
+        const scene = buildScene('labeledStatement');
+        const fileName = 'LabeledStatementSample.ts';
+        testBlocks(scene, fileName, 'labelFor', LABEL_FOR_EXPECT.blocks);
+        testBlocks(scene, fileName, 'labelSwitch', LABEL_SWITCH_EXPECT.blocks);
+        testBlocks(scene, fileName, 'labelWhile', LABEL_WHILE_EXPECT.blocks);
+        testBlocks(scene, fileName, 'labelDoWhile', LABEL_DO_WHILE_EXPECT.blocks);
+        testBlocks(scene, fileName, 'labelForOf', LABEL_FOR_OF_EXPECT.blocks);
     });
 });
 

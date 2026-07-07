@@ -588,6 +588,11 @@ export class CfgBuilder {
                 lastStatement = this.ASTNodeDoStatement(c, lastStatement, scope.id);
             } else if (ts.isSwitchStatement(c)) {
                 lastStatement = this.ASTNodeSwitchStatement(c, lastStatement, scope.id);
+            } else if (ts.isLabeledStatement(c)) {
+                let labelExit = new StatementBuilder('labelExit', '', c, scope.id);
+                this.exits.push(labelExit);
+                this.walkAST(lastStatement, labelExit, [c.statement]);
+                lastStatement = labelExit;
             } else if (ts.isBlock(c)) {
                 let blockExit = new StatementBuilder('blockExit', '', c, scope.id);
                 this.exits.push(blockExit);
