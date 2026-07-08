@@ -101,6 +101,7 @@ import {
     IF_BUILDER_EXPECT_CASE4,
     IF_BUILDER_EXPECT_CASE5,
 } from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
+import { TRY_FINALLY_EXPECT_CASE1 } from '../../../resources/cfg/tryFinally/TryFinallyExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -278,6 +279,17 @@ describe('CfgTest', () => {
         testBlocks(scene, 'IfBuilderSample.ts', 'case3', IF_BUILDER_EXPECT_CASE3.blocks);
         testBlocks(scene, 'IfBuilderSample.ts', 'case4', IF_BUILDER_EXPECT_CASE4.blocks);
         testBlocks(scene, 'IfBuilderSample.ts', 'case5', IF_BUILDER_EXPECT_CASE5.blocks);
+    });
+
+    it('case11: try/finally — exception path finally body retains source line numbers', () => {
+        const scene = buildScene('tryFinally');
+        testBlocks(scene, 'TryFinallySample.ts', 'case1', TRY_FINALLY_EXPECT_CASE1.blocks);
+        const arkFile = scene.getFiles().find(f => f.getName().endsWith('TryFinallySample.ts'));
+        const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const finallyStmts = stmts!.filter(s => s.toString() === 'r = 2');
+        assert.isAtLeast(finallyStmts.length, 2);
+        finallyStmts.forEach(s => assert.equal(s.getOriginFullPosition()?.getFirstLine(), 21));
     });
 });
 
