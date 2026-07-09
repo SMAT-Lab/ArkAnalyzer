@@ -23,9 +23,12 @@ import { ModuleDepGraph, DependencyType } from '../../src/core/graph/ModuleDepGr
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisConfig';
 import { ArkFile } from '../../src/core/model/ArkFile';
-import { Scene } from '../../src/Scene';
+import { Scene, SceneBuildStage } from '../../src/Scene';
 import { Canonicalizer } from '../../src/utils/Canonicalizer';
+import { SparseBitVector } from '../../src/utils/SparseBitVector';
 import type { Sdk } from '../../src/Config';
+import { ModelUtils } from '../../src/core/common/ModelUtils';
+import { TypeInference } from '../../src/core/common/TypeInference';
 
 /** Create a real Scene. */
 function makeScene(): Scene {
@@ -69,7 +72,7 @@ function makeLoadModuleSceneStub(): Scene {
  * All currently-registered modules are added as graph nodes.
  */
 function injectDepGraph(scene: Scene, builder: ModuleBuilder, edges: Array<[ModuleID, ModuleID]>): ModuleDepGraph {
-    const graph = new ModuleDepGraph(builder.getModuleCanonicalizer());
+    const graph = builder.createModuleDepGraph();
     for (const module of builder.modulesIterator()) {
         graph.addModule(module);
     }
@@ -109,8 +112,8 @@ describe('ModuleBuilder tests', () => {
             const builder = new ModuleBuilder(scene);
             const a = builder.registerModule('/project/a');
             const b = builder.registerModule('/project/b');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
             expect(idB).toBe(idA + 1);
         });
     });
@@ -120,7 +123,7 @@ describe('ModuleBuilder tests', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             const module = builder.registerModule('/project/entry');
-            const id = builder.getModuleCanonicalizer().getId(module);
+            const id = builder.getModuleId(module);
             expect(builder.getModule(id)).toBe(module);
         });
 
@@ -175,8 +178,8 @@ describe('ModuleBuilder tests', () => {
             const builder = new ModuleBuilder(scene);
             const entry = builder.registerModule('/project/entry');
             const library = builder.registerModule('/project/library');
-            const libraryId = builder.getModuleCanonicalizer().getId(library);
-            const entryId = builder.getModuleCanonicalizer().getId(entry);
+            const libraryId = builder.getModuleId(library);
+            const entryId = builder.getModuleId(entry);
             entry.addDependencyAlias('@ohos/library', libraryId);
 
             expect(builder.resolveAlias(entryId, '@ohos/library')).toBe(library);
@@ -186,7 +189,7 @@ describe('ModuleBuilder tests', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             const entry = builder.registerModule('/project/entry');
-            const entryId = builder.getModuleCanonicalizer().getId(entry);
+            const entryId = builder.getModuleId(entry);
             expect(builder.resolveAlias(entryId, '@ohos/unknown')).toBeUndefined();
         });
 
@@ -203,10 +206,10 @@ describe('ModuleBuilder tests', () => {
             const b = builder.registerModule('/project/b');
             const libA = builder.registerModule('/project/libA');
             const libB = builder.registerModule('/project/libB');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
-            const idLibA = builder.getModuleCanonicalizer().getId(libA);
-            const idLibB = builder.getModuleCanonicalizer().getId(libB);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
+            const idLibA = builder.getModuleId(libA);
+            const idLibB = builder.getModuleId(libB);
             a.addDependencyAlias('myLib', idLibA);
             b.addDependencyAlias('myLib', idLibB);
             expect(builder.resolveAlias(idA, 'myLib')).toBe(libA);
@@ -233,26 +236,28 @@ describe('ModuleBuilder tests', () => {
         });
     });
 
-    describe('computeModuleClosure', () => {
+    describe('computeModuleClosureByIds', () => {
         it('includes the transitive closure for A -> B -> C starting from {A}', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             const a = builder.registerModule('/project/a');
             const b = builder.registerModule('/project/b');
             const c = builder.registerModule('/project/c');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
-            const idC = builder.getModuleCanonicalizer().getId(c);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
+            const idC = builder.getModuleId(c);
             injectDepGraph(scene, builder, [
                 [idA, idB],
                 [idB, idC],
             ]);
 
-            const closure = builder.computeModuleClosure(new Set(['/project/a']));
-            expect(closure.has(idA)).toBe(true);
-            expect(closure.has(idB)).toBe(true);
-            expect(closure.has(idC)).toBe(true);
-            expect(closure.size).toBe(3);
+            const targets = new SparseBitVector();
+            targets.set(idA);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.test(idA)).toBe(true);
+            expect(closure.test(idB)).toBe(true);
+            expect(closure.test(idC)).toBe(true);
+            expect(closure.count()).toBe(3);
         });
 
         it('unions the closures of multiple targets', () => {
@@ -263,34 +268,40 @@ describe('ModuleBuilder tests', () => {
             const c = builder.registerModule('/project/c');
             const d = builder.registerModule('/project/d');
             const e = builder.registerModule('/project/e');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
-            const idC = builder.getModuleCanonicalizer().getId(c);
-            const idD = builder.getModuleCanonicalizer().getId(d);
-            const idE = builder.getModuleCanonicalizer().getId(e);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
+            const idC = builder.getModuleId(c);
+            const idD = builder.getModuleId(d);
+            const idE = builder.getModuleId(e);
             injectDepGraph(scene, builder, [
                 [idA, idB],
                 [idB, idC],
                 [idD, idE],
             ]);
 
-            const closure = builder.computeModuleClosure(new Set(['/project/a', '/project/d']));
-            expect(closure.has(idA)).toBe(true);
-            expect(closure.has(idB)).toBe(true);
-            expect(closure.has(idC)).toBe(true);
-            expect(closure.has(idD)).toBe(true);
-            expect(closure.has(idE)).toBe(true);
-            expect(closure.size).toBe(5);
+            const targets = new SparseBitVector();
+            targets.set(idA);
+            targets.set(idD);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.test(idA)).toBe(true);
+            expect(closure.test(idB)).toBe(true);
+            expect(closure.test(idC)).toBe(true);
+            expect(closure.test(idD)).toBe(true);
+            expect(closure.test(idE)).toBe(true);
+            expect(closure.count()).toBe(5);
         });
 
-        it('skips non-existent paths without throwing', () => {
+        it('skips non-existent IDs without throwing', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             const a = builder.registerModule('/project/a');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const closure = builder.computeModuleClosure(new Set(['/project/a', '/project/nonexistent']));
-            expect(closure.has(idA)).toBe(true);
-            expect(closure.size).toBe(1);
+            const idA = builder.getModuleId(a);
+            const targets = new SparseBitVector();
+            targets.set(idA);
+            targets.set(999);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.test(idA)).toBe(true);
+            expect(closure.count()).toBe(1);
         });
 
         it('does not include SDK modules in the closure', () => {
@@ -298,15 +309,17 @@ describe('ModuleBuilder tests', () => {
             const builder = new ModuleBuilder(scene);
             const a = builder.registerModule('/project/a');
             const sdk = builder.registerModule('/sdk/ets');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idSdk = builder.getModuleCanonicalizer().getId(sdk);
+            const idA = builder.getModuleId(a);
+            const idSdk = builder.getModuleId(sdk);
             sdk.setModuleType(ModuleType.SDK);
             injectDepGraph(scene, builder, [[idA, idSdk]]);
 
-            const closure = builder.computeModuleClosure(new Set(['/project/a']));
-            expect(closure.has(idA)).toBe(true);
-            expect(closure.has(idSdk)).toBe(false);
-            expect(closure.size).toBe(1);
+            const targets = new SparseBitVector();
+            targets.set(idA);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.test(idA)).toBe(true);
+            expect(closure.test(idSdk)).toBe(false);
+            expect(closure.count()).toBe(1);
         });
 
         it('handles cyclic dependencies without infinite recursion', () => {
@@ -314,24 +327,28 @@ describe('ModuleBuilder tests', () => {
             const builder = new ModuleBuilder(scene);
             const a = builder.registerModule('/project/a');
             const b = builder.registerModule('/project/b');
-            const idA = builder.getModuleCanonicalizer().getId(a);
-            const idB = builder.getModuleCanonicalizer().getId(b);
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
             injectDepGraph(scene, builder, [
                 [idA, idB],
                 [idB, idA],
             ]);
 
-            const closure = builder.computeModuleClosure(new Set(['/project/a']));
-            expect(closure.has(idA)).toBe(true);
-            expect(closure.has(idB)).toBe(true);
-            expect(closure.size).toBe(2);
+            const targets = new SparseBitVector();
+            targets.set(idA);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.test(idA)).toBe(true);
+            expect(closure.test(idB)).toBe(true);
+            expect(closure.count()).toBe(2);
         });
 
-        it('returns an empty set when no target path is registered', () => {
+        it('returns an empty set when no target ID is registered', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
-            const closure = builder.computeModuleClosure(new Set(['/project/nonexistent']));
-            expect(closure.size).toBe(0);
+            const targets = new SparseBitVector();
+            targets.set(999);
+            const closure = builder.computeModuleClosureByIds(targets);
+            expect(closure.count()).toBe(0);
         });
     });
 
@@ -343,16 +360,19 @@ describe('ModuleBuilder tests', () => {
             builder.registerModule('/project/b');
             builder.registerModule('/project/c');
             builder.registerModule('/project/d');
-            const idA = builder.getModuleCanonicalizer().getId(builder.getModuleByPath('/project/a')!);
-            const idB = builder.getModuleCanonicalizer().getId(builder.getModuleByPath('/project/b')!);
-            const idC = builder.getModuleCanonicalizer().getId(builder.getModuleByPath('/project/c')!);
-            const idD = builder.getModuleCanonicalizer().getId(builder.getModuleByPath('/project/d')!);
+            const idA = builder.getModuleId(builder.getModuleByPath('/project/a')!);
+            const idB = builder.getModuleId(builder.getModuleByPath('/project/b')!);
+            const idC = builder.getModuleId(builder.getModuleByPath('/project/c')!);
+            const idD = builder.getModuleId(builder.getModuleByPath('/project/d')!);
             // topoOrder is populated by refineSCCGroups inside analyzeModuleDependencies; inject a
             // depGraph with a preset topoOrder here so the filtering behavior can be verified in isolation.
             const graph = injectDepGraph(scene, builder, []);
             (graph as unknown as { topoOrder: ModuleID[] }).topoOrder = [idA, idB, idC, idD];
 
-            const filtered = builder.getFilteredTopoOrder(new Set<ModuleID>([idB, idD]));
+            const closure = new SparseBitVector();
+            closure.set(idB);
+            closure.set(idD);
+            const filtered = builder.getFilteredTopoOrder(closure);
             expect(filtered).toEqual([idB, idD]);
         });
 
@@ -360,24 +380,25 @@ describe('ModuleBuilder tests', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             builder.registerModule('/project/a');
-            const idA = builder.getModuleCanonicalizer().getId(builder.getModuleByPath('/project/a')!);
+            const idA = builder.getModuleId(builder.getModuleByPath('/project/a')!);
             const graph = injectDepGraph(scene, builder, []);
             (graph as unknown as { topoOrder: ModuleID[] }).topoOrder = [idA];
-            expect(builder.getFilteredTopoOrder(new Set<ModuleID>())).toEqual([]);
+            expect(builder.getFilteredTopoOrder(new SparseBitVector())).toEqual([]);
         });
 
         it('returns an empty array when topoOrder is empty', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
-            const closure = new Set<ModuleID>([0, 1]);
+            const closure = new SparseBitVector();
+            closure.set(0);
+            closure.set(1);
             expect(builder.getFilteredTopoOrder(closure)).toEqual([]);
         });
     });
 
     describe('initial state flags', () => {
-        it('reports false for isSdkRegistered, isModulesRegistered and isModuleDependenciesAnalyzed before any build step', () => {
+        it('reports false for isModulesRegistered and isModuleDependenciesAnalyzed before any build step', () => {
             const scene = makeScene();
-            expect(scene.isSdkRegistered()).toBe(false);
             expect(scene.isModulesRegistered()).toBe(false);
             expect(scene.isModuleDependenciesAnalyzed()).toBe(false);
         });
@@ -390,80 +411,42 @@ describe('ModuleBuilder tests', () => {
         });
     });
 
-    describe('getModuleCanonicalizer', () => {
-        it('returns the canonicalizer shared with registered modules', () => {
+    describe('getModuleId', () => {
+        it('returns the module ID for a registered module', () => {
             const scene = makeScene();
             const builder = new ModuleBuilder(scene);
             const module = builder.registerModule('/project/entry');
-            const canonicalizer = builder.getModuleCanonicalizer();
-            expect(canonicalizer.size()).toBe(1);
-            expect(canonicalizer.get(0)).toBe(module);
+            expect(builder.getModuleCount()).toBe(1);
+            expect(builder.getModule(0)).toBe(module);
+            expect(builder.getModuleId(module)).toBe(0);
         });
     });
 
-    describe('prepareSdkModules', () => {
-        it('registers SDK modules with moduleType=SDK', () => {
-            const sdks: Sdk[] = [
-                { name: 'etsSdk', path: '/sdk/ets', moduleName: '' },
-                { name: 'hmsSdk', path: '/sdk/hms', moduleName: '' },
-            ];
-            const scene = makeSdkSceneStub(sdks);
-            const builder = new ModuleBuilder(scene);
+    describe('buildSdkModules', () => {
+        const sdkSignaturesConfig = new ModuleAnalysisConfig();
+        sdkSignaturesConfig.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.SIGNATURES);
 
-            builder.prepareSdkModules();
-
-            expect(scene.isSdkRegistered()).toBe(true);
-            expect(builder.getModuleCount()).toBe(2);
-
-            const etsModule = builder.getModuleByPath(path.normalize('/sdk/ets'));
-            expect(etsModule).toBeDefined();
-            expect(etsModule!.getModuleType()).toBe(ModuleType.SDK);
-            expect(etsModule!.getModuleName()).toBe('etsSdk');
-
-            const hmsModule = builder.getModuleByPath(path.normalize('/sdk/hms'));
-            expect(hmsModule).toBeDefined();
-            expect(hmsModule!.getModuleType()).toBe(ModuleType.SDK);
-        });
-
-        it('skips SDKs with moduleName set (module-level SDKs)', () => {
-            const sdks: Sdk[] = [
-                { name: 'etsSdk', path: '/sdk/ets', moduleName: '' },
-                { name: 'moduleSdk', path: '/sdk/module', moduleName: 'entry' },
-            ];
-            const scene = makeSdkSceneStub(sdks);
-            const builder = new ModuleBuilder(scene);
-
-            builder.prepareSdkModules();
-
-            expect(builder.getModuleCount()).toBe(1);
-            expect(builder.getModuleByPath(path.normalize('/sdk/ets'))).toBeDefined();
-            expect(builder.getModuleByPath(path.normalize('/sdk/module'))).toBeUndefined();
-        });
-
-        it('does not build ArkFiles or perform type inference', () => {
+        it('returns early when SDK level < SIGNATURES (no config)', () => {
             const sdks: Sdk[] = [{ name: 'etsSdk', path: '/sdk/ets', moduleName: '' }];
             const scene = makeSdkSceneStub(sdks);
             const builder = new ModuleBuilder(scene);
 
-            builder.prepareSdkModules();
+            // No config → SDK defaults to META (< SIGNATURES), so buildSdkModules returns early
+            builder.buildSdkModules();
 
-            const sdkModule = builder.getModuleByPath(path.normalize('/sdk/ets'));
-            expect(sdkModule).toBeDefined();
-            expect(sdkModule!.getFilesMap().size).toBe(0);
-            expect(sdkModule!.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+            expect(builder.getModuleCount()).toBe(0);
         });
 
-        it('is idempotent — second call does not register additional modules', () => {
+        it('is idempotent — guarded by buildStage >= SDK_INFERRED', () => {
             const sdks: Sdk[] = [{ name: 'etsSdk', path: '/sdk/ets', moduleName: '' }];
             const scene = makeSdkSceneStub(sdks);
+            scene.setBuildStage(SceneBuildStage.SDK_INFERRED);
             const builder = new ModuleBuilder(scene);
 
-            builder.prepareSdkModules();
-            expect(builder.getModuleCount()).toBe(1);
+            builder.buildSdkModules(sdkSignaturesConfig);
 
-            builder.prepareSdkModules();
-            expect(builder.getModuleCount()).toBe(1);
-            expect(scene.isSdkRegistered()).toBe(true);
+            // Already SDK_INFERRED, so nothing happens
+            expect(builder.getModuleCount()).toBe(0);
         });
 
         it('handles missing SceneConfig gracefully', () => {
@@ -471,9 +454,8 @@ describe('ModuleBuilder tests', () => {
             (scene as unknown as { getSceneConfig: () => undefined }).getSceneConfig = () => undefined;
             const builder = new ModuleBuilder(scene);
 
-            builder.prepareSdkModules();
+            builder.buildSdkModules(sdkSignaturesConfig);
 
-            expect(scene.isSdkRegistered()).toBe(true);
             expect(builder.getModuleCount()).toBe(0);
         });
     });
@@ -714,9 +696,9 @@ describe('ModuleBuilder tests', () => {
                 expect(scene.getModuleDepGraph()).toBeDefined();
                 expect(builder.getTopoOrder().length).toBe(3);
 
-                const idA = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './a'))!);
-                const idB = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './b'))!);
-                const idC = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './c'))!);
+                const idA = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './a'))!);
+                const idB = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './b'))!);
+                const idC = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './c'))!);
 
                 // Topo order: depended-on first (c before b before a)
                 const topo = builder.getTopoOrder();
@@ -764,27 +746,27 @@ describe('ModuleBuilder tests', () => {
 
                 const entryPath = path.resolve(tmpDir, './entry');
                 const entryModule = builder.getModuleByPath(entryPath)!;
-                const entryId = builder.getModuleCanonicalizer().getId(entryModule);
+                const entryId = builder.getModuleId(entryModule);
                 const graph = scene.getModuleDepGraph()!;
 
                 // ./lib1 resolves to entry/lib1
                 const lib1Path = path.resolve(tmpDir, './entry/lib1');
                 const lib1Module = builder.getModuleByPath(lib1Path)!;
-                const lib1Id = builder.getModuleCanonicalizer().getId(lib1Module);
+                const lib1Id = builder.getModuleId(lib1Module);
                 expect(graph.hasDependencyEdge(entryId, lib1Id)).toBe(true);
                 expect(builder.resolveAlias(entryId, 'lib1')).toBe(lib1Module);
 
                 // ../lib2 resolves to lib2
                 const lib2Path = path.resolve(tmpDir, './lib2');
                 const lib2Module = builder.getModuleByPath(lib2Path)!;
-                const lib2Id = builder.getModuleCanonicalizer().getId(lib2Module);
+                const lib2Id = builder.getModuleId(lib2Module);
                 expect(graph.hasDependencyEdge(entryId, lib2Id)).toBe(true);
                 expect(builder.resolveAlias(entryId, 'lib2')).toBe(lib2Module);
 
                 // file:../lib3 resolves to lib3
                 const lib3Path = path.resolve(tmpDir, './lib3');
                 const lib3Module = builder.getModuleByPath(lib3Path)!;
-                const lib3Id = builder.getModuleCanonicalizer().getId(lib3Module);
+                const lib3Id = builder.getModuleId(lib3Module);
                 expect(graph.hasDependencyEdge(entryId, lib3Id)).toBe(true);
                 expect(builder.resolveAlias(entryId, 'lib3')).toBe(lib3Module);
             } finally {
@@ -810,11 +792,11 @@ describe('ModuleBuilder tests', () => {
 
                 const entryPath = path.resolve(tmpDir, './entry');
                 const entryModule = builder.getModuleByPath(entryPath)!;
-                const entryId = builder.getModuleCanonicalizer().getId(entryModule);
+                const entryId = builder.getModuleId(entryModule);
 
                 const lodashRealPath = fs.realpathSync(path.join(tmpDir, 'oh_modules', 'lodash'));
                 const lodashModule = builder.getModuleByPath(lodashRealPath)!;
-                const lodashId = builder.getModuleCanonicalizer().getId(lodashModule);
+                const lodashId = builder.getModuleId(lodashModule);
 
                 expect(scene.getModuleDepGraph()!.hasDependencyEdge(entryId, lodashId)).toBe(true);
                 expect(builder.resolveAlias(entryId, 'lodash')).toBe(lodashModule);
@@ -874,10 +856,10 @@ describe('ModuleBuilder tests', () => {
                 builder.analyzeModuleDependencies();
 
                 const graph = scene.getModuleDepGraph()!;
-                const srcId = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './src'))!);
-                const dep1Id = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './dep1'))!);
-                const dep2Id = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './dep2'))!);
-                const dep3Id = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './dep3'))!);
+                const srcId = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './src'))!);
+                const dep1Id = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './dep1'))!);
+                const dep2Id = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './dep2'))!);
+                const dep3Id = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './dep3'))!);
 
                 expect(graph.getEdgeType(srcId, dep1Id)).toBe(DependencyType.DEPENDENCIES);
                 expect(graph.getEdgeType(srcId, dep2Id)).toBe(DependencyType.DEV_DEPENDENCIES);
@@ -957,11 +939,11 @@ describe('ModuleBuilder tests', () => {
 
                 const entryPath = path.resolve(tmpDir, './entry');
                 const entryModule = builder.getModuleByPath(entryPath)!;
-                const entryId = builder.getModuleCanonicalizer().getId(entryModule);
+                const entryId = builder.getModuleId(entryModule);
 
                 const lib1Path = path.resolve(tmpDir, './lib1');
                 const lib1Module = builder.getModuleByPath(lib1Path)!;
-                const lib1Id = builder.getModuleCanonicalizer().getId(lib1Module);
+                const lib1Id = builder.getModuleId(lib1Module);
 
                 // @module:@lib1 resolves to the module whose oh-package name is '@lib1'
                 expect(scene.getModuleDepGraph()!.hasDependencyEdge(entryId, lib1Id)).toBe(true);
@@ -985,8 +967,8 @@ describe('ModuleBuilder tests', () => {
                 builder.prepareModules();
                 builder.analyzeModuleDependencies();
 
-                const idA = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './a'))!);
-                const idB = builder.getModuleCanonicalizer().getId(builder.getModuleByPath(path.resolve(tmpDir, './b'))!);
+                const idA = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './a'))!);
+                const idB = builder.getModuleId(builder.getModuleByPath(path.resolve(tmpDir, './b'))!);
 
                 // a and b are in the same SCC (cycle)
                 const sccGroups = scene.getModuleDepGraph()!.getSCCGroups();
@@ -1016,8 +998,8 @@ describe('ModuleBuilder tests', () => {
             // model1 and model2 form a cycle (model1 → model2 → model1)
             const model1Module = builder.getModuleByPath(path.resolve(projectDir, './model1'))!;
             const model2Module = builder.getModuleByPath(path.resolve(projectDir, './model2'))!;
-            const idModel1 = builder.getModuleCanonicalizer().getId(model1Module);
-            const idModel2 = builder.getModuleCanonicalizer().getId(model2Module);
+            const idModel1 = builder.getModuleId(model1Module);
+            const idModel2 = builder.getModuleId(model2Module);
 
             expect(graph.hasDependencyEdge(idModel1, idModel2)).toBe(true);
             expect(graph.hasDependencyEdge(idModel2, idModel1)).toBe(true);
@@ -1031,7 +1013,7 @@ describe('ModuleBuilder tests', () => {
             expect(model2Module.getModuleName()).toBe('model2');
 
             const libbaseModule = builder.getModuleByPath(path.resolve(projectDir, './libbase'))!;
-            const idLibbase = builder.getModuleCanonicalizer().getId(libbaseModule);
+            const idLibbase = builder.getModuleId(libbaseModule);
             expect(libbaseModule.getModuleName()).toBe('@libbase');
 
             // libbase depends on model2 (resolved via "../model2")
@@ -1064,7 +1046,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(path.join(tmpDir, 'entry'), '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
                 builder.loadModule(moduleId);
@@ -1081,7 +1063,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(path.join(tmpDir, 'entry'), '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 builder.loadModule(moduleId);
                 expect(module.getLoadState()).toBe(ModuleLoadState.META);
@@ -1096,7 +1078,7 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('SDK modules: builds files at META level by default', () => {
+        it('SDK modules: loadModule skips SDK modules (content built by SDKBuilder)', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sdk-meta-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'sdk'), ['api.ets']);
@@ -1104,21 +1086,20 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(path.join(tmpDir, 'sdk'), 'etsSdk');
                 module.setModuleType(ModuleType.SDK);
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 builder.loadModule(moduleId);
 
-                expect(module.getLoadState()).toBe(ModuleLoadState.META);
-                // SDK modules build ArkFiles at the effective META level like any other module
-                expect(module.getFilesMap().size).toBe(1);
-                // No file dependency analysis is performed below IMPORTS level
+                // loadModule skips SDK modules — their content is built by SDKBuilder, not here.
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+                expect(module.getFilesMap().size).toBe(0);
                 expect(module.hasFileTopoOrder()).toBe(false);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
         });
 
-        it('SDK modules: builds files and file deps at IMPORTS level', () => {
+        it('SDK modules: loadModule skips SDK modules even at IMPORTS level', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sdk-imports-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'sdk'), ['api.ets']);
@@ -1126,15 +1107,16 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(path.join(tmpDir, 'sdk'), 'etsSdk');
                 module.setModuleType(ModuleType.SDK);
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 const config = new ModuleAnalysisConfig();
                 config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS);
                 builder.loadModule(moduleId, config);
 
-                expect(module.getFilesMap().size).toBe(1);
-                expect(module.hasFileTopoOrder()).toBe(true);
-                expect(module.getFileDepGraph()).toBeDefined();
+                // loadModule skips SDK modules regardless of configured level.
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+                expect(module.getFilesMap().size).toBe(0);
+                expect(module.hasFileTopoOrder()).toBe(false);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -1147,7 +1129,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 builder.loadModule(moduleId);
 
@@ -1177,8 +1159,8 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const entry = builder.registerModule(path.join(tmpDir, 'entry'), '@ohos/entry');
                 const library = builder.registerModule(path.join(tmpDir, 'library'), '@ohos/library');
-                const entryId = builder.getModuleCanonicalizer().getId(entry);
-                const libraryId = builder.getModuleCanonicalizer().getId(library);
+                const entryId = builder.getModuleId(entry);
+                const libraryId = builder.getModuleId(library);
                 injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
                 // Load entry — should recursively load library first
@@ -1202,8 +1184,8 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const a = builder.registerModule(path.join(tmpDir, 'a'), '@a');
                 const b = builder.registerModule(path.join(tmpDir, 'b'), '@b');
-                const idA = builder.getModuleCanonicalizer().getId(a);
-                const idB = builder.getModuleCanonicalizer().getId(b);
+                const idA = builder.getModuleId(a);
+                const idB = builder.getModuleId(b);
                 injectDepGraph(scene, builder, [
                     [idA, idB],
                     [idB, idA],
@@ -1234,7 +1216,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 const config = new ModuleAnalysisConfig();
                 config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
@@ -1271,7 +1253,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 const config = new ModuleAnalysisConfig();
                 config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
@@ -1297,7 +1279,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 // Default config -> META level: import/export info is not populated
                 builder.loadModule(moduleId);
@@ -1322,7 +1304,7 @@ describe('ModuleBuilder tests', () => {
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 const config = new ModuleAnalysisConfig();
                 config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
@@ -1347,39 +1329,105 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('SIGNATURES config capped to IMPORTS', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sig-capped-'));
+        it('SIGNATURES config builds signatures without bodies', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sig-'));
             try {
                 const modulePath = path.join(tmpDir, 'entry');
                 fs.mkdirSync(modulePath, { recursive: true });
-                fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
-                fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
+                fs.writeFileSync(path.join(modulePath, 'cls.ets'), 'export class MyClass {\n  foo(a: number): string { return a.toString(); }\n}\n');
                 const scene = makeLoadModuleSceneStub();
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleCanonicalizer().getId(module);
+                const moduleId = builder.getModuleId(module);
 
                 const config = new ModuleAnalysisConfig();
                 config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES);
                 builder.loadModule(moduleId, config);
 
-                // Effective level is capped to IMPORTS: import/export info is populated
-                let aFile: ArkFile | undefined;
-                let bFile: ArkFile | undefined;
-                for (const arkFile of module.getFilesMap().values()) {
-                    const base = path.basename(arkFile.getFilePath());
-                    if (base === 'a.ets') {
-                        aFile = arkFile;
-                    } else if (base === 'b.ets') {
-                        bFile = arkFile;
-                    }
-                }
-                expect(aFile).toBeDefined();
-                expect(bFile).toBeDefined();
-                expect(aFile!.getImportInfos().length).toBeGreaterThanOrEqual(1);
-                expect(bFile!.getExportInfos().length).toBeGreaterThanOrEqual(1);
-                // The load state reflects the effective capped level (IMPORTS)
-                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                // Effective level is SIGNATURES: class/method signatures are populated, bodies are not
+                const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+                expect(clsFile).toBeDefined();
+                const classes = ModelUtils.getAllClassesInFile(clsFile!);
+                expect(classes.length).toBeGreaterThan(0);
+                const myClass = classes.find(c => c.getName() === 'MyClass');
+                expect(myClass).toBeDefined();
+                const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                expect(foo!.getBody()).toBeUndefined();
+                // The load state reflects the SIGNATURES level (no longer capped to IMPORTS)
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('BODIES config builds method bodies', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-bodies-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(path.join(modulePath, 'cls.ets'), 'export class MyClass {\n  foo(a: number): string { return a.toString(); }\n}\n');
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+
+                const config = new ModuleAnalysisConfig();
+                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+                builder.loadModule(moduleId, config);
+
+                // BODIES builds signatures AND method bodies
+                const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+                expect(clsFile).toBeDefined();
+                const classes = ModelUtils.getAllClassesInFile(clsFile!);
+                const myClass = classes.find(c => c.getName() === 'MyClass');
+                expect(myClass).toBeDefined();
+                const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                // The method body IS built (ArkBody/CFG constructed)
+                expect(foo!.getBody()).toBeDefined();
+                expect(foo!.getBody()!.getCfg()).toBeDefined();
+                // The load state reflects the BODIES level
+                expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('inferModuleTypes resolves return type after BODIES build', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-infer-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                // Method without explicit return type — inference should resolve it.
+                fs.writeFileSync(path.join(modulePath, 'cls.ets'), 'export class MyClass {\n  foo() { return 42; }\n}\n');
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+
+                // Load to BODIES (builds signatures + method bodies + file dep graph)
+                const config = new ModuleAnalysisConfig();
+                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+                builder.loadModule(moduleId, config);
+
+                // Verify body is built before inference
+                const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+                expect(clsFile).toBeDefined();
+                const foo = ModelUtils.getAllClassesInFile(clsFile!)
+                    .find(c => c.getName() === 'MyClass')!
+                    .getMethods()
+                    .find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                expect(foo!.getBody()).toBeDefined();
+
+                // Run type inference directly
+                builder.inferModuleTypes(module);
+
+                // After inference, the return type should be resolved (not unclear)
+                const returnType = foo!.getImplementationSignature()?.getMethodSubSignature().getReturnType();
+                expect(returnType).toBeDefined();
+                expect(TypeInference.isUnclearType(returnType!)).toBe(false);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }

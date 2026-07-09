@@ -23,6 +23,7 @@ import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 import { ArkFile } from '../../src/core/model/ArkFile';
 import { ArkModule } from '../../src/core/model/ArkModule';
 import { Scene } from '../../src/Scene';
+import { ModelUtils } from '../../src/core/common/ModelUtils';
 
 /**
  * Create a Scene suitable for FrontendBuilder level-aware tests: supports getRealProjectDir,
@@ -111,22 +112,72 @@ describe('FrontendBuilder level-aware building', () => {
         }
     });
 
-    it('ArkTS BODIES level - capped to IMPORTS', () => {
-        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-bodies-'));
+    it('ArkTS SIGNATURES level - signatures built, no method bodies', () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-sig-'));
         try {
             const modulePath = path.join(tmpDir, 'entry');
             fs.mkdirSync(modulePath, { recursive: true });
-            fs.writeFileSync(path.join(modulePath, 'cls.ets'), 'export class MyClass {\n  field: number = 0;\n}\n');
+            fs.writeFileSync(
+                path.join(modulePath, 'cls.ets'),
+                'export class MyClass {\n  field: number = 0;\n  foo(a: number): string { return a.toString(); }\n}\n'
+            );
             const scene = makeFrontendBuilderSceneStub(tmpDir, 'testProject');
             const builder = new ModuleBuilder(scene);
             const module = builder.registerModule(modulePath, '@ohos/entry');
 
-            // BODIES is capped at IMPORTS: no ArkClass built
+            // SIGNATURES level builds namespace/class/method signatures without method bodies
+            FrontendBuilder.buildModuleFilesToLevel(scene, module, ModuleDepthLevel.SIGNATURES);
+
+            const clsFile = findFileByBasename(module, 'cls.ets');
+            expect(clsFile).toBeDefined();
+            const classes = ModelUtils.getAllClassesInFile(clsFile!);
+            // Unlike IMPORTS (no classes), SIGNATURES builds the declared class plus the default class
+            expect(classes.length).toBeGreaterThan(0);
+            const myClass = classes.find(c => c.getName() === 'MyClass');
+            expect(myClass).toBeDefined();
+            // foo method signature is built ...
+            const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+            expect(foo).toBeDefined();
+            // ... but the method body is NOT built (capped at SIGNATURES)
+            expect(foo!.getBody()).toBeUndefined();
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it('ArkTS BODIES level retains BodyBuilders for phase 2 (signatures built, bodies pending)', () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-bodies-'));
+        try {
+            const modulePath = path.join(tmpDir, 'entry');
+            fs.mkdirSync(modulePath, { recursive: true });
+            fs.writeFileSync(
+                path.join(modulePath, 'cls.ets'),
+                'export class MyClass {\n  field: number = 0;\n  foo(a: number): string { return a.toString(); }\n}\n'
+            );
+            const scene = makeFrontendBuilderSceneStub(tmpDir, 'testProject');
+            const builder = new ModuleBuilder(scene);
+            const module = builder.registerModule(modulePath, '@ohos/entry');
+
+            // BODIES level: ArkClass/method signatures are built and BodyBuilders are retained
+            // (not freed) for a subsequent phase 2 body-building step.
             FrontendBuilder.buildModuleFilesToLevel(scene, module, ModuleDepthLevel.BODIES);
 
             const clsFile = findFileByBasename(module, 'cls.ets');
             expect(clsFile).toBeDefined();
-            expect(clsFile!.getClasses().length).toBe(0);
+            const classes = ModelUtils.getAllClassesInFile(clsFile!);
+            expect(classes.length).toBeGreaterThan(0);
+            const myClass = classes.find(c => c.getName() === 'MyClass');
+            expect(myClass).toBeDefined();
+            const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+            expect(foo).toBeDefined();
+            // Body is NOT yet built (phase 2 has not run)
+            expect(foo!.getBody()).toBeUndefined();
+            // BodyBuilder IS retained (not freed) — available for phase 2
+            expect(foo!.getBodyBuilder()).toBeDefined();
+            // Manually running phase 2 builds the body from the retained BodyBuilder
+            foo!.buildBody();
+            expect(foo!.getBody()).toBeDefined();
+            expect(foo!.getBody()!.getCfg()).toBeDefined();
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true });
         }

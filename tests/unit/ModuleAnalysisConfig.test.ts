@@ -14,122 +14,113 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import path from 'path';
 import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisConfig';
 import { ModuleType } from '../../src/core/model/ArkModule';
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 
 describe('ModuleAnalysisConfig tests', () => {
-    describe('defaults', () => {
-        it('hasTargetProjectModules returns false by default', () => {
+    describe('type filter', () => {
+        it('includes PROJECT by default (OH_MODULES not included)', () => {
             const config = new ModuleAnalysisConfig();
-            expect(config.hasTargetProjectModules()).toBe(false);
-            expect(config.getTargetProjectModules().size).toBe(0);
-        });
-    });
-
-    describe('addTargetProjectModule', () => {
-        it('adds a single absolute module path', () => {
-            const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('/project/entry');
-            expect(config.hasTargetProjectModules()).toBe(true);
-            expect(config.getTargetProjectModules().has('/project/entry')).toBe(true);
-            expect(config.getTargetProjectModules().size).toBe(1);
+            expect(config.isTypeIncluded(ModuleType.PROJECT)).toBe(true);
+            expect(config.isTypeIncluded(ModuleType.OH_MODULES)).toBe(false);
+            expect(config.isTypeIncluded(ModuleType.SDK)).toBe(false);
         });
 
-        it('returns this to allow chaining', () => {
+        it('setIncludeType toggles a type on', () => {
             const config = new ModuleAnalysisConfig();
-            const returned = config.addTargetProjectModule('/project/entry');
-            expect(returned).toBe(config);
+            config.setIncludeType(ModuleType.SDK, true);
+            expect(config.isTypeIncluded(ModuleType.SDK)).toBe(true);
         });
 
-        it('supports chained calls accumulating multiple modules', () => {
+        it('setIncludeType toggles a type off', () => {
             const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('/project/entry').addTargetProjectModule('/project/library').addTargetProjectModule('/project/shared');
-            expect(config.getTargetProjectModules().size).toBe(3);
-            expect(config.getTargetProjectModules().has('/project/entry')).toBe(true);
-            expect(config.getTargetProjectModules().has('/project/library')).toBe(true);
-            expect(config.getTargetProjectModules().has('/project/shared')).toBe(true);
-        });
-    });
-
-    describe('setTargetProjectModules', () => {
-        it('sets multiple absolute module paths at once', () => {
-            const config = new ModuleAnalysisConfig();
-            config.setTargetProjectModules(['/project/entry', '/project/library']);
-            expect(config.getTargetProjectModules().size).toBe(2);
-            expect(config.getTargetProjectModules().has('/project/entry')).toBe(true);
-            expect(config.getTargetProjectModules().has('/project/library')).toBe(true);
+            config.setIncludeType(ModuleType.OH_MODULES, false);
+            expect(config.isTypeIncluded(ModuleType.OH_MODULES)).toBe(false);
+            expect(config.isTypeIncluded(ModuleType.PROJECT)).toBe(true);
         });
 
         it('returns this to allow chaining', () => {
             const config = new ModuleAnalysisConfig();
-            const returned = config.setTargetProjectModules(['/project/entry']);
-            expect(returned).toBe(config);
-        });
-
-        it('resets the set, clearing previous entries and adding new ones', () => {
-            const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('/project/entry');
-            config.addTargetProjectModule('/project/library');
-            expect(config.getTargetProjectModules().size).toBe(2);
-
-            config.setTargetProjectModules(['/project/newEntry', '/project/newLibrary']);
-            expect(config.getTargetProjectModules().size).toBe(2);
-            expect(config.getTargetProjectModules().has('/project/entry')).toBe(false);
-            expect(config.getTargetProjectModules().has('/project/library')).toBe(false);
-            expect(config.getTargetProjectModules().has('/project/newEntry')).toBe(true);
-            expect(config.getTargetProjectModules().has('/project/newLibrary')).toBe(true);
-        });
-
-        it('resets to empty when called with an empty array', () => {
-            const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('/project/entry');
-            expect(config.hasTargetProjectModules()).toBe(true);
-
-            config.setTargetProjectModules([]);
-            expect(config.hasTargetProjectModules()).toBe(false);
-            expect(config.getTargetProjectModules().size).toBe(0);
+            expect(config.setIncludeType(ModuleType.SDK, true)).toBe(config);
         });
     });
 
-    describe('deduplication', () => {
-        it('stores the same path added multiple times only once via addTargetProjectModule', () => {
+    describe('target module IDs (include)', () => {
+        it('is empty by default', () => {
             const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('/project/entry').addTargetProjectModule('/project/entry').addTargetProjectModule('/project/entry');
-            expect(config.getTargetProjectModules().size).toBe(1);
-            expect(config.getTargetProjectModules().has('/project/entry')).toBe(true);
+            expect(config.getTargetModuleIds().count()).toBe(0);
         });
 
-        it('stores duplicate paths in setTargetProjectModules only once', () => {
+        it('setTargetModuleIds replaces the set', () => {
             const config = new ModuleAnalysisConfig();
-            config.setTargetProjectModules(['/project/entry', '/project/entry', '/project/library']);
-            expect(config.getTargetProjectModules().size).toBe(2);
+            config.setTargetModuleIds([1, 3, 5]);
+            expect(config.getTargetModuleIds().count()).toBe(3);
+            expect(config.getTargetModuleIds().test(1)).toBe(true);
+            expect(config.getTargetModuleIds().test(3)).toBe(true);
+            expect(config.getTargetModuleIds().test(5)).toBe(true);
+            expect(config.getTargetModuleIds().test(2)).toBe(false);
+        });
+
+        it('addTargetModuleId adds a single ID', () => {
+            const config = new ModuleAnalysisConfig();
+            config.addTargetModuleId(7);
+            expect(config.getTargetModuleIds().test(7)).toBe(true);
+            expect(config.getTargetModuleIds().count()).toBe(1);
+        });
+
+        it('setTargetModuleIds clears previous entries', () => {
+            const config = new ModuleAnalysisConfig();
+            config.addTargetModuleId(1);
+            config.addTargetModuleId(2);
+            config.setTargetModuleIds([3, 4]);
+            expect(config.getTargetModuleIds().test(1)).toBe(false);
+            expect(config.getTargetModuleIds().test(2)).toBe(false);
+            expect(config.getTargetModuleIds().test(3)).toBe(true);
+            expect(config.getTargetModuleIds().test(4)).toBe(true);
+        });
+
+        it('deduplicates IDs', () => {
+            const config = new ModuleAnalysisConfig();
+            config.addTargetModuleId(1);
+            config.addTargetModuleId(1);
+            config.addTargetModuleId(1);
+            expect(config.getTargetModuleIds().count()).toBe(1);
+        });
+
+        it('returns this to allow chaining', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(config.setTargetModuleIds([1])).toBe(config);
+            expect(config.addTargetModuleId(2)).toBe(config);
         });
     });
 
-    describe('relative path normalization', () => {
-        it('normalizes a relative path via path.resolve in addTargetProjectModule', () => {
+    describe('excluded module IDs', () => {
+        it('is empty by default', () => {
             const config = new ModuleAnalysisConfig();
-            config.addTargetProjectModule('./relative/path');
-            const expected = path.resolve('./relative/path');
-            expect(config.getTargetProjectModules().has(expected)).toBe(true);
-            expect(config.getTargetProjectModules().has('./relative/path')).toBe(false);
+            expect(config.getExcludedModuleIds().count()).toBe(0);
         });
 
-        it('normalizes relative paths via path.resolve in setTargetProjectModules', () => {
+        it('excludeModuleId adds a single ID', () => {
             const config = new ModuleAnalysisConfig();
-            config.setTargetProjectModules(['./relative/a', './relative/b']);
-            expect(config.getTargetProjectModules().has(path.resolve('./relative/a'))).toBe(true);
-            expect(config.getTargetProjectModules().has(path.resolve('./relative/b'))).toBe(true);
-            expect(config.getTargetProjectModules().size).toBe(2);
+            config.excludeModuleId(3);
+            expect(config.getExcludedModuleIds().test(3)).toBe(true);
+            expect(config.getExcludedModuleIds().count()).toBe(1);
         });
 
-        it('keeps absolute paths unchanged', () => {
+        it('setExcludedModuleIds replaces the set', () => {
             const config = new ModuleAnalysisConfig();
-            config.setTargetProjectModules(['/abs/path/a', './rel/path/b']);
-            expect(config.getTargetProjectModules().has('/abs/path/a')).toBe(true);
-            expect(config.getTargetProjectModules().has(path.resolve('./rel/path/b'))).toBe(true);
+            config.excludeModuleId(1);
+            config.setExcludedModuleIds([2, 3]);
+            expect(config.getExcludedModuleIds().test(1)).toBe(false);
+            expect(config.getExcludedModuleIds().test(2)).toBe(true);
+            expect(config.getExcludedModuleIds().test(3)).toBe(true);
+        });
+
+        it('returns this to allow chaining', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(config.excludeModuleId(1)).toBe(config);
+            expect(config.setExcludedModuleIds([2])).toBe(config);
         });
     });
 
@@ -147,35 +138,9 @@ describe('ModuleAnalysisConfig tests', () => {
             expect(config.getLoadLevel(ModuleType.PROJECT)).toBe(ModuleDepthLevel.BODIES);
         });
 
-        it('getLoadLevel returns the value set by setLoadLevel', () => {
-            const config = new ModuleAnalysisConfig();
-            config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS);
-            expect(config.getLoadLevel(ModuleType.SDK)).toBe(ModuleDepthLevel.IMPORTS);
-            config.setLoadLevel(ModuleType.OH_MODULES, ModuleDepthLevel.SIGNATURES);
-            expect(config.getLoadLevel(ModuleType.OH_MODULES)).toBe(ModuleDepthLevel.SIGNATURES);
-        });
-
         it('setLoadLevel returns this to allow chaining', () => {
             const config = new ModuleAnalysisConfig();
-            const returned = config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES);
-            expect(returned).toBe(config);
-        });
-
-        it('supports chained setLoadLevel calls', () => {
-            const config = new ModuleAnalysisConfig();
-            config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS)
-                .setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES)
-                .setLoadLevel(ModuleType.OH_MODULES, ModuleDepthLevel.BODIES);
-            expect(config.getLoadLevel(ModuleType.SDK)).toBe(ModuleDepthLevel.IMPORTS);
-            expect(config.getLoadLevel(ModuleType.PROJECT)).toBe(ModuleDepthLevel.SIGNATURES);
-            expect(config.getLoadLevel(ModuleType.OH_MODULES)).toBe(ModuleDepthLevel.BODIES);
-        });
-
-        it('getLoadLevel falls back to META for an unset type', () => {
-            const config = new ModuleAnalysisConfig();
-            // ModuleType values 0-2 are set in the constructor; an out-of-range value
-            // exercises the ?? META fallback path.
-            expect(config.getLoadLevel(99 as ModuleType)).toBe(ModuleDepthLevel.META);
+            expect(config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES)).toBe(config);
         });
 
         it('does not affect other types when setting a single type', () => {
@@ -183,6 +148,26 @@ describe('ModuleAnalysisConfig tests', () => {
             config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
             expect(config.getLoadLevel(ModuleType.SDK)).toBe(ModuleDepthLevel.META);
             expect(config.getLoadLevel(ModuleType.OH_MODULES)).toBe(ModuleDepthLevel.META);
+        });
+    });
+
+    describe('type inference', () => {
+        it('defaults to disabled', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(config.isTypeInferenceEnabled()).toBe(false);
+        });
+
+        it('setEnableTypeInference sets the flag', () => {
+            const config = new ModuleAnalysisConfig();
+            config.setEnableTypeInference(true);
+            expect(config.isTypeInferenceEnabled()).toBe(true);
+        });
+
+        it('can be toggled back to false', () => {
+            const config = new ModuleAnalysisConfig();
+            config.setEnableTypeInference(true);
+            config.setEnableTypeInference(false);
+            expect(config.isTypeInferenceEnabled()).toBe(false);
         });
     });
 });

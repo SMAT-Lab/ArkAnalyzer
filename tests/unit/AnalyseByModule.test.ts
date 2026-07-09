@@ -23,6 +23,8 @@ import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisCo
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 import { ArkModule, ModuleLoadState, ModuleType } from '../../src/core/model/ArkModule';
 import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
+import { ModelUtils } from '../../src/core/common/ModelUtils';
+import { TypeInference } from '../../src/core/common/TypeInference';
 
 /**
  * Create a temp project with 2 PROJECT modules (entry depends on library) and 1 OH_MODULES package.
@@ -89,7 +91,7 @@ describe('analyseByModule integration tests', () => {
         return scene;
     }
 
-    it('flow: prepareSdkModules -> prepareModules -> analyzeModuleDependencies -> callback called in topo order', () => {
+    it('flow: prepareModules -> analyzeModuleDependencies -> buildSdkModules -> callback called in topo order', () => {
         const scene = createScene();
 
         const calledModules: ArkModule[] = [];
@@ -98,16 +100,15 @@ describe('analyseByModule integration tests', () => {
         });
 
         // Verify preprocessing was done
-        expect(scene.isSdkRegistered()).toBe(true);
         expect(scene.isModulesRegistered()).toBe(true);
         expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
-        // Verify callback was called for exactly 3 non-SDK modules (2 PROJECT + 1 OH_MODULES)
-        expect(calledModules.length).toBe(3);
+        // Verify callback was called for exactly 2 PROJECT modules (OH_MODULES not included by default)
+        expect(calledModules.length).toBe(2);
 
-        // Verify all called modules are non-SDK
+        // Verify all called modules are PROJECT
         const moduleTypes = calledModules.map(m => m.getModuleType());
-        expect(moduleTypes).toEqual(expect.arrayContaining([ModuleType.PROJECT, ModuleType.OH_MODULES]));
+        expect(moduleTypes.filter(t => t === ModuleType.PROJECT).length).toBe(2);
         expect(moduleTypes.filter(t => t === ModuleType.SDK).length).toBe(0);
 
         // Verify library comes before entry (dependency order)
@@ -125,23 +126,21 @@ describe('analyseByModule integration tests', () => {
         // First call - does all preprocessing
         scene.analyseByModule(() => {});
 
-        expect(scene.isSdkRegistered()).toBe(true);
         expect(scene.isModulesRegistered()).toBe(true);
         expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
-        // Spy on preprocessing methods on the prototype (analyseByModule creates its own builder)
-        const spySdk = vi.spyOn(ModuleBuilder.prototype, 'prepareSdkModules');
+        // Spy on preprocessing methods on the prototype (analyseByModule creates its own builder).
+        // buildSdkModules is always called but is internally idempotent (buildStage guard), so we
+        // only spy on prepareModules and analyzeModuleDependencies which are guarded by Scene flags.
         const spyModules = vi.spyOn(ModuleBuilder.prototype, 'prepareModules');
         const spyDeps = vi.spyOn(ModuleBuilder.prototype, 'analyzeModuleDependencies');
 
-        // Second call - should skip all preprocessing
+        // Second call - should skip preprocessing
         scene.analyseByModule(() => {});
 
-        expect(spySdk).toHaveBeenCalledTimes(0);
         expect(spyModules).toHaveBeenCalledTimes(0);
         expect(spyDeps).toHaveBeenCalledTimes(0);
 
-        spySdk.mockRestore();
         spyModules.mockRestore();
         spyDeps.mockRestore();
     });
@@ -161,8 +160,8 @@ describe('analyseByModule integration tests', () => {
             calledModules.push(module);
         });
 
-        // Verify callback contains exactly 3 non-SDK modules (no SDK module)
-        expect(calledModules.length).toBe(3);
+        // Verify callback contains exactly 2 PROJECT modules (no SDK, OH_MODULES not included by default)
+        expect(calledModules.length).toBe(2);
 
         // Verify called module paths do not include the SDK path
         const calledPaths = calledModules.map(m => m.getModulePath());
@@ -171,12 +170,17 @@ describe('analyseByModule integration tests', () => {
 
     it('target module filtering: only target PROJECT modules get callback', () => {
         const scene = createScene();
+        const builder = new ModuleBuilder(scene);
+        builder.prepareModules();
 
-        // Get the entry module path
         const entryPath = path.resolve(realProjectDir, 'entry');
+        const entryModule = builder.getModuleByPath(entryPath)!;
+        const entryId = builder.getModuleId(entryModule);
 
         const config = new ModuleAnalysisConfig();
-        config.addTargetProjectModule(entryPath);
+        config.setIncludeType(ModuleType.PROJECT, false);
+        config.setIncludeType(ModuleType.OH_MODULES, false);
+        config.addTargetModuleId(entryId);
 
         const calledModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -188,7 +192,7 @@ describe('analyseByModule integration tests', () => {
         expect(calledModules[0].getModulePath()).toBe(entryPath);
     });
 
-    it('no target config: all PROJECT and OH_MODULES modules get callback', () => {
+    it('no target config: all PROJECT modules get callback (OH_MODULES not included by default)', () => {
         const scene = createScene();
 
         const calledModules: ArkModule[] = [];
@@ -196,10 +200,10 @@ describe('analyseByModule integration tests', () => {
             calledModules.push(module);
         });
 
-        // All called modules should be PROJECT or OH_MODULES
+        // Only PROJECT modules are included by default (OH_MODULES excluded)
         const moduleTypes = calledModules.map(m => m.getModuleType());
         expect(moduleTypes.filter(t => t === ModuleType.PROJECT).length).toBe(2);
-        expect(moduleTypes.filter(t => t === ModuleType.OH_MODULES).length).toBe(1);
+        expect(moduleTypes.filter(t => t === ModuleType.OH_MODULES).length).toBe(0);
         expect(moduleTypes.filter(t => t === ModuleType.SDK).length).toBe(0);
     });
 
@@ -223,16 +227,19 @@ describe('analyseByModule integration tests', () => {
 
     it('loadModule is called for all modules in topoOrder, including non-target dependencies', () => {
         const scene = createScene();
+        const builder = new ModuleBuilder(scene);
+        builder.prepareModules();
 
         const entryPath = path.resolve(realProjectDir, 'entry');
         const libraryPath = path.resolve(realProjectDir, 'library');
+        const entryId = builder.getModuleId(builder.getModuleByPath(entryPath)!);
 
         const config = new ModuleAnalysisConfig();
-        config.addTargetProjectModule(entryPath);
+        config.setIncludeType(ModuleType.PROJECT, false);
+        config.setIncludeType(ModuleType.OH_MODULES, false);
+        config.addTargetModuleId(entryId);
 
         scene.analyseByModule(() => {}, config);
-
-        const builder = new ModuleBuilder(scene);
 
         // The target (entry) must be META
         const entryModule = builder.getModuleByPath(entryPath)!;
@@ -272,6 +279,112 @@ describe('analyseByModule integration tests', () => {
         }, config);
 
         // Both PROJECT modules (entry and library) must have been verified.
+        expect(verifiedModules.length).toBe(2);
+    });
+
+    it('SIGNATURES level: module signatures built without method bodies', () => {
+        // Add a source file with a class + method to the entry module so signature building
+        // has something to build.
+        fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'cls.ets'), 'export class MyClass {\n  foo(a: number): string { return a.toString(); }\n}\n');
+
+        const scene = createScene();
+        const config = new ModuleAnalysisConfig();
+        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES);
+
+        const verifiedModules: ArkModule[] = [];
+        scene.analyseByModule(module => {
+            if (module.getModuleType() !== ModuleType.PROJECT) {
+                return;
+            }
+            // Every PROJECT module is loaded to the SIGNATURES level (no longer capped to IMPORTS)
+            expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+            const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+            if (clsFile) {
+                // SIGNATURES builds namespace/class/method signatures ...
+                const myClass = ModelUtils.getAllClassesInFile(clsFile).find(c => c.getName() === 'MyClass');
+                expect(myClass).toBeDefined();
+                const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                // ... but the method body is NOT built
+                expect(foo!.getBody()).toBeUndefined();
+            }
+            verifiedModules.push(module);
+        }, config);
+
+        // Both PROJECT modules (entry and library) reached the callback.
+        expect(verifiedModules.length).toBe(2);
+    });
+
+    it('BODIES level: module method bodies built', () => {
+        // Add a source file with a class + method to the entry module so body building
+        // has something to build.
+        fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'cls.ets'), 'export class MyClass {\n  foo(a: number): string { return a.toString(); }\n}\n');
+
+        const scene = createScene();
+        const config = new ModuleAnalysisConfig();
+        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+
+        const verifiedModules: ArkModule[] = [];
+        scene.analyseByModule(module => {
+            if (module.getModuleType() !== ModuleType.PROJECT) {
+                return;
+            }
+            // Every PROJECT module is loaded to the BODIES level
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
+            const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+            if (clsFile) {
+                // BODIES builds signatures AND method bodies (ArkBody/CFG/Stmt/Expr)
+                const myClass = ModelUtils.getAllClassesInFile(clsFile).find(c => c.getName() === 'MyClass');
+                expect(myClass).toBeDefined();
+                const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                // The method body IS built
+                expect(foo!.getBody()).toBeDefined();
+                expect(foo!.getBody()!.getCfg()).toBeDefined();
+                // BodyBuilder has been freed after body building
+                expect(foo!.getBodyBuilder()).toBeUndefined();
+            }
+            verifiedModules.push(module);
+        }, config);
+
+        // Both PROJECT modules (entry and library) reached the callback.
+        expect(verifiedModules.length).toBe(2);
+    });
+
+    it('BODIES level with type inference: return type resolved', () => {
+        // Method without explicit return type — inference should resolve it from the return stmt.
+        fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'cls.ets'), 'export class MyClass {\n  foo() { return 42; }\n}\n');
+
+        const scene = createScene();
+        const config = new ModuleAnalysisConfig();
+        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+        config.setEnableTypeInference(true);
+
+        const verifiedModules: ArkModule[] = [];
+        scene.analyseByModule(module => {
+            if (module.getModuleType() !== ModuleType.PROJECT) {
+                return;
+            }
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
+            const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
+            if (clsFile) {
+                const myClass = ModelUtils.getAllClassesInFile(clsFile).find(c => c.getName() === 'MyClass');
+                expect(myClass).toBeDefined();
+                const foo = myClass!.getMethods().find(m => m.getName() === 'foo');
+                expect(foo).toBeDefined();
+                // Method body is built
+                expect(foo!.getBody()).toBeDefined();
+                // Type inference resolved the return type (not unclear)
+                const returnType = foo!.getImplementationSignature()?.getMethodSubSignature().getReturnType();
+                expect(returnType).toBeDefined();
+                expect(TypeInference.isUnclearType(returnType!)).toBe(false);
+            }
+            verifiedModules.push(module);
+        }, config);
+
         expect(verifiedModules.length).toBe(2);
     });
 });

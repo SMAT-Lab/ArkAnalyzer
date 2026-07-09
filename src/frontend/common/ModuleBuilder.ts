@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { SparseBitVector } from '../../utils/SparseBitVector';
 import { Canonicalizer } from '../../utils/Canonicalizer';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../core/model/ArkModule';
 import { ModuleDepGraph, DependencyType } from '../../core/graph/ModuleDepGraph';
@@ -27,8 +28,14 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ModuleDepthLevel } from './ModuleDepth';
 import { ModuleAnalysisConfig } from './ModuleAnalysisConfig';
 import { FrontendBuilder } from '../FrontendBuilder';
-import { ArkFile } from '../../core/model/ArkFile';
+import { ArkFile, Language } from '../../core/model/ArkFile';
+import { InferenceManager } from '../../core/inference/Inference';
 import { FileUtils } from '../../utils/FileUtils';
+import { getAllFiles } from '../../utils/getAllFiles';
+import { SdkUtils } from '../../core/common/SdkUtils';
+import { ArktsFrontend } from '../arktsFrontend/ArktsFrontend';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { SceneBuildStage } from '../../Scene';
 import type { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleBuilder');
@@ -56,9 +63,8 @@ export class ModuleBuilder {
     constructor(scene: Scene) {
         this.scene = scene;
         // Initialize pathToId from existing modules (supports idempotent calls)
-        const canon = scene.getModuleCanonicalizer();
         for (const module of scene.getModules()) {
-            this.pathToId.set(module.getModulePath(), canon.getId(module));
+            this.pathToId.set(module.getModulePath(), scene.getModuleId(module));
         }
     }
 
@@ -66,7 +72,7 @@ export class ModuleBuilder {
 
     /** Get a registered module by its ModuleID. Returns undefined when the id is out of bounds. */
     public getModule(id: ModuleID): ArkModule | undefined {
-        return this.scene.getModuleCanonicalizer().get(id);
+        return this.scene.getModule(id);
     }
 
     /** Look up a module by its absolute path using the pathToId cache. */
@@ -75,12 +81,12 @@ export class ModuleBuilder {
         if (id === undefined) {
             return undefined;
         }
-        return this.scene.getModuleCanonicalizer().get(id);
+        return this.scene.getModule(id);
     }
 
     /** Total number of registered modules. */
     public getModuleCount(): number {
-        return this.scene.getModuleCanonicalizer().size();
+        return this.scene.getModuleCount();
     }
 
     /**
@@ -100,9 +106,8 @@ export class ModuleBuilder {
 
     /** Find the next non-DISPOSED module starting from the cursor. */
     private nextModule(cursor: { value: number }): IteratorResult<ArkModule> {
-        const canon = this.scene.getModuleCanonicalizer();
-        while (cursor.value < canon.size()) {
-            const m = canon.get(cursor.value);
+        while (cursor.value < this.scene.getModuleCount()) {
+            const m = this.scene.getModule(cursor.value);
             cursor.value++;
             if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
                 return { value: m, done: false };
@@ -135,28 +140,41 @@ export class ModuleBuilder {
     }
 
     /**
-     * Compute the transitive closure of module IDs reachable from the given target module paths via
+     * Resolve the final set of target module IDs from the config's three selection dimensions.
+     * Excluded IDs take precedence; type filter and explicit include IDs are unioned.
+     */
+    public resolveTargetModuleIds(config: ModuleAnalysisConfig): SparseBitVector {
+        const targets = new SparseBitVector();
+        const excluded = config.getExcludedModuleIds();
+        const included = config.getTargetModuleIds();
+        for (const module of this.modulesIterator()) {
+            const id = this.scene.getModuleId(module);
+            if (excluded.test(id)) {
+                continue;
+            }
+            if (config.isTypeIncluded(module.getModuleType()) || included.test(id)) {
+                targets.set(id);
+            }
+        }
+        return targets;
+    }
+
+    /**
+     * Compute transitive closure of module IDs reachable from the given target IDs via
      * dependency edges (BFS over {@link ModuleDepGraph.getSuccModuleIds}).
      * SDK modules are never included in the closure.
      */
-    public computeModuleClosure(targetModulePaths: Set<string>): Set<ModuleID> {
-        const closure: Set<ModuleID> = new Set();
+    public computeModuleClosureByIds(targetIds: SparseBitVector): SparseBitVector {
+        const closure = new SparseBitVector();
         const queue: ModuleID[] = [];
 
-        for (const targetPath of targetModulePaths) {
-            const id = this.pathToId.get(targetPath);
-            if (id === undefined) {
+        for (const id of targetIds) {
+            const module = this.scene.getModule(id);
+            if (!module || module.getModuleType() === ModuleType.SDK) {
                 continue;
             }
-            const module = this.scene.getModuleCanonicalizer().get(id);
-            if (!module) {
-                continue;
-            }
-            if (module.getModuleType() === ModuleType.SDK) {
-                continue;
-            }
-            if (!closure.has(id)) {
-                closure.add(id);
+            if (!closure.test(id)) {
+                closure.set(id);
                 queue.push(id);
             }
         }
@@ -166,17 +184,14 @@ export class ModuleBuilder {
             const graph = this.scene.getModuleDepGraph();
             const succIds = graph ? graph.getSuccModuleIds(currentId) : [];
             for (const depId of succIds) {
-                if (closure.has(depId)) {
+                if (closure.test(depId)) {
                     continue;
                 }
-                const depModule = this.scene.getModuleCanonicalizer().get(depId);
-                if (!depModule) {
+                const depModule = this.scene.getModule(depId);
+                if (!depModule || depModule.getModuleType() === ModuleType.SDK) {
                     continue;
                 }
-                if (depModule.getModuleType() === ModuleType.SDK) {
-                    continue;
-                }
-                closure.add(depId);
+                closure.set(depId);
                 queue.push(depId);
             }
         }
@@ -185,15 +200,20 @@ export class ModuleBuilder {
     }
 
     /** Filter the topological order to only include module IDs present in the given closure. */
-    public getFilteredTopoOrder(closure: Set<ModuleID>): ModuleID[] {
+    public getFilteredTopoOrder(closure: SparseBitVector): ModuleID[] {
         const graph = this.scene.getModuleDepGraph();
         const topo = graph ? graph.getTopoOrder() : [];
-        return topo.filter(id => closure.has(id));
+        return topo.filter(id => closure.test(id));
     }
 
-    /** The module Canonicalizer instance (shared with ModuleDepGraph). */
-    public getModuleCanonicalizer(): Canonicalizer<ArkModule> {
-        return this.scene.getModuleCanonicalizer();
+    /** Get the ModuleID assigned to a registered ArkModule. */
+    public getModuleId(module: ArkModule): ModuleID {
+        return this.scene.getModuleId(module);
+    }
+
+    /** Create a {@link ModuleDepGraph} sharing the scene's module canonicalizer. */
+    public createModuleDepGraph(): ModuleDepGraph {
+        return this.scene.createModuleDepGraph();
     }
 
     // --- Module registration ---
@@ -208,17 +228,16 @@ export class ModuleBuilder {
      * @returns The registered ArkModule (newly created or previously registered).
      */
     public registerModule(modulePath: string, moduleName: string = ''): ArkModule {
-        const canonicalizer = this.scene.getModuleCanonicalizer();
         const existingId = this.pathToId.get(modulePath);
         if (existingId !== undefined) {
-            return canonicalizer.get(existingId)!;
+            return this.scene.getModule(existingId)!;
         }
 
         const module = new ArkModule(this.scene);
         module.setModulePath(modulePath);
         module.setModuleName(moduleName);
 
-        const id = canonicalizer.getId(module);
+        const id = this.scene.getModuleId(module);
         this.pathToId.set(modulePath, id);
 
         return module;
@@ -227,33 +246,164 @@ export class ModuleBuilder {
     // --- SDK and module preparation ---
 
     /**
-     * Register SDK modules from the {@link SceneConfig}.
+     * Register and build SDK modules in one fused step. Each project-level SDK is treated as an
+     * {@link ArkModule} (moduleType=SDK): its files are collected, parsed, and registered into the
+     * module's `filesMap` as well as the scene's `sdkArkFilesMap`. SDK type inference and global
+     * API merge run after all SDK files are built.
      *
-     * Iterates the SDK list obtained from `Scene.getSceneConfig`, registering each
-     * project-level SDK (those without a {@link Sdk.moduleName}) as an ArkModule with
-     * moduleType=SDK. Only basic info (path, name) is registered — ArkFile building and
-     * type inference are NOT performed by this method.
+     * This method merges the former `prepareSdkModules` (registration-only) and `SDKBuilder.buildSdks`
+     * (building-only) into a single step — SDK modules are never just registered without being built.
      *
-     * Idempotent: if SDK modules have already been registered (`Scene.isSdkRegistered()` is
-     * true), this method returns immediately.
+     * Module-level SDKs (those with `moduleName` set) are skipped entirely.
+     *
+     * Idempotent: guarded by {@link SceneBuildStage.SDK_INFERRED}.
+     *
+     * @param config - Optional configuration. SDK files are built only when
+     *   `config.getLoadLevel(ModuleType.SDK) >= SIGNATURES`.
      */
-    public prepareSdkModules(): void {
-        if (this.scene.isSdkRegistered()) {
+    public buildSdkModules(config?: ModuleAnalysisConfig): void {
+        if (this.scene.getBuildStage() >= SceneBuildStage.SDK_INFERRED) {
             return;
         }
 
-        const sdks = this.scene.getSceneConfig()?.getSdksObj() ?? [];
-        for (const sdk of sdks) {
-            if (sdk.moduleName) {
-                continue; // skip module-level SDKs
-            }
+        const sdkLevel = config?.getLoadLevel(ModuleType.SDK) ?? ModuleDepthLevel.META;
+        if (sdkLevel < ModuleDepthLevel.SIGNATURES) {
+            return;
+        }
 
+        this.setEsVersionFromBuildProfile();
+
+        const sceneConfig = this.scene.getSceneConfig();
+        if (!sceneConfig) {
+            logger.warn('SceneConfig is not set; skip SDK build.');
+            return;
+        }
+
+        const sdks = sceneConfig.getSdksObj();
+        const options = this.scene.getOptions();
+
+        // Handle enableBuiltIn: prepend built-in SDK if not already present
+        if (options.enableBuiltIn && !sdks.find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
+            sdks.unshift(SdkUtils.getBuiltInSdk());
+        }
+
+        // Register and build each SDK as a module (fused registration + building).
+        // moduleName is ignored — all SDKs are treated as modules regardless.
+        for (const sdk of sdks) {
             const sdkPath = path.normalize(sdk.path);
             const module = this.registerModule(sdkPath, sdk.name);
             module.setModuleType(ModuleType.SDK);
+            this.buildSdkModuleFiles(module, sdk.name, sdkPath);
+            this.scene.getProjectSdkMap().set(sdk.name, sdk);
         }
 
-        this.scene.setSdkRegistered(true);
+        // SDK type inference + global API merge
+        const sdkArkFiles = this.scene.getSdkArkFiles();
+        const sdkGlobalMap = this.scene.getSdkGlobalMap();
+        for (const file of sdkArkFiles) {
+            if (file.getLanguage() === Language.CXX) {
+                continue;
+            }
+            InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
+            SdkUtils.mergeGlobalAPI(file, sdkGlobalMap);
+        }
+        for (const file of sdkArkFiles) {
+            SdkUtils.postInferredSdk(file, sdkGlobalMap);
+        }
+
+        this.scene.setBuildStage(SceneBuildStage.SDK_INFERRED);
+        SdkUtils.extendArkUI(this.scene);
+    }
+
+    /**
+     * Collect and build all source files for a single SDK module. Each file is parsed via
+     * {@link ArktsFrontend.buildArkFileFromSdkPath} (using the SDK name as projectName), default
+     * method bodies are built and all BodyBuilders freed, then the file is registered into both
+     * the module's `filesMap` and the scene's `sdkArkFilesMap`. C++ SDK files are skipped.
+     */
+    private buildSdkModuleFiles(module: ArkModule, sdkName: string, sdkPath: string): void {
+        const allFiles = this.collectSdkFiles(sdkName, sdkPath);
+        for (const file of allFiles) {
+            if (FileUtils.getFileLanguage(file, this.scene.getFileLanguages()) === Language.CXX) {
+                continue;
+            }
+            this.parseAndRegisterSdkFile(module, file, sdkPath, sdkName);
+        }
+    }
+
+    /**
+     * Collect source file paths for an SDK.
+     *
+     * Built-in SDK uses {@link SdkUtils.fetchBuiltInFiles} (reference-based DFS over `lib.*.d.ts`);
+     * other SDKs scan the directory with the scene's supported extensions and ignore patterns.
+     */
+    private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
+        if (sdkName === SdkUtils.BUILT_IN_NAME) {
+            const builtInFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
+            if (builtInFiles.length > 0) {
+                this.scene.getOptions().sdkGlobalFolders?.push(sdkPath);
+            }
+            return builtInFiles;
+        }
+        SdkUtils.loadSystemComponentsFromSdk(sdkPath);
+        const options = this.scene.getOptions();
+        const supportFileExts = options.supportFileExts ?? ['.ets', '.ts'];
+        const ignoreFileNames = options.ignoreFileNames ?? [];
+        return getAllFiles(sdkPath, supportFileExts, ignoreFileNames);
+    }
+
+    /**
+     * Parse a single SDK source file into an ArkFile, build default method bodies, free all
+     * BodyBuilders, and register the file in both the module's `filesMap` and the scene's
+     * `sdkArkFilesMap`.
+     */
+    private parseAndRegisterSdkFile(module: ArkModule, file: string, sdkPath: string, sdkName: string): void {
+        logger.trace('=== parse sdk file:', file);
+        try {
+            const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.scene.getFileLanguages()));
+            arkFile.setScene(this.scene);
+            ArktsFrontend.buildArkFileFromSdkPath(file, sdkPath, arkFile, sdkName);
+            ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
+                cls.getDefaultArkMethod()?.buildBody();
+                cls.getDefaultArkMethod()?.freeBodyBuilder();
+            });
+            // Release all method builders in SDK file to avoid retaining AST/build context in memory.
+            ModelUtils.getAllMethodsInFile(arkFile).forEach(method => {
+                if (method.getDeclaringArkFile()?.getLanguage() === Language.CXX) {
+                    method.freeCxxBodyBuilder();
+                } else {
+                    method.freeBodyBuilder();
+                }
+            });
+            module.addFile(arkFile);
+            this.scene.addSdkArkFile(arkFile);
+            SdkUtils.buildSdkImportMap(arkFile);
+            SdkUtils.loadGlobalAPI(arkFile, this.scene.getSdkGlobalMap());
+        } catch (error) {
+            logger.error('Error parsing file:', file, error);
+            this.scene.getUnhandledSdkFilePaths().push(file);
+        }
+    }
+
+    /**
+     * Read `build-profile.json5` from the project root and call
+     * {@link SdkUtils.setEsVersion} so that {@link SdkUtils.fetchBuiltInFiles} selects the correct
+     * `lib.*.d.ts` entry.
+     */
+    private setEsVersionFromBuildProfile(): void {
+        const buildProfilePath = path.join(this.scene.getRealProjectDir(), BUILD_PROFILE_JSON5);
+        if (!fs.existsSync(buildProfilePath)) {
+            return;
+        }
+        let configurationsText: string;
+        try {
+            configurationsText = fs.readFileSync(buildProfilePath, 'utf-8');
+        } catch (error) {
+            logger.error(`Error reading build-profile.json5: ${error}`);
+            return;
+        }
+        const buildProfileJson = parseJsonText(configurationsText);
+        SdkUtils.setEsVersion(buildProfileJson);
     }
 
     /**
@@ -423,8 +573,7 @@ export class ModuleBuilder {
      * stored on the Scene via `Scene.setModuleDepGraph()`.
      */
     private buildDependencyGraph(): void {
-        const canonicalizer = this.scene.getModuleCanonicalizer();
-        const graph = new ModuleDepGraph(canonicalizer);
+        const graph = this.scene.createModuleDepGraph();
 
         // 1. Add all registered modules as graph nodes
         for (const module of this.modulesIterator()) {
@@ -442,8 +591,8 @@ export class ModuleBuilder {
             for (const [alias, depValue, depType] of depEntries) {
                 const depModule = this.resolveDepModule(alias, depValue, module.getModulePath(), overrides, overrideDependencyMap);
                 if (depModule) {
-                    const srcId = canonicalizer.getId(module);
-                    const dstId = canonicalizer.getId(depModule);
+                    const srcId = this.scene.getModuleId(module);
+                    const dstId = this.scene.getModuleId(depModule);
                     graph.addDependencyEdge(srcId, dstId, depType);
                     module.addDependencyAlias(alias, dstId);
                 } else {
@@ -561,8 +710,6 @@ export class ModuleBuilder {
         overrides?: { [k: string]: string },
         overrideDependencyMap?: { [k: string]: string }
     ): ArkModule | undefined {
-        const canonicalizer = this.scene.getModuleCanonicalizer();
-
         // 0. Override handling: check overrides and overrideDependencyMap before normal resolution
         if (overrides && overrides[alias] !== undefined) {
             depValue = overrides[alias];
@@ -587,7 +734,7 @@ export class ModuleBuilder {
             const resolvedPath = path.resolve(scopeModulePath, pathPart);
             const id = this.pathToId.get(resolvedPath);
             if (id !== undefined) {
-                return canonicalizer.get(id);
+                return this.scene.getModule(id);
             }
             return undefined;
         }
@@ -612,7 +759,7 @@ export class ModuleBuilder {
             const realPath = fs.realpathSync(candidate);
             const id = this.pathToId.get(realPath);
             if (id !== undefined) {
-                return canonicalizer.get(id);
+                return this.scene.getModule(id);
             }
         }
 
@@ -696,24 +843,78 @@ export class ModuleBuilder {
     }
 
     /**
+     * Run type inference on the module's files, following the same pattern as
+     * {@link Scene.inferTypes} but scoped to a single module.
+     *
+     * Reuses the file topological order already computed by {@link analyzeFileDependencies}
+     * (stored in the module's {@link FileDepGraph}) so that depended-on files are inferred first.
+     * Falls back to unsorted iteration when no file dependency graph is available (e.g. when this
+     * method is called directly without a prior {@link loadModule}).
+     *
+     * At SIGNATURES level (no method bodies), only the `preInfer` phase is effective (generic
+     * types, parameter types, signature return types, import/export resolution). At BODIES level,
+     * full type inference runs (including stmt-level propagation and return type aggregation).
+     *
+     * Does NOT call {@link Scene.getMethodsMap}(true): rebuilding the global index would clear
+     * caches for other modules. Does NOT set {@link Scene.buildStage} to TYPE_INFERRED: that is a
+     * whole-scene flag. Does NOT call {@link SdkUtils.dispose} / {@link ModuleUtils.dispose} /
+     * {@link ValueUtil.dispose}: the global caches are shared across modules and should be
+     * released by the caller after all modules are processed.
+     *
+     * @param module - The module whose files are to be type-inferred.
+     * @param times - Number of inference iterations (clamped to 1–5). Default 1.
+     */
+    public inferModuleTypes(module: ArkModule, times: number = 1): void {
+        if (times < 1) {
+            return;
+        }
+        if (times > 5) {
+            times = 5;
+        }
+
+        // Reuse the file topological order computed by analyzeFileDependencies
+        const fileDepGraph = module.getFileDepGraph();
+        let sortedFiles: ArkFile[];
+        if (fileDepGraph && fileDepGraph.getTopoOrder().length > 0) {
+            sortedFiles = fileDepGraph
+                .getTopoOrder()
+                .map(id => fileDepGraph.tryGetNode(id))
+                .filter((f): f is ArkFile => f !== undefined);
+        } else {
+            // Fallback: no file dep graph available (e.g. direct call without loadModule)
+            sortedFiles = Array.from(module.getFilesMap().values());
+        }
+
+        while (times > 0) {
+            for (const file of sortedFiles) {
+                InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
+            }
+            times--;
+        }
+    }
+
+    /**
      * Load module data at the configured depth level.
      *
      * Flow:
-     * 1. Determine the configured load level for this module type, then cap the effective build
-     *    level at {@link ModuleDepthLevel.IMPORTS} (higher levels are not built in this phase).
-     * 2. Idempotent: skip if the module's loadState already reaches the target load state.
-     * 3. Set the target load state early to break cyclic dependency recursion (replaces the
+     * 1. SDK modules are skipped — their file content is built by {@link buildSdkModules}, not here.
+     * 2. Determine the configured load level for this module type.
+     * 3. Idempotent: skip if the module's loadState already reaches the target load state.
+     * 4. Set the target load state early to break cyclic dependency recursion (replaces the
      *    former `loadingModules` guard): when a module currently being loaded is encountered
      *    again, its loadState already meets the target, so the recursion stops immediately.
-     * 4. Recursively load dependencies first (so dependees are available).
-     * 5. Build ArkFile objects to the effective level (META scan always; IMPORTS adds import/export info).
-     * 6. When the effective level reaches IMPORTS, analyze intra-module file dependencies.
-     *
-     * SDK modules are handled the same as other modules (no special early-return): they are built
-     * to the effective level like any other module type.
+     * 5. Recursively load dependencies first (so dependees are available).
+     * 6. Build module data to the effective level via {@link buildModuleToLevel}, which integrates
+     *    intra-module file dependency analysis and topological-order parsing.
+     * 7. When the effective level reaches BODIES, build method bodies (ArkBody/CFG/Stmt/Expr) via
+     *    {@link FrontendBuilder.buildModuleMethodBody}, following the same two-phase pattern as
+     *    {@link Scene.genArkFiles}.
+     * 8. When type inference is enabled via {@link ModuleAnalysisConfig.setEnableTypeInference}
+     *    and the effective level reaches SIGNATURES, run type inference on the module's files
+     *    via {@link inferModuleTypes}, referencing the logic of {@link Scene.inferTypes}.
      *
      * @param moduleId - ID of the module to load.
-     * @param config - Optional configuration providing per-type load levels.
+     * @param config - Optional configuration providing per-type load levels and type inference.
      */
     public loadModule(moduleId: ModuleID, config?: ModuleAnalysisConfig): void {
         const module = this.getModule(moduleId);
@@ -721,9 +922,14 @@ export class ModuleBuilder {
             return;
         }
 
-        // Determine the configured load level and cap the effective level at IMPORTS
+        // SDK modules: file content is built by buildSdkModules, not loadModule
+        if (module.getModuleType() === ModuleType.SDK) {
+            return;
+        }
+
+        // Determine the configured load level
         const loadLevel = config?.getLoadLevel(module.getModuleType()) ?? ModuleDepthLevel.META;
-        const effectiveLevel = Math.min(loadLevel, ModuleDepthLevel.IMPORTS);
+        const effectiveLevel = loadLevel;
         const targetLoadState = this.depthLevelToLoadState(effectiveLevel);
 
         // Idempotent: skip if already loaded to the target level
@@ -741,12 +947,91 @@ export class ModuleBuilder {
             this.loadModule(depId, config);
         }
 
-        // Build ArkFile objects to the effective level
-        FrontendBuilder.buildModuleFilesToLevel(this.scene, module, effectiveLevel);
+        // Phase 1: build ArkFile objects to the effective level, with intra-module file
+        // dependency analysis integrated (topological-order parsing for level > IMPORTS).
+        this.buildModuleToLevel(module, effectiveLevel);
 
-        // Analyze intra-module file dependencies when IMPORTS level was reached
-        if (effectiveLevel >= ModuleDepthLevel.IMPORTS) {
+        // Phase 2: build method bodies when BODIES level was requested
+        if (effectiveLevel >= ModuleDepthLevel.BODIES) {
+            FrontendBuilder.buildModuleMethodBody(module);
+        }
+
+        // Phase 3: type inference when enabled and level >= SIGNATURES
+        if (config?.isTypeInferenceEnabled() && effectiveLevel >= ModuleDepthLevel.SIGNATURES) {
+            this.inferModuleTypes(module);
+        }
+    }
+
+    /**
+     * Build module data to the specified depth level, integrating intra-module file dependency
+     * analysis into the build flow.
+     *
+     * Two-phase build for level > IMPORTS:
+     * 1. Ensure ArkFile shells exist (create if filesMap is empty, reuse otherwise).
+     * 2. Build all files to IMPORTS level (lightweight import/export parsing, no dependency on
+     *    other files in the module).
+     * 3. Analyze intra-module file dependencies → compute topological order (moved here from
+     *    {@link loadModule} so it is part of the build-to-level flow).
+     * 4. For level > IMPORTS: upgrade each file to the target level (SIGNATURES/BODIES) in
+     *    topological order, so that depended-on files are parsed first.
+     *
+     * For level == META: only shells are created (no content).
+     * For level == IMPORTS: steps 1-3 (topoOrder available for later type inference).
+     * For level >= SIGNATURES: steps 1-4 (signatures built in topoOrder).
+     *
+     * The {@link ArkModule.hasFileTopoOrder} flag is used to detect whether IMPORTS was already
+     * built (e.g. when upgrading from IMPORTS to SIGNATURES), avoiding redundant re-parsing.
+     *
+     * @param module - The module to build.
+     * @param level - The target depth level.
+     */
+    public buildModuleToLevel(module: ArkModule, level: ModuleDepthLevel): void {
+        // 1. Ensure ArkFile shells exist (reuse if already created, e.g. from a prior META load)
+        let arkFiles: ArkFile[];
+        if (module.getFilesMap().size === 0) {
+            arkFiles = FrontendBuilder.createModuleFileShells(this.scene, module);
+        } else {
+            arkFiles = Array.from(module.getFilesMap().values());
+        }
+
+        // META: no content to build
+        if (level <= ModuleDepthLevel.META) {
+            return;
+        }
+
+        // 2. Build IMPORTS level (if not already done) + analyze file dependencies
+        //    Use fileDepGraph existence as indicator that IMPORTS was already built.
+        if (level >= ModuleDepthLevel.IMPORTS && !module.hasFileTopoOrder()) {
+            for (const arkFile of arkFiles) {
+                try {
+                    FrontendBuilder.buildImports(arkFile, arkFile.getLanguage());
+                } catch (error) {
+                    logger.error(`Error building imports for ${arkFile.getFilePath()}: ${error}`);
+                }
+            }
             this.analyzeFileDependencies(module);
+        }
+
+        // 3. For level > IMPORTS: upgrade to target level in topological order
+        if (level > ModuleDepthLevel.IMPORTS) {
+            const fileDepGraph = module.getFileDepGraph();
+            let sortedFiles: ArkFile[];
+            if (fileDepGraph && fileDepGraph.getTopoOrder().length > 0) {
+                sortedFiles = fileDepGraph
+                    .getTopoOrder()
+                    .map(id => fileDepGraph.tryGetNode(id))
+                    .filter((f): f is ArkFile => f !== undefined);
+            } else {
+                // Fallback: no file dep graph available (e.g. empty module or analyzeFileDependencies produced no edges)
+                sortedFiles = arkFiles;
+            }
+            for (const arkFile of sortedFiles) {
+                try {
+                    FrontendBuilder.upgradeArkFileToLevel(this.scene, arkFile, arkFile.getLanguage(), level);
+                } catch (error) {
+                    logger.error(`Error upgrading ArkFile ${arkFile.getFilePath()}: ${error}`);
+                }
+            }
         }
     }
 
