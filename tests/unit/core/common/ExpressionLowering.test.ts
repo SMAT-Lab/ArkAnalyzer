@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import path from 'path';
 import { ArkArrayRef, ArkAssignStmt } from '../../../../src';
 
 describe('ExpressionLowering', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/cfg/indexExpression'));
+    const scene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
     const arkFile = scene.getFiles().find(f => f.getName().endsWith('IndexExpressionSample.ts'));
 
     it('string index <s[i]> lowered as ArkArrayRef, not ArkInstanceFieldRef', () => {
