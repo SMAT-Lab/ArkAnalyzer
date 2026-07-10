@@ -217,7 +217,7 @@ ${`Total PAG Nodes`.padEnd(LABEL_WIDTH)}${this.numTotalNode}`;
 }
 
 export class CGStat extends StatTraits {
-    //real, vitual, intrinsic, constructor
+    //real, virtual, intrinsic, constructor
     numTotalNode: number = 0;
     numReal: number = 0;
     numVirtual: number = 0;
@@ -252,7 +252,7 @@ export class CGStat extends StatTraits {
             case CallGraphNodeKind.real:
                 this.numReal++;
                 break;
-            case CallGraphNodeKind.vitual:
+            case CallGraphNodeKind.virtual:
                 this.numVirtual++;
                 break;
             case CallGraphNodeKind.constructor:

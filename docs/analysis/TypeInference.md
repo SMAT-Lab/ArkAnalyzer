@@ -5,7 +5,7 @@
 **类型推导**是 ArkAnalyzer 中把 IR 上 **`UnknownType`**、**`UnclearReferenceType`** 等"未确定类型"替换为具体类型（
 `ClassType`、`NumberType`、`FunctionType` 等），把未知的FileSignature、ClassSignature和MethodSignature关联填充的核心步骤。
 它把基于源码 AST 解析得到的"形式化签名"与基于上下文的"实际值类型"
-对齐，是 [CallGraph](./CallGraph.md)、[Def-Use Chain](./Def-Use%20Chain.md)、[IFDS](./IFDS.md)、[ViewTree](./ViewTree.md)
+对齐，是 [CallGraph](./CallGraph.md)、[Def-Use Chain](./Def-Use%20Chain.md)、[DataFlow](./DataFlow.md)、[ViewTree](./ViewTree.md)
 等几乎所有下游分析的 **必要前置**。
 
 > 推荐流程：构建 Scene 后立即调用 `scene.inferTypes()`，再做任何分析。即使是看似"只读"的遍历（例如统计调用关系），其结果都依赖类型推导后的
@@ -256,7 +256,7 @@ export class TypeInference {
 
 ### 5.4 IFDS / 数据流分析
 
-[`IFDS`](./IFDS.md) 的流函数大多按 `Type` 分类讨论（如把"具体类对象"与"primitive"区分对待），缺类型推导会让 normal flow
+[`DataFlow`](./DataFlow.md) 的流函数大多按 `Type` 分类讨论（如把"具体类对象"与"primitive"区分对待），缺类型推导会让 normal flow
 退化成保守的 over-approximation。
 
 ## 6. 使用示例
@@ -339,7 +339,7 @@ scene.inferTypes(5);  // 最多 5 轮
 > 完整可运行示例可参考：[tests/samples/TypeInferenceTest.ts](../../tests/samples/TypeInferenceTest.ts)
 > 与 [tests/samples/TypeTest.ts](../../tests/samples/TypeTest.ts)。
 
-## 8. 常见问题（FAQ）
+## 7. 常见问题（FAQ）
 
 ### Q1：为什么类型推导后还有很多 `UnknownType`？
 

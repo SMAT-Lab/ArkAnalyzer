@@ -20,7 +20,7 @@
 |------|------|
 | CFG 与基本块 | [CFG.md](../components/CFG.md) |
 | `Stmt.getDef` / `getUses` | [Stmt.md §3](../components/Stmt.md#3-stmt-和各-ir-基础元素的关系) |
-| 过程间数据流（常基于 def-use 思想扩展） | [IFDS.md](./IFDS.md) |
+| 过程间数据流（常基于 def-use 思想扩展） | [DataFlow.md](./DataFlow.md) |
 | 调用图精化 | [CallGraph.md](./CallGraph.md) |
 
 ## 2. 文档导航
@@ -163,7 +163,7 @@ function f(): number {
 
 ### 8.2 Taint / 常量传播
 
-以 def 为源、沿链向 use 传播标记或常量；亦可作为 [IFDS](./IFDS.md) 实现的直觉模型。
+以 def 为源、沿链向 use 传播标记或常量；亦可作为 [DataFlow](./DataFlow.md) 实现的直觉模型。
 
 ### 8.3 死代码与无用赋值
 

@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-**控制流图（Control Flow Graph，CFG）** 是 ArkAnalyzer 在方法体（[ArkBody](./ArkBody.md)）层面组织 ArkIR 的核心结构。它把方法体内的所有 [Stmt](./Stmt.md) 划分成若干 **基本块（[BasicBlock](#3-核心数据结构)）**，并通过有向边显式表达基本块间的控制流转移关系。CFG 同时是 [Def-Use Chain](../analysis/Def-Use%20Chain.md)、[CallGraph](../analysis/CallGraph.md)、[IFDS](../analysis/IFDS.md) 等多种静态分析的输入。
+**控制流图（Control Flow Graph，CFG）** 是 ArkAnalyzer 在方法体（[ArkBody](./ArkBody.md)）层面组织 ArkIR 的核心结构。它把方法体内的所有 [Stmt](./Stmt.md) 划分成若干 **基本块（[BasicBlock](#3-核心数据结构)）**，并通过有向边显式表达基本块间的控制流转移关系。CFG 同时是 [Def-Use Chain](../analysis/Def-Use%20Chain.md)、[CallGraph](../analysis/CallGraph.md)、[DataFlow](../analysis/DataFlow.md) 等多种静态分析的输入。
 
 ArkAnalyzer 中每个 `ArkMethod` 经过 IR 转换后都会生成一个唯一的 `Cfg`，可通过 `arkMethod.getBody()?.getCfg()` 获取。CFG 中的边分两类：
 

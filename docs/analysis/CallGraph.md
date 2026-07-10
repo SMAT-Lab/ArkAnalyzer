@@ -41,7 +41,7 @@ export class CallGraph extends BaseExplicitGraph {
 | `methodToCGNodeMap` | 方法签名字符串 → 节点 ID（用于快速查找节点） |
 | `callPairToEdgeMap` | `"srcID-dstID"` → `CallGraphEdge`（每对 caller/callee 最多一条边） |
 | `entries` | 入口方法的节点 ID 列表 |
-| `dummyMainMethodID` | 全局虚拟入口（由 `DummyMainCreater` 注入时设置） |
+| `dummyMainMethodID` | 全局虚拟入口（由 `DummyMainCreator` 注入时设置） |
 
 常用接口：
 
@@ -68,7 +68,7 @@ export class CallGraph extends BaseExplicitGraph {
 ```typescript
 export enum CallGraphNodeKind {
     real,        // 项目内有 body 的普通方法
-    vitual,      // 按声明类型创建的占位节点（基类型不明确时懒创建）
+    virtual,     // 按声明类型创建的占位节点（基类型不明确时懒创建）
     intrinsic,   // ArkAnalyzer 自动生成的方法（如 %instInit / %statInit）
     constructor, // 构造函数
     blank,       // 无 body 的占位（接口方法 / abstract / declare）
@@ -151,7 +151,7 @@ export class DynCallSite implements ICallSite {
     public id: CallSiteID;
     public callStmt: Stmt;
     public args: Value[] | undefined;
-    public protentialCalleeFuncID: FuncID | undefined;  // 静态分析阶段推断的候选 callee
+    public potentialCalleeFuncID: FuncID | undefined;  // 静态分析阶段推断的候选 callee
     public callerFuncID: FuncID;
 }
 
