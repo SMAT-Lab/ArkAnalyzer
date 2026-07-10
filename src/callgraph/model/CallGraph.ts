@@ -231,11 +231,11 @@ export class CallGraph extends BaseExplicitGraph {
         }
     }
 
-    public addDynamicCallInfo(callStmt: Stmt, caller: Method, protentialCallee?: Method): void {
+    public addDynamicCallInfo(callStmt: Stmt, caller: Method, potentialCallee?: Method): void {
         let callerNode = this.getCallGraphNodeByMethod(caller) as CallGraphNode;
         let calleeNode;
-        if (protentialCallee) {
-            calleeNode = this.getCallGraphNodeByMethod(protentialCallee) as CallGraphNode;
+        if (potentialCallee) {
+            calleeNode = this.getCallGraphNodeByMethod(potentialCallee) as CallGraphNode;
         }
         let args = callStmt.getInvokeExpr()?.getArgs();
 
