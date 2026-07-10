@@ -18,7 +18,7 @@ export const TRY_CATCH_EXPECT_CASE1 = {
         {
             id: 0,
             stmts: [
-                'this = this: @tryCatch/TryCatchSample.ts: %dflt',
+                'this = this: @tryCatchFinally/TryCatchSample.ts: %dflt',
                 'i = 0',
             ],
             preds: [],
@@ -71,7 +71,7 @@ export const TRY_CATCH_EXPECT_CASE2 = {
         {
             id: 0,
             stmts: [
-                'this = this: @tryCatch/TryCatchSample.ts: %dflt',
+                'this = this: @tryCatchFinally/TryCatchSample.ts: %dflt',
             ],
             preds: [],
             succes: [1],
@@ -100,7 +100,7 @@ export const TRY_CATCH_EXPECT_CASE2 = {
         {
             id: 3,
             stmts: [
-                'type @tryCatch/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatch/TryCatchSample.ts: %dflt.%AM0(string)',
+                'type @tryCatchFinally/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatchFinally/TryCatchSample.ts: %dflt.%AM0(string)',
                 'c = %AM1$case2',
             ],
             preds: [1, 2],
@@ -118,7 +118,7 @@ export const TRY_CATCH_EXPECT_CASE2 = {
             id: 5,
             stmts: [
                 '%0 = caughtexception: unknown',
-                'type @tryCatch/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatch/TryCatchSample.ts: %dflt.%AM0(string)',
+                'type @tryCatchFinally/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatchFinally/TryCatchSample.ts: %dflt.%AM0(string)',
                 'c = %AM1$case2',
                 'throw %0'
             ],

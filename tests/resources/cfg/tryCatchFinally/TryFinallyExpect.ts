@@ -18,7 +18,7 @@ export const TRY_FINALLY_EXPECT_CASE1 = {
         {
             id: 0,
             stmts: [
-                'this = this: @tryFinally/TryFinallySample.ts: %dflt',
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
                 'r = 0',
             ],
             preds: [],

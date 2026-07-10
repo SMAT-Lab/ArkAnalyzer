@@ -80,7 +80,7 @@ import {
     MIX_OF_STATEMENTS_EXPECT_CASE3,
     MIX_OF_STATEMENTS_EXPECT_CASE4,
 } from '../../../resources/cfg/mixOfStatements/MixOfStatementsExpect';
-import { TRY_CATCH_EXPECT_CASE1, TRY_CATCH_EXPECT_CASE2 } from '../../../resources/cfg/tryCatch/TryCatchExpect';
+import { TRY_CATCH_EXPECT_CASE1, TRY_CATCH_EXPECT_CASE2 } from '../../../resources/cfg/tryCatchFinally/TryCatchExpect';
 import {
     CLOSURE_EXPECT_CASE1,
     CLOSURE_EXPECT_CASE2,
@@ -101,7 +101,7 @@ import {
     IF_BUILDER_EXPECT_CASE4,
     IF_BUILDER_EXPECT_CASE5,
 } from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
-import { TRY_FINALLY_EXPECT_CASE1 } from '../../../resources/cfg/tryFinally/TryFinallyExpect';
+import { TRY_FINALLY_EXPECT_CASE1 } from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -236,7 +236,7 @@ describe('CfgTest', () => {
     });
 
     it('case6: try catch statement', () => {
-        const scene = buildScene('tryCatch');
+        const scene = buildScene('tryCatchFinally');
         testBlocks(scene, 'TryCatchSample.ts', 'case1', TRY_CATCH_EXPECT_CASE1.blocks);
         testBlocks(scene, 'TryCatchSample.ts', 'case2', TRY_CATCH_EXPECT_CASE2.blocks);
     });
@@ -282,7 +282,7 @@ describe('CfgTest', () => {
     });
 
     it('case11: try/finally — exception path finally body retains source line numbers', () => {
-        const scene = buildScene('tryFinally');
+        const scene = buildScene('tryCatchFinally');
         testBlocks(scene, 'TryFinallySample.ts', 'case1', TRY_FINALLY_EXPECT_CASE1.blocks);
         const arkFile = scene.getFiles().find(f => f.getName().endsWith('TryFinallySample.ts'));
         const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();
