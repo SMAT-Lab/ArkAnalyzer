@@ -300,6 +300,7 @@ describe('CfgTest', () => {
         const finallyStmts = stmts!.filter(s => s.toString() === 'r = 2');
         assert.isAtLeast(finallyStmts.length, 2);
         finallyStmts.forEach(s => assert.equal(s.getOriginFullPosition()?.getFirstLine(), 21));
+    });
 
     it('case12: labeled statements (for, while, do-while, for-of, switch)', () => {
         const scene = buildScene('labeledStatement');
