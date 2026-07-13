@@ -157,4 +157,49 @@ describe('Stmt Source Code and Position Test', () => {
             expect(originalText?.replace(/\r\n/g, '\n')).eq(expectedText);
         });
     });
+
+    describe('switch statement line numbers', () => {
+        const switchScene = buildScene(path.join(__dirname, '../../../resources/cfg/switch'), false);
+        const switchFile = switchScene.getFiles().find(f => f.getName().endsWith('SwitchSample.ts'));
+
+        it('ifStmt generated from switch case should have correct line number and column', () => {
+            const method = switchFile?.getDefaultClass().getMethodWithName('case1');
+            const stmts = method?.getBody()?.getCfg().getStmts();
+            const ifStmts = stmts?.filter(s => s instanceof ArkIfStmt) as ArkIfStmt[];
+
+            expect(ifStmts.length).toBe(2);
+
+            const ifStmt2 = ifStmts.find(s => s.toString() === 'if a == 2') as ArkIfStmt;
+            assert.isDefined(ifStmt2);
+            expect(ifStmt2.getOriginPositionInfo().getLineNo()).toBe(20);
+            expect(ifStmt2.getOriginPositionInfo().getColNo()).toBe(14);
+
+            const ifStmt3 = ifStmts.find(s => s.toString() === 'if a == 3') as ArkIfStmt;
+            assert.isDefined(ifStmt3);
+            expect(ifStmt3.getOriginPositionInfo().getLineNo()).toBe(22);
+            expect(ifStmt3.getOriginPositionInfo().getColNo()).toBe(14);
+        });
+
+        it('ifStmt generated from switch case should have correct originFullPosition', () => {
+            const method = switchFile?.getDefaultClass().getMethodWithName('case1');
+            const stmts = method?.getBody()?.getCfg().getStmts();
+            const ifStmts = stmts?.filter(s => s instanceof ArkIfStmt) as ArkIfStmt[];
+
+            expect(ifStmts.length).toBe(2);
+
+            const ifStmt2 = ifStmts.find(s => s.toString() === 'if a == 2') as ArkIfStmt;
+            assert.isDefined(ifStmt2);
+            const pos2 = ifStmt2.getOriginFullPosition();
+            assert.isDefined(pos2);
+            expect(pos2!.getFirstLine()).toBe(20);
+            expect(pos2!.getFirstCol()).toBe(14);
+
+            const ifStmt3 = ifStmts.find(s => s.toString() === 'if a == 3') as ArkIfStmt;
+            assert.isDefined(ifStmt3);
+            const pos3 = ifStmt3.getOriginFullPosition();
+            assert.isDefined(pos3);
+            expect(pos3!.getFirstLine()).toBe(22);
+            expect(pos3!.getFirstCol()).toBe(14);
+        });
+    });
 });
