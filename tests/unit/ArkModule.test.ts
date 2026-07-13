@@ -20,22 +20,16 @@ import path from 'path';
 import { ArkModule, ModuleLoadState, ModuleType, ModuleID } from '../../src/core/model/ArkModule';
 import { ArkFile, Language } from '../../src/core/model/ArkFile';
 import { FileSignature } from '../../src';
-import { ModuleManager } from '../../src/frontend/common/ModuleManager';
+import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 import { ModuleDepGraph } from '../../src/core/graph/ModuleDepGraph';
-import type { Scene } from '../../src/Scene';
+import { Scene } from '../../src/Scene';
 
 const STUB_SCENE = {} as Scene;
 
-/**
- * Minimal ModuleManager stub: a real ModuleManager constructed with a stub Scene.
- * getDepGraph() returns undefined until a graph is injected, so getDependencies()
- * and getDependents() return empty arrays by default.
- */
-function makeStubManager(): ModuleManager {
-    return new ModuleManager(STUB_SCENE);
+/** Create a real Scene for getDependencies/getDependents tests (ArkModule queries the Scene). */
+function makeStubScene(): Scene {
+    return new Scene();
 }
-
-const STUB_MANAGER = makeStubManager();
 
 function makeArkFile(projectName: string, fileName: string): ArkFile {
     const arkFile = new ArkFile(Language.TYPESCRIPT);
@@ -44,47 +38,41 @@ function makeArkFile(projectName: string, fileName: string): ArkFile {
 }
 
 /**
- * Inject a ModuleDepGraph with the given edges into the manager.
+ * Inject a ModuleDepGraph with the given edges into the scene.
  * All currently-registered modules are added as graph nodes.
  */
-function injectDepGraph(manager: ModuleManager, edges: Array<[ModuleID, ModuleID]>): ModuleDepGraph {
-    const graph = new ModuleDepGraph(manager.getModuleCanonicalizer());
-    for (const module of manager.modulesIterator()) {
+function injectDepGraph(scene: Scene, builder: ModuleBuilder, edges: Array<[ModuleID, ModuleID]>): ModuleDepGraph {
+    const graph = builder.createModuleDepGraph();
+    for (const module of builder.modulesIterator()) {
         graph.addModule(module);
     }
     for (const [src, dst] of edges) {
         graph.addDependencyEdge(src, dst);
     }
-    (manager as unknown as { depGraph: ModuleDepGraph }).depGraph = graph;
+    scene.setModuleDepGraph(graph);
     return graph;
 }
 
 describe('ArkModule tests', () => {
     describe('constructor defaults', () => {
         it('initializes loadState, moduleType and filesMap with default values', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
             expect(module.getModuleType()).toBe(ModuleType.PROJECT);
             expect(module.getFilesMap().size).toBe(0);
-        });
-
-        it('returns the ModuleManager passed to the constructor', () => {
-            const manager = makeStubManager();
-            const module = new ArkModule(manager);
-            expect(module.getModuleManager()).toBe(manager);
         });
     });
 
     describe('modulePath / moduleName getters and setters', () => {
         it('reads and writes modulePath', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             expect(module.getModulePath()).toBe('');
             module.setModulePath('/project/entry');
             expect(module.getModulePath()).toBe('/project/entry');
         });
 
         it('reads and writes moduleName', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             expect(module.getModuleName()).toBe('');
             module.setModuleName('@ohos/entry');
             expect(module.getModuleName()).toBe('@ohos/entry');
@@ -93,17 +81,17 @@ describe('ArkModule tests', () => {
 
     describe('tags bit-field independence', () => {
         it('keeps loadState and moduleType independent while sharing the tags field', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
             expect(module.getModuleType()).toBe(ModuleType.PROJECT);
 
-            module.setLoadState(ModuleLoadState.ANALYZED);
-            expect(module.getLoadState()).toBe(ModuleLoadState.ANALYZED);
+            module.setLoadState(ModuleLoadState.SIGNATURES);
+            expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
             expect(module.getModuleType()).toBe(ModuleType.PROJECT);
 
             module.setModuleType(ModuleType.SDK);
             expect(module.getModuleType()).toBe(ModuleType.SDK);
-            expect(module.getLoadState()).toBe(ModuleLoadState.ANALYZED);
+            expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
 
             module.setLoadState(ModuleLoadState.DISPOSED);
             expect(module.getLoadState()).toBe(ModuleLoadState.DISPOSED);
@@ -115,7 +103,7 @@ describe('ArkModule tests', () => {
         });
 
         it('supports setModuleType / getModuleType for all values', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             for (const type of [ModuleType.PROJECT, ModuleType.SDK, ModuleType.OH_MODULES]) {
                 module.setModuleType(type);
                 expect(module.getModuleType()).toBe(type);
@@ -123,8 +111,8 @@ describe('ArkModule tests', () => {
         });
 
         it('supports setLoadState / getLoadState for all values', () => {
-            const module = new ArkModule(STUB_MANAGER);
-            for (const state of [ModuleLoadState.NOT_LOADED, ModuleLoadState.LOADED, ModuleLoadState.ANALYZED, ModuleLoadState.DISPOSED]) {
+            const module = new ArkModule(STUB_SCENE);
+            for (const state of [ModuleLoadState.NOT_LOADED, ModuleLoadState.META, ModuleLoadState.IMPORTS, ModuleLoadState.DISPOSED]) {
                 module.setLoadState(state);
                 expect(module.getLoadState()).toBe(state);
             }
@@ -133,14 +121,14 @@ describe('ArkModule tests', () => {
 
     describe('dependency alias mapping', () => {
         it('resolves an alias added via addDependencyAlias', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             module.addDependencyAlias('@ohos/library', 7);
             expect(module.resolveDependencyAlias('@ohos/library')).toBe(7);
             expect(module.resolveDependencyAlias('@ohos/unknown')).toBeUndefined();
         });
 
         it('overrides an existing alias with the latest value', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             module.addDependencyAlias('@ohos/library', 7);
             module.addDependencyAlias('@ohos/library', 9);
             expect(module.resolveDependencyAlias('@ohos/library')).toBe(9);
@@ -150,7 +138,7 @@ describe('ArkModule tests', () => {
 
     describe('unresolved dependencies', () => {
         it('stores and exposes unresolved dependencies', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             expect(module.getUnresolvedDependencies().size).toBe(0);
             module.addUnresolvedDependency('lodash', '^4.17.0');
             module.addUnresolvedDependency('axios', 'file:../axios');
@@ -163,7 +151,7 @@ describe('ArkModule tests', () => {
 
     describe('file management', () => {
         it('adds a file keyed by FileSignature.toMapKey()', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             const arkFile = makeArkFile('project', 'src/main/Entry.ts');
             module.addFile(arkFile);
             const filesMap = module.getFilesMap();
@@ -174,7 +162,7 @@ describe('ArkModule tests', () => {
         });
 
         it('clears all files via clearFilesMap', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             module.addFile(makeArkFile('project', 'a.ts'));
             module.addFile(makeArkFile('project', 'b.ts'));
             expect(module.getFilesMap().size).toBe(2);
@@ -185,13 +173,13 @@ describe('ArkModule tests', () => {
 
     describe('oh-package.json5', () => {
         it('getOhPkgPath returns path.join(modulePath, "oh-package.json5")', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             module.setModulePath('/project/entry');
             expect(module.getOhPkgPath()).toBe(path.join('/project/entry', 'oh-package.json5'));
         });
 
         it('readOhPkgContent returns {} when the file does not exist', () => {
-            const module = new ArkModule(STUB_MANAGER);
+            const module = new ArkModule(STUB_SCENE);
             module.setModulePath(path.join(os.tmpdir(), 'non-existent-arkmodule-path'));
             expect(module.readOhPkgContent()).toEqual({});
         });
@@ -199,11 +187,8 @@ describe('ArkModule tests', () => {
         it('readOhPkgContent returns parsed content when the file exists', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkmodule-'));
             try {
-                fs.writeFileSync(
-                    path.join(tmpDir, 'oh-package.json5'),
-                    JSON.stringify({ name: '@ohos/lib', version: '1.0.0' })
-                );
-                const module = new ArkModule(STUB_MANAGER);
+                fs.writeFileSync(path.join(tmpDir, 'oh-package.json5'), JSON.stringify({ name: '@ohos/lib', version: '1.0.0' }));
+                const module = new ArkModule(STUB_SCENE);
                 module.setModulePath(tmpDir);
                 const content = module.readOhPkgContent();
                 expect(content.name).toBe('@ohos/lib');
@@ -216,19 +201,21 @@ describe('ArkModule tests', () => {
 
     describe('getDependencies / getDependents', () => {
         it('returns empty arrays when the dependency graph has not been built', () => {
-            const manager = makeStubManager();
-            const entry = manager.registerModule('/project/entry', '@ohos/entry');
+            const scene = makeStubScene();
+            const builder = new ModuleBuilder(scene);
+            const entry = builder.registerModule('/project/entry', '@ohos/entry');
             expect(entry.getDependencies()).toEqual([]);
             expect(entry.getDependents()).toEqual([]);
         });
 
         it('getDependencies returns successor modules from the dependency graph', () => {
-            const manager = makeStubManager();
-            const entry = manager.registerModule('/project/entry', '@ohos/entry');
-            const library = manager.registerModule('/project/library', '@ohos/library');
-            const entryId = manager.getModuleCanonicalizer().getId(entry);
-            const libraryId = manager.getModuleCanonicalizer().getId(library);
-            injectDepGraph(manager, [[entryId, libraryId]]);
+            const scene = makeStubScene();
+            const builder = new ModuleBuilder(scene);
+            const entry = builder.registerModule('/project/entry', '@ohos/entry');
+            const library = builder.registerModule('/project/library', '@ohos/library');
+            const entryId = builder.getModuleId(entry);
+            const libraryId = builder.getModuleId(library);
+            injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
             const deps = entry.getDependencies();
             expect(deps.length).toBe(1);
@@ -239,12 +226,13 @@ describe('ArkModule tests', () => {
         });
 
         it('getDependents returns predecessor modules from the dependency graph', () => {
-            const manager = makeStubManager();
-            const entry = manager.registerModule('/project/entry', '@ohos/entry');
-            const library = manager.registerModule('/project/library', '@ohos/library');
-            const entryId = manager.getModuleCanonicalizer().getId(entry);
-            const libraryId = manager.getModuleCanonicalizer().getId(library);
-            injectDepGraph(manager, [[entryId, libraryId]]);
+            const scene = makeStubScene();
+            const builder = new ModuleBuilder(scene);
+            const entry = builder.registerModule('/project/entry', '@ohos/entry');
+            const library = builder.registerModule('/project/library', '@ohos/library');
+            const entryId = builder.getModuleId(entry);
+            const libraryId = builder.getModuleId(library);
+            injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
             const dependents = library.getDependents();
             expect(dependents.length).toBe(1);
@@ -255,15 +243,19 @@ describe('ArkModule tests', () => {
         });
 
         it('handles multiple dependencies and dependents', () => {
-            const manager = makeStubManager();
-            const a = manager.registerModule('/project/a', '@a');
-            const b = manager.registerModule('/project/b', '@b');
-            const c = manager.registerModule('/project/c', '@c');
-            const idA = manager.getModuleCanonicalizer().getId(a);
-            const idB = manager.getModuleCanonicalizer().getId(b);
-            const idC = manager.getModuleCanonicalizer().getId(c);
+            const scene = makeStubScene();
+            const builder = new ModuleBuilder(scene);
+            const a = builder.registerModule('/project/a', '@a');
+            const b = builder.registerModule('/project/b', '@b');
+            const c = builder.registerModule('/project/c', '@c');
+            const idA = builder.getModuleId(a);
+            const idB = builder.getModuleId(b);
+            const idC = builder.getModuleId(c);
             // a -> b, a -> c
-            injectDepGraph(manager, [[idA, idB], [idA, idC]]);
+            injectDepGraph(scene, builder, [
+                [idA, idB],
+                [idA, idC],
+            ]);
 
             const aDeps = a.getDependencies();
             expect(aDeps.length).toBe(2);

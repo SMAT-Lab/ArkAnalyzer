@@ -15,19 +15,34 @@
 
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
-import { buildArkFileFromFile } from '../../core/model/builder/ArkFileBuilder';
+import { buildArkFileFromFile, buildArkFileSignaturesFromFile, buildImportExportInfoFromFile } from '../../core/model/builder/ArkFileBuilder';
 import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
 import { FileUtils } from '../../utils/FileUtils';
-
 
 /**
  * ArkTS/TS/JS: builds {@link ArkFile}s using the core TS/ArkTS pipeline (see {@link buildArkFileFromFile}).
  */
 export class ArktsFrontend {
-
     /** Fills a project {@link ArkFile} from a source file; delegates to {@link buildArkFileFromFile}. */
     public buildProjectFile(scene: Scene, filePath: string, arkFile: ArkFile): void {
         buildArkFileFromFile(filePath, scene.getRealProjectDir(), arkFile, scene.getProjectName());
+    }
+
+    /**
+     * Imports-only build for a single ArkTS file: fills ImportInfo/ExportInfo
+     * without building ArkClass/ArkMethod/ArkBody.
+     */
+    public buildProjectFileForImports(arkFile: ArkFile): void {
+        buildImportExportInfoFromFile(arkFile);
+    }
+
+    /**
+     * Signatures-only upgrade for a single ArkTS file whose ImportInfo/ExportInfo were already
+     * populated by {@link buildProjectFileForImports}. Builds ArkClass/ArkMethod/ArkNamespace
+     * signatures on top, skipping the import/export branches to avoid duplicating `export *`.
+     */
+    public buildProjectFileForSignatures(arkFile: ArkFile): void {
+        buildArkFileSignaturesFromFile(arkFile);
     }
 
     /**

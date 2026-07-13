@@ -23,11 +23,11 @@ import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
-import { ArkModule, ModuleID, ModuleType } from './core/model/ArkModule';
+import { ArkModule, ModuleID, ModuleLoadState } from './core/model/ArkModule';
 import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
 import { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
-import { ModuleManager } from './frontend/common/ModuleManager';
+import { ModuleBuilder } from './frontend/common/ModuleBuilder';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
@@ -53,6 +53,8 @@ import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
 import { sortByDependency } from './utils/DependenciesSort';
+import { Canonicalizer } from './utils/Canonicalizer';
+import { ModuleDepGraph } from './core/graph/ModuleDepGraph';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -111,8 +113,17 @@ export class Scene {
     /** The SceneConfig used to build this scene, retained for later queries (e.g. SDK list). */
     private sceneConfig?: SceneConfig;
 
-    /** Module manager for module-level analysis (registration, dependency graph, topo sort). */
-    private moduleManager: ModuleManager = new ModuleManager(this);
+    /** Maps ArkModule objects to dense integer ModuleIDs via the objectIdentity strategy. */
+    private moduleCanonicalizer: Canonicalizer<ArkModule> = new Canonicalizer<ArkModule>();
+
+    /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
+    private moduleDepGraph?: ModuleDepGraph;
+
+    /** Whether module preparation has completed (set true after prepareModules, idempotent). */
+    private modulesRegistered: boolean = false;
+
+    /** Whether module dependency analysis has completed (set true after analyzeModuleDependencies). */
+    private moduleDependenciesAnalyzed: boolean = false;
 
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
@@ -169,6 +180,16 @@ export class Scene {
 
     public getStage(): SceneBuildStage {
         return this.buildStage;
+    }
+
+    /**
+     * Set the current {@link SceneBuildStage}. Used by module-level builders (e.g.
+     * {@link FrontendBuilder.buildModuleMethodBody}) to temporarily open the
+     * {@link buildClassDone} gate so that nested/anonymous method bodies are built
+     * immediately during body construction, then restore the previous stage.
+     */
+    public setBuildStage(stage: SceneBuildStage): void {
+        this.buildStage = stage;
     }
 
     /**
@@ -862,81 +883,129 @@ export class Scene {
     public config(sceneConfig: SceneConfig): void {
         this.sceneConfig = sceneConfig;
         this.options = sceneConfig.getOptions();
+        this.projectName = sceneConfig.getTargetProjectName();
         const dir = sceneConfig.getTargetProjectDirectory();
         if (dir) {
             this.realProjectDir = fs.realpathSync(dir);
         }
+        this.fileLanguages = sceneConfig.getFileLanguages();
     }
 
     /**
-     * Returns all registered {@link ArkModule} objects managed by the {@link ModuleManager}.
+     * Returns all registered {@link ArkModule} objects. Modules whose loadState is DISPOSED are skipped.
      */
     public getModules(): ArkModule[] {
-        return Array.from(this.moduleManager.modulesIterator());
+        const result: ArkModule[] = [];
+        for (let i = 0; i < this.moduleCanonicalizer.size(); i++) {
+            const m = this.moduleCanonicalizer.get(i);
+            if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
+                result.push(m);
+            }
+        }
+        return result;
     }
 
-    /**
-     * Returns the {@link ModuleManager} embedded in this scene, responsible for module
-     * lifecycle, dependency graph, and topological sort.
-     */
-    public getModuleManager(): ModuleManager {
-        return this.moduleManager;
+    // --- Module query methods (Scene is a lightweight result container) ---
+
+    /** The module dependency graph, or undefined before dependency analysis. */
+    public getModuleDepGraph(): ModuleDepGraph | undefined {
+        return this.moduleDepGraph;
+    }
+
+    /** Whether module preparation has completed. */
+    public isModulesRegistered(): boolean {
+        return this.modulesRegistered;
+    }
+
+    /** Whether module dependency analysis has completed. */
+    public isModuleDependenciesAnalyzed(): boolean {
+        return this.moduleDependenciesAnalyzed;
+    }
+
+    // --- Internal accessors used by ModuleBuilder to read/write persistent state ---
+
+    /** Get a registered module by its ModuleID. Returns undefined when the id is out of bounds. */
+    public getModule(id: ModuleID): ArkModule | undefined {
+        return this.moduleCanonicalizer.get(id);
+    }
+
+    /** Get the ModuleID assigned to a registered ArkModule. */
+    public getModuleId(module: ArkModule): ModuleID {
+        return this.moduleCanonicalizer.getId(module);
+    }
+
+    /** Total number of registered modules. */
+    public getModuleCount(): number {
+        return this.moduleCanonicalizer.size();
+    }
+
+    /** Create a {@link ModuleDepGraph} sharing the internal module canonicalizer. */
+    public createModuleDepGraph(): ModuleDepGraph {
+        return new ModuleDepGraph(this.moduleCanonicalizer);
+    }
+
+    public setModuleDepGraph(graph: ModuleDepGraph): void {
+        this.moduleDepGraph = graph;
+    }
+
+    public setModulesRegistered(value: boolean): void {
+        this.modulesRegistered = value;
+    }
+
+    public setModuleDependenciesAnalyzed(value: boolean): void {
+        this.moduleDependenciesAnalyzed = value;
     }
 
     /**
      * Perform module-level analysis by iterating modules in topological order and invoking
      * the callback for each module.
      *
-     * Flow: prepareSdkModules → prepareModules → analyzeModuleDependencies → iterate topoOrder → loadModule → callback.
+     * Flow: prepareModules → analyzeModuleDependencies → buildSdkModules (SDK files parsed +
+     * inferred first) → resolveTargetModuleIds → computeModuleClosureByIds → iterate topoOrder
+     * → loadModule → callback.
      * Each step is idempotent; repeated calls do not repeat preprocessing.
      *
-     * - SDK modules are always skipped (callback is never invoked for them).
-     * - When {@link ModuleAnalysisConfig.hasTargetProjectModules} is true, only the target
-     *   PROJECT modules (and their transitive closure) are visited; the callback is invoked
-     *   only for the target modules themselves, not their dependencies.
-     * - When no target modules are specified, the callback is invoked for all PROJECT and
-     *   OH_MODULES modules in topological order.
+     * - SDK modules are registered and built in one fused step by {@link ModuleBuilder.buildSdkModules}
+     *   before the topoOrder loop, so that global APIs are available when project/oh_modules modules
+     *   are loaded. SDK modules are not in the module dependency graph and thus never appear in the
+     *   topoOrder or callback.
+     * - Target modules are resolved from the config's type filter, explicit include IDs, and
+     *   explicit exclude IDs. The transitive closure (targets + dependencies) determines which
+     *   modules are loaded. The callback is invoked only for target modules, not their dependencies.
+     * - By default (no explicit selection), all PROJECT and OH_MODULES modules are targets.
      *
-     * @param callback - Invoked for each analyzed module with the module and the scene.
-     * @param config - Optional configuration for target module selection.
+     * @param callback - Invoked for each target module with the module and the scene.
+     * @param config - Optional configuration for target module selection and load levels.
      */
     public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
-        // 1. Prepare SDK modules (idempotent)
-        if (!this.moduleManager.isSdkRegistered()) {
-            this.moduleManager.prepareSdkModules();
+        const builder = new ModuleBuilder(this);
+        // 1. Prepare project/oh_modules (idempotent)
+        if (!this.isModulesRegistered()) {
+            builder.prepareModules();
         }
-        // 2. Prepare project/oh_modules (idempotent)
-        if (!this.moduleManager.isModulesPrepared()) {
-            this.moduleManager.prepareModules();
+        // 2. Analyze dependencies (idempotent)
+        if (!this.isModuleDependenciesAnalyzed()) {
+            builder.analyzeModuleDependencies();
         }
-        // 3. Analyze dependencies (idempotent)
-        if (!this.moduleManager.hasTopoOrder()) {
-            this.moduleManager.analyzeModuleDependencies();
-        }
-        // 4. Determine modules to analyze
-        let topoOrder: ModuleID[];
-        let targetPaths: Set<string> | undefined;
-        if (config?.hasTargetProjectModules()) {
-            const closure = this.moduleManager.computeModuleClosure(config.getTargetProjectModules());
-            topoOrder = this.moduleManager.getFilteredTopoOrder(closure);
-            targetPaths = config.getTargetProjectModules();
-        } else {
-            topoOrder = this.moduleManager.getTopoOrder();
-        }
-        // 5. Iterate topoOrder: load each module then call callback
+        // 3. Build SDK modules — fused registration + building (idempotent). SDK loaded FIRST so
+        //    that global APIs are available when project/oh_modules modules are loaded.
+        builder.buildSdkModules(config);
+        // 4. Resolve target modules and compute closure (unified flow, no branching)
+        const effectiveConfig = config ?? new ModuleAnalysisConfig();
+        const targetIds = builder.resolveTargetModuleIds(effectiveConfig);
+        const closure = builder.computeModuleClosureByIds(targetIds);
+        const topoOrder = builder.getFilteredTopoOrder(closure);
+        // 5. Iterate topoOrder: load each module then call callback for targets only
         for (const moduleId of topoOrder) {
-            const module = this.moduleManager.getModule(moduleId);
+            // Load module data at configured depth level (idempotent; SDK modules are skipped by
+            // loadModule — their content is built by buildSdkModules above).
+            builder.loadModule(moduleId, config);
+            // Only call callback for target modules (not their dependencies)
+            if (!targetIds.test(moduleId)) {
+                continue;
+            }
+            const module = builder.getModule(moduleId);
             if (!module) {
-                continue;
-            }
-            // Load module data at configured depth level (idempotent; SDK modules are just marked LOADED)
-            this.moduleManager.loadModule(moduleId, config);
-            // Skip SDK modules for callback
-            if (module.getModuleType() === ModuleType.SDK) {
-                continue;
-            }
-            // If target modules specified, only call callback for target PROJECT modules
-            if (targetPaths && !targetPaths.has(module.getModulePath())) {
                 continue;
             }
             callback(module, this);
@@ -1010,6 +1079,14 @@ export class Scene {
 
     public setFile(file: ArkFile): void {
         this.filesMap.set(file.getFileSignature().toMapKey(), file);
+    }
+
+    /**
+     * Add an SDK ArkFile to the scene's `sdkArkFilesMap`, keyed by its file signature.
+     * Used by {@link ModuleBuilder.parseAndRegisterSdkFile} during SDK file registration.
+     */
+    public addSdkArkFile(arkFile: ArkFile): void {
+        this.sdkArkFilesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
     }
 
     public hasSdkFile(fileSignature: FileSignature): boolean {
