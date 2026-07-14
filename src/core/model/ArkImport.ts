@@ -343,4 +343,10 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
     public validate(): ArkError {
         return this.validateFields(['declaringArkFile']);
     }
+
+    public clearAllReferences(): void {
+        this.lazyExportInfo = null;
+        this.declaringArkFile = undefined as unknown as ArkFile;
+        this.clearSourceCode();
+    }
 }

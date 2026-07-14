@@ -27,6 +27,8 @@ import { fetchDependenciesFromFile, parseJsonText } from '../../utils/json5parse
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ModuleDepthLevel } from './ModuleDepth';
 import { ModuleAnalysisConfig } from './ModuleAnalysisConfig';
+import { MemoryMonitor } from './MemoryMonitor';
+import { ModuleCache, HeapUsedEstimateState } from './ModuleCache';
 import { FrontendBuilder } from '../FrontendBuilder';
 import { ArkFile, Language } from '../../core/model/ArkFile';
 import { InferenceManager } from '../../core/inference/Inference';
@@ -35,8 +37,10 @@ import { getAllFiles } from '../../utils/getAllFiles';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ArktsFrontend } from '../arktsFrontend/ArktsFrontend';
 import { ModelUtils } from '../../core/common/ModelUtils';
+import { ModuleUtils, ModulePath } from '../../utils/ModuleUtils';
 import { SceneBuildStage } from '../../Scene';
 import type { Scene } from '../../Scene';
+import type { SceneOptions } from '../../Config';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleBuilder');
 
@@ -59,6 +63,46 @@ export class ModuleBuilder {
 
     /** Persistent map from absolute module path to ModuleID (survives graph construction). */
     private pathToId: Map<string, ModuleID> = new Map();
+
+    /** Reference to Scene's persistent memory monitor; set by initCacheManagement. */
+    private monitor?: MemoryMonitor;
+    /** Reference to Scene's persistent module cache; set by initCacheManagement. */
+    private cache?: ModuleCache;
+    /** Topological order of the current call, used for protected-set computation and Phase 2/3 reverse-topo iteration. */
+    private topoOrder: ModuleID[] = [];
+    /** Map from moduleId to its index in topoOrder for O(1) lookup. */
+    private topoOrderIndex?: Map<ModuleID, number>;
+
+    /** Load level to which protected dependency modules are downgraded during eviction Phase 2. */
+    private dependencyLoadLevel: ModuleDepthLevel = ModuleDepthLevel.SIGNATURES;
+
+    /**
+     * Estimated heapUsed bytes per file for each depth level, used for pre-load memory cost estimation.
+     * Calibrated from scene_board_ext measurements (no-eviction, no GC runs):
+     * - BODIES: P75 of per-module heapUsed-per-file at BODIES level = ~1.7MB/file
+     * - SIGNATURES: P75 of per-module heapUsed-per-file at SIGNATURES level = ~700KB/file
+     * - IMPORTS/META: negligible (metadata only).
+     *
+     * No-GC calibration matches production conditions (no forced GC). Without GC,
+     * heapUsed increments include uncollected garbage from parsing and type inference,
+     * which is several times larger than surviving data.
+     *
+     * Used for pre-load estimation (deciding whether eviction is needed before loading)
+     * and as a fallback for unload estimation when the heapUsed table has no entry.
+     */
+    private static readonly HEAPUSED_PER_FILE: Map<ModuleDepthLevel, number> = new Map([
+        [ModuleDepthLevel.META, 0],
+        [ModuleDepthLevel.IMPORTS, 0],
+        [ModuleDepthLevel.SIGNATURES, 700_000],
+        [ModuleDepthLevel.BODIES, 1_700_000],
+    ]);
+
+    /**
+     * Ratio of memory released by downgrading from BODIES to SIGNATURES, relative to
+     * the BODIES-level heapUsed. Calibrated from GC trace test data:
+     * downgrade releases ~60% of BODIES heapUsed (method bodies + AST + source code).
+     */
+    private static readonly DOWNGRADE_RELEASE_RATIO = 0.6;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -90,7 +134,7 @@ export class ModuleBuilder {
     }
 
     /**
-     * Iterate over all registered modules, skipping modules whose loadState is DISPOSED.
+     * Iterate over all registered modules.
      * Iteration order follows ModuleID assignment order (0, 1, 2, ...).
      */
     public modulesIterator(): IterableIterator<ArkModule> {
@@ -104,12 +148,12 @@ export class ModuleBuilder {
         return iterator;
     }
 
-    /** Find the next non-DISPOSED module starting from the cursor. */
+    /** Find the next module starting from the cursor. */
     private nextModule(cursor: { value: number }): IteratorResult<ArkModule> {
         while (cursor.value < this.scene.getModuleCount()) {
             const m = this.scene.getModule(cursor.value);
             cursor.value++;
-            if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
+            if (m) {
                 return { value: m, done: false };
             }
         }
@@ -257,17 +301,9 @@ export class ModuleBuilder {
      * Module-level SDKs (those with `moduleName` set) are skipped entirely.
      *
      * Idempotent: guarded by {@link SceneBuildStage.SDK_INFERRED}.
-     *
-     * @param config - Optional configuration. SDK files are built only when
-     *   `config.getLoadLevel(ModuleType.SDK) >= SIGNATURES`.
      */
-    public buildSdkModules(config?: ModuleAnalysisConfig): void {
+    public buildSdkModules(): void {
         if (this.scene.getBuildStage() >= SceneBuildStage.SDK_INFERRED) {
-            return;
-        }
-
-        const sdkLevel = config?.getLoadLevel(ModuleType.SDK) ?? ModuleDepthLevel.META;
-        if (sdkLevel < ModuleDepthLevel.SIGNATURES) {
             return;
         }
 
@@ -413,8 +449,10 @@ export class ModuleBuilder {
      * to discover third-party dependencies. Only basic info (paths) is registered —
      * oh-package.json5 is NOT read and no dependency graph is built.
      *
-     * Idempotent: if module preparation has already completed (`Scene.isModulesRegistered()`
-     * is true), this method returns immediately.
+     * Idempotent: if module preparation has already been completed via
+     * `Scene.setModulesRegistered(true)`, this method returns immediately.
+     * Note: this method does NOT set modulesRegistered — that is done by
+     * `Scene.analyseByModule` after both prepareModules and analyzeModuleDependencies complete.
      */
     public prepareModules(): void {
         if (this.scene.isModulesRegistered()) {
@@ -423,8 +461,6 @@ export class ModuleBuilder {
 
         this.registerProjectModules();
         this.registerOhModulesModules();
-
-        this.scene.setModulesRegistered(true);
     }
 
     /**
@@ -546,11 +582,10 @@ export class ModuleBuilder {
      * runs SCC detection with post-processing refinement. The topological order and SCC groups
      * are stored inside the dependency graph on the Scene, accessed via `ModuleBuilder.getTopoOrder()`.
      *
-     * Idempotent: if dependency analysis has already completed
-     * (`Scene.isModuleDependenciesAnalyzed()` is true), this method returns immediately.
+     * Idempotent: if the dependency graph already exists on the Scene, this method returns immediately.
      */
     public analyzeModuleDependencies(): void {
-        if (this.scene.isModuleDependenciesAnalyzed()) {
+        if (this.scene.getModuleDepGraph()) {
             return;
         }
 
@@ -559,8 +594,6 @@ export class ModuleBuilder {
 
         const graph = this.scene.getModuleDepGraph()!;
         graph.refineSCCGroups(graph.getMaxSCCGroupSize());
-
-        this.scene.setModuleDependenciesAnalyzed(true);
     }
 
     /**
@@ -815,10 +848,25 @@ export class ModuleBuilder {
         for (const module of this.modulesIterator()) {
             const ohPkgContent = module.readOhPkgContent();
             const name = ohPkgContent.name;
-            if (typeof name === 'string') {
-                module.setModuleName(name);
+            if (typeof name !== 'string') {
+                continue;
             }
+            module.setModuleName(name);
+            this.registerModulePath(module, name, ohPkgContent);
         }
+    }
+
+    private registerModulePath(module: ArkModule, name: string, ohPkgContent: Record<string, unknown>): void {
+        if (ModuleUtils.MODULES.has(name)) {
+            return;
+        }
+        const modulePath = module.getModulePath();
+        let entry = (ohPkgContent.types as string) || (ohPkgContent.main as string) || '';
+        if (entry.endsWith('.js')) {
+            entry = entry.substring(0, entry.length - '.js'.length);
+        }
+        const mainPath = entry ? path.resolve(modulePath, entry) : modulePath;
+        ModuleUtils.MODULES.set(name, new ModulePath(modulePath, mainPath));
     }
 
     // --- Module loading ---
@@ -841,6 +889,26 @@ export class ModuleBuilder {
                 return ModuleLoadState.META;
         }
     }
+
+    /**
+     * Reverse mapping of {@link depthLevelToLoadState}. Used to look up the heapUsed table
+     * entry for a module's current load state.
+     */
+    private loadStateToDepthLevel(loadState: ModuleLoadState): ModuleDepthLevel {
+        switch (loadState) {
+            case ModuleLoadState.META:
+                return ModuleDepthLevel.META;
+            case ModuleLoadState.IMPORTS:
+                return ModuleDepthLevel.IMPORTS;
+            case ModuleLoadState.SIGNATURES:
+                return ModuleDepthLevel.SIGNATURES;
+            case ModuleLoadState.BODIES:
+                return ModuleDepthLevel.BODIES;
+            default:
+                return ModuleDepthLevel.META;
+        }
+    }
+
 
     /**
      * Run type inference on the module's files, following the same pattern as
@@ -894,72 +962,394 @@ export class ModuleBuilder {
     }
 
     /**
-     * Load module data at the configured depth level.
+     * Load module data at the specified depth level.
+     *
+     * Dependencies are NOT recursively loaded here — the caller (e.g.
+     * {@link Scene.analyseByModule}) must iterate modules in topological order so that
+     * depended-on modules are loaded before their dependents.
+     *
+     * When cache management has been initialized via {@link initCacheManagement}, this method
+     * automatically checks memory before loading (evicting cached modules if over threshold)
+     * and registers the module in the cache after loading.
      *
      * Flow:
      * 1. SDK modules are skipped — their file content is built by {@link buildSdkModules}, not here.
-     * 2. Determine the configured load level for this module type.
-     * 3. Idempotent: skip if the module's loadState already reaches the target load state.
-     * 4. Set the target load state early to break cyclic dependency recursion (replaces the
-     *    former `loadingModules` guard): when a module currently being loaded is encountered
-     *    again, its loadState already meets the target, so the recursion stops immediately.
-     * 5. Recursively load dependencies first (so dependees are available).
-     * 6. Build module data to the effective level via {@link buildModuleToLevel}, which integrates
+     * 2. Idempotent: skip if the module's loadState already reaches the target load state.
+     * 3. Build module data to the effective level via {@link buildModuleToLevel}, which integrates
      *    intra-module file dependency analysis and topological-order parsing.
-     * 7. When the effective level reaches BODIES, build method bodies (ArkBody/CFG/Stmt/Expr) via
+     * 4. When the effective level reaches BODIES, build method bodies (ArkBody/CFG/Stmt/Expr) via
      *    {@link FrontendBuilder.buildModuleMethodBody}, following the same two-phase pattern as
      *    {@link Scene.genArkFiles}.
-     * 8. When type inference is enabled via {@link ModuleAnalysisConfig.setEnableTypeInference}
-     *    and the effective level reaches SIGNATURES, run type inference on the module's files
+     * 5. When the effective level reaches SIGNATURES, run type inference on the module's files
      *    via {@link inferModuleTypes}, referencing the logic of {@link Scene.inferTypes}.
+     * 6. Set the load state to the target level (after successful build).
      *
      * @param moduleId - ID of the module to load.
-     * @param config - Optional configuration providing per-type load levels and type inference.
+     * @param depthLevel - The depth level to load the module to.
      */
-    public loadModule(moduleId: ModuleID, config?: ModuleAnalysisConfig): void {
+    public loadModule(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.META): void {
         const module = this.getModule(moduleId);
         if (!module) {
             return;
         }
+
+        // Cache management: evict cached modules if memory is over target
+        this.evictIfNeeded(moduleId, depthLevel);
 
         // SDK modules: file content is built by buildSdkModules, not loadModule
         if (module.getModuleType() === ModuleType.SDK) {
             return;
         }
 
-        // Determine the configured load level
-        const loadLevel = config?.getLoadLevel(module.getModuleType()) ?? ModuleDepthLevel.META;
-        const effectiveLevel = loadLevel;
-        const targetLoadState = this.depthLevelToLoadState(effectiveLevel);
+        const targetLoadState = this.depthLevelToLoadState(depthLevel);
 
-        // Idempotent: skip if already loaded to the target level
+        // Idempotent: skip if already loaded to the target level, but ensure in cache
         if (module.getLoadState() >= targetLoadState) {
+            this.cache?.register(moduleId);
             return;
         }
 
-        // Set target state early to break cyclic dependency recursion
-        module.setLoadState(targetLoadState);
-
-        // Recursively load dependencies first
-        const depGraph = this.scene.getModuleDepGraph();
-        const depIds = depGraph ? depGraph.getSuccModuleIds(moduleId) : [];
-        for (const depId of depIds) {
-            this.loadModule(depId, config);
-        }
+        // Record heapUsed before actual build (for heapUsed table population)
+        const recordHeapUsed = this.monitor?.isEnabled() ?? false;
+        const heapUsedBefore = recordHeapUsed ? this.monitor!.getCurrentHeapUsed() : 0;
 
         // Phase 1: build ArkFile objects to the effective level, with intra-module file
         // dependency analysis integrated (topological-order parsing for level > IMPORTS).
-        this.buildModuleToLevel(module, effectiveLevel);
+        this.buildModuleToLevel(module, depthLevel);
 
         // Phase 2: build method bodies when BODIES level was requested
-        if (effectiveLevel >= ModuleDepthLevel.BODIES) {
+        if (depthLevel >= ModuleDepthLevel.BODIES) {
             FrontendBuilder.buildModuleMethodBody(module);
         }
 
-        // Phase 3: type inference when enabled and level >= SIGNATURES
-        if (config?.isTypeInferenceEnabled() && effectiveLevel >= ModuleDepthLevel.SIGNATURES) {
+        // Phase 3: type inference when level >= SIGNATURES
+        if (depthLevel >= ModuleDepthLevel.SIGNATURES) {
             this.inferModuleTypes(module);
         }
+
+        // Set load state after successful build
+        module.setLoadState(targetLoadState);
+
+        // Record heapUsed increment in cache table (first load only — recordHeapUsed is a no-op if entry exists)
+        if (recordHeapUsed) {
+            const heapUsedAfter = this.monitor!.getCurrentHeapUsed();
+            const heapUsedIncrement = Math.max(0, heapUsedAfter - heapUsedBefore);
+            this.cache?.recordHeapUsed(moduleId, depthLevel, heapUsedIncrement);
+        }
+
+        // Register in cache after successful load
+        this.cache?.register(moduleId);
+    }
+
+    /**
+     * Unload a module's data, releasing heavy data and resetting to NOT_LOADED state.
+     *
+     * Clears the module's filesMap (releasing ArkFile/ArkClass/ArkMethod objects), resets the
+     * file dependency graph (so that the next {@link loadModule} rebuilds IMPORTS from scratch),
+     * and sets the load state to NOT_LOADED. After unloading, {@link loadModule} can rebuild
+     * the module from scratch.
+     *
+     * SDK modules are not unloaded (their data is built by {@link buildSdkModules} and shared
+     * globally).
+     *
+     * @param moduleId - ID of the module to unload.
+     */
+    public unload(moduleId: ModuleID): void {
+        const module = this.getModule(moduleId);
+        if (!module) {
+            return;
+        }
+        if (module.getModuleType() === ModuleType.SDK) {
+            return;
+        }
+        this.scene.disposeModule(module);
+        this.breakInternalReferences(module);
+        module.clearFilesMap();
+        module.setFileDepGraph(undefined);
+        module.setLoadState(ModuleLoadState.NOT_LOADED);
+    }
+
+    /**
+     * Break all internal references between IR objects in a module's ArkFiles.
+     * Called after {@link Scene.disposeModule} to ensure that IR objects (ArkClass, ArkMethod,
+     * ArkBody, ArkField, ExportInfo, ImportInfo) do not retain each other through cross-references,
+     * allowing V8 GC to reclaim them individually.
+     */
+    private breakInternalReferences(module: ArkModule): void {
+        for (const arkFile of module.getFilesMap().values()) {
+            arkFile.clearAllReferences();
+        }
+    }
+
+    // --- Cache management ---
+
+    /**
+     * Initialize or update cache management for module loading.
+     *
+     * On the first call, creates a {@link ModuleCache} and {@link MemoryMonitor} and stores
+     * them persistently in {@link Scene}. On subsequent calls, reuses the persistent instances
+     * and only updates the per-call topological order.
+     *
+     * @param options - Scene options containing memoryLimitMB.
+     * @param topoOrder - Topological order of modules to be loaded (dependees before dependents).
+     * @param dependencyLoadLevel - Load level to downgrade protected dependencies to during eviction.
+     */
+    public initCacheManagement(options: SceneOptions, topoOrder: ModuleID[], dependencyLoadLevel: ModuleDepthLevel = ModuleDepthLevel.SIGNATURES): void {
+        if (!this.scene.getModuleCache()) {
+            this.scene.setModuleCache(new ModuleCache());
+            this.scene.setMemoryMonitor(new MemoryMonitor(options));
+        }
+        this.monitor = this.scene.getMemoryMonitor();
+        this.cache = this.scene.getModuleCache();
+        this.topoOrder = topoOrder;
+        this.dependencyLoadLevel = dependencyLoadLevel;
+        this.topoOrderIndex = new Map();
+        for (let i = 0; i < topoOrder.length; i++) {
+            this.topoOrderIndex.set(topoOrder[i], i);
+        }
+    }
+
+    /**
+     * Check memory and evict cached modules if needed, before loading a new module.
+     *
+     * Estimates the heapUsed increment of the upcoming load (from the heapUsed table if available,
+     * otherwise from HEAPUSED_PER_FILE), computes a heapUsed upper limit (heapUsedLimit - estimated
+     * increment), takes one actual heapUsed measurement, and only proceeds with eviction if
+     * heapUsed exceeds the upper limit.
+     *
+     * During eviction, the heapUsed estimate is tracked via {@link HeapUsedEstimateState},
+     * decremented by the heapUsed table value of each unloaded/downgraded module.
+     */
+    private evictIfNeeded(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.META): void {
+        if (!this.monitor || !this.cache || !this.topoOrderIndex) {
+            return;
+        }
+        if (!this.monitor.isEnabled()) {
+            return;
+        }
+        const idx = this.topoOrderIndex.get(moduleId);
+        if (idx === undefined) {
+            return;
+        }
+        const module = this.getModule(moduleId);
+        if (!module || module.getModuleType() === ModuleType.SDK) {
+            return;
+        }
+
+        const estInc = this.estimateLoadHeapUsed(moduleId, module, depthLevel);
+        const heapUsedUpperLimit = Math.max(0, this.monitor.getHeapUsedLimitBytes() - estInc);
+        const heapUsedStart = this.monitor.getCurrentHeapUsed();
+        if (heapUsedStart <= heapUsedUpperLimit) {
+            return;
+        }
+
+        const heapUsedState: HeapUsedEstimateState = { estimate: heapUsedStart, limit: heapUsedUpperLimit };
+        const depGraph = this.scene.getModuleDepGraph();
+        const { hardProtected, softProtected } = this.computeProtectedSets(moduleId, idx, depGraph);
+        const protectedDeps = new Set<ModuleID>([...hardProtected, ...softProtected]);
+        protectedDeps.delete(moduleId);
+        const reverseTopo = [...this.topoOrder].reverse();
+
+        this.runPhase1Eviction(hardProtected, softProtected, depGraph, heapUsedState);
+        this.runPhase2Downgrade(protectedDeps, reverseTopo, heapUsedState);
+        this.runPhase3Eviction(protectedDeps, reverseTopo, heapUsedState);
+    }
+
+    private runPhase1Eviction(
+        hardProtected: Set<ModuleID>,
+        softProtected: Set<ModuleID>,
+        depGraph: { getSuccModuleIds: (id: ModuleID) => ModuleID[]; getSCCGroups?: () => Map<ModuleID, ModuleID[]> | undefined } | undefined,
+        heapUsedState: HeapUsedEstimateState
+    ): void {
+        this.cache?.evict(
+            hardProtected, softProtected, this.monitor!,
+            id => this.unload(id),
+            depGraph?.getSCCGroups?.(),
+            heapUsedState,
+            id => this.estimateUnloadHeapUsedDecrease(id)
+        );
+    }
+
+    private runPhase2Downgrade(protectedDeps: Set<ModuleID>, reverseTopo: ModuleID[], heapUsedState: HeapUsedEstimateState): void {
+        if (heapUsedState.estimate <= heapUsedState.limit) {
+            return;
+        }
+        const downgradeTarget = Math.max(this.dependencyLoadLevel, ModuleDepthLevel.SIGNATURES) as ModuleDepthLevel;
+        const targetLoadState = this.depthLevelToLoadState(downgradeTarget);
+        for (const id of reverseTopo) {
+            if (heapUsedState.estimate <= heapUsedState.limit) {
+                break;
+            }
+            if (!protectedDeps.has(id) || !this.cache?.has(id)) {
+                continue;
+            }
+            const mod = this.getModule(id);
+            if (!mod || mod.getLoadState() <= targetLoadState) {
+                continue;
+            }
+            const decrease = this.estimateDowngradeHeapUsedDecrease(id, downgradeTarget);
+            this.downgradeModule(id, downgradeTarget);
+            heapUsedState.estimate -= decrease;
+        }
+    }
+
+    private runPhase3Eviction(protectedDeps: Set<ModuleID>, reverseTopo: ModuleID[], heapUsedState: HeapUsedEstimateState): void {
+        if (heapUsedState.estimate <= heapUsedState.limit) {
+            return;
+        }
+        for (const id of reverseTopo) {
+            if (heapUsedState.estimate <= heapUsedState.limit) {
+                break;
+            }
+            if (protectedDeps.has(id) && this.cache?.has(id)) {
+                const decrease = this.estimateUnloadHeapUsedDecrease(id);
+                this.unload(id);
+                this.cache.unregister(id);
+                heapUsedState.estimate -= decrease;
+            }
+        }
+    }
+
+    /**
+     * Estimate the memory cost of loading a module at the given depth level.
+     * Used as a fallback when the heapUsed table has no entry for this module+level.
+     */
+    private estimateLoadCost(module: ArkModule, depthLevel: ModuleDepthLevel): number {
+        const fileCount = this.getFileCount(module);
+        const bytesPerFile = ModuleBuilder.HEAPUSED_PER_FILE.get(depthLevel) ?? 0;
+        return fileCount * bytesPerFile;
+    }
+
+    /**
+     * Estimate the heapUsed increment for loading a module at the given depth level.
+     * Uses the heapUsed table value if available (from a prior first-load measurement),
+     * otherwise falls back to {@link estimateLoadCost} (fileCount × HEAPUSED_PER_FILE).
+     */
+    private estimateLoadHeapUsed(moduleId: ModuleID, module: ArkModule, depthLevel: ModuleDepthLevel): number {
+        const tableHeapUsed = this.cache?.getHeapUsed(moduleId, depthLevel);
+        if (tableHeapUsed !== undefined) {
+            return tableHeapUsed;
+        }
+        return this.estimateLoadCost(module, depthLevel);
+    }
+
+    /**
+     * Estimate the heapUsed decrease from unloading a module (full unload).
+     * Uses the heapUsed table value for the module's current load level,
+     * or falls back to HEAPUSED_PER_FILE estimate.
+     */
+    private estimateUnloadHeapUsedDecrease(moduleId: ModuleID): number {
+        const module = this.getModule(moduleId);
+        if (!module) {
+            return 0;
+        }
+        const currentLevel = this.loadStateToDepthLevel(module.getLoadState());
+        const tableHeapUsed = this.cache?.getHeapUsed(moduleId, currentLevel);
+        if (tableHeapUsed !== undefined) {
+            return tableHeapUsed;
+        }
+        return this.estimateLoadCost(module, currentLevel);
+    }
+
+    /**
+     * Estimate the heapUsed decrease from downgrading a module from its current level
+     * to a target level. Uses a ratio-based approach: downgrade releases a fixed
+     * proportion of the current-level heapUsed, avoiding the need for target-level
+     * table entries (which are never populated since downgradeModule doesn't write
+     * to the heapUsed table).
+     */
+    private estimateDowngradeHeapUsedDecrease(moduleId: ModuleID, _targetLevel: ModuleDepthLevel): number {
+        const module = this.getModule(moduleId);
+        if (!module) {
+            return 0;
+        }
+        const currentLevel = this.loadStateToDepthLevel(module.getLoadState());
+        const currentHeapUsed = this.cache?.getHeapUsed(moduleId, currentLevel) ??
+            this.estimateLoadCost(module, currentLevel);
+        return Math.max(0, Math.floor(currentHeapUsed * ModuleBuilder.DOWNGRADE_RELEASE_RATIO));
+    }
+
+
+    /**
+     * Downgrade a module's loaded data to the given target level (min SIGNATURES), releasing the
+     * heavy method-body/view-tree/AST data while keeping signatures (ArkClass/method signatures,
+     * filesMap, Scene index maps) so dependents can still resolve types. No-op if already at or
+     * below the target level. Used by eviction Phase 2.
+     */
+    private downgradeModule(moduleId: ModuleID, targetLevel: ModuleDepthLevel): void {
+        const module = this.getModule(moduleId);
+        if (!module || module.getModuleType() === ModuleType.SDK) {
+            return;
+        }
+        const targetLoadState = this.depthLevelToLoadState(targetLevel);
+        if (module.getLoadState() <= targetLoadState) {
+            return;
+        }
+        for (const arkFile of module.getFilesMap().values()) {
+            for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
+                for (const mtd of cls.getMethods(true)) {
+                    mtd.clearBodyAndSupplementary();
+                }
+                (cls as unknown as { viewTree: unknown }).viewTree = undefined;
+                for (const field of cls.getFields()) {
+                    field.setInitializer([]);
+                }
+            }
+            arkFile.setAST(null);
+            arkFile.clearSourceCode();
+        }
+        module.setLoadState(targetLoadState);
+    }
+
+    /**
+     * Get the number of source files in a module. If the module's filesMap is empty
+     * (not yet loaded), scans the module directory.
+     */
+    private getFileCount(module: ArkModule): number {
+        if (module.getFilesMap().size > 0) {
+            return module.getFilesMap().size;
+        }
+        const options = this.scene.getOptions();
+        const supportFileExts = options?.supportFileExts ?? ['.ets', '.ts'];
+        const ignoreFileNames = [...(options?.ignoreFileNames ?? []), OH_MODULES];
+        return getAllFiles(module.getModulePath(), supportFileExts, ignoreFileNames).length;
+    }
+
+    /**
+     * Compute the hard and soft protected sets for eviction.
+     * - Hard: the current module and its direct dependencies (never evicted).
+     * - Soft: direct dependencies of not-yet-loaded modules, plus already-cached modules
+     *   at later topo positions (to avoid reload overhead).
+     */
+    private computeProtectedSets(
+        moduleId: ModuleID,
+        idx: number,
+        depGraph?: { getSuccModuleIds: (id: ModuleID) => ModuleID[] }
+    ): { hardProtected: Set<ModuleID>; softProtected: Set<ModuleID> } {
+        const hardProtected = new Set<ModuleID>([moduleId]);
+        const softProtected = new Set<ModuleID>();
+        if (!depGraph || !this.cache) {
+            return { hardProtected, softProtected };
+        }
+        // Hard-protect current module's direct dependencies
+        for (const depId of depGraph.getSuccModuleIds(moduleId)) {
+            if (this.cache.has(depId)) {
+                hardProtected.add(depId);
+            }
+        }
+        // Soft-protect direct dependencies of not-yet-loaded modules
+        // and already-cached modules at later positions (avoid reload)
+        for (let j = idx + 1; j < this.topoOrder.length; j++) {
+            for (const depId of depGraph.getSuccModuleIds(this.topoOrder[j])) {
+                if (this.cache.has(depId)) {
+                    softProtected.add(depId);
+                }
+            }
+            if (this.cache.has(this.topoOrder[j])) {
+                softProtected.add(this.topoOrder[j]);
+            }
+        }
+        return { hardProtected, softProtected };
     }
 
     /**

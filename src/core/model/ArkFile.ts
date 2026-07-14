@@ -15,6 +15,7 @@
 
 import fs from 'fs';
 import { ModuleScene, Scene } from '../../Scene';
+import type { ArkModule } from './ArkModule';
 import { ArkExport, ExportInfo } from './ArkExport';
 import { ImportInfo } from './ArkImport';
 import { ArkClass } from './ArkClass';
@@ -78,6 +79,7 @@ export class ArkFile {
 
     private scene!: Scene;
     private moduleScene?: ModuleScene;
+    private arkModule?: ArkModule;
 
     private fileSignature: FileSignature = FileSignature.DEFAULT;
 
@@ -132,6 +134,14 @@ export class ArkFile {
 
     public setModuleScene(moduleScene: ModuleScene): void {
         this.moduleScene = moduleScene;
+    }
+
+    public getArkModule(): ArkModule | undefined {
+        return this.arkModule;
+    }
+
+    public setArkModule(arkModule: ArkModule): void {
+        this.arkModule = arkModule;
     }
 
     public setProjectDir(projectDir: string): void {
@@ -450,5 +460,22 @@ export class ArkFile {
 
     public setAST(value: ts.SourceFile | null): void {
         this.ast = value;
+    }
+
+    public clearAllReferences(): void {
+        for (const cls of this.classes.values()) { cls.clearAllReferences(); }
+        for (const ns of this.namespaces.values()) { ns.clearAllReferences(); }
+        for (const exp of this.exportInfoMap.values()) { exp.clearAllReferences(); }
+        for (const imp of this.importInfoMap.values()) { imp.clearAllReferences(); }
+        this.classes.clear();
+        this.namespaces.clear();
+        this.importInfoMap.clear();
+        this.exportInfoMap.clear();
+        this.defaultClass = undefined as unknown as ArkClass;
+        this.scene = undefined as unknown as Scene;
+        this.moduleScene = undefined;
+        this.arkModule = undefined;
+        this.setAST(null);
+        this.clearSourceCode();
     }
 }

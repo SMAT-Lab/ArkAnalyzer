@@ -29,7 +29,7 @@ export type ModuleID = number;
  * Lifecycle state of an {@link ArkModule}. Stored in the low 3 bits of {@link ArkModule.tags}.
  *
  * The states form an incremental progression: each state is a superset of the previous one,
- * matching the {@link ModuleDepthLevel} data depth levels. {@link DISPOSED} releases heavy data.
+ * matching the {@link ModuleDepthLevel} data depth levels.
  */
 export enum ModuleLoadState {
     /** No data loaded yet. */
@@ -42,8 +42,6 @@ export enum ModuleLoadState {
     SIGNATURES = 3,
     /** SIGNATURES + method bodies (ArkBody, CFG, Stmt/Expr). */
     BODIES = 4,
-    /** Unloaded; heavy data released via {@link ArkModule.clearFilesMap}. */
-    DISPOSED = 5,
 }
 
 /**
@@ -59,7 +57,7 @@ export enum ModuleType {
 }
 
 // Bit-field layout of `tags` (modeled after ArkBaseModel.tags):
-//   bits 0-2: ModuleLoadState (3 bits, mask 0b111, values 0-5)
+//   bits 0-2: ModuleLoadState (3 bits, mask 0b111, values 0-4)
 //   bits 3-4: ModuleType      (2 bits, mask 0b11 << 3, values 0-2)
 const MODULE_LOAD_STATE_MASK = 0b111;
 const MODULE_LOAD_STATE_SHIFT = 0;
@@ -261,7 +259,7 @@ export class ArkModule {
         return this.fileDepGraph;
     }
 
-    public setFileDepGraph(graph: FileDepGraph): void {
+    public setFileDepGraph(graph: FileDepGraph | undefined): void {
         this.fileDepGraph = graph;
     }
 

@@ -91,17 +91,23 @@ describe('analyseByModule integration tests', () => {
         return scene;
     }
 
+    /** Create a config that includes PROJECT modules as targets. */
+    function createProjectConfig(): ModuleAnalysisConfig {
+        const config = new ModuleAnalysisConfig();
+        config.setIncludeType(ModuleType.PROJECT, true);
+        return config;
+    }
+
     it('flow: prepareModules -> analyzeModuleDependencies -> buildSdkModules -> callback called in topo order', () => {
         const scene = createScene();
 
         const calledModules: ArkModule[] = [];
         scene.analyseByModule(module => {
             calledModules.push(module);
-        });
+        }, createProjectConfig());
 
         // Verify preprocessing was done
         expect(scene.isModulesRegistered()).toBe(true);
-        expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
         // Verify callback was called for exactly 2 PROJECT modules (OH_MODULES not included by default)
         expect(calledModules.length).toBe(2);
@@ -124,19 +130,17 @@ describe('analyseByModule integration tests', () => {
         const scene = createScene();
 
         // First call - does all preprocessing
-        scene.analyseByModule(() => {});
+        scene.analyseByModule(() => {}, createProjectConfig());
 
         expect(scene.isModulesRegistered()).toBe(true);
-        expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
 
         // Spy on preprocessing methods on the prototype (analyseByModule creates its own builder).
-        // buildSdkModules is always called but is internally idempotent (buildStage guard), so we
-        // only spy on prepareModules and analyzeModuleDependencies which are guarded by Scene flags.
+        // Both prepareModules and analyzeModuleDependencies are guarded by modulesRegistered flag.
         const spyModules = vi.spyOn(ModuleBuilder.prototype, 'prepareModules');
         const spyDeps = vi.spyOn(ModuleBuilder.prototype, 'analyzeModuleDependencies');
 
-        // Second call - should skip preprocessing
-        scene.analyseByModule(() => {});
+        // Second call - both skipped (modulesRegistered is true)
+        scene.analyseByModule(() => {}, createProjectConfig());
 
         expect(spyModules).toHaveBeenCalledTimes(0);
         expect(spyDeps).toHaveBeenCalledTimes(0);
@@ -158,7 +162,7 @@ describe('analyseByModule integration tests', () => {
         const calledModules: ArkModule[] = [];
         scene.analyseByModule(module => {
             calledModules.push(module);
-        });
+        }, createProjectConfig());
 
         // Verify callback contains exactly 2 PROJECT modules (no SDK, OH_MODULES not included by default)
         expect(calledModules.length).toBe(2);
@@ -198,7 +202,7 @@ describe('analyseByModule integration tests', () => {
         const calledModules: ArkModule[] = [];
         scene.analyseByModule(module => {
             calledModules.push(module);
-        });
+        }, createProjectConfig());
 
         // Only PROJECT modules are included by default (OH_MODULES excluded)
         const moduleTypes = calledModules.map(m => m.getModuleType());
@@ -213,16 +217,16 @@ describe('analyseByModule integration tests', () => {
         scene.analyseByModule((module, scn) => {
             expect(module).toBeInstanceOf(ArkModule);
             expect(scn).toBe(scene);
-        });
+        }, createProjectConfig());
     });
 
-    it('modules are META before callback is called', () => {
+    it('modules are loaded before callback is called', () => {
         const scene = createScene();
 
         scene.analyseByModule(module => {
-            // Every module passed to the callback must already be in the META state
-            expect(module.getLoadState()).toBe(ModuleLoadState.META);
-        });
+            // Every module passed to the callback must be loaded (default BODIES)
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
+        }, createProjectConfig());
     });
 
     it('loadModule is called for all modules in topoOrder, including non-target dependencies', () => {
@@ -239,18 +243,26 @@ describe('analyseByModule integration tests', () => {
         config.setIncludeType(ModuleType.OH_MODULES, false);
         config.addTargetModuleId(entryId);
 
-        scene.analyseByModule(() => {}, config);
+        let entryWasLoaded = false;
+        scene.analyseByModule(module => {
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
+            if (module.getModulePath() === entryPath) {
+                entryWasLoaded = true;
+                // The non-target dependency (library) must also be loaded at this point
+                // Dependencies default to SIGNATURES level
+                const libraryModule = builder.getModuleByPath(libraryPath)!;
+                expect(libraryModule.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+            }
+        }, config);
 
-        // The target (entry) must be META
+        expect(entryWasLoaded).toBe(true);
+
+        // After analyseByModule completes, modules persist in cache (not unloaded)
         const entryModule = builder.getModuleByPath(entryPath)!;
-        expect(entryModule).toBeDefined();
-        expect(entryModule.getLoadState()).toBe(ModuleLoadState.META);
+        expect(entryModule.getLoadState()).toBe(ModuleLoadState.BODIES);
 
-        // The non-target dependency (library) must also be META, even though
-        // the callback was not invoked for it.
         const libraryModule = builder.getModuleByPath(libraryPath)!;
-        expect(libraryModule).toBeDefined();
-        expect(libraryModule.getLoadState()).toBe(ModuleLoadState.META);
+        expect(libraryModule.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
     });
 
     it('IMPORTS level: SDK and non-SDK modules have file dependency graphs', () => {
@@ -264,8 +276,8 @@ describe('analyseByModule integration tests', () => {
 
         const scene = createScene();
         const config = new ModuleAnalysisConfig();
-        config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS);
-        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
+        config.setIncludeType(ModuleType.PROJECT, true);
+        config.setLoadLevel(ModuleDepthLevel.IMPORTS);
 
         const verifiedModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -290,7 +302,8 @@ describe('analyseByModule integration tests', () => {
 
         const scene = createScene();
         const config = new ModuleAnalysisConfig();
-        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES);
+        config.setIncludeType(ModuleType.PROJECT, true);
+        config.setLoadLevel(ModuleDepthLevel.SIGNATURES);
 
         const verifiedModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -324,7 +337,8 @@ describe('analyseByModule integration tests', () => {
 
         const scene = createScene();
         const config = new ModuleAnalysisConfig();
-        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
+        config.setIncludeType(ModuleType.PROJECT, true);
+        config.setLoadLevel(ModuleDepthLevel.BODIES);
 
         const verifiedModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -360,8 +374,8 @@ describe('analyseByModule integration tests', () => {
 
         const scene = createScene();
         const config = new ModuleAnalysisConfig();
-        config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
-        config.setEnableTypeInference(true);
+        config.setIncludeType(ModuleType.PROJECT, true);
+        config.setLoadLevel(ModuleDepthLevel.BODIES);
 
         const verifiedModules: ArkModule[] = [];
         scene.analyseByModule(module => {
@@ -386,5 +400,44 @@ describe('analyseByModule integration tests', () => {
         }, config);
 
         expect(verifiedModules.length).toBe(2);
+    });
+
+    it('memory limit: modules evicted and reloaded correctly with small memoryLimitMB', () => {
+        fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'entry', 'src', 'cls.ets'), 'export class MyClass {\n  foo(): number { return 42; }\n}\n');
+        fs.mkdirSync(path.join(tmpDir, 'library', 'src'), { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'library', 'src', 'lib.ets'), 'export class LibClass {\n  bar(): string { return "hello"; }\n}\n');
+
+        const sceneConfig = new SceneConfig();
+        sceneConfig.buildFromProjectDir(tmpDir);
+        const scene = new Scene();
+        scene.config(sceneConfig);
+        scene.getOptions().memoryLimitMB = 1;
+
+        const config = new ModuleAnalysisConfig();
+        config.setIncludeType(ModuleType.PROJECT, true);
+        config.setLoadLevel(ModuleDepthLevel.SIGNATURES);
+
+        const verifiedModules: ArkModule[] = [];
+        scene.analyseByModule(module => {
+            if (module.getModuleType() !== ModuleType.PROJECT) {
+                return;
+            }
+            expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+            for (const arkFile of module.getFilesMap().values()) {
+                const classes = ModelUtils.getAllClassesInFile(arkFile);
+                expect(classes.length).toBeGreaterThan(0);
+            }
+            verifiedModules.push(module);
+        }, config);
+
+        expect(verifiedModules.length).toBe(2);
+
+        // With tiny memoryLimitMB, Phase 3 evicts protected dependencies as a last resort,
+        // so earlier PROJECT modules are unloaded (NOT_LOADED) while the last-loaded remains.
+        const projectModules = scene.getModules().filter(m => m.getModuleType() === ModuleType.PROJECT);
+        expect(projectModules.length).toBe(2);
+        expect(projectModules.some(m => m.getLoadState() === ModuleLoadState.NOT_LOADED)).toBe(true);
+        expect(projectModules.some(m => m.getLoadState() === ModuleLoadState.SIGNATURES)).toBe(true);
     });
 });

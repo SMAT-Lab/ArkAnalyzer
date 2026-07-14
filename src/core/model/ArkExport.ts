@@ -284,4 +284,11 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
     public validate(): ArkError {
         return this.validateFields(['declaringArkFile']);
     }
+
+    public clearAllReferences(): void {
+        this.arkExport = null;
+        this.declaringArkFile = undefined as unknown as ArkFile;
+        this.declaringArkNamespace = undefined;
+        this.clearSourceCode();
+    }
 }

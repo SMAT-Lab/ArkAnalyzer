@@ -165,6 +165,7 @@ export class FrontendBuilder {
                 const fileSignature = new FileSignature(scene.getProjectName(), path.relative(scene.getRealProjectDir(), filePath));
                 arkFile.setFileSignature(fileSignature);
                 module.addFile(arkFile);
+                arkFile.setArkModule(module);
                 scene.setFile(arkFile);
                 arkFiles.push(arkFile);
             } catch (error) {
@@ -293,8 +294,9 @@ export class FrontendBuilder {
      * 4. Run {@link buildDefaultConstructor} / {@link replaceSuper2Constructor} /
      *    {@link addInitInConstructor} on the module's files (gate still open).
      *
-     * Does not call {@link ModelUtils.dispose}: the global caches are shared across modules and
-     * should be released by the caller after all modules are processed.
+     * Calls {@link ModelUtils.dispose} after each module's method bodies are built to release
+     * global caches (implicitArkUIBuilderMethods, popMethodSignatureCache) that accumulate during
+     * body building.
      *
      * @param module - The module whose files' method bodies are to be built.
      */
@@ -324,6 +326,7 @@ export class FrontendBuilder {
             }
         } finally {
             scene.setBuildStage(prevStage);
+            ModelUtils.dispose();
         }
     }
 
