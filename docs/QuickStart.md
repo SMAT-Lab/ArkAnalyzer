@@ -308,6 +308,39 @@ for (const arkFile of scene.getFiles()) {
 
 **详细说明**：更多遍历和分析示例请参考 [Scene 结构详细文档](./components/Scene.md)
 
+### 3.3 模块级分析（analyseByModule）
+
+对于鸿蒙多模块工程，`Scene.analyseByModule` 提供**逐模块**的增量分析入口，适合工程较大或只需分析部分模块的场景。与 `buildSceneFromProjectDir` 一次性构建整个项目并常驻内存不同，它按模块依赖的拓扑序依次处理每个目标模块，每个模块处理完成后即可释放内存，从而把峰值内存控制在单模块量级。
+
+每个目标模块的处理流程为：
+
+1. **构建 ArkModule 数据**——按配置的加载深度构建该模块的 `ArkFile`、类、方法签名、方法体（CFG、Stmt）等；
+2. **模块内类型推导**——对该模块执行类型推导，使模块内类型可用（加载深度达到 `SIGNATURES` 及以上时执行）；
+3. **按上层应用回调分析模块**——将 `ArkModule` 与 `Scene` 传入回调，由上层应用完成所需分析；
+4. **从内存卸载模块**——分析完成且不再被后续模块依赖时，从内存释放该模块数据。设定 `memoryLimitMB` 后框架会主动卸载不再需要的模块以守住内存上限。
+
+基本用法：先用 `scene.config(sceneConfig)` 保存配置，再通过 `ModuleAnalysisConfig` 声明目标模块与加载深度，最后调用 `scene.analyseByModule(callback, config)`。
+
+```typescript
+import { Scene, SceneConfig, ModuleAnalysisConfig, ModuleType, ModuleDepthLevel } from 'arkanalyzer';
+
+const sceneConfig = new SceneConfig();
+sceneConfig.buildFromProjectDir('/path/to/project');
+const scene = new Scene();
+scene.config(sceneConfig);                       // 轻量入口：仅保存配置
+
+const config = new ModuleAnalysisConfig();
+config.setIncludeType(ModuleType.PROJECT, true);  // 目标 = 全部 PROJECT 模块
+config.setLoadLevel(ModuleDepthLevel.BODIES);     // 加载到方法体
+
+scene.analyseByModule((module, scn) => {
+    // 上层应用在此分析该模块
+    console.log(`module: ${module.getModuleName()}, files: ${module.getFilesMap().size}`);
+}, config);
+```
+
+> 完整说明（目标模块选择、加载深度、两阶段用法等）见 [Scene 详细文档 §6.5 模块级分析](./components/Scene.md#65-模块级分析)，模块数据结构见 [ArkModule 文档](./components/ArkModule.md)。
+
 ## 4. ArkAnalyzer 静态分析使用样例
 
 下列示例默认你已按 **第 3.1 节** 完成 `Scene` 构建，并在分析前调用 `scene.inferTypes()`。为便于复制运行，多数代码块仍写出完整前置步骤；若已在工程中封装 Scene 初始化，可自行省略重复片段。
@@ -700,6 +733,7 @@ scene.inferTypes();  // 在分析前执行类型推导
 
 - **简单项目**：使用 `buildSceneFromProjectDir(config)`
 - **OpenHarmony项目（支持模块化）**：使用 `buildBasicInfo(config)` + `buildScene4HarmonyProject()`
+- **鸿蒙多模块工程 / 按模块增量分析**：使用 `scene.config(config)` + `analyseByModule(callback, moduleConfig)`，详见 [Scene 详细文档 §6.5 模块级分析](./components/Scene.md#65-模块级分析)
 
 ## 7. 更多资源
 
