@@ -961,8 +961,8 @@ export class ArkIRTransformer {
         const conditionPositions = [...leftOpOriginalPositions, ...rightOpOriginalPositions];
         const ifStmt = new ArkIfStmt(conditionExpr);
         ifStmt.setOperandOriginalPositions([...conditionPositions]);
-        const originPos = rightOpOriginalPositions.find(p => p !== FullPosition.DEFAULT)
-            ?? leftOpOriginalPositions.find(p => p !== FullPosition.DEFAULT);
+        const originPos = rightOpOriginalPositions.find(p => p !== FullPosition.DEFAULT) ??
+            leftOpOriginalPositions.find(p => p !== FullPosition.DEFAULT);
         if (originPos) {
             ifStmt.setOriginFullPosition(originPos);
         }
