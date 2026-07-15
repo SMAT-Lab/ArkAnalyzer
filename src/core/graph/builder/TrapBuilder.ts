@@ -466,22 +466,43 @@ export class TrapBuilder {
 
     private copyStmt(sourceStmt: Stmt): Stmt | null {
         if (sourceStmt instanceof ArkAssignStmt) {
-            return new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
+            const target = new ArkAssignStmt(sourceStmt.getLeftOp(), sourceStmt.getRightOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkInvokeStmt) {
-            return new ArkInvokeStmt(sourceStmt.getInvokeExpr());
+            const target = new ArkInvokeStmt(sourceStmt.getInvokeExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkIfStmt) {
-            return new ArkIfStmt(sourceStmt.getConditionExpr());
+            const target = new ArkIfStmt(sourceStmt.getConditionExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkReturnStmt) {
-            return new ArkReturnStmt(sourceStmt.getOp());
+            const target = new ArkReturnStmt(sourceStmt.getOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkReturnVoidStmt) {
-            return new ArkReturnVoidStmt();
+            const target = new ArkReturnVoidStmt();
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkThrowStmt) {
-            return new ArkThrowStmt(sourceStmt.getOp());
+            const target = new ArkThrowStmt(sourceStmt.getOp());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else if (sourceStmt instanceof ArkAliasTypeDefineStmt) {
-            return new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
+            const target = new ArkAliasTypeDefineStmt(sourceStmt.getAliasType(), sourceStmt.getAliasTypeExpr());
+            this.copyOriginPosition(sourceStmt, target);
+            return target;
         } else {
             logger.error(`unsupported statement type`);
             return null;
+        }
+    }
+
+    private copyOriginPosition(source: Stmt, target: Stmt): void {
+        const originPos = source.getOriginFullPosition();
+        if (originPos) {
+            target.setOriginFullPosition(originPos);
         }
     }
 }
