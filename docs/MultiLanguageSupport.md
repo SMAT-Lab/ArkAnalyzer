@@ -68,7 +68,7 @@ flowchart TB
 | Method 重载（[`isLanguageOverloadSupport`](../src/core/common/ModelUtils.ts)） | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | [CallGraph](./analysis/CallGraph.md)（CHA / RTA） | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [Def-Use Chain](./analysis/Def-Use%20Chain.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| [IFDS](./analysis/IFDS.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| [DataFlow](./analysis/DataFlow.md) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | [ViewTree](./analysis/ViewTree.md) | ✅ | ✅ | — | — | — | — |
 | 多模块（`oh-package.json5`） | ✅ | ✅ | — | — | ✅（与 ArkTS 同工程） | — |
 

@@ -6,7 +6,7 @@
 
 1. **批量构建**：扫描项目目录，解析每个源文件成 `ArkFile`，再级联生成各级模型对象。
 2. **全局索引**：以 `Map<string, T>` 形式保存所有签名 → 模型的反向索引（`filesMap` / `namespacesMap` / `classesMap` / `methodsMap` / `sdkArkFilesMap` / `sdkGlobalMap`），让按 [`Signature`](#43-签名与索引) 的 O(1) 查询成为可能。
-3. **类型推导驱动**：`inferTypes()` 是后续所有静态分析（[CallGraph](../analysis/CallGraph.md)、[Def-Use Chain](../analysis/Def-Use%20Chain.md)、[IFDS](../analysis/IFDS.md)、[ViewTree](../analysis/ViewTree.md)）的前置步骤。
+3. **类型推导驱动**：`inferTypes()` 是后续所有静态分析（[CallGraph](../analysis/CallGraph.md)、[Def-Use Chain](../analysis/Def-Use%20Chain.md)、[DataFlow](../analysis/DataFlow.md)、[ViewTree](../analysis/ViewTree.md)）的前置步骤。
 4. **构建阶段管理**：`SceneBuildStage` 枚举跟踪当前构建到了哪一步，避免重复工作。
 5. **多模块组织**：鸿蒙工程通过 [`ModuleScene`](#44-modulescene-鸿蒙多模块) 把每个 `module` 抽成子作用域。
 

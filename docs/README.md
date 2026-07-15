@@ -8,7 +8,7 @@
 | 路径 | 内容 |
 |------|------|
 | [`components/`](./components/) | **核心组件** 10 篇——Scene 数据结构层级模型 |
-| [`analysis/`](./analysis/) | **静态分析** 5 篇——TypeInference / Def-Use / CallGraph / IFDS / ViewTree |
+| [`analysis/`](./analysis/) | **静态分析** 5 篇——TypeInference / Def-Use / CallGraph / DataFlow / ViewTree |
 | [`cppFrontend/`](./cppFrontend/) | C/C++ 前端用户指南、构建指南 |
 | [`contributing/`](./contributing/) | 贡献流程（PR / Issue 提交规范） |
 | [`api_docs/`](./api_docs/) | typedoc 自动生成的 API 参考（`npm run gendoc` 产物，**不要手工编辑**） |
@@ -47,7 +47,7 @@
 | [TypeInference.md](./analysis/TypeInference.md) | 类型推导（`scene.inferTypes()`），其他分析的前置 |
 | [Def-Use Chain.md](./analysis/Def-Use%20Chain.md) | 定义-使用链（`Cfg.buildDefUseChain()`） |
 | [CallGraph.md](./analysis/CallGraph.md) | 调用图（CHA / RTA 双算法 + DOT/JSON 导出） |
-| [IFDS.md](./analysis/IFDS.md) | 过程间数据流（4 类 FlowFunction + PathEdge） |
+| [DataFlow.md](./analysis/DataFlow.md) | 过程间数据流（4 类 FlowFunction + PathEdge） |
 | [ViewTree.md](./analysis/ViewTree.md) | ArkUI 组件树 + 状态绑定 |
 
 ### 2.4 多语言与 C/C++ 前端

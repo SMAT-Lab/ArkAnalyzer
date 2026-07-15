@@ -4,7 +4,7 @@
 
 **`ArkBody`** 是 ArkAnalyzer 中"方法体"的容器：把一个方法编译成 ArkIR 后，所有的局部变量、控制流图、类型别名、异常表都汇聚到 `ArkBody` 之中。一个 [`ArkMethod`](./ArkMethod.md) 仅当其拥有具体实现（即非 `abstract`、非 declare 接口签名）时才会持有 `ArkBody`，其余情况 `arkMethod.getBody()` 返回 `undefined`。
 
-可以把 `ArkBody` 视作 ArkIR 的"方法级根结点"——下游分析（[Def-Use Chain](../analysis/Def-Use%20Chain.md) / [CallGraph](../analysis/CallGraph.md) / [IFDS](../analysis/IFDS.md) 等）几乎都从某个 `ArkBody` 出发。
+可以把 `ArkBody` 视作 ArkIR 的"方法级根结点"——下游分析（[Def-Use Chain](../analysis/Def-Use%20Chain.md) / [CallGraph](../analysis/CallGraph.md) / [DataFlow](../analysis/DataFlow.md) 等）几乎都从某个 `ArkBody` 出发。
 
 ## 2. ArkIR 视角
 

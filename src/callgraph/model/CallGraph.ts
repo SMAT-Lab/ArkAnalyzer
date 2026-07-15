@@ -32,8 +32,8 @@ export { CallSite, DynCallSite, ICallSite };
 
 export enum CallGraphNodeKind {
     real, // method from project and has body
-    vitual,
-    intrinsic, // method created by AA, which arkMethod.isGenrated is true
+    virtual,
+    intrinsic, // method created by AA, which arkMethod.isGenerated is true
     constructor, // constructor
     blank, // method without body
 }
@@ -186,7 +186,7 @@ export class CallGraph extends BaseExplicitGraph {
             // means the method has no implementation, or base type is unclear to find it
             // Create a virtual CG Node
             // TODO: this virtual CG Node need be remove once the base type is clear
-            return this.addCallGraphNode(method, CallGraphNodeKind.vitual);
+            return this.addCallGraphNode(method, CallGraphNodeKind.virtual);
         }
 
         return this.getNode(n) as CallGraphNode;
@@ -231,11 +231,11 @@ export class CallGraph extends BaseExplicitGraph {
         }
     }
 
-    public addDynamicCallInfo(callStmt: Stmt, caller: Method, protentialCallee?: Method): void {
+    public addDynamicCallInfo(callStmt: Stmt, caller: Method, potentialCallee?: Method): void {
         let callerNode = this.getCallGraphNodeByMethod(caller) as CallGraphNode;
         let calleeNode;
-        if (protentialCallee) {
-            calleeNode = this.getCallGraphNodeByMethod(protentialCallee) as CallGraphNode;
+        if (potentialCallee) {
+            calleeNode = this.getCallGraphNodeByMethod(potentialCallee) as CallGraphNode;
         }
         let args = callStmt.getInvokeExpr()?.getArgs();
 

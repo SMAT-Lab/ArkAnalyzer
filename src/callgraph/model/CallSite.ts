@@ -51,7 +51,7 @@ export class DynCallSite implements ICallSite {
     public id: CallSiteID;
     public callStmt: Stmt;
     public args: Value[] | undefined;
-    public protentialCalleeFuncID: FuncID | undefined;
+    public potentialCalleeFuncID: FuncID | undefined;
     public callerFuncID: FuncID;
 
     constructor(id: CallSiteID, s: Stmt, a: Value[] | undefined, ptcCallee: FuncID | undefined, caller: FuncID) {
@@ -59,11 +59,11 @@ export class DynCallSite implements ICallSite {
         this.callerFuncID = caller;
         this.callStmt = s;
         this.args = a;
-        this.protentialCalleeFuncID = ptcCallee;
+        this.potentialCalleeFuncID = ptcCallee;
     }
 
     public getCalleeFuncID(): FuncID | undefined {
-        return this.protentialCalleeFuncID;
+        return this.potentialCalleeFuncID;
     }
 }
 

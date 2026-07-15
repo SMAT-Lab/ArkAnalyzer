@@ -31,7 +31,6 @@
     "hvigorfile.ts",
     "hvigorfile.js",
     "hvigor-wrapper.js",
-    "build-tools",
     "build",
     ".cxx",
     ".test",
