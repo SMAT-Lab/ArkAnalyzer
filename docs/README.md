@@ -7,7 +7,7 @@
 
 | 路径 | 内容 |
 |------|------|
-| [`components/`](./components/) | **核心组件** 10 篇——Scene 数据结构层级模型 |
+| [`components/`](./components/) | **核心组件** 11 篇——Scene 数据结构层级模型 |
 | [`analysis/`](./analysis/) | **静态分析** 5 篇——TypeInference / Def-Use / CallGraph / DataFlow / ViewTree |
 | [`cppFrontend/`](./cppFrontend/) | C/C++ 前端用户指南、构建指南 |
 | [`contributing/`](./contributing/) | 贡献流程（PR / Issue 提交规范） |
@@ -30,6 +30,7 @@
 | 层级 | 文档 | 说明 |
 |------|------|------|
 | 项目 | [Scene.md](./components/Scene.md) | 项目级全局模型，全局索引 + 构建管线 |
+| 模块 | [ArkModule.md](./components/ArkModule.md) | 模块层抽象（HAP/HSP/HAR），`analyseByModule` 路径产物 |
 | 文件 | [ArkFile.md](./components/ArkFile.md) | 单个源文件抽象（含 Language 枚举、import/export） |
 | 命名空间 | [ArkNameSpace.md](./components/ArkNameSpace.md) | `namespace` 抽象，可嵌套、同名合并 |
 | 类型 | [ArkClass.md](./components/ArkClass.md) | 类 / 接口 / 枚举 / struct / 对象字面量 / type literal / union |
@@ -80,19 +81,20 @@
 
 ## 3. 项目层次速览
 
-下图展示 ArkAnalyzer 的 Scene 数据结构如何把项目代码自上而下组织起来，与 [§2.2 核心组件](#22-核心组件components) 表里的 10 篇文档一一对应：
+下图展示 ArkAnalyzer 的 Scene 数据结构如何把项目代码自上而下组织起来，与 [§2.2 核心组件](#22-核心组件components) 表里的 11 篇文档一一对应：
 
 ```
 Scene
- ├── ArkFile（源文件）
- │    ├── ArkNamespace（命名空间，可嵌套）
- │    │    ├── ArkClass → ArkMethod / ArkField
- │    │    └── 嵌套 ArkNamespace
- │    └── ArkClass（类 / 接口 / 枚举 / struct / 对象字面量 / type literal / union）
- │         ├── ArkMethod（方法 / 函数 / %dflt / %instInit / %statInit / %AM）
- │         │    └── ArkBody → CFG → BasicBlock → Stmt
- │         │                                     └─ Local / Constant / Ref / Expr
- │         └── ArkField（字段 / 枚举成员 / 索引签名 / 参数属性 / GET 访问器）
+ ├── ArkModule（模块，HAP/HSP/HAR，analyseByModule 路径产物）
+ │    └── ArkFile（源文件）
+ │         ├── ArkNamespace（命名空间，可嵌套）
+ │         │    ├── ArkClass → ArkMethod / ArkField
+ │         │    └── 嵌套 ArkNamespace
+ │         └── ArkClass（类 / 接口 / 枚举 / struct / 对象字面量 / type literal / union）
+ │              ├── ArkMethod（方法 / 函数 / %dflt / %instInit / %statInit / %AM）
+ │              │    └── ArkBody → CFG → BasicBlock → Stmt
+ │              │                                     └─ Local / Constant / Ref / Expr
+ │              └── ArkField（字段 / 枚举成员 / 索引签名 / 参数属性 / GET 访问器）
  ├── sdkArkFilesMap（SDK 文件，与项目代码同一套模型抽象）
  └── ModuleScene（鸿蒙多模块工程的子作用域，可选）
 ```
