@@ -163,10 +163,10 @@ export class ModuleUtils {
             const main = this.getFileRealPath(path.resolve(modulePath, entry));
             ret.set(moduleName, new ModulePath(modulePath, main));
         }
-
-        // process dependency items
-        this.OH_PACKAGE_DEPENDENCY_KEYS.forEach((dependencyKey) => this.processDependency(content[dependencyKey], modulePath, ret, override, projectDir));
-
+        // process dependency items when not override
+        if (!override) {
+            this.OH_PACKAGE_DEPENDENCY_KEYS.forEach((dependencyKey) => this.processDependency(content[dependencyKey], modulePath, ret, override, projectDir));
+        }
     }
 
     private static processDependency(dependencies: unknown, modulePath: string,
