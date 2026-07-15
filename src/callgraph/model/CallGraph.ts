@@ -227,7 +227,7 @@ export class CallGraph extends BaseExplicitGraph {
         }
 
         for (const outEdge of node.getOutgoingEdges() ?? []) {
-            node.removeIncomingEdge(outEdge);
+            node.removeOutgoingEdge(outEdge);
         }
     }
 
