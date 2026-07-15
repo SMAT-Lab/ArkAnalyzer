@@ -20,9 +20,9 @@ import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 
 describe('ModuleAnalysisConfig tests', () => {
     describe('type filter', () => {
-        it('includes PROJECT by default (OH_MODULES not included)', () => {
+        it('no types included by default', () => {
             const config = new ModuleAnalysisConfig();
-            expect(config.isTypeIncluded(ModuleType.PROJECT)).toBe(true);
+            expect(config.isTypeIncluded(ModuleType.PROJECT)).toBe(false);
             expect(config.isTypeIncluded(ModuleType.OH_MODULES)).toBe(false);
             expect(config.isTypeIncluded(ModuleType.SDK)).toBe(false);
         });
@@ -35,6 +35,7 @@ describe('ModuleAnalysisConfig tests', () => {
 
         it('setIncludeType toggles a type off', () => {
             const config = new ModuleAnalysisConfig();
+            config.setIncludeType(ModuleType.PROJECT, true);
             config.setIncludeType(ModuleType.OH_MODULES, false);
             expect(config.isTypeIncluded(ModuleType.OH_MODULES)).toBe(false);
             expect(config.isTypeIncluded(ModuleType.PROJECT)).toBe(true);
@@ -125,49 +126,36 @@ describe('ModuleAnalysisConfig tests', () => {
     });
 
     describe('load levels', () => {
-        it('defaults to META for all ModuleTypes', () => {
+        it('loadLevel defaults to BODIES', () => {
             const config = new ModuleAnalysisConfig();
-            expect(config.getLoadLevel(ModuleType.SDK)).toBe(ModuleDepthLevel.META);
-            expect(config.getLoadLevel(ModuleType.PROJECT)).toBe(ModuleDepthLevel.META);
-            expect(config.getLoadLevel(ModuleType.OH_MODULES)).toBe(ModuleDepthLevel.META);
+            expect(config.getLoadLevel()).toBe(ModuleDepthLevel.BODIES);
+        });
+
+        it('dependencyLoadLevel defaults to SIGNATURES', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(config.getDependencyLoadLevel()).toBe(ModuleDepthLevel.SIGNATURES);
         });
 
         it('setLoadLevel stores a custom load level', () => {
             const config = new ModuleAnalysisConfig();
-            config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
-            expect(config.getLoadLevel(ModuleType.PROJECT)).toBe(ModuleDepthLevel.BODIES);
+            config.setLoadLevel(ModuleDepthLevel.META);
+            expect(config.getLoadLevel()).toBe(ModuleDepthLevel.META);
+        });
+
+        it('setDependencyLoadLevel stores a custom dependency load level', () => {
+            const config = new ModuleAnalysisConfig();
+            config.setDependencyLoadLevel(ModuleDepthLevel.BODIES);
+            expect(config.getDependencyLoadLevel()).toBe(ModuleDepthLevel.BODIES);
         });
 
         it('setLoadLevel returns this to allow chaining', () => {
             const config = new ModuleAnalysisConfig();
-            expect(config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES)).toBe(config);
+            expect(config.setLoadLevel(ModuleDepthLevel.SIGNATURES)).toBe(config);
         });
 
-        it('does not affect other types when setting a single type', () => {
+        it('setDependencyLoadLevel returns this to allow chaining', () => {
             const config = new ModuleAnalysisConfig();
-            config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
-            expect(config.getLoadLevel(ModuleType.SDK)).toBe(ModuleDepthLevel.META);
-            expect(config.getLoadLevel(ModuleType.OH_MODULES)).toBe(ModuleDepthLevel.META);
-        });
-    });
-
-    describe('type inference', () => {
-        it('defaults to disabled', () => {
-            const config = new ModuleAnalysisConfig();
-            expect(config.isTypeInferenceEnabled()).toBe(false);
-        });
-
-        it('setEnableTypeInference sets the flag', () => {
-            const config = new ModuleAnalysisConfig();
-            config.setEnableTypeInference(true);
-            expect(config.isTypeInferenceEnabled()).toBe(true);
-        });
-
-        it('can be toggled back to false', () => {
-            const config = new ModuleAnalysisConfig();
-            config.setEnableTypeInference(true);
-            config.setEnableTypeInference(false);
-            expect(config.isTypeInferenceEnabled()).toBe(false);
+            expect(config.setDependencyLoadLevel(ModuleDepthLevel.META)).toBe(config);
         });
     });
 });

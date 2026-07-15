@@ -21,7 +21,6 @@ import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 import { ArkModule, ModuleID, ModuleLoadState, ModuleType } from '../../src/core/model/ArkModule';
 import { ModuleDepGraph, DependencyType } from '../../src/core/graph/ModuleDepGraph';
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
-import { ModuleAnalysisConfig } from '../../src/frontend/common/ModuleAnalysisConfig';
 import { ArkFile } from '../../src/core/model/ArkFile';
 import { Scene, SceneBuildStage } from '../../src/Scene';
 import { Canonicalizer } from '../../src/utils/Canonicalizer';
@@ -160,16 +159,6 @@ describe('ModuleBuilder tests', () => {
             expect(collected).toEqual([a, b, c]);
         });
 
-        it('skips modules whose loadState is DISPOSED', () => {
-            const scene = makeScene();
-            const builder = new ModuleBuilder(scene);
-            const a = builder.registerModule('/project/a');
-            const b = builder.registerModule('/project/b');
-            const c = builder.registerModule('/project/c');
-            b.setLoadState(ModuleLoadState.DISPOSED);
-            const collected = [...builder.modulesIterator()];
-            expect(collected).toEqual([a, c]);
-        });
     });
 
     describe('resolveAlias', () => {
@@ -397,10 +386,9 @@ describe('ModuleBuilder tests', () => {
     });
 
     describe('initial state flags', () => {
-        it('reports false for isModulesRegistered and isModuleDependenciesAnalyzed before any build step', () => {
+        it('reports false for isModulesRegistered before any build step', () => {
             const scene = makeScene();
             expect(scene.isModulesRegistered()).toBe(false);
-            expect(scene.isModuleDependenciesAnalyzed()).toBe(false);
         });
 
         it('returns an empty topological order and undefined depGraph before dependency analysis', () => {
@@ -423,27 +411,13 @@ describe('ModuleBuilder tests', () => {
     });
 
     describe('buildSdkModules', () => {
-        const sdkSignaturesConfig = new ModuleAnalysisConfig();
-        sdkSignaturesConfig.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.SIGNATURES);
-
-        it('returns early when SDK level < SIGNATURES (no config)', () => {
-            const sdks: Sdk[] = [{ name: 'etsSdk', path: '/sdk/ets', moduleName: '' }];
-            const scene = makeSdkSceneStub(sdks);
-            const builder = new ModuleBuilder(scene);
-
-            // No config → SDK defaults to META (< SIGNATURES), so buildSdkModules returns early
-            builder.buildSdkModules();
-
-            expect(builder.getModuleCount()).toBe(0);
-        });
-
         it('is idempotent — guarded by buildStage >= SDK_INFERRED', () => {
             const sdks: Sdk[] = [{ name: 'etsSdk', path: '/sdk/ets', moduleName: '' }];
             const scene = makeSdkSceneStub(sdks);
             scene.setBuildStage(SceneBuildStage.SDK_INFERRED);
             const builder = new ModuleBuilder(scene);
 
-            builder.buildSdkModules(sdkSignaturesConfig);
+            builder.buildSdkModules();
 
             // Already SDK_INFERRED, so nothing happens
             expect(builder.getModuleCount()).toBe(0);
@@ -454,7 +428,7 @@ describe('ModuleBuilder tests', () => {
             (scene as unknown as { getSceneConfig: () => undefined }).getSceneConfig = () => undefined;
             const builder = new ModuleBuilder(scene);
 
-            builder.buildSdkModules(sdkSignaturesConfig);
+            builder.buildSdkModules();
 
             expect(builder.getModuleCount()).toBe(0);
         });
@@ -481,7 +455,7 @@ describe('ModuleBuilder tests', () => {
 
                 builder.prepareModules();
 
-                expect(scene.isModulesRegistered()).toBe(true);
+                expect(builder.getModuleCount()).toBeGreaterThan(0);
 
                 const entryPath = path.resolve(tmpDir, './entry');
                 const libraryPath = path.resolve(tmpDir, './library');
@@ -569,7 +543,6 @@ describe('ModuleBuilder tests', () => {
 
                 builder.prepareModules();
                 expect(builder.getModuleCount()).toBe(countAfterFirst);
-                expect(scene.isModulesRegistered()).toBe(true);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -648,7 +621,6 @@ describe('ModuleBuilder tests', () => {
                 builder.prepareModules();
 
                 // No PROJECT modules registered, no crash
-                expect(scene.isModulesRegistered()).toBe(true);
                 let projectCount = 0;
                 for (const module of builder.modulesIterator()) {
                     if (module.getModuleType() === ModuleType.PROJECT) {
@@ -692,7 +664,6 @@ describe('ModuleBuilder tests', () => {
                 builder.prepareModules();
                 builder.analyzeModuleDependencies();
 
-                expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
                 expect(scene.getModuleDepGraph()).toBeDefined();
                 expect(builder.getTopoOrder().length).toBe(3);
 
@@ -704,22 +675,6 @@ describe('ModuleBuilder tests', () => {
                 const topo = builder.getTopoOrder();
                 expect(topo.indexOf(idC)).toBeLessThan(topo.indexOf(idB));
                 expect(topo.indexOf(idB)).toBeLessThan(topo.indexOf(idA));
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-
-        it('isModuleDependenciesAnalyzed returns true after analysis', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-topo-'));
-            try {
-                setupProject(tmpDir, [{ name: 'a', srcPath: './a', ohPkg: { name: '@a', dependencies: {} } }]);
-
-                const scene = makeProjectSceneStub(tmpDir);
-                const builder = new ModuleBuilder(scene);
-                builder.prepareModules();
-                expect(scene.isModuleDependenciesAnalyzed()).toBe(false);
-                builder.analyzeModuleDependencies();
-                expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -988,7 +943,6 @@ describe('ModuleBuilder tests', () => {
             builder.prepareModules();
             builder.analyzeModuleDependencies();
 
-            expect(scene.isModuleDependenciesAnalyzed()).toBe(true);
             expect(scene.getModuleDepGraph()).toBeDefined();
             const graph = scene.getModuleDepGraph()!;
 
@@ -1108,10 +1062,7 @@ describe('ModuleBuilder tests', () => {
                 const module = builder.registerModule(path.join(tmpDir, 'sdk'), 'etsSdk');
                 module.setModuleType(ModuleType.SDK);
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.SDK, ModuleDepthLevel.IMPORTS);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.META);
 
                 // loadModule skips SDK modules regardless of configured level.
                 expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
@@ -1150,7 +1101,7 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('recursively loads dependencies before the module itself', () => {
+        it('loadModule only loads the target module, not its dependencies', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-deps-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'library'), ['lib.ets']);
@@ -1163,7 +1114,9 @@ describe('ModuleBuilder tests', () => {
                 const libraryId = builder.getModuleId(library);
                 injectDepGraph(scene, builder, [[entryId, libraryId]]);
 
-                // Load entry — should recursively load library first
+                // loadModule only loads the target — dependencies must be loaded separately
+                // (the caller iterates in topological order: library before entry)
+                builder.loadModule(libraryId);
                 builder.loadModule(entryId);
 
                 expect(library.getLoadState()).toBe(ModuleLoadState.META);
@@ -1175,7 +1128,7 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('handles cyclic dependencies without infinite recursion', () => {
+        it('handles cyclic dependencies (each module loaded independently)', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-cycle-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'a'), ['a.ets']);
@@ -1191,7 +1144,9 @@ describe('ModuleBuilder tests', () => {
                     [idB, idA],
                 ]);
 
+                // No recursion — each module is loaded independently, cycles are not an issue
                 builder.loadModule(idA);
+                builder.loadModule(idB);
 
                 expect(a.getLoadState()).toBe(ModuleLoadState.META);
                 expect(b.getLoadState()).toBe(ModuleLoadState.META);
@@ -1217,10 +1172,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
 
                 const filesMap = module.getFilesMap();
                 expect(filesMap.size).toBe(2);
@@ -1254,10 +1206,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
 
                 expect(module.getFilesMap().size).toBe(1);
                 const arkFile = module.getFilesMap().values().next().value as ArkFile;
@@ -1305,10 +1254,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.IMPORTS);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
 
                 expect(module.hasFileTopoOrder()).toBe(true);
                 const fileDepGraph = module.getFileDepGraph()!;
@@ -1339,10 +1285,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.SIGNATURES);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
 
                 // Effective level is SIGNATURES: class/method signatures are populated, bodies are not
                 const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
@@ -1371,10 +1314,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.BODIES);
 
                 // BODIES builds signatures AND method bodies
                 const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
@@ -1407,9 +1347,7 @@ describe('ModuleBuilder tests', () => {
                 const moduleId = builder.getModuleId(module);
 
                 // Load to BODIES (builds signatures + method bodies + file dep graph)
-                const config = new ModuleAnalysisConfig();
-                config.setLoadLevel(ModuleType.PROJECT, ModuleDepthLevel.BODIES);
-                builder.loadModule(moduleId, config);
+                builder.loadModule(moduleId, ModuleDepthLevel.BODIES);
 
                 // Verify body is built before inference
                 const clsFile = [...module.getFilesMap().values()].find(f => path.basename(f.getFilePath()) === 'cls.ets');
@@ -1428,6 +1366,131 @@ describe('ModuleBuilder tests', () => {
                 const returnType = foo!.getImplementationSignature()?.getMethodSubSignature().getReturnType();
                 expect(returnType).toBeDefined();
                 expect(TypeInference.isUnclearType(returnType!)).toBe(false);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('unload resets module to NOT_LOADED and clears filesMap and fileDepGraph', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-reset-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
+                fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+
+                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                expect(module.getFilesMap().size).toBe(2);
+                expect(module.hasFileTopoOrder()).toBe(true);
+
+                builder.unload(moduleId);
+
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+                expect(module.getFilesMap().size).toBe(0);
+                expect(module.hasFileTopoOrder()).toBe(false);
+                expect(module.getFileDepGraph()).toBeUndefined();
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('unload then reload correctly rebuilds IMPORTS level data', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-reload-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
+                fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+
+                builder.unload(moduleId);
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+
+
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                expect(module.getFilesMap().size).toBe(2);
+                expect(module.hasFileTopoOrder()).toBe(true);
+
+                let aFile: ArkFile | undefined;
+                let bFile: ArkFile | undefined;
+                for (const arkFile of module.getFilesMap().values()) {
+                    const base = path.basename(arkFile.getFilePath());
+                    if (base === 'a.ets') {
+                        aFile = arkFile;
+                    } else if (base === 'b.ets') {
+                        bFile = arkFile;
+                    }
+                }
+                expect(aFile).toBeDefined();
+                expect(bFile).toBeDefined();
+                expect(aFile!.getImportInfos().length).toBeGreaterThanOrEqual(1);
+                expect(bFile!.getExportInfos().length).toBeGreaterThanOrEqual(1);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('unload skips SDK modules', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-sdk-'));
+            try {
+                setupModuleDir(path.join(tmpDir, 'sdk'), ['api.ets']);
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(path.join(tmpDir, 'sdk'), 'etsSdk');
+                module.setModuleType(ModuleType.SDK);
+                const moduleId = builder.getModuleId(module);
+
+                builder.unload(moduleId);
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('unload cleans Scene global indices via disposeModule and sets arkModule back-reference', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-dispose-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
+                fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
+
+                const scene = new Scene();
+                (scene as unknown as { getOptions: () => unknown }).getOptions = () => ({
+                    supportFileExts: ['.ets', '.ts'],
+                    ignoreFileNames: [],
+                });
+                (scene as unknown as { getFileLanguages: () => Map<string, unknown> }).getFileLanguages = () => new Map();
+                (scene as unknown as { getProjectName: () => string }).getProjectName = () => 'test-project';
+                (scene as unknown as { getSceneConfig: () => undefined }).getSceneConfig = () => undefined;
+                (scene as unknown as { getRealProjectDir: () => string }).getRealProjectDir = () => '';
+
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+
+                expect(scene.getFiles().length).toBe(2);
+                for (const arkFile of module.getFilesMap().values()) {
+                    expect(arkFile.getArkModule()).toBe(module);
+                }
+
+                builder.unload(moduleId);
+
+                expect(scene.getFiles().length).toBe(0);
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+                expect(module.getFilesMap().size).toBe(0);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }

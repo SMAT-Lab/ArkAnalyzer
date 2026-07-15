@@ -128,6 +128,9 @@ export interface SceneOptions {
     sdkGlobalFolders?: string[];
     /** Optional multi-language front-end section; defaults are merged in {@link SceneConfig} construction. */
     languages?: SceneLanguagesOptions;
+    /** Max process memory (RSS) in MB; 0 or undefined disables memory monitoring.
+     *  Internally converted to a heapUsed limit via RSS_TO_HEAPUSED_RATIO in MemoryMonitor. */
+    memoryLimitMB?: number;
     [option: string]: SceneOptionsValue;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';

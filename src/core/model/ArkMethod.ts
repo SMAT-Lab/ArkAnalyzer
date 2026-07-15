@@ -480,6 +480,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     /**
+     * Release the method body (ArkBody/CFG/Stmt/Expr/Locals) and view tree to free memory.
+     * Intended for module unload/eviction: the heavy IR data is dropped so it can be GC'd,
+     * even if the ArkMethod skeleton is still referenced. The body/viewTree are rebuilt on
+     * reload if the module is loaded again at BODIES level.
+     */
+    public clearBodyAndSupplementary(): void {
+        this.body = undefined;
+        this.viewTree = undefined;
+    }
+
+    /**
      * Get the CFG (i.e., control flow graph) of a method.
      * The CFG is a graphical representation of all possible control flow paths within a method's body.
      * A CFG consists of blocks, statements and goto control jumps.
@@ -793,5 +804,18 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             return true;
         }
         return this.containsModifier(ModifierType.PUBLIC);
+    }
+
+    public clearAllReferences(): void {
+        if (this.body) {
+            this.body.clearAllReferences();
+        }
+        this.clearBodyAndSupplementary();
+        this.freeBodyBuilder();
+        this.freeCxxBodyBuilder();
+        this.declaringArkClass = undefined as unknown as ArkClass;
+        this.outerMethod = undefined;
+        this.declareSignatures = undefined;
+        this.implSignature = undefined;
     }
 }

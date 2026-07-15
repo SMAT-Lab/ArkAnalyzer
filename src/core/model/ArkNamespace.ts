@@ -369,4 +369,17 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     public validate(): ArkError {
         return this.validateFields(['declaringArkFile', 'declaringInstance', 'namespaceSignature', 'defaultClass']);
     }
+
+    public clearAllReferences(): void {
+        for (const cls of this.classes.values()) { cls.clearAllReferences(); }
+        for (const ns of this.namespaces.values()) { ns.clearAllReferences(); }
+        for (const exp of this.exportInfos.values()) { exp.clearAllReferences(); }
+        this.classes.clear();
+        this.namespaces.clear();
+        this.exportInfos.clear();
+        this.defaultClass = undefined as unknown as ArkClass;
+        this.declaringArkFile = undefined as unknown as ArkFile;
+        this.declaringArkNamespace = null;
+        this.declaringInstance = undefined as unknown as ArkFile | ArkNamespace;
+    }
 }

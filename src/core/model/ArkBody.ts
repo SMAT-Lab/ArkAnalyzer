@@ -89,4 +89,12 @@ export class ArkBody {
         }
         return null;
     }
+
+    public clearAllReferences(): void {
+        this.locals.clear();
+        this.usedGlobals = undefined;
+        this.cfg = undefined as unknown as Cfg;
+        this.aliasTypeMap = undefined;
+        this.traps = undefined;
+    }
 }

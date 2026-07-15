@@ -23,11 +23,13 @@ import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
-import { ArkModule, ModuleID, ModuleLoadState } from './core/model/ArkModule';
+import { ArkModule, ModuleID } from './core/model/ArkModule';
 import { ArkNamespace } from './core/model/ArkNamespace';
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
 import { ModuleAnalysisConfig, ModuleAnalysisCallback } from './frontend/common/ModuleAnalysisConfig';
 import { ModuleBuilder } from './frontend/common/ModuleBuilder';
+import { MemoryMonitor } from './frontend/common/MemoryMonitor';
+import { ModuleCache } from './frontend/common/ModuleCache';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
@@ -119,11 +121,14 @@ export class Scene {
     /** Module dependency graph, used for SCCDetection. Built during dependency analysis. */
     private moduleDepGraph?: ModuleDepGraph;
 
-    /** Whether module preparation has completed (set true after prepareModules, idempotent). */
+    /** Whether module preparation has completed (prepareModules + analyzeModuleDependencies, idempotent). */
     private modulesRegistered: boolean = false;
 
-    /** Whether module dependency analysis has completed (set true after analyzeModuleDependencies). */
-    private moduleDependenciesAnalyzed: boolean = false;
+    /** Persistent module cache for cross-call module reuse. */
+    private moduleCache?: ModuleCache;
+
+    /** Persistent memory monitor for cache eviction. */
+    private memoryMonitor?: MemoryMonitor;
 
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
@@ -140,6 +145,8 @@ export class Scene {
         ValueUtil.dispose();
         ModelUtils.dispose();
         clearCxxTypeStringCache();
+        this.moduleCache = undefined;
+        this.memoryMonitor = undefined;
     }
 
     public getOptions(): SceneOptions {
@@ -176,6 +183,7 @@ export class Scene {
         this.sdkGlobalMap.clear();
         this.ohPkgContentMap.clear();
         this.ohPkgContent = {};
+        this.moduleCache?.clear();
     }
 
     public getStage(): SceneBuildStage {
@@ -892,13 +900,13 @@ export class Scene {
     }
 
     /**
-     * Returns all registered {@link ArkModule} objects. Modules whose loadState is DISPOSED are skipped.
+     * Returns all registered {@link ArkModule} objects.
      */
     public getModules(): ArkModule[] {
         const result: ArkModule[] = [];
         for (let i = 0; i < this.moduleCanonicalizer.size(); i++) {
             const m = this.moduleCanonicalizer.get(i);
-            if (m && m.getLoadState() !== ModuleLoadState.DISPOSED) {
+            if (m) {
                 result.push(m);
             }
         }
@@ -917,9 +925,22 @@ export class Scene {
         return this.modulesRegistered;
     }
 
-    /** Whether module dependency analysis has completed. */
-    public isModuleDependenciesAnalyzed(): boolean {
-        return this.moduleDependenciesAnalyzed;
+    // --- Module cache management (persistent across analyseByModule calls) ---
+
+    public getModuleCache(): ModuleCache | undefined {
+        return this.moduleCache;
+    }
+
+    public setModuleCache(cache: ModuleCache): void {
+        this.moduleCache = cache;
+    }
+
+    public getMemoryMonitor(): MemoryMonitor | undefined {
+        return this.memoryMonitor;
+    }
+
+    public setMemoryMonitor(monitor: MemoryMonitor): void {
+        this.memoryMonitor = monitor;
     }
 
     // --- Internal accessors used by ModuleBuilder to read/write persistent state ---
@@ -952,10 +973,6 @@ export class Scene {
         this.modulesRegistered = value;
     }
 
-    public setModuleDependenciesAnalyzed(value: boolean): void {
-        this.moduleDependenciesAnalyzed = value;
-    }
-
     /**
      * Perform module-level analysis by iterating modules in topological order and invoking
      * the callback for each module.
@@ -979,29 +996,40 @@ export class Scene {
      */
     public analyseByModule(callback: ModuleAnalysisCallback, config?: ModuleAnalysisConfig): void {
         const builder = new ModuleBuilder(this);
-        // 1. Prepare project/oh_modules (idempotent)
+        // 1. Prepare modules + analyze dependencies (merged, guarded by modulesRegistered)
         if (!this.isModulesRegistered()) {
             builder.prepareModules();
-        }
-        // 2. Analyze dependencies (idempotent)
-        if (!this.isModuleDependenciesAnalyzed()) {
             builder.analyzeModuleDependencies();
+            this.setModulesRegistered(true);
         }
-        // 3. Build SDK modules — fused registration + building (idempotent). SDK loaded FIRST so
+        // 2. Build SDK modules — fused registration + building (idempotent). SDK loaded FIRST so
         //    that global APIs are available when project/oh_modules modules are loaded.
-        builder.buildSdkModules(config);
-        // 4. Resolve target modules and compute closure (unified flow, no branching)
+        builder.buildSdkModules();
+        // 3. Resolve target modules and compute closure (unified flow, no branching)
         const effectiveConfig = config ?? new ModuleAnalysisConfig();
         const targetIds = builder.resolveTargetModuleIds(effectiveConfig);
         const closure = builder.computeModuleClosureByIds(targetIds);
         const topoOrder = builder.getFilteredTopoOrder(closure);
-        // 5. Iterate topoOrder: load each module then call callback for targets only
+        // 4. Initialize / update cache management (persistent ModuleCache + MemoryMonitor in Scene)
+        builder.initCacheManagement(this.getOptions(), topoOrder, effectiveConfig.getDependencyLoadLevel());
+        // 5. Pre-call cleanup: unload cached modules not in current topoOrder
+        const cache = this.getModuleCache();
+        if (cache) {
+            const currentTopoSet = new Set(topoOrder);
+            for (const moduleId of cache.getLoadedModules()) {
+                if (!currentTopoSet.has(moduleId)) {
+                    builder.unload(moduleId);
+                    cache.unregister(moduleId);
+                }
+            }
+        }
+        // 6. Iterate topoOrder: loadModule internally handles cache eviction and registration
+        const targetLevel = effectiveConfig.getLoadLevel();
+        const depLevel = effectiveConfig.getDependencyLoadLevel();
         for (const moduleId of topoOrder) {
-            // Load module data at configured depth level (idempotent; SDK modules are skipped by
-            // loadModule — their content is built by buildSdkModules above).
-            builder.loadModule(moduleId, config);
-            // Only call callback for target modules (not their dependencies)
-            if (!targetIds.test(moduleId)) {
+            const isTarget = targetIds.test(moduleId);
+            builder.loadModule(moduleId, isTarget ? targetLevel : depLevel);
+            if (!isTarget) {
                 continue;
             }
             const module = builder.getModule(moduleId);
@@ -1010,6 +1038,7 @@ export class Scene {
             }
             callback(module, this);
         }
+        // 7. No unload, no dispose — modules persist in cache for cross-call reuse
     }
 
     /**
@@ -1312,6 +1341,49 @@ export class Scene {
 
     public removeFile(file: ArkFile): boolean {
         return this.filesMap.delete(file.getFileSignature().toMapKey());
+    }
+
+    /**
+     * Dispose a module's data from all global indices.
+     *
+     * Removes the module's ArkFiles, ArkClasses, ArkMethods, and ArkNamespaces from the Scene's
+     * global maps (filesMap, sdkArkFilesMap, classesMap, methodsMap, namespacesMap) and clears
+     * the oh-package.json5 content cache. After this call, the module's heavy data is no longer
+     * reachable via Scene's global indices and can be garbage-collected.
+     *
+     * The global sdkGlobalMap is NOT cleaned (its keys are flat global names that cannot be
+     * reverse-mapped to a module). SDK modules should not be disposed.
+     *
+     * @param module - The module whose data should be removed from global indices.
+     */
+    public disposeModule(module: ArkModule): void {
+        for (const arkFile of module.getFilesMap().values()) {
+            const key = arkFile.getFileSignature().toMapKey();
+            this.filesMap.delete(key);
+            this.sdkArkFilesMap.delete(key);
+            for (const ns of ModelUtils.getAllNamespacesInFile(arkFile)) {
+                this.namespacesMap.delete(ns.getNamespaceSignature().toMapKey());
+            }
+            for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
+                this.classesMap.delete(cls.getSignature().toMapKey());
+                for (const mtd of cls.getMethods()) {
+                    this.methodsMap.delete(mtd.getSignature().toMapKey());
+                    // Release heavy per-method IR (ArkBody/CFG/Stmt/Locals + ViewTree) so it can
+                    // be GC'd on eviction, even if the ArkMethod/ArkFile skeleton is still referenced
+                    // by residual back-edges. Bodies/viewTrees are rebuilt on reload.
+                    mtd.clearBodyAndSupplementary();
+                }
+                // Sever back-references: remove this class from its base classes' extendedClasses,
+                // otherwise base classes (e.g. SDK) keep evicted project classes alive (memory leak).
+                for (const base of cls.getAllHeritageClasses()) {
+                    base.getExtendedClasses().delete(cls.getName());
+                }
+            }
+            // Release the TS AST (SourceFile) and cached source text; getCode() re-reads from disk.
+            arkFile.setAST(null);
+            arkFile.clearSourceCode();
+        }
+        this.ohPkgContentMap.delete(module.getOhPkgPath());
     }
 
     public hasMainMethod(): boolean {

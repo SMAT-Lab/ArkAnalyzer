@@ -748,4 +748,30 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     public setDeclareSignature(classSig: ClassSignature): void {
         this.classDeclareSignature = classSig;
     }
+
+    public clearAllReferences(): void {
+        for (const methods of this.methods.values()) {
+            for (const mtd of methods) { mtd.clearAllReferences(); }
+        }
+        for (const methods of this.staticMethods.values()) {
+            for (const mtd of methods) { mtd.clearAllReferences(); }
+        }
+        for (const fld of this.fields.values()) { fld.clearAllReferences(); }
+        for (const fld of this.staticFields.values()) { fld.clearAllReferences(); }
+        if (this.instanceInitMethod) { this.instanceInitMethod.clearAllReferences(); }
+        if (this.staticInitMethod) { this.staticInitMethod.clearAllReferences(); }
+        this.methods.clear();
+        this.staticMethods.clear();
+        this.fields.clear();
+        this.staticFields.clear();
+        this.extendedClasses.clear();
+        this.heritageClasses.clear();
+        this.ts2cxxFuncMap.clear();
+        this.defaultMethod = null;
+        this.instanceInitMethod = undefined as unknown as ArkMethod;
+        this.staticInitMethod = undefined as unknown as ArkMethod;
+        this.viewTree = undefined;
+        this.declaringArkFile = undefined as unknown as ArkFile;
+        this.declaringArkNamespace = undefined;
+    }
 }

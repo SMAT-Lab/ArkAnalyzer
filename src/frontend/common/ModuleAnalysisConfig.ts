@@ -26,8 +26,8 @@ import type { Scene } from '../../Scene';
 export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
 
 /**
- * ModuleAnalysisConfig configures target module selection and per-module-type load
- * levels for module-level analysis.
+ * ModuleAnalysisConfig configures target module selection and load levels
+ * for module-level analysis.
  *
  * Target module selection uses three dimensions combined as:
  * ```
@@ -40,9 +40,10 @@ export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
  * Bit indices are {@link ModuleID} (for ID include/exclude) or {@link ModuleType} enum values
  * (for type filter).
  *
- * Load levels ({@link ModuleDepthLevel}) control how much data is built for ArkFile objects of
- * each {@link ModuleType}; all module types default to {@link ModuleDepthLevel.META} and can be
- * overridden via {@link ModuleAnalysisConfig.setLoadLevel}.
+ * Load levels ({@link ModuleDepthLevel}) control how much data is built for ArkFile objects:
+ * - {@link loadLevel} applies to target modules (default {@link ModuleDepthLevel.BODIES}).
+ * - {@link dependencyLoadLevel} applies to dependency modules — modules in the closure but
+ *   not targets (default {@link ModuleDepthLevel.SIGNATURES}).
  *
  * @category core/model
  */
@@ -53,15 +54,12 @@ export class ModuleAnalysisConfig {
     private targetModuleIds: SparseBitVector = new SparseBitVector();
     /** Explicit exclude IDs: bit index = ModuleID (highest priority, overrides everything). */
     private excludedModuleIds: SparseBitVector = new SparseBitVector();
-    private loadLevels: Map<ModuleType, ModuleDepthLevel> = new Map();
-    private enableTypeInference: boolean = false;
+    /** Load level for target modules. Default BODIES. */
+    private loadLevel: ModuleDepthLevel = ModuleDepthLevel.BODIES;
+    /** Load level for dependency modules (in closure but not targets). Default SIGNATURES. */
+    private dependencyLoadLevel: ModuleDepthLevel = ModuleDepthLevel.SIGNATURES;
 
-    constructor() {
-        this.includedTypes.set(ModuleType.PROJECT);
-        this.loadLevels.set(ModuleType.SDK, ModuleDepthLevel.META);
-        this.loadLevels.set(ModuleType.OH_MODULES, ModuleDepthLevel.META);
-        this.loadLevels.set(ModuleType.PROJECT, ModuleDepthLevel.META);
-    }
+    constructor() {}
 
     // --- Type filter ---
 
@@ -139,37 +137,30 @@ export class ModuleAnalysisConfig {
     // --- Load levels ---
 
     /**
-     * Set the {@link ModuleDepthLevel} for a given {@link ModuleType}.
+     * Set the {@link ModuleDepthLevel} for target modules.
      * Returns this config to allow chaining.
      */
-    public setLoadLevel(type: ModuleType, level: ModuleDepthLevel): ModuleAnalysisConfig {
-        this.loadLevels.set(type, level);
+    public setLoadLevel(level: ModuleDepthLevel): ModuleAnalysisConfig {
+        this.loadLevel = level;
         return this;
     }
 
-    /**
-     * Get the {@link ModuleDepthLevel} for a given {@link ModuleType}.
-     * Falls back to {@link ModuleDepthLevel.META} when the type has no explicit level set.
-     */
-    public getLoadLevel(type: ModuleType): ModuleDepthLevel {
-        return this.loadLevels.get(type) ?? ModuleDepthLevel.META;
+    /** Get the {@link ModuleDepthLevel} for target modules. Default {@link ModuleDepthLevel.BODIES}. */
+    public getLoadLevel(): ModuleDepthLevel {
+        return this.loadLevel;
     }
 
-    // --- Type inference ---
-
     /**
-     * Enable or disable type inference for module-level analysis. When enabled and the load level
-     * for a module type reaches {@link ModuleDepthLevel.SIGNATURES} or above, type inference runs
-     * on each module's files after building to the configured depth. Defaults to `false`.
-     *
+     * Set the {@link ModuleDepthLevel} for dependency modules (in closure but not targets).
      * Returns this config to allow chaining.
      */
-    public setEnableTypeInference(enabled: boolean): ModuleAnalysisConfig {
-        this.enableTypeInference = enabled;
+    public setDependencyLoadLevel(level: ModuleDepthLevel): ModuleAnalysisConfig {
+        this.dependencyLoadLevel = level;
         return this;
     }
 
-    public isTypeInferenceEnabled(): boolean {
-        return this.enableTypeInference;
+    /** Get the {@link ModuleDepthLevel} for dependency modules. Default {@link ModuleDepthLevel.SIGNATURES}. */
+    public getDependencyLoadLevel(): ModuleDepthLevel {
+        return this.dependencyLoadLevel;
     }
 }

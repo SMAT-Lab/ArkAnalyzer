@@ -226,4 +226,10 @@ export class ArkField extends ArkBaseModel {
         }
         return this.containsModifier(ModifierType.PUBLIC);
     }
+
+    public clearAllReferences(): void {
+        this.initializer = [];
+        this.declaringClass = undefined as unknown as ArkClass;
+        this.clearSourceCode();
+    }
 }

@@ -197,6 +197,9 @@ console.log(config.getTargetProjectName(), config.getTargetProjectDirectory());
 
 `SceneOptions`（可选）用来微调行为：是否启用类型推导、是否严格语法、是否解析 ArkUI 注解等。
 
+其中 `memoryLimitMB` 用于 `analyseByModule` 的模块缓存管理：
+- `memoryLimitMB`（默认 0=不限制）：进程内存上限（MB）。设为正值时，`analyseByModule` 会在加载模块前检查 RSS 是否超过上限，超限时自动卸载缓存中不需要的模块数据。
+
 ## 5. 主要接口
 
 ### 5.1 构建 Scene

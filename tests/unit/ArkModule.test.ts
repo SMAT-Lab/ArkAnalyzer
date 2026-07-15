@@ -93,13 +93,13 @@ describe('ArkModule tests', () => {
             expect(module.getModuleType()).toBe(ModuleType.SDK);
             expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
 
-            module.setLoadState(ModuleLoadState.DISPOSED);
-            expect(module.getLoadState()).toBe(ModuleLoadState.DISPOSED);
+            module.setLoadState(ModuleLoadState.BODIES);
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
             expect(module.getModuleType()).toBe(ModuleType.SDK);
 
             module.setModuleType(ModuleType.OH_MODULES);
             expect(module.getModuleType()).toBe(ModuleType.OH_MODULES);
-            expect(module.getLoadState()).toBe(ModuleLoadState.DISPOSED);
+            expect(module.getLoadState()).toBe(ModuleLoadState.BODIES);
         });
 
         it('supports setModuleType / getModuleType for all values', () => {
@@ -112,7 +112,13 @@ describe('ArkModule tests', () => {
 
         it('supports setLoadState / getLoadState for all values', () => {
             const module = new ArkModule(STUB_SCENE);
-            for (const state of [ModuleLoadState.NOT_LOADED, ModuleLoadState.META, ModuleLoadState.IMPORTS, ModuleLoadState.DISPOSED]) {
+            for (const state of [
+                ModuleLoadState.NOT_LOADED,
+                ModuleLoadState.META,
+                ModuleLoadState.IMPORTS,
+                ModuleLoadState.SIGNATURES,
+                ModuleLoadState.BODIES,
+            ]) {
                 module.setLoadState(state);
                 expect(module.getLoadState()).toBe(state);
             }
