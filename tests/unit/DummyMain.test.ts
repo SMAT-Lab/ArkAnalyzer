@@ -14,13 +14,19 @@
  */
 
 import {
-    ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt, BasicBlock,
+    ArkIfStmt,
+    ArkInvokeStmt,
+    ArkReturnVoidStmt,
+    BasicBlock,
     Cfg,
-    COMPONENT_LIFECYCLE_METHOD_NAME, CONSTRUCTOR_NAME,
+    COMPONENT_LIFECYCLE_METHOD_NAME,
+    CONSTRUCTOR_NAME,
     DummyMainCreater,
-    LIFECYCLE_METHOD_NAME, Local,
+    LIFECYCLE_METHOD_NAME,
+    Local,
     Scene,
-    SceneConfig, STATIC_INIT_METHOD_NAME,
+    SceneConfig,
+    STATIC_INIT_METHOD_NAME,
     Stmt,
 } from '../../src/index';
 import { assert, beforeAll, describe, it } from 'vitest';
@@ -31,7 +37,7 @@ const SDK_DIR = path.join(__dirname, '../../tests/resources/Sdk');
 const sdk: Sdk = {
     name: '',
     path: SDK_DIR,
-    moduleName: ''
+    moduleName: '',
 };
 
 function buildScene(projectPath: string): Scene {
@@ -116,9 +122,12 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
     it('case1: Ability LifeCycle', () => {
         const invokes = getUIAbilityInvokes(cfg.getStmts());
         const expected = [
-            `${abilityPrefix}.onCreate`, `${abilityPrefix}.onWindowStageCreate`,
-            `${abilityPrefix}.onForeground`, `${abilityPrefix}.onBackground`,
-            `${abilityPrefix}.onWindowStageDestroy`, `${abilityPrefix}.onDestroy`
+            `${abilityPrefix}.onCreate`,
+            `${abilityPrefix}.onWindowStageCreate`,
+            `${abilityPrefix}.onForeground`,
+            `${abilityPrefix}.onBackground`,
+            `${abilityPrefix}.onWindowStageDestroy`,
+            `${abilityPrefix}.onDestroy`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -128,9 +137,7 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
 
     it('case2: Component LifeCycle', () => {
         const invokes = getComponentInvokes(cfg.getStmts());
-        const expected = [
-            `${componentPrefix}.aboutToAppear`, `${componentPrefix}.build`, `${componentPrefix}.aboutToDisappear`
-        ];
+        const expected = [`${componentPrefix}.aboutToAppear`, `${componentPrefix}.build`, `${componentPrefix}.aboutToDisappear`];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
             assert.isTrue(invokes[index].startsWith(expected[index]));
@@ -141,9 +148,13 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
         const firstBlock = cfg.getStartingBlock()!;
         const invokes = getInvokes(firstBlock.getStmts());
         const expected = [
-            `${abilityPrefix}.${STATIC_INIT_METHOD_NAME}`, `${componentPrefix}.${STATIC_INIT_METHOD_NAME}`,
-            `${abilityPrefix}.${CONSTRUCTOR_NAME}`, `${componentPrefix}.${CONSTRUCTOR_NAME}`,
-            `${abilityPrefix}.onCreate`, `${abilityPrefix}.onWindowStageCreate`, `${componentPrefix}.aboutToAppear`
+            `${abilityPrefix}.${STATIC_INIT_METHOD_NAME}`,
+            `${componentPrefix}.${STATIC_INIT_METHOD_NAME}`,
+            `${abilityPrefix}.${CONSTRUCTOR_NAME}`,
+            `${componentPrefix}.${CONSTRUCTOR_NAME}`,
+            `${abilityPrefix}.onCreate`,
+            `${abilityPrefix}.onWindowStageCreate`,
+            `${componentPrefix}.aboutToAppear`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -160,10 +171,7 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
         });
         assert.isDefined(lastBlock);
         const invokes = getInvokes(lastBlock!.getStmts());
-        const expected = [
-            `${componentPrefix}.aboutToDisappear`,
-            `${abilityPrefix}.onWindowStageDestroy`, `${abilityPrefix}.onDestroy`
-        ];
+        const expected = [`${componentPrefix}.aboutToDisappear`, `${abilityPrefix}.onWindowStageDestroy`, `${abilityPrefix}.onDestroy`];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
             assert.isTrue(invokes[index].startsWith(expected[index]));
@@ -171,9 +179,9 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
     });
 
     it('case5: Whole DummyMain', () => {
-        assert.equal(cfg.getBlocks().size, 9);
+        assert.equal(cfg.getBlocks().size, 7);
         const ifBlocks = getIfBlocks(cfg);
-        assert.equal(ifBlocks.length, 4);
+        assert.equal(ifBlocks.length, 3);
     });
 });
 
@@ -193,12 +201,18 @@ describe('DummyMainTest2: UIAbility with Child UIAbility', () => {
     it('case1: Ability LifeCycle', () => {
         const invokes = getUIAbilityInvokes(cfg.getStmts());
         const expected = [
-            `${childPrefix}.onCreate`, `${parentPrefix}.onCreate`,
-            `${childPrefix}.onWindowStageCreate`, `${parentPrefix}.onWindowStageCreate`,
-            `${childPrefix}.onForeground`, `${childPrefix}.onBackground`,
-            `${parentPrefix}.onForeground`, `${parentPrefix}.onBackground`,
-            `${childPrefix}.onWindowStageDestroy`, `${parentPrefix}.onWindowStageDestroy`,
-            `${childPrefix}.onDestroy`, `${parentPrefix}.onDestroy`,
+            `${childPrefix}.onCreate`,
+            `${parentPrefix}.onCreate`,
+            `${childPrefix}.onWindowStageCreate`,
+            `${parentPrefix}.onWindowStageCreate`,
+            `${childPrefix}.onForeground`,
+            `${childPrefix}.onBackground`,
+            `${parentPrefix}.onForeground`,
+            `${parentPrefix}.onBackground`,
+            `${childPrefix}.onWindowStageDestroy`,
+            `${parentPrefix}.onWindowStageDestroy`,
+            `${childPrefix}.onDestroy`,
+            `${parentPrefix}.onDestroy`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -215,10 +229,14 @@ describe('DummyMainTest2: UIAbility with Child UIAbility', () => {
         const firstBlock = cfg.getStartingBlock()!;
         const invokes = getInvokes(firstBlock.getStmts());
         const expected = [
-            `${childPrefix}.${STATIC_INIT_METHOD_NAME}`, `${parentPrefix}.${STATIC_INIT_METHOD_NAME}`,
-            `${childPrefix}.${CONSTRUCTOR_NAME}`, `${parentPrefix}.${CONSTRUCTOR_NAME}`,
-            `${childPrefix}.onCreate`, `${parentPrefix}.onCreate`,
-            `${childPrefix}.onWindowStageCreate`, `${parentPrefix}.onWindowStageCreate`,
+            `${childPrefix}.${STATIC_INIT_METHOD_NAME}`,
+            `${parentPrefix}.${STATIC_INIT_METHOD_NAME}`,
+            `${childPrefix}.${CONSTRUCTOR_NAME}`,
+            `${parentPrefix}.${CONSTRUCTOR_NAME}`,
+            `${childPrefix}.onCreate`,
+            `${parentPrefix}.onCreate`,
+            `${childPrefix}.onWindowStageCreate`,
+            `${parentPrefix}.onWindowStageCreate`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -236,8 +254,10 @@ describe('DummyMainTest2: UIAbility with Child UIAbility', () => {
         assert.isDefined(lastBlock);
         const invokes = getInvokes(lastBlock!.getStmts());
         const expected: string[] = [
-            `${childPrefix}.onWindowStageDestroy`, `${parentPrefix}.onWindowStageDestroy`,
-            `${childPrefix}.onDestroy`, `${parentPrefix}.onDestroy`,
+            `${childPrefix}.onWindowStageDestroy`,
+            `${parentPrefix}.onWindowStageDestroy`,
+            `${childPrefix}.onDestroy`,
+            `${parentPrefix}.onDestroy`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -246,9 +266,9 @@ describe('DummyMainTest2: UIAbility with Child UIAbility', () => {
     });
 
     it('case5: Whole DummyMain', () => {
-        assert.equal(cfg.getBlocks().size, 11);
+        assert.equal(cfg.getBlocks().size, 5);
         const ifBlocks = getIfBlocks(cfg);
-        assert.equal(ifBlocks.length, 5);
+        assert.equal(ifBlocks.length, 2);
     });
 });
 
@@ -268,9 +288,7 @@ describe('DummyMainTest3: UIAbility Lifecycle Call with Args', () => {
 
     it('case1: Ability LifeCycle', () => {
         const invokes = getUIAbilityInvokes(cfg.getStmts());
-        const expected = [
-            `${abilityPrefix1}.onCreate`, `${abilityPrefix2}.onCreate`,
-        ];
+        const expected = [`${abilityPrefix1}.onCreate`, `${abilityPrefix2}.onCreate`];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
             assert.isTrue(invokes[index].startsWith(expected[index]));
@@ -286,9 +304,13 @@ describe('DummyMainTest3: UIAbility Lifecycle Call with Args', () => {
         const firstBlock = cfg.getStartingBlock()!;
         const invokes = getInvokes(firstBlock.getStmts());
         const expected = [
-            `${abilityPrefix1}.${STATIC_INIT_METHOD_NAME}`, `${abilityPrefix2}.${STATIC_INIT_METHOD_NAME}`, `${classCPrefix}.${STATIC_INIT_METHOD_NAME}`,
-            `${abilityPrefix1}.${CONSTRUCTOR_NAME}`, `${abilityPrefix2}.${CONSTRUCTOR_NAME}`,
-            `${abilityPrefix1}.onCreate`, `${abilityPrefix2}.onCreate`
+            `${abilityPrefix1}.${STATIC_INIT_METHOD_NAME}`,
+            `${abilityPrefix2}.${STATIC_INIT_METHOD_NAME}`,
+            `${classCPrefix}.${STATIC_INIT_METHOD_NAME}`,
+            `${abilityPrefix1}.${CONSTRUCTOR_NAME}`,
+            `${abilityPrefix2}.${CONSTRUCTOR_NAME}`,
+            `${abilityPrefix1}.onCreate`,
+            `${abilityPrefix2}.onCreate`,
         ];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
@@ -368,11 +390,7 @@ describe('DummyMainTest5: Static Lifecycle Method', () => {
     it('case3: First Block Stmts', () => {
         const firstBlock = cfg.getStartingBlock()!;
         const invokes = getInvokes(firstBlock.getStmts());
-        const expected = [
-            `${abilityPrefix}.${STATIC_INIT_METHOD_NAME}`,
-            `${abilityPrefix}.${CONSTRUCTOR_NAME}`,
-            `${abilityPrefix}.[static]onCreate`
-        ];
+        const expected = [`${abilityPrefix}.${STATIC_INIT_METHOD_NAME}`, `${abilityPrefix}.${CONSTRUCTOR_NAME}`, `${abilityPrefix}.[static]onCreate`];
         assert.equal(invokes.length, expected.length);
         for (let index = 0; index < invokes.length; index++) {
             assert.isTrue(invokes[index].startsWith(expected[index]));

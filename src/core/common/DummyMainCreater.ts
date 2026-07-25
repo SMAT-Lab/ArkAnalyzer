@@ -14,7 +14,14 @@
  */
 
 import { Scene } from '../../Scene';
-import { COMPONENT_LIFECYCLE_METHOD_NAME, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
+import {
+    COMPONENT_LIFECYCLE_METHOD_NAME,
+    LIFECYCLE_METHOD_NAME,
+    LIFECYCLE_START_METHODS,
+    LIFECYCLE_END_METHODS,
+    LIFECYCLE_PAIRED_METHOD_GROUPS,
+    getPairedMethodGroupIndex,
+} from '../../utils/entryMethodUtils';
 import { Constant } from '../base/Constant';
 import { ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
 import { Local } from '../base/Local';
@@ -31,19 +38,7 @@ import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME, THIS_NAME } from './TSConst';
 import { checkAndUpdateMethod } from '../model/builder/ArkMethodBuilder';
 import { ValueUtil } from './ValueUtil';
-import {
-    ABILITY_CREATE_METHOD,
-    ABILITY_DESTROY_METHOD,
-    ABILITY_STAGE_CREATE_METHOD,
-    ABILITY_STAGE_DESTROY_METHOD,
-    ABILITY_STAGE_WILL_DESTROY_METHOD,
-    COMPONENT_DETACHED_METHOD,
-    COMPONENT_DISAPPEAR_METHOD, COMPONENT_RECYCLE_METHOD, COMPONENT_REUSE_METHOD,
-    COMPONENT_START_METHOD,
-    DUMMY_CLASS,
-    DUMMY_FILE,
-    DUMMY_METHOD,
-} from './Const';
+import { DUMMY_CLASS, DUMMY_FILE, DUMMY_METHOD } from './Const';
 import { ArkThisRef } from '../base/Ref';
 import { COMPONENT } from './EtsConst';
 import { FullPosition } from '../base/Position';
@@ -57,40 +52,52 @@ const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbi
 classA.%statInit()
 const %1 = new classA()
 %1.%instInit()
+%1.onCreate()
+%1.onWindowStageCreate()
 %1.aboutToAppear()
-const %2 = new abilityA()
 ...
 count = 0
 while (true) {
+    if (count === 0) {
+        %1.aboutToRecycle()
+        %1.aboutToReuse()
+    }
     if (count === 1) {
         %1.onPageShow()
+        %1.onPageHide()
     }
     if (count === 2) {
+        %2.onWillForeground()
+        %2.onForeground()
+        %2.onDidForeground()
+        %2.onWillBackground()
         %2.onBackground()
+        %2.onDidBackground()
+    }
+    ...
+    if (count === N) {
+        %1.build()
     }
     ...
 }
+%1.onWindowStageWillDestroy()
 %1.aboutToDisappear()
 %1.onDetached()
-%2.onWindowStageDestroy()
+%1.onWindowStageDestroy()
+%2.onDestroy()
 ...
 return
  */
 export class DummyMainCreater {
-    // entryMethods includes all UIAbility and Component lifecycle methods as well as all callback methods, but exclude the start and end methods
+    // entryMethods includes all UIAbility and Component lifecycle methods as well as all callback methods, but exclude the start, end and paired methods
     private entryMethods: ArkMethod[] = [];
     private entryClasses: ArkClass[] = [];
-    private abilityCreateMethods: ArkMethod[] = [];
-    private abilityStageCreateMethods: ArkMethod[] = [];
-    private abilityStageWillDestroyMethods: ArkMethod[] = [];
-    private abilityStageDestroyMethods: ArkMethod[] = [];
-    private abilityDestroyMethods: ArkMethod[] = [];
-    private componentAppearMethods: ArkMethod[] = [];
-    private componentDisappearMethods: ArkMethod[] = [];
-    private componentDetachedMethods: ArkMethod[] = [];
-    // aboutToRecycle and aboutToReuse methods should be put into the same block because they are used paired
-    private componentRecycleMethods: ArkMethod[] = [];
-    private componentReuseMethods: ArkMethod[] = [];
+    // start methods grouped by method name, ordered by LIFECYCLE_START_METHODS
+    private startMethods: Map<string, ArkMethod[]> = new Map();
+    // end methods grouped by method name, ordered by LIFECYCLE_END_METHODS
+    private endMethods: Map<string, ArkMethod[]> = new Map();
+    // paired methods grouped by their pair group index (defined in entryMethodUtils)
+    private pairedMethodGroups: Map<number, ArkMethod[]> = new Map();
     // every declaring class of method in entryMethods have its instance local which is used to be the base of instance invoke expr
     private classLocalMap: Map<ArkClass, Local> = new Map();
     private dummyMain: ArkMethod = new ArkMethod();
@@ -233,19 +240,76 @@ export class DummyMainCreater {
         }
     }
 
+    private addStartMethods(block: BasicBlock): void {
+        for (const methodName of LIFECYCLE_START_METHODS) {
+            const methods = this.startMethods.get(methodName);
+            if (methods) {
+                this.addMethodsInvokeStmt(block, methods);
+            }
+        }
+    }
+
+    private addEndMethods(block: BasicBlock): void {
+        for (const methodName of LIFECYCLE_END_METHODS) {
+            const methods = this.endMethods.get(methodName);
+            if (methods) {
+                this.addMethodsInvokeStmt(block, methods);
+            }
+        }
+    }
+
+    private classifyMethod(mtd: ArkMethod): void {
+        const name = mtd.getName();
+        if (LIFECYCLE_START_METHODS.includes(name)) {
+            let group = this.startMethods.get(name);
+            if (!group) {
+                group = [];
+                this.startMethods.set(name, group);
+            }
+            group.push(mtd);
+            return;
+        }
+        if (LIFECYCLE_END_METHODS.includes(name)) {
+            let group = this.endMethods.get(name);
+            if (!group) {
+                group = [];
+                this.endMethods.set(name, group);
+            }
+            group.push(mtd);
+            return;
+        }
+        const groupIndex = getPairedMethodGroupIndex(name);
+        if (groupIndex >= 0) {
+            let group = this.pairedMethodGroups.get(groupIndex);
+            if (!group) {
+                group = [];
+                this.pairedMethodGroups.set(groupIndex, group);
+            }
+            group.push(mtd);
+            return;
+        }
+        if (LIFECYCLE_METHOD_NAME.includes(name) || COMPONENT_LIFECYCLE_METHOD_NAME.includes(name)) {
+            this.entryMethods.push(mtd);
+        }
+    }
+
     private addBranches(whileBlock: BasicBlock, countLocal: Local, dummyCfg: Cfg): void {
         let lastBlocks: BasicBlock[] = [whileBlock];
         let count = 0;
-        // step1: create the block for aboutToRecycle and aboutToReuse
-        if (this.componentRecycleMethods.length > 0 || this.componentReuseMethods.length > 0) {
-            lastBlocks = this.createConditionAndInvokeBlockPair(count++, countLocal, dummyCfg, lastBlocks,
-                [...this.componentRecycleMethods, ...this.componentReuseMethods]);
+
+        // step1: create the blocks for paired lifecycle method groups
+        for (let i = 0; i < LIFECYCLE_PAIRED_METHOD_GROUPS.length; i++) {
+            const group = this.pairedMethodGroups.get(i);
+            if (group && group.length > 0) {
+                lastBlocks = this.createConditionAndInvokeBlockPair(count++, countLocal, dummyCfg, lastBlocks, group);
+            }
         }
 
-        // step2: create the blocks for other lifecycle methods
+        // step2: create the blocks for other (unpaired) lifecycle methods
         for (let method of this.entryMethods) {
             lastBlocks = this.createConditionAndInvokeBlockPair(count++, countLocal, dummyCfg, lastBlocks, [method]);
         }
+
         for (const block of lastBlocks) {
             this.linkBlocks(block, whileBlock);
         }
@@ -290,9 +354,7 @@ export class DummyMainCreater {
 
         this.addClassInit(firstBlock);
 
-        this.addMethodsInvokeStmt(firstBlock, this.abilityCreateMethods);
-        this.addMethodsInvokeStmt(firstBlock, this.abilityStageCreateMethods);
-        this.addMethodsInvokeStmt(firstBlock, this.componentAppearMethods);
+        this.addStartMethods(firstBlock);
 
         const countLocal = new Local('count', NumberType.getInstance());
         this.dummyMain.getBody()!.addLocal(countLocal.getName(), countLocal);
@@ -307,7 +369,8 @@ export class DummyMainCreater {
         const conditionTrue = new ArkConditionExpr(
             ValueUtil.getBooleanConstant(true),
             ValueUtil.getBooleanConstant(false),
-            RelationalBinaryOperator.InEquality);
+            RelationalBinaryOperator.InEquality
+        );
         const whileStmt = new ArkIfStmt(conditionTrue);
         whileBlock.addStmt(whileStmt);
         dummyCfg.addBlock(whileBlock);
@@ -318,11 +381,7 @@ export class DummyMainCreater {
 
         // step4: create the last return block
         const returnBlock = new BasicBlock(this.tempBlockIndex++);
-        this.addMethodsInvokeStmt(returnBlock, this.componentDisappearMethods);
-        this.addMethodsInvokeStmt(returnBlock, this.abilityStageWillDestroyMethods);
-        this.addMethodsInvokeStmt(returnBlock, this.abilityStageDestroyMethods);
-        this.addMethodsInvokeStmt(returnBlock, this.componentDetachedMethods);
-        this.addMethodsInvokeStmt(returnBlock, this.abilityDestroyMethods);
+        this.addEndMethods(returnBlock);
         const returnStmt = new ArkReturnVoidStmt();
         returnBlock.addStmt(returnStmt);
         dummyCfg.addBlock(returnBlock);
@@ -339,8 +398,7 @@ export class DummyMainCreater {
                 const invokeStmt = new ArkInvokeStmt(invokeExpr);
                 block.addStmt(invokeStmt);
                 local.addUsedStmt(invokeStmt);
-
-                if (this.extraInstanceAssign) {
+                if (this.extraInstanceAssign && local) {
                     const assignStmt = new ArkAssignStmt(local, local);
                     block.addStmt(assignStmt);
                     local.addUsedStmt(assignStmt);
@@ -389,30 +447,7 @@ export class DummyMainCreater {
             .forEach(cls => {
                 this.entryClasses.push(cls);
                 for (const mtd of cls.getMethods()) {
-                    const name = mtd.getName();
-                    if (name === COMPONENT_START_METHOD) {
-                        this.componentAppearMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === COMPONENT_DISAPPEAR_METHOD) {
-                        this.componentDisappearMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === COMPONENT_DETACHED_METHOD) {
-                        this.componentDetachedMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === COMPONENT_RECYCLE_METHOD) {
-                        this.componentRecycleMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === COMPONENT_REUSE_METHOD) {
-                        this.componentReuseMethods.push(mtd);
-                        continue;
-                    }
-                    if (COMPONENT_LIFECYCLE_METHOD_NAME.includes(name)) {
-                        this.entryMethods.push(mtd);
-                    }
+                    this.classifyMethod(mtd);
                 }
             });
     }
@@ -448,30 +483,7 @@ export class DummyMainCreater {
             .forEach(cls => {
                 this.entryClasses.push(cls);
                 for (const mtd of cls.getMethods()) {
-                    const name = mtd.getName();
-                    if (name === ABILITY_CREATE_METHOD) {
-                        this.abilityCreateMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === ABILITY_STAGE_CREATE_METHOD) {
-                        this.abilityStageCreateMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === ABILITY_STAGE_WILL_DESTROY_METHOD) {
-                        this.abilityStageWillDestroyMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === ABILITY_STAGE_DESTROY_METHOD) {
-                        this.abilityStageDestroyMethods.push(mtd);
-                        continue;
-                    }
-                    if (name === ABILITY_DESTROY_METHOD) {
-                        this.abilityDestroyMethods.push(mtd);
-                        continue;
-                    }
-                    if (LIFECYCLE_METHOD_NAME.includes(name)) {
-                        this.entryMethods.push(mtd);
-                    }
+                    this.classifyMethod(mtd);
                 }
             });
     }
@@ -528,9 +540,12 @@ class CoverageAnalysis {
 
         this.totalStmts = new Set();
         this.totalMethods.forEach(method => {
-            method.getCfg()?.getStmts().forEach(stmt => {
-                this.totalStmts.add(stmt);
-            });
+            method
+                .getCfg()
+                ?.getStmts()
+                .forEach(stmt => {
+                    this.totalStmts.add(stmt);
+                });
         });
     }
 

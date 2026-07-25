@@ -95,6 +95,61 @@ export const COMPONENT_LIFECYCLE_METHOD_NAME: string[] = [
     'onMeasureSize',
 ];
 
+/**
+ * 首块方法：创建阶段一次性执行、不可重复触发。
+ * 列表顺序严格遵循系统调度时序。
+ * Ability 创建 → 窗口/会话创建 → Component 创建
+ */
+export const LIFECYCLE_START_METHODS: string[] = [
+    'onCreate', // Ability 实例创建后首个回调，用于初始化
+    'onWindowStageCreate', // 窗口创建后触发，调用 loadContent 加载页面
+    'onSessionCreate', // UIExtensionAbility 会话创建，与 onWindowStageCreate 互斥
+    'aboutToAppear', // Component 实例创建后、build() 前调用
+];
+
+/**
+ * 尾块方法：销毁阶段一次性执行、不可重复触发。
+ * 列表顺序严格遵循系统调度时序。
+ * 窗口开始销毁 → 组件清理 → 窗口销毁完成 → Ability 销毁
+ */
+export const LIFECYCLE_END_METHODS: string[] = [
+    'onWindowStageWillDestroy', // 窗口即将销毁，此时组件仍挂在窗口上
+    'aboutToDisappear', // 组件析构销毁（窗口开始销毁后，组件被清理）
+    'onDetached', // 组件从组件树分离
+    'onWindowStageDestroy', // 窗口已销毁，组件已不在
+    'onSessionDestory', // UIExtensionAbility 会话销毁，与 onWindowStageDestroy 互斥
+    'onDestroy', // Ability 最终销毁
+];
+
+/**
+ * 成对/成组出现的生命周期方法。
+ * 同一组中的方法在运行时交替循环出现，放入同一 basic block。
+ * 组内顺序严格遵循系统调度时序。
+ * 配对原则：交替循环出现 + 存在数据流依赖。
+ */
+export const LIFECYCLE_PAIRED_METHOD_GROUPS: string[][] = [
+    // 组件复用：recycle（加入复用池）→ reuse（从池取出），交替循环
+    ['aboutToRecycle', 'aboutToReuse'],
+    // 页面显示/隐藏：交替循环
+    ['onPageShow', 'onPageHide'],
+    // 前台/后台切换：前台序列 → 后台序列，交替循环
+    ['onWillForeground', 'onForeground', 'onDidForeground', 'onWillBackground', 'onBackground', 'onDidBackground'],
+    // 卡片回收/恢复：交替循环
+    ['onFormRecycle', 'onFormRecover'],
+];
+
+/**
+ * 返回方法名所属的配对组索引，不属于任何配对组则返回 -1。
+ */
+export function getPairedMethodGroupIndex(methodName: string): number {
+    for (let i = 0; i < LIFECYCLE_PAIRED_METHOD_GROUPS.length; i++) {
+        if (LIFECYCLE_PAIRED_METHOD_GROUPS[i].includes(methodName)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 export interface AbilityMessage {
     srcEntry: string;
     name: string;
