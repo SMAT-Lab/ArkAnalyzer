@@ -15,7 +15,7 @@
 
 import { SparseBitVector } from '../../utils/SparseBitVector';
 import { ModuleType } from '../../core/model/ArkModule';
-import { ModuleDepthLevel } from './ModuleDepth';
+import { assertDirectLoadLevel, ModuleDepthLevel } from './ModuleDepth';
 import type { ModuleID } from '../../core/model/ArkModule';
 import type { ArkModule } from '../../core/model/ArkModule';
 import type { Scene } from '../../Scene';
@@ -40,10 +40,15 @@ export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
  * Bit indices are {@link ModuleID} (for ID include/exclude) or {@link ModuleType} enum values
  * (for type filter).
  *
- * Load levels ({@link ModuleDepthLevel}) control how much data is built for ArkFile objects:
+ * ## Load levels ({@link ModuleDepthLevel})
+ *
  * - {@link loadLevel} applies to target modules (default {@link ModuleDepthLevel.BODIES}).
  * - {@link dependencyLoadLevel} applies to dependency modules — modules in the closure but
  *   not targets (default {@link ModuleDepthLevel.SIGNATURES}).
+ *
+ * Only {@link ModuleDepthLevel.SIGNATURES} and {@link ModuleDepthLevel.BODIES} are valid
+ * load targets. {@link ModuleDepthLevel.INDEX} is downgrade-only; setters throw if INDEX
+ * is passed.
  *
  * @category core/model
  */
@@ -138,9 +143,11 @@ export class ModuleAnalysisConfig {
 
     /**
      * Set the {@link ModuleDepthLevel} for target modules.
+     * Only SIGNATURES / BODIES are valid; INDEX throws.
      * Returns this config to allow chaining.
      */
     public setLoadLevel(level: ModuleDepthLevel): ModuleAnalysisConfig {
+        assertDirectLoadLevel(level);
         this.loadLevel = level;
         return this;
     }
@@ -152,9 +159,11 @@ export class ModuleAnalysisConfig {
 
     /**
      * Set the {@link ModuleDepthLevel} for dependency modules (in closure but not targets).
+     * Only SIGNATURES / BODIES are valid; INDEX throws.
      * Returns this config to allow chaining.
      */
     public setDependencyLoadLevel(level: ModuleDepthLevel): ModuleAnalysisConfig {
+        assertDirectLoadLevel(level);
         this.dependencyLoadLevel = level;
         return this;
     }

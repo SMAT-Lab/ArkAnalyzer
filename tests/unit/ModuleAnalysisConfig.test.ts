@@ -138,8 +138,8 @@ describe('ModuleAnalysisConfig tests', () => {
 
         it('setLoadLevel stores a custom load level', () => {
             const config = new ModuleAnalysisConfig();
-            config.setLoadLevel(ModuleDepthLevel.META);
-            expect(config.getLoadLevel()).toBe(ModuleDepthLevel.META);
+            config.setLoadLevel(ModuleDepthLevel.SIGNATURES);
+            expect(config.getLoadLevel()).toBe(ModuleDepthLevel.SIGNATURES);
         });
 
         it('setDependencyLoadLevel stores a custom dependency load level', () => {
@@ -155,7 +155,19 @@ describe('ModuleAnalysisConfig tests', () => {
 
         it('setDependencyLoadLevel returns this to allow chaining', () => {
             const config = new ModuleAnalysisConfig();
-            expect(config.setDependencyLoadLevel(ModuleDepthLevel.META)).toBe(config);
+            expect(config.setDependencyLoadLevel(ModuleDepthLevel.SIGNATURES)).toBe(config);
+        });
+
+        it('setLoadLevel rejects INDEX (not a direct load target)', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(() => config.setLoadLevel(ModuleDepthLevel.INDEX)).toThrow(/not a direct load target/);
+            expect(config.getLoadLevel()).toBe(ModuleDepthLevel.BODIES);
+        });
+
+        it('setDependencyLoadLevel rejects INDEX', () => {
+            const config = new ModuleAnalysisConfig();
+            expect(() => config.setDependencyLoadLevel(ModuleDepthLevel.INDEX)).toThrow(/not a direct load target/);
+            expect(config.getDependencyLoadLevel()).toBe(ModuleDepthLevel.SIGNATURES);
         });
     });
 });

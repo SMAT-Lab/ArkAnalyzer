@@ -41,14 +41,13 @@ Logger.configure(path.join(OUTPUT_DIR, 'ModuleAnalyseTest.log'), LOG_LEVEL.ERROR
 const PROJECT_DIR = process.env.PROJECT_DIR || 'tests/resources/dependency/exampleProject/MyApplication4Files';
 const MEMORY_LIMIT_MB = Number(process.env.MEMORY_LIMIT_MB) || 0;
 const LOAD_LEVEL_NAME = (process.env.LOAD_LEVEL || 'BODIES').toUpperCase();
+if (LOAD_LEVEL_NAME === 'INDEX' || LOAD_LEVEL_NAME === 'META') {
+    throw new Error(`LOAD_LEVEL=${LOAD_LEVEL_NAME} is not a direct load target; use SIGNATURES or BODIES`);
+}
 const LOAD_LEVEL: ModuleDepthLevel =
-    LOAD_LEVEL_NAME === 'META'
-        ? ModuleDepthLevel.META
-        : LOAD_LEVEL_NAME === 'IMPORTS'
-          ? ModuleDepthLevel.IMPORTS
-          : LOAD_LEVEL_NAME === 'SIGNATURES'
-            ? ModuleDepthLevel.SIGNATURES
-            : ModuleDepthLevel.BODIES;
+    LOAD_LEVEL_NAME === 'SIGNATURES' || LOAD_LEVEL_NAME === 'IMPORTS'
+        ? ModuleDepthLevel.SIGNATURES
+        : ModuleDepthLevel.BODIES;
 
 const SDK_BASE = '/home/kubrickai/codes/resources/commandline-tools-linux-x64-6.1.1.280/command-line-tools/sdk/default';
 const SDK_CONFIGS = [
@@ -80,10 +79,8 @@ function loadStateLabel(state: ModuleLoadState): string {
     switch (state) {
         case ModuleLoadState.NOT_LOADED:
             return 'NOT_LOADED';
-        case ModuleLoadState.META:
-            return 'META';
-        case ModuleLoadState.IMPORTS:
-            return 'IMPORTS';
+        case ModuleLoadState.INDEX:
+            return 'INDEX';
         case ModuleLoadState.SIGNATURES:
             return 'SIGNATURES';
         case ModuleLoadState.BODIES:
@@ -160,7 +157,7 @@ class ModuleAnalyseTest {
         const config = new ModuleAnalysisConfig();
         config.setIncludeType(ModuleType.PROJECT, true);
         config.setIncludeType(ModuleType.OH_MODULES, true);
-        config.setLoadLevel(ModuleDepthLevel.IMPORTS);
+        config.setLoadLevel(ModuleDepthLevel.SIGNATURES);
         scene.analyseByModule(module => {
             stats.push({
                 name: module.getModuleName(),

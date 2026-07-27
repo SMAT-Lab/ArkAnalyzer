@@ -993,7 +993,7 @@ describe('ModuleBuilder tests', () => {
             return tmpDir;
         }
 
-        it('transitions module state from NOT_LOADED to META', () => {
+        it('transitions module state from NOT_LOADED to SIGNATURES (default)', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-state-'));
             try {
                 setupModuleDir(path.join(tmpDir, 'entry'), ['main.ets']);
@@ -1004,7 +1004,7 @@ describe('ModuleBuilder tests', () => {
 
                 expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
                 builder.loadModule(moduleId);
-                expect(module.getLoadState()).toBe(ModuleLoadState.META);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -1020,12 +1020,12 @@ describe('ModuleBuilder tests', () => {
                 const moduleId = builder.getModuleId(module);
 
                 builder.loadModule(moduleId);
-                expect(module.getLoadState()).toBe(ModuleLoadState.META);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
                 const fileCountAfterFirst = module.getFilesMap().size;
 
                 // Second call should be a no-op
                 builder.loadModule(moduleId);
-                expect(module.getLoadState()).toBe(ModuleLoadState.META);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
                 expect(module.getFilesMap().size).toBe(fileCountAfterFirst);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1053,28 +1053,8 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('SDK modules: loadModule skips SDK modules even at IMPORTS level', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sdk-imports-'));
-            try {
-                setupModuleDir(path.join(tmpDir, 'sdk'), ['api.ets']);
-                const scene = makeLoadModuleSceneStub();
-                const builder = new ModuleBuilder(scene);
-                const module = builder.registerModule(path.join(tmpDir, 'sdk'), 'etsSdk');
-                module.setModuleType(ModuleType.SDK);
-                const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.META);
-
-                // loadModule skips SDK modules regardless of configured level.
-                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
-                expect(module.getFilesMap().size).toBe(0);
-                expect(module.hasFileTopoOrder()).toBe(false);
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-
-        it('creates ArkFile objects at META level (files exist but are not parsed)', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-meta-'));
+        it('creates ArkFile objects at SIGNATURES level', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-sigs-'));
             try {
                 const modulePath = setupModuleDir(path.join(tmpDir, 'entry'), ['main.ets', 'utils.ts', 'index.ets']);
                 const scene = makeLoadModuleSceneStub();
@@ -1084,17 +1064,11 @@ describe('ModuleBuilder tests', () => {
 
                 builder.loadModule(moduleId);
 
-                // All three source files should be in the filesMap
                 expect(module.getFilesMap().size).toBe(3);
-
-                // Each ArkFile should have path info but no parsed content (no default class built)
                 for (const arkFile of module.getFilesMap().values()) {
                     expect(arkFile).toBeInstanceOf(ArkFile);
                     expect(arkFile.getFilePath()).toBeTruthy();
                     expect(arkFile.getFilePath()).toMatch(/\.(ets|ts)$/);
-                    // At META level, the file is not parsed — getCode would read from disk lazily,
-                    // but no AST or default class is built.
-                    expect(arkFile.getAST()).toBeNull();
                 }
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1119,8 +1093,8 @@ describe('ModuleBuilder tests', () => {
                 builder.loadModule(libraryId);
                 builder.loadModule(entryId);
 
-                expect(library.getLoadState()).toBe(ModuleLoadState.META);
-                expect(entry.getLoadState()).toBe(ModuleLoadState.META);
+                expect(library.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+                expect(entry.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
                 expect(library.getFilesMap().size).toBe(1);
                 expect(entry.getFilesMap().size).toBe(1);
             } finally {
@@ -1148,8 +1122,8 @@ describe('ModuleBuilder tests', () => {
                 builder.loadModule(idA);
                 builder.loadModule(idB);
 
-                expect(a.getLoadState()).toBe(ModuleLoadState.META);
-                expect(b.getLoadState()).toBe(ModuleLoadState.META);
+                expect(a.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+                expect(b.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -1161,7 +1135,7 @@ describe('ModuleBuilder tests', () => {
             expect(() => builder.loadModule(999)).not.toThrow();
         });
 
-        it('IMPORTS level: populates import/export info on ArkFiles', () => {
+        it('SIGNATURES level: populates import/export info on ArkFiles', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-imports-io-'));
             try {
                 const modulePath = path.join(tmpDir, 'entry');
@@ -1172,7 +1146,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
 
                 const filesMap = module.getFilesMap();
                 expect(filesMap.size).toBe(2);
@@ -1196,52 +1170,6 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('IMPORTS level: no ArkClass/ArkBody built', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-imports-noclass-'));
-            try {
-                const modulePath = path.join(tmpDir, 'entry');
-                fs.mkdirSync(modulePath, { recursive: true });
-                fs.writeFileSync(path.join(modulePath, 'cls.ets'), 'export const x = 1;\n');
-                const scene = makeLoadModuleSceneStub();
-                const builder = new ModuleBuilder(scene);
-                const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
-
-                expect(module.getFilesMap().size).toBe(1);
-                const arkFile = module.getFilesMap().values().next().value as ArkFile;
-                // At IMPORTS level, only import/export info is built — no classes or namespaces
-                expect(arkFile.getClasses().length).toBe(0);
-                expect(arkFile.getNamespaces().length).toBe(0);
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-
-        it('META level: no import/export info', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-meta-noio-'));
-            try {
-                const modulePath = path.join(tmpDir, 'entry');
-                fs.mkdirSync(modulePath, { recursive: true });
-                fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
-                fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
-                const scene = makeLoadModuleSceneStub();
-                const builder = new ModuleBuilder(scene);
-                const module = builder.registerModule(modulePath, '@ohos/entry');
-                const moduleId = builder.getModuleId(module);
-
-                // Default config -> META level: import/export info is not populated
-                builder.loadModule(moduleId);
-
-                for (const arkFile of module.getFilesMap().values()) {
-                    expect(arkFile.getImportInfos().length).toBe(0);
-                    expect(arkFile.getExportInfos().length).toBe(0);
-                }
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-
         it('analyzeFileDependencies: builds file dependency graph', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-filedeps-'));
             try {
@@ -1254,7 +1182,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
 
                 expect(module.hasFileTopoOrder()).toBe(true);
                 const fileDepGraph = module.getFileDepGraph()!;
@@ -1299,6 +1227,48 @@ describe('ModuleBuilder tests', () => {
                 expect(foo!.getBody()).toBeUndefined();
                 // The load state reflects the SIGNATURES level (no longer capped to IMPORTS)
                 expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('INDEX downgrade keeps export-reachable shells and prunes non-exports', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-index-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(
+                    path.join(modulePath, 'cls.ets'),
+                    [
+                        'export class Pub {',
+                        '  use(): void {}',
+                        '}',
+                        'class Hidden {',
+                        '  secret(): void {}',
+                        '}',
+                        '',
+                    ].join('\n')
+                );
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+
+                expect(() => builder.loadModule(moduleId, ModuleDepthLevel.INDEX)).toThrow(
+                    /not a direct load target/
+                );
+
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+                (builder as unknown as { downgradeModule(id: ModuleID, level: ModuleDepthLevel): void })
+                    .downgradeModule(moduleId, ModuleDepthLevel.INDEX);
+
+                expect(module.getLoadState()).toBe(ModuleLoadState.INDEX);
+                const clsFile = [...module.getFilesMap().values()][0];
+                const pub = clsFile.getClassWithName('Pub');
+                expect(pub).toBeTruthy();
+                expect(pub!.getMethodWithName('use')!.getBody()).toBeUndefined();
+                expect(clsFile.getClassWithName('Hidden')).toBeFalsy();
+                expect(clsFile.getExportInfoBy('Pub')?.getArkExport()).toBe(pub);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }
@@ -1408,9 +1378,9 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
 
-                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
                 expect(module.getFilesMap().size).toBe(2);
                 expect(module.hasFileTopoOrder()).toBe(true);
 
@@ -1425,7 +1395,7 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
-        it('unload then reload correctly rebuilds IMPORTS level data', () => {
+        it('unload then reload correctly rebuilds SIGNATURES level data', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-reload-'));
             try {
                 const modulePath = path.join(tmpDir, 'entry');
@@ -1436,15 +1406,15 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
-                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
 
                 builder.unload(moduleId);
                 expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
 
 
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
-                expect(module.getLoadState()).toBe(ModuleLoadState.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
                 expect(module.getFilesMap().size).toBe(2);
                 expect(module.hasFileTopoOrder()).toBe(true);
 
@@ -1505,7 +1475,7 @@ describe('ModuleBuilder tests', () => {
                 const builder = new ModuleBuilder(scene);
                 const module = builder.registerModule(modulePath, '@ohos/entry');
                 const moduleId = builder.getModuleId(module);
-                builder.loadModule(moduleId, ModuleDepthLevel.IMPORTS);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
 
                 expect(scene.getFiles().length).toBe(2);
                 for (const arkFile of module.getFilesMap().values()) {
