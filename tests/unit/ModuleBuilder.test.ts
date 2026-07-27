@@ -1304,6 +1304,32 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
+        it('keeps @Component in Scene.customComponentMap after module unload', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-custom-comp-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                fs.writeFileSync(
+                    path.join(modulePath, 'comp.ets'),
+                    '@Component\nexport struct MyComp {\n  build() {}\n}\n'
+                );
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+                const sig = scene.getCustomComponent('MyComp');
+                expect(sig).toBeDefined();
+
+                builder.unload(moduleId);
+                // Map must outlive IR so ViewTree can still resolve the component.
+                expect(scene.getCustomComponent('MyComp')).toBe(sig);
+                expect(module.getFilesMap().size).toBe(0);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
         it('BODIES config builds method bodies', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-load-bodies-'));
             try {

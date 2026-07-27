@@ -826,6 +826,15 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
         return node;
     }
 
+    /** CustomComponent leaf when ArkClass is gone; signature from Scene.customComponentMap. */
+    private addCustomComponentStubNode(signature: ClassSignature): ViewTreeNodeImpl {
+        const node = ViewTreeNodeImpl.createCustomComponent();
+        node.signature = signature;
+        node.classSignature = signature;
+        this.push(node);
+        return node;
+    }
+
     private cloneBuilderParamNode(node: ViewTreeNodeImpl, root: ViewTreeNodeImpl): ViewTreeNodeImpl {
         root = root.clone(node);
         if (node.stateValuesTransfer) {
@@ -998,9 +1007,13 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
             let cls = this.findClass(clsSignature);
             if (cls && cls.hasComponentDecorator()) {
                 return this.addCustomComponentNode(cls, arg, builderMethod);
-            } else {
-                logger.error(`ViewTree->viewComponentCreationParser not found class ${clsSignature.toString()}. ${stmt.toString()}`);
             }
+            // Providing module IR may be gone — look up custom component table.
+            const stubSig = this.render.getDeclaringArkFile().getScene().getCustomComponent(clsSignature.getClassName());
+            if (stubSig) {
+                return this.addCustomComponentStubNode(stubSig);
+            }
+            logger.error(`ViewTree->viewComponentCreationParser not found class ${clsSignature.toString()}. ${stmt.toString()}`);
         }
         return undefined;
     }

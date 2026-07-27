@@ -232,6 +232,7 @@ function buildStruct2ArkClass(clsNode: ts.StructDeclaration, cls: ArkClass, sour
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
+    registerCustomComponentIfNeeded(cls);
 
     cls.setCategory(ClassCategory.STRUCT);
     init4InstanceInitMethod(cls);
@@ -254,6 +255,7 @@ function buildClass2ArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression, 
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
+    registerCustomComponentIfNeeded(cls);
 
     cls.setCategory(ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
@@ -273,6 +275,11 @@ function initHeritage(heritageClauses: Map<string, string>, cls: ArkClass): void
     for (let key of heritageClauses.keys()) {
         cls.addHeritageClassName(key);
     }
+}
+
+/** Register @Component into Scene.customComponentMap while the class is being built. */
+function registerCustomComponentIfNeeded(cls: ArkClass): void {
+    cls.getDeclaringArkFile().getScene().registerCustomComponent(cls);
 }
 
 function buildInterface2ArkClass(clsNode: ts.InterfaceDeclaration, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
