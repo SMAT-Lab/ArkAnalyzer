@@ -40,6 +40,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
+import type { ArkExport } from '../../core/model/ArkExport';
 import { ModuleUtils, ModulePath } from '../../utils/ModuleUtils';
 import { SceneBuildStage } from '../../Scene';
 import type { Scene } from '../../Scene';
@@ -1353,72 +1354,108 @@ export class ModuleBuilder {
         }
 
         this.stripModuleBodiesAndAst(module);
+        const { keepClasses, keepNamespaces } = this.collectExportReachableSets(module);
+        this.pruneNonExportedIr(module, keepClasses, keepNamespaces);
+        module.setFileDepGraph(undefined);
+        module.setLoadState(ModuleLoadState.INDEX);
+    }
 
+    private collectExportReachableSets(module: ArkModule): {
+        keepClasses: Set<ArkClass>;
+        keepNamespaces: Set<ArkNamespace>;
+    } {
         const keepClasses = new Set<ArkClass>();
         const keepNamespaces = new Set<ArkNamespace>();
         for (const arkFile of module.getFilesMap().values()) {
             for (const exp of arkFile.getExportInfos()) {
-                const arkExport = exp.getArkExport();
-                if (!arkExport) {
-                    continue;
-                }
-                if (arkExport instanceof ArkClass) {
-                    keepClasses.add(arkExport);
-                    const ns = arkExport.getDeclaringArkNamespace();
-                    if (ns) {
-                        keepNamespaces.add(ns);
-                    }
-                } else if (arkExport instanceof ArkMethod) {
-                    const cls = arkExport.getDeclaringArkClass();
-                    keepClasses.add(cls);
-                    const ns = cls.getDeclaringArkNamespace();
-                    if (ns) {
-                        keepNamespaces.add(ns);
-                    }
-                } else if (arkExport instanceof ArkNamespace) {
-                    keepNamespaces.add(arkExport);
-                }
+                this.addExportToKeepSets(exp.getArkExport(), keepClasses, keepNamespaces);
             }
         }
+        return { keepClasses, keepNamespaces };
+    }
 
+    private addExportToKeepSets(
+        arkExport: ArkExport | undefined | null,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
+        if (!arkExport) {
+            return;
+        }
+        if (arkExport instanceof ArkClass) {
+            keepClasses.add(arkExport);
+            const ns = arkExport.getDeclaringArkNamespace();
+            if (ns) {
+                keepNamespaces.add(ns);
+            }
+            return;
+        }
+        if (arkExport instanceof ArkMethod) {
+            const cls = arkExport.getDeclaringArkClass();
+            keepClasses.add(cls);
+            const ns = cls.getDeclaringArkNamespace();
+            if (ns) {
+                keepNamespaces.add(ns);
+            }
+            return;
+        }
+        if (arkExport instanceof ArkNamespace) {
+            keepNamespaces.add(arkExport);
+        }
+    }
+
+    private pruneNonExportedIr(
+        module: ArkModule,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
         for (const arkFile of module.getFilesMap().values()) {
-            for (const cls of [...ModelUtils.getAllClassesInFile(arkFile)]) {
-                if (keepClasses.has(cls) || cls.isDefaultArkClass()) {
-                    continue;
-                }
-                for (const base of cls.getAllHeritageClasses()) {
-                    base.getExtendedClasses().delete(cls.getName());
-                }
-                for (const mtd of cls.getMethods(true)) {
-                    this.scene.removeMethod(mtd);
-                    mtd.clearBodyAndSupplementary();
-                }
-                const ns = cls.getDeclaringArkNamespace();
-                if (ns) {
-                    ns.removeArkClass(cls);
-                } else {
-                    arkFile.removeArkClass(cls);
-                }
+            this.pruneNonKeptClasses(arkFile, keepClasses);
+            this.pruneNonKeptNamespaces(arkFile, keepClasses, keepNamespaces);
+        }
+    }
+
+    private pruneNonKeptClasses(arkFile: ArkFile, keepClasses: Set<ArkClass>): void {
+        for (const cls of [...ModelUtils.getAllClassesInFile(arkFile)]) {
+            if (keepClasses.has(cls) || cls.isDefaultArkClass()) {
+                continue;
             }
-            for (const ns of [...arkFile.getNamespaces()]) {
-                if (keepNamespaces.has(ns)) {
-                    continue;
-                }
-                let hasKept = false;
-                for (const cls of keepClasses) {
-                    if (cls.getDeclaringArkNamespace() === ns) {
-                        hasKept = true;
-                        break;
-                    }
-                }
-                if (!hasKept) {
-                    arkFile.removeNamespace(ns);
-                }
+            for (const base of cls.getAllHeritageClasses()) {
+                base.getExtendedClasses().delete(cls.getName());
+            }
+            for (const mtd of cls.getMethods(true)) {
+                this.scene.removeMethod(mtd);
+                mtd.clearBodyAndSupplementary();
+            }
+            const ns = cls.getDeclaringArkNamespace();
+            if (ns) {
+                ns.removeArkClass(cls);
+            } else {
+                arkFile.removeArkClass(cls);
             }
         }
+    }
 
-        module.setFileDepGraph(undefined);
-        module.setLoadState(ModuleLoadState.INDEX);
+    private pruneNonKeptNamespaces(
+        arkFile: ArkFile,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
+        for (const ns of [...arkFile.getNamespaces()]) {
+            if (keepNamespaces.has(ns) || this.namespaceOwnsKeptClass(ns, keepClasses)) {
+                continue;
+            }
+            arkFile.removeNamespace(ns);
+        }
+    }
+
+    private namespaceOwnsKeptClass(ns: ArkNamespace, keepClasses: Set<ArkClass>): boolean {
+        for (const cls of keepClasses) {
+            if (cls.getDeclaringArkNamespace() === ns) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
