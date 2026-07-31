@@ -14,6 +14,8 @@
  */
 
 'use strict';
+
+const { rmDirSafe } = require('./shared/fileUtils');
 const execSync = require('child_process').execSync;
 const fs = require('fs');
 const path = require('path');
@@ -64,7 +66,7 @@ async function execCommand(command) {
 
 function removeFolder(folderPath) {
     console.log(`start to remove '${folderPath}'`);
-    fs.rmSync(folderPath, { recursive: true, force: true });
+    rmDirSafe(folderPath);
     console.log();
 }
 

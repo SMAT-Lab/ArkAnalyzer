@@ -15,7 +15,8 @@
 
 'use strict';
 
-const { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('fs');
+const { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } = require('fs');
+const { rmDirSafe } = require('../shared/fileUtils');
 const { join } = require('path');
 const { buildCxxAstRuntimeLib, runFlatcCodegen, runCommand } = require('./cppPackUtils');
 
@@ -76,7 +77,7 @@ function assemblePlatformPackage(platformArch, nativeDir, outDir) {
     const libDir = join(pkgDir, 'lib');
     const dumperDir = join(pkgDir, 'dumper');
 
-    rmSync(pkgDir, { recursive: true, force: true });
+    rmDirSafe(pkgDir);
     mkdirSync(dumperDir, { recursive: true });
     ensureCxxRuntimeLibBuilt();
     cpSync(join(cxxAstRuntimeRoot, 'lib'), libDir, { recursive: true });

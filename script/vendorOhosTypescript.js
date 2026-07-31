@@ -14,6 +14,8 @@
  */
 'use strict';
 
+const { rmDirSafe } = require('./shared/fileUtils');
+
 const fs = require('fs');
 const path = require('path');
 
@@ -32,7 +34,7 @@ if (!process.env.CLOUD_BUILD_ENV && !fs.existsSync(markerPath)) {
     process.exit(1);
 }
 
-fs.rmSync(targetDir, { recursive: true, force: true });
+rmDirSafe(targetDir);
 fs.mkdirSync(path.dirname(targetDir), { recursive: true });
 fs.cpSync(sourceDir, targetDir, { recursive: true });
 
