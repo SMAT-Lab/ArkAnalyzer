@@ -265,7 +265,7 @@ describe('analyseByModule integration tests', () => {
         expect(libraryModule.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
     });
 
-    it('IMPORTS level: SDK and non-SDK modules have file dependency graphs', () => {
+    it('SIGNATURES level: SDK and non-SDK modules have file dependency graphs', () => {
         // Add .ets source files to the entry and library modules so file dependency analysis
         // has something to analyze.
         fs.mkdirSync(path.join(tmpDir, 'entry', 'src'), { recursive: true });
@@ -277,12 +277,11 @@ describe('analyseByModule integration tests', () => {
         const scene = createScene();
         const config = new ModuleAnalysisConfig();
         config.setIncludeType(ModuleType.PROJECT, true);
-        config.setLoadLevel(ModuleDepthLevel.IMPORTS);
+        config.setLoadLevel(ModuleDepthLevel.SIGNATURES);
 
         const verifiedModules: ArkModule[] = [];
         scene.analyseByModule(module => {
-            // PROJECT modules are loaded at IMPORTS level with source files, so they must have
-            // file dependency graphs and a file topological order.
+            // PROJECT modules loaded at SIGNATURES have source files and file dependency graphs.
             if (module.getModuleType() === ModuleType.PROJECT) {
                 expect(module.hasFileTopoOrder()).toBe(true);
                 expect(module.getFileDepGraph()).toBeDefined();

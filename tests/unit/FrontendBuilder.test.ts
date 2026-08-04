@@ -61,30 +61,7 @@ function findFileByBasename(module: ArkModule, basename: string): ArkFile | unde
 }
 
 describe('FrontendBuilder level-aware building', () => {
-    it('ArkTS META level - no import/export info', () => {
-        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-meta-'));
-        try {
-            const modulePath = path.join(tmpDir, 'entry');
-            fs.mkdirSync(modulePath, { recursive: true });
-            fs.writeFileSync(path.join(modulePath, 'a.ets'), "import { foo } from './b';\n");
-            fs.writeFileSync(path.join(modulePath, 'b.ets'), 'export const foo = 1;\n');
-            const scene = makeFrontendBuilderSceneStub(tmpDir, 'testProject');
-            const builder = new ModuleBuilder(scene);
-            const module = builder.registerModule(modulePath, '@ohos/entry');
-
-            // META level skips source reading; import/export info is not populated
-            FrontendBuilder.buildModuleFilesToLevel(scene, module, ModuleDepthLevel.META);
-
-            const aFile = findFileByBasename(module, 'a.ets');
-            expect(aFile).toBeDefined();
-            expect(aFile!.getImportInfos().length).toBe(0);
-            expect(aFile!.getExportInfos().length).toBe(0);
-        } finally {
-            fs.rmSync(tmpDir, { recursive: true, force: true });
-        }
-    });
-
-    it('ArkTS IMPORTS level - import/export info populated, no ArkClass', () => {
+    it('ArkTS buildImports - import/export info populated, no ArkClass', () => {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-imports-'));
         try {
             const modulePath = path.join(tmpDir, 'entry');
@@ -95,8 +72,10 @@ describe('FrontendBuilder level-aware building', () => {
             const builder = new ModuleBuilder(scene);
             const module = builder.registerModule(modulePath, '@ohos/entry');
 
-            // IMPORTS level fills import/export info only, skipping class/method/body building
-            FrontendBuilder.buildModuleFilesToLevel(scene, module, ModuleDepthLevel.IMPORTS);
+            FrontendBuilder.createModuleFileShells(scene, module);
+            for (const arkFile of module.getFilesMap().values()) {
+                FrontendBuilder.buildImports(arkFile, arkFile.getLanguage());
+            }
 
             const aFile = findFileByBasename(module, 'a.ets');
             const bFile = findFileByBasename(module, 'b.ets');
@@ -104,7 +83,6 @@ describe('FrontendBuilder level-aware building', () => {
             expect(bFile).toBeDefined();
             expect(aFile!.getImportInfos().length).toBeGreaterThanOrEqual(1);
             expect(bFile!.getExportInfos().length).toBeGreaterThanOrEqual(1);
-            // IMPORTS level does not build ArkClass
             expect(aFile!.getClasses().length).toBe(0);
             expect(bFile!.getClasses().length).toBe(0);
         } finally {

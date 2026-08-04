@@ -27,7 +27,7 @@ import { ModelUtils } from '../core/common/ModelUtils';
 import { FileUtils } from '../utils/FileUtils';
 import { getAllFiles } from '../utils/getAllFiles';
 import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
-import { ModuleDepthLevel } from './common/ModuleDepth';
+import { ModuleDepthLevel, assertDirectLoadLevel } from './common/ModuleDepth';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from '../core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './cppFrontend/model/builder/ArkMethodBuilder';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
@@ -121,6 +121,7 @@ export class FrontendBuilder {
      * @param level - The target depth level.
      */
     public static buildModuleFilesToLevel(scene: Scene, module: ArkModule, level: ModuleDepthLevel): void {
+        assertDirectLoadLevel(level);
         const arkFiles = FrontendBuilder.createModuleFileShells(scene, module);
         for (const arkFile of arkFiles) {
             try {
@@ -136,9 +137,9 @@ export class FrontendBuilder {
      * registering each with the module and scene.
      *
      * Each shell has language, filePath, projectDir, and fileSignature set, but no ImportInfo /
-     * ExportInfo / ArkClass / ArkMethod. This is the META-level baseline; callers subsequently
-     * build content via {@link buildArkFileToLevel} (IMPORTS) or {@link upgradeArkFileToLevel}
-     * (SIGNATURES / BODIES).
+     * ExportInfo / ArkClass / ArkMethod. Callers subsequently build content via
+     * {@link buildImports} then {@link upgradeArkFileToLevel} (SIGNATURES / BODIES), or
+     * {@link buildArkFileToLevel} for a one-shot path.
      *
      * @param scene - The owning {@link Scene}.
      * @param module - The module whose directory is scanned.
@@ -178,8 +179,6 @@ export class FrontendBuilder {
     /**
      * Dispatch level-aware building to the appropriate frontend.
      *
-     * - META: no content is built (only the ArkFile path/basic info created by the caller).
-     * - IMPORTS: lightweight import/export parsing only.
      * - SIGNATURES: full namespace/class/method signatures are built (parameters, return types)
      *   without method bodies, reusing {@link buildProjectFileIntoArkFile}. The mounted
      *   BodyBuilders are released here so the ArkFile holds signatures only (no ArkBody/CFG).
@@ -187,13 +186,6 @@ export class FrontendBuilder {
      *   so that {@link buildModuleMethodBody} can build method bodies in a subsequent phase.
      */
     private static buildArkFileToLevel(scene: Scene, filePath: string, arkFile: ArkFile, language: Language, level: ModuleDepthLevel): void {
-        if (level <= ModuleDepthLevel.META) {
-            return;
-        }
-        if (level === ModuleDepthLevel.IMPORTS) {
-            FrontendBuilder.buildImports(arkFile, language);
-            return;
-        }
         // SIGNATURES and BODIES: reuse the full file builder to build signatures and mount
         // BodyBuilders on each method implementation.
         FrontendBuilder.buildProjectFileIntoArkFile(scene, filePath, arkFile);
@@ -205,7 +197,7 @@ export class FrontendBuilder {
     }
 
     /**
-     * IMPORTS level: lightweight import/export parsing only.
+     * Lightweight import/export parsing only (used as a step inside {@link ModuleBuilder.buildModuleToLevel}).
      */
     public static buildImports(arkFile: ArkFile, language: Language): void {
         if (language === Language.CXX) {
@@ -216,8 +208,8 @@ export class FrontendBuilder {
     }
 
     /**
-     * Upgrade an existing ArkFile (whose ImportInfo/ExportInfo were already populated at IMPORTS
-     * level) to SIGNATURES or BODIES by building class/method/namespace signatures on top.
+     * Upgrade an existing ArkFile (whose ImportInfo/ExportInfo were already populated) to
+     * SIGNATURES or BODIES by building class/method/namespace signatures on top.
      *
      * For ArkTS files, this calls {@link ArktsFrontend.buildProjectFileForSignatures} which builds
      * signatures with `skipImportExport = true`, preserving existing import/export data and
@@ -226,7 +218,7 @@ export class FrontendBuilder {
      *
      * For C++ files, {@link CppFrontend.buildProjectFile} is safe to re-call: C++ ImportInfo uses
      * stable clause keys (`#include "..."` / namespace names) that are overwritten by `Map.set`,
-     * and C++ ExportInfo is not produced during the IMPORTS-only phase, so no duplication occurs.
+     * and C++ ExportInfo is not produced during the import-only phase, so no duplication occurs.
      *
      * After signature building, BodyBuilders are released when the target level is SIGNATURES
      * (no ArkBody/CFG retained). For BODIES, BodyBuilders are retained so that
@@ -235,7 +227,7 @@ export class FrontendBuilder {
      * @param scene - The owning {@link Scene}.
      * @param arkFile - The ArkFile to upgrade (must already have ImportInfo/ExportInfo).
      * @param language - The language of the file.
-     * @param targetLevel - The target depth level (must be > IMPORTS).
+     * @param targetLevel - The target depth level (SIGNATURES or BODIES).
      */
     public static upgradeArkFileToLevel(scene: Scene, arkFile: ArkFile, language: Language, targetLevel: ModuleDepthLevel): void {
         if (language === Language.CXX) {

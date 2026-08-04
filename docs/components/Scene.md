@@ -233,16 +233,18 @@ console.log(config.getTargetProjectName(), config.getTargetProjectDirectory());
 
 #### ModuleLoadState / ModuleDepthLevel
 
-二者一一对应、呈递进关系（每一层是上一层的超集）。`ModuleDepthLevel` 是调用 `analyseByModule` 时的**入参**（声明期望加载到哪一层），`ModuleLoadState` 是模块的**实际状态**（查询当前已加载到哪一层）：
+二者呈递进关系（每一层是上一层的超集）。`ModuleDepthLevel` 是调用 `analyseByModule` / `loadModule` 时的**深度入参**，`ModuleLoadState` 是模块的**实际状态**。
 
-| 层级 | 名称 | 含义 |
-|------|------|------|
-| META | 模块元数据 + 依赖拓扑 + ArkFile 路径级基本信息（除 index 文件外不读取源文件） |
-| IMPORTS | META + 全部 ArkFile 的 export/import + 模块内文件依赖 |
-| SIGNATURES | IMPORTS + 类/方法签名等，不含方法体 |
-| BODIES | SIGNATURES + 方法体（ArkBody、CFG、Stmt/Expr） |
+| 层级 | 名称 | 含义 | 可否作为直接加载目标 |
+|------|------|------|----------------------|
+| — | `NOT_LOADED`（仅 LoadState） | 无 IR | — |
+| INDEX | 原地掏空的 ArkFile IR（去掉 body/AST，裁掉非导出类）；`getClass`/`getMethod`/export 查找与 SIGNATURES 相同 | **否** — 仅降级/回落态 |
+| SIGNATURES | import/export + 类/方法签名，不含方法体 | **是**（依赖模块默认） |
+| BODIES | SIGNATURES + 方法体（ArkBody、CFG、Stmt/Expr） | **是**（目标模块默认） |
 
-> 注：`ModuleDepthLevel` 与 `ModuleLoadState` 的层级含义相同，但 `ModuleLoadState` 额外含一个 `NOT_LOADED` 初始态，故其后续层级编号顺延 +1（`ModuleDepthLevel.META=0` 对应 `ModuleLoadState.META=1`）。
+> **配置约束：** `setLoadLevel` / `setDependencyLoadLevel` / `loadModule` **只接受** `SIGNATURES` 与 `BODIES`。传入 `INDEX` 会 **抛错**（不静默兜底）。内存压力下可先降级到 `SIGNATURES`，再降到 `INDEX`（原地掏空、保留可查壳），最后才 `unload` 到 `NOT_LOADED`。
+
+> 注：`ModuleLoadState` 额外含 `NOT_LOADED=0`，故 `ModuleDepthLevel.INDEX=0` 对应 `ModuleLoadState.INDEX=1`，以此类推。
 
 #### ModuleAnalysisConfig
 
@@ -263,7 +265,7 @@ console.log(config.getTargetProjectName(), config.getTargetProjectDirectory());
 | `setLoadLevel(level)` | `BODIES` | **目标**模块加载深度 |
 | `setDependencyLoadLevel(level)` | `SIGNATURES` | **依赖**模块（在闭包内但非目标）加载深度 |
 
-> 不传 `config` 时，默认目标为全部 PROJECT 与 OH_MODULES 模块，目标加载到 `BODIES`、依赖加载到 `SIGNATURES`。
+> 不传 `config` 时，默认目标为全部 PROJECT 与 OH_MODULES 模块，目标加载到 `BODIES`、依赖加载到 `SIGNATURES`。内存压力下可先降级到 `SIGNATURES`，再降到 `INDEX`（原地掏空、保留可查壳），最后才 `unload` 到 `NOT_LOADED`。
 
 #### ModuleAnalysisCallback
 
@@ -481,7 +483,7 @@ scene.analyseByModule((module, scn) => {
 
 #### 场景二：先轻量发现模块列表，再聚焦分析少数模块
 
-适合工程较大、只关心其中几个模块的场景。先用最低深度（`META`）跑一遍拿到全部模块元数据，筛出感兴趣的模块 ID，再针对它们做深度分析：
+适合工程较大、只关心其中几个模块的场景。先用最低可加载深度（`SIGNATURES`）跑一遍拿到全部模块元数据，筛出感兴趣的模块 ID，再针对它们做深度分析：
 
 ```typescript
 import {
@@ -497,11 +499,11 @@ sceneConfig.buildFromProjectDir('/path/to/project');
 const scene = new Scene();
 scene.config(sceneConfig);
 
-// 阶段一：轻量发现——META 深度（仅模块元数据与依赖拓扑，不解析源文件），空回调
+// 阶段一：轻量发现——SIGNATURES（可解析导出；INDEX 不能作为直接加载目标）
 const discovery = new ModuleAnalysisConfig();
 discovery.setIncludeType(ModuleType.PROJECT, true);
-discovery.setLoadLevel(ModuleDepthLevel.META);
-discovery.setDependencyLoadLevel(ModuleDepthLevel.META);
+discovery.setLoadLevel(ModuleDepthLevel.SIGNATURES);
+discovery.setDependencyLoadLevel(ModuleDepthLevel.SIGNATURES);
 scene.analyseByModule(() => {}, discovery);
 
 // 此时模块已全部注册，scene.getModules() 可枚举元数据

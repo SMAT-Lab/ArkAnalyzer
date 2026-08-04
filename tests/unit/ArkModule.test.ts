@@ -114,8 +114,7 @@ describe('ArkModule tests', () => {
             const module = new ArkModule(STUB_SCENE);
             for (const state of [
                 ModuleLoadState.NOT_LOADED,
-                ModuleLoadState.META,
-                ModuleLoadState.IMPORTS,
+                ModuleLoadState.INDEX,
                 ModuleLoadState.SIGNATURES,
                 ModuleLoadState.BODIES,
             ]) {

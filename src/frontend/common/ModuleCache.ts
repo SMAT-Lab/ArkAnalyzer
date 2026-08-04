@@ -38,6 +38,7 @@ export interface HeapUsedEstimateState {
  * caller ({@link ModuleBuilder.evictIfNeeded}) handles the subsequent phases:
  * - **Phase 2** — downgrade protected dependencies to dependencyLoadLevel (release method
  *   bodies/AST, keep signatures), in reverse-topo order.
+ * - **Phase 2b** — further downgrade protected deps to INDEX (hollow in-place IR).
  * - **Phase 3** — if still over threshold, evict the protected dependencies (full unload),
  *   in reverse-topo order.
  *

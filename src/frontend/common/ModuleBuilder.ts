@@ -25,7 +25,7 @@ import { BUILD_PROFILE_JSON5, OH_MODULES, MODULE_PREFIX, OH_PACKAGE_JSON5, OHPM 
 import { OH_PKG_DEPENDENCIES, OH_PKG_DEV_DEPENDENCIES, OH_PKG_DYNAMIC_DEPENDENCIES } from '../../core/common/Const';
 import { fetchDependenciesFromFile, parseJsonText } from '../../utils/json5parser';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { ModuleDepthLevel } from './ModuleDepth';
+import { assertDirectLoadLevel, ModuleDepthLevel } from './ModuleDepth';
 import { ModuleAnalysisConfig } from './ModuleAnalysisConfig';
 import { MemoryMonitor } from './MemoryMonitor';
 import { ModuleCache, HeapUsedEstimateState } from './ModuleCache';
@@ -37,6 +37,10 @@ import { getAllFiles } from '../../utils/getAllFiles';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ArktsFrontend } from '../arktsFrontend/ArktsFrontend';
 import { ModelUtils } from '../../core/common/ModelUtils';
+import { ArkClass } from '../../core/model/ArkClass';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
+import type { ArkExport } from '../../core/model/ArkExport';
 import { ModuleUtils, ModulePath } from '../../utils/ModuleUtils';
 import { SceneBuildStage } from '../../Scene';
 import type { Scene } from '../../Scene';
@@ -81,7 +85,7 @@ export class ModuleBuilder {
      * Calibrated from scene_board_ext measurements (no-eviction, no GC runs):
      * - BODIES: P75 of per-module heapUsed-per-file at BODIES level = ~1.7MB/file
      * - SIGNATURES: P75 of per-module heapUsed-per-file at SIGNATURES level = ~700KB/file
-     * - IMPORTS/META: negligible (metadata only).
+     * - INDEX: hollow in-place IR (export-reachable shells); lighter than full SIGNATURES.
      *
      * No-GC calibration matches production conditions (no forced GC). Without GC,
      * heapUsed increments include uncollected garbage from parsing and type inference,
@@ -91,8 +95,7 @@ export class ModuleBuilder {
      * and as a fallback for unload estimation when the heapUsed table has no entry.
      */
     private static readonly HEAPUSED_PER_FILE: Map<ModuleDepthLevel, number> = new Map([
-        [ModuleDepthLevel.META, 0],
-        [ModuleDepthLevel.IMPORTS, 0],
+        [ModuleDepthLevel.INDEX, 250_000],
         [ModuleDepthLevel.SIGNATURES, 700_000],
         [ModuleDepthLevel.BODIES, 1_700_000],
     ]);
@@ -877,16 +880,14 @@ export class ModuleBuilder {
      */
     private depthLevelToLoadState(level: ModuleDepthLevel): ModuleLoadState {
         switch (level) {
-            case ModuleDepthLevel.META:
-                return ModuleLoadState.META;
-            case ModuleDepthLevel.IMPORTS:
-                return ModuleLoadState.IMPORTS;
+            case ModuleDepthLevel.INDEX:
+                return ModuleLoadState.INDEX;
             case ModuleDepthLevel.SIGNATURES:
                 return ModuleLoadState.SIGNATURES;
             case ModuleDepthLevel.BODIES:
                 return ModuleLoadState.BODIES;
             default:
-                return ModuleLoadState.META;
+                return ModuleLoadState.INDEX;
         }
     }
 
@@ -896,16 +897,14 @@ export class ModuleBuilder {
      */
     private loadStateToDepthLevel(loadState: ModuleLoadState): ModuleDepthLevel {
         switch (loadState) {
-            case ModuleLoadState.META:
-                return ModuleDepthLevel.META;
-            case ModuleLoadState.IMPORTS:
-                return ModuleDepthLevel.IMPORTS;
+            case ModuleLoadState.INDEX:
+                return ModuleDepthLevel.INDEX;
             case ModuleLoadState.SIGNATURES:
                 return ModuleDepthLevel.SIGNATURES;
             case ModuleLoadState.BODIES:
                 return ModuleDepthLevel.BODIES;
             default:
-                return ModuleDepthLevel.META;
+                return ModuleDepthLevel.INDEX;
         }
     }
 
@@ -987,7 +986,9 @@ export class ModuleBuilder {
      * @param moduleId - ID of the module to load.
      * @param depthLevel - The depth level to load the module to.
      */
-    public loadModule(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.META): void {
+    public loadModule(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.SIGNATURES): void {
+        assertDirectLoadLevel(depthLevel);
+
         const module = this.getModule(moduleId);
         if (!module) {
             return;
@@ -1009,12 +1010,16 @@ export class ModuleBuilder {
             return;
         }
 
+        // INDEX hollow may have pruned non-exported IR; rebuild from disk when upgrading.
+        if (module.getLoadState() === ModuleLoadState.INDEX) {
+            this.resetModuleIrForRebuild(module);
+        }
+
         // Record heapUsed before actual build (for heapUsed table population)
         const recordHeapUsed = this.monitor?.isEnabled() ?? false;
         const heapUsedBefore = recordHeapUsed ? this.monitor!.getCurrentHeapUsed() : 0;
 
-        // Phase 1: build ArkFile objects to the effective level, with intra-module file
-        // dependency analysis integrated (topological-order parsing for level > IMPORTS).
+        // Phase 1: build ArkFile IR to SIGNATURES/BODIES (imports + topo + signatures).
         this.buildModuleToLevel(module, depthLevel);
 
         // Phase 2: build method bodies when BODIES level was requested
@@ -1042,17 +1047,8 @@ export class ModuleBuilder {
     }
 
     /**
-     * Unload a module's data, releasing heavy data and resetting to NOT_LOADED state.
-     *
-     * Clears the module's filesMap (releasing ArkFile/ArkClass/ArkMethod objects), resets the
-     * file dependency graph (so that the next {@link loadModule} rebuilds IMPORTS from scratch),
-     * and sets the load state to NOT_LOADED. After unloading, {@link loadModule} can rebuild
-     * the module from scratch.
-     *
-     * SDK modules are not unloaded (their data is built by {@link buildSdkModules} and shared
-     * globally).
-     *
-     * @param moduleId - ID of the module to unload.
+     * Unload a module's data, releasing IR and resetting to NOT_LOADED.
+     * SDK modules are not unloaded (built by {@link buildSdkModules}).
      */
     public unload(moduleId: ModuleID): void {
         const module = this.getModule(moduleId);
@@ -1062,10 +1058,7 @@ export class ModuleBuilder {
         if (module.getModuleType() === ModuleType.SDK) {
             return;
         }
-        this.scene.disposeModule(module);
-        this.breakInternalReferences(module);
-        module.clearFilesMap();
-        module.setFileDepGraph(undefined);
+        this.resetModuleIrForRebuild(module);
         module.setLoadState(ModuleLoadState.NOT_LOADED);
     }
 
@@ -1102,6 +1095,7 @@ export class ModuleBuilder {
         this.monitor = this.scene.getMemoryMonitor();
         this.cache = this.scene.getModuleCache();
         this.topoOrder = topoOrder;
+        assertDirectLoadLevel(dependencyLoadLevel);
         this.dependencyLoadLevel = dependencyLoadLevel;
         this.topoOrderIndex = new Map();
         for (let i = 0; i < topoOrder.length; i++) {
@@ -1120,7 +1114,7 @@ export class ModuleBuilder {
      * During eviction, the heapUsed estimate is tracked via {@link HeapUsedEstimateState},
      * decremented by the heapUsed table value of each unloaded/downgraded module.
      */
-    private evictIfNeeded(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.META): void {
+    private evictIfNeeded(moduleId: ModuleID, depthLevel: ModuleDepthLevel = ModuleDepthLevel.SIGNATURES): void {
         if (!this.monitor || !this.cache || !this.topoOrderIndex) {
             return;
         }
@@ -1152,6 +1146,7 @@ export class ModuleBuilder {
 
         this.runPhase1Eviction(hardProtected, softProtected, depGraph, heapUsedState);
         this.runPhase2Downgrade(protectedDeps, reverseTopo, heapUsedState);
+        this.runPhase2bDowngradeToIndex(protectedDeps, reverseTopo, heapUsedState);
         this.runPhase3Eviction(protectedDeps, reverseTopo, heapUsedState);
     }
 
@@ -1174,7 +1169,8 @@ export class ModuleBuilder {
         if (heapUsedState.estimate <= heapUsedState.limit) {
             return;
         }
-        const downgradeTarget = Math.max(this.dependencyLoadLevel, ModuleDepthLevel.SIGNATURES) as ModuleDepthLevel;
+        // Prefer configured dependency load level (already coerced away from INDEX at init).
+        const downgradeTarget = this.dependencyLoadLevel;
         const targetLoadState = this.depthLevelToLoadState(downgradeTarget);
         for (const id of reverseTopo) {
             if (heapUsedState.estimate <= heapUsedState.limit) {
@@ -1189,6 +1185,32 @@ export class ModuleBuilder {
             }
             const decrease = this.estimateDowngradeHeapUsedDecrease(id, downgradeTarget);
             this.downgradeModule(id, downgradeTarget);
+            heapUsedState.estimate -= decrease;
+        }
+    }
+
+    /**
+     * Eviction phase 2b: if still over limit after BODIES→SIGNATURES, downgrade protected
+     * deps further to INDEX (hollow in-place IR; same lookup APIs as SIGNATURES).
+     */
+    private runPhase2bDowngradeToIndex(protectedDeps: Set<ModuleID>, reverseTopo: ModuleID[], heapUsedState: HeapUsedEstimateState): void {
+        if (heapUsedState.estimate <= heapUsedState.limit) {
+            return;
+        }
+        const targetLoadState = ModuleLoadState.INDEX;
+        for (const id of reverseTopo) {
+            if (heapUsedState.estimate <= heapUsedState.limit) {
+                break;
+            }
+            if (!protectedDeps.has(id) || !this.cache?.has(id)) {
+                continue;
+            }
+            const mod = this.getModule(id);
+            if (!mod || mod.getLoadState() <= targetLoadState) {
+                continue;
+            }
+            const decrease = this.estimateDowngradeHeapUsedDecrease(id, ModuleDepthLevel.INDEX);
+            this.downgradeModule(id, ModuleDepthLevel.INDEX);
             heapUsedState.estimate -= decrease;
         }
     }
@@ -1271,10 +1293,14 @@ export class ModuleBuilder {
 
 
     /**
-     * Downgrade a module's loaded data to the given target level (min SIGNATURES), releasing the
-     * heavy method-body/view-tree/AST data while keeping signatures (ArkClass/method signatures,
-     * filesMap, Scene index maps) so dependents can still resolve types. No-op if already at or
-     * below the target level. Used by eviction Phase 2.
+     * Downgrade a module to the given target level. Used by eviction Phase 2 / 2b.
+     *
+     * - {@link ModuleDepthLevel.SIGNATURES}: clear method bodies / view trees / AST while keeping
+     *   full ArkFile signature IR.
+     * - {@link ModuleDepthLevel.INDEX}: hollow in place (strip + prune non-exports). Use
+     *   {@link unload} to drop IR entirely.
+     *
+     * No-op if already at or below the target.
      */
     private downgradeModule(moduleId: ModuleID, targetLevel: ModuleDepthLevel): void {
         const module = this.getModule(moduleId);
@@ -1285,6 +1311,22 @@ export class ModuleBuilder {
         if (module.getLoadState() <= targetLoadState) {
             return;
         }
+
+        if (targetLevel === ModuleDepthLevel.INDEX) {
+            this.hollowModuleToIndex(module);
+            return;
+        }
+
+        // SIGNATURES: strip bodies while keeping full signature IR.
+        this.stripModuleBodiesAndAst(module);
+        module.setLoadState(targetLoadState);
+    }
+
+    /**
+     * Drop method bodies / view trees / AST / source text while keeping ArkFile shells.
+     * Shared by SIGNATURES and INDEX downgrade paths.
+     */
+    private stripModuleBodiesAndAst(module: ArkModule): void {
         for (const arkFile of module.getFilesMap().values()) {
             for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
                 for (const mtd of cls.getMethods(true)) {
@@ -1298,7 +1340,137 @@ export class ModuleBuilder {
             arkFile.setAST(null);
             arkFile.clearSourceCode();
         }
-        module.setLoadState(targetLoadState);
+    }
+
+    /**
+     * INDEX retention: strip heavy payload in place, prune non-exported IR, keep export-reachable
+     * shells registered on the module / Scene so existing lookup APIs still resolve.
+     */
+    private hollowModuleToIndex(module: ArkModule): void {
+        if (module.getFilesMap().size === 0) {
+            module.setFileDepGraph(undefined);
+            module.setLoadState(ModuleLoadState.INDEX);
+            return;
+        }
+
+        this.stripModuleBodiesAndAst(module);
+        const { keepClasses, keepNamespaces } = this.collectExportReachableSets(module);
+        this.pruneNonExportedIr(module, keepClasses, keepNamespaces);
+        module.setFileDepGraph(undefined);
+        module.setLoadState(ModuleLoadState.INDEX);
+    }
+
+    private collectExportReachableSets(module: ArkModule): {
+        keepClasses: Set<ArkClass>;
+        keepNamespaces: Set<ArkNamespace>;
+    } {
+        const keepClasses = new Set<ArkClass>();
+        const keepNamespaces = new Set<ArkNamespace>();
+        for (const arkFile of module.getFilesMap().values()) {
+            for (const exp of arkFile.getExportInfos()) {
+                this.addExportToKeepSets(exp.getArkExport(), keepClasses, keepNamespaces);
+            }
+        }
+        return { keepClasses, keepNamespaces };
+    }
+
+    private addExportToKeepSets(
+        arkExport: ArkExport | undefined | null,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
+        if (!arkExport) {
+            return;
+        }
+        if (arkExport instanceof ArkClass) {
+            keepClasses.add(arkExport);
+            const ns = arkExport.getDeclaringArkNamespace();
+            if (ns) {
+                keepNamespaces.add(ns);
+            }
+            return;
+        }
+        if (arkExport instanceof ArkMethod) {
+            const cls = arkExport.getDeclaringArkClass();
+            keepClasses.add(cls);
+            const ns = cls.getDeclaringArkNamespace();
+            if (ns) {
+                keepNamespaces.add(ns);
+            }
+            return;
+        }
+        if (arkExport instanceof ArkNamespace) {
+            keepNamespaces.add(arkExport);
+        }
+    }
+
+    private pruneNonExportedIr(
+        module: ArkModule,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
+        for (const arkFile of module.getFilesMap().values()) {
+            this.pruneNonKeptClasses(arkFile, keepClasses);
+            this.pruneNonKeptNamespaces(arkFile, keepClasses, keepNamespaces);
+        }
+    }
+
+    private pruneNonKeptClasses(arkFile: ArkFile, keepClasses: Set<ArkClass>): void {
+        for (const cls of [...ModelUtils.getAllClassesInFile(arkFile)]) {
+            if (keepClasses.has(cls) || cls.isDefaultArkClass()) {
+                continue;
+            }
+            for (const base of cls.getAllHeritageClasses()) {
+                base.getExtendedClasses().delete(cls.getName());
+            }
+            for (const mtd of cls.getMethods(true)) {
+                this.scene.removeMethod(mtd);
+                mtd.clearBodyAndSupplementary();
+            }
+            const ns = cls.getDeclaringArkNamespace();
+            if (ns) {
+                ns.removeArkClass(cls);
+            } else {
+                arkFile.removeArkClass(cls);
+            }
+        }
+    }
+
+    private pruneNonKeptNamespaces(
+        arkFile: ArkFile,
+        keepClasses: Set<ArkClass>,
+        keepNamespaces: Set<ArkNamespace>
+    ): void {
+        for (const ns of [...arkFile.getNamespaces()]) {
+            if (keepNamespaces.has(ns) || this.namespaceOwnsKeptClass(ns, keepClasses)) {
+                continue;
+            }
+            arkFile.removeNamespace(ns);
+        }
+    }
+
+    private namespaceOwnsKeptClass(ns: ArkNamespace, keepClasses: Set<ArkClass>): boolean {
+        for (const cls of keepClasses) {
+            if (cls.getDeclaringArkNamespace() === ns) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clear module IR from Scene maps and the module's filesMap so the next load rebuilds
+     * from disk. Used by {@link unload} and when upgrading out of hollow INDEX.
+     */
+    private resetModuleIrForRebuild(module: ArkModule): void {
+        if (module.getFilesMap().size === 0) {
+            module.setFileDepGraph(undefined);
+            return;
+        }
+        this.scene.disposeModule(module);
+        this.breakInternalReferences(module);
+        module.clearFilesMap();
+        module.setFileDepGraph(undefined);
     }
 
     /**
@@ -1353,30 +1525,22 @@ export class ModuleBuilder {
     }
 
     /**
-     * Build module data to the specified depth level, integrating intra-module file dependency
-     * analysis into the build flow.
+     * Build module ArkFile IR up to SIGNATURES or BODIES.
+     * {@link ModuleDepthLevel.INDEX} is rejected ({@link assertDirectLoadLevel}).
      *
-     * Two-phase build for level > IMPORTS:
      * 1. Ensure ArkFile shells exist (create if filesMap is empty, reuse otherwise).
-     * 2. Build all files to IMPORTS level (lightweight import/export parsing, no dependency on
-     *    other files in the module).
-     * 3. Analyze intra-module file dependencies → compute topological order (moved here from
-     *    {@link loadModule} so it is part of the build-to-level flow).
-     * 4. For level > IMPORTS: upgrade each file to the target level (SIGNATURES/BODIES) in
-     *    topological order, so that depended-on files are parsed first.
+     * 2. Build import/export info (if not already done) + analyze intra-module file dependencies.
+     * 3. Upgrade each file to the target level in topological order.
      *
-     * For level == META: only shells are created (no content).
-     * For level == IMPORTS: steps 1-3 (topoOrder available for later type inference).
-     * For level >= SIGNATURES: steps 1-4 (signatures built in topoOrder).
-     *
-     * The {@link ArkModule.hasFileTopoOrder} flag is used to detect whether IMPORTS was already
-     * built (e.g. when upgrading from IMPORTS to SIGNATURES), avoiding redundant re-parsing.
+     * Method bodies are built later by {@link loadModule} when the target is BODIES.
      *
      * @param module - The module to build.
-     * @param level - The target depth level.
+     * @param level - Must be SIGNATURES or BODIES.
      */
     public buildModuleToLevel(module: ArkModule, level: ModuleDepthLevel): void {
-        // 1. Ensure ArkFile shells exist (reuse if already created, e.g. from a prior META load)
+        assertDirectLoadLevel(level);
+
+        // 1. Ensure ArkFile shells exist (reuse if already created)
         let arkFiles: ArkFile[];
         if (module.getFilesMap().size === 0) {
             arkFiles = FrontendBuilder.createModuleFileShells(this.scene, module);
@@ -1384,14 +1548,8 @@ export class ModuleBuilder {
             arkFiles = Array.from(module.getFilesMap().values());
         }
 
-        // META: no content to build
-        if (level <= ModuleDepthLevel.META) {
-            return;
-        }
-
-        // 2. Build IMPORTS level (if not already done) + analyze file dependencies
-        //    Use fileDepGraph existence as indicator that IMPORTS was already built.
-        if (level >= ModuleDepthLevel.IMPORTS && !module.hasFileTopoOrder()) {
+        // 2. Build import/export (if not already done) + analyze file dependencies
+        if (!module.hasFileTopoOrder()) {
             for (const arkFile of arkFiles) {
                 try {
                     FrontendBuilder.buildImports(arkFile, arkFile.getLanguage());
@@ -1402,8 +1560,8 @@ export class ModuleBuilder {
             this.analyzeFileDependencies(module);
         }
 
-        // 3. For level > IMPORTS: upgrade to target level in topological order
-        if (level > ModuleDepthLevel.IMPORTS) {
+        // 3. Upgrade to target level in topological order
+        if (level >= ModuleDepthLevel.SIGNATURES) {
             const fileDepGraph = module.getFileDepGraph();
             let sortedFiles: ArkFile[];
             if (fileDepGraph && fileDepGraph.getTopoOrder().length > 0) {
@@ -1412,7 +1570,7 @@ export class ModuleBuilder {
                     .map(id => fileDepGraph.tryGetNode(id))
                     .filter((f): f is ArkFile => f !== undefined);
             } else {
-                // Fallback: no file dep graph available (e.g. empty module or analyzeFileDependencies produced no edges)
+                // Fallback: no file dep graph available
                 sortedFiles = arkFiles;
             }
             for (const arkFile of sortedFiles) {
@@ -1429,7 +1587,7 @@ export class ModuleBuilder {
 
     /**
      * Analyze file-to-file dependencies within a module using the import/export `from` specifiers
-     * populated at IMPORTS level.
+     * populated during the import/export parse step of {@link buildModuleToLevel}.
      *
      * Builds a {@link FileDepGraph}, resolves relative `from` specifiers to file paths within the
      * same module, adds dependency edges, computes a topological order via SCC detection, and

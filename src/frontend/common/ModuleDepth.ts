@@ -14,32 +14,41 @@
  */
 
 /**
- * Module data depth levels controlling how much data is built for ArkFile objects.
+ * Module data depth levels controlling how much data is retained for an {@link ArkModule}.
  * Higher levels are supersets of lower levels (incremental relationship).
+ *
+ * Valid direct load targets ({@link ModuleAnalysisConfig} / {@link ModuleBuilder.loadModule}):
+ * {@link SIGNATURES} and {@link BODIES} only.
+ *
+ * {@link INDEX} is downgrade/fallback only: hollowed in-place ArkFile IR (export-reachable
+ * shells kept so import/type/RTA lookup APIs still work). Passing it to setLoadLevel /
+ * setDependencyLoadLevel / loadModule throws — do not use as a load target.
  *
  * @category core/model
  */
 export enum ModuleDepthLevel {
     /**
-     * Level 0: Module metadata + dependency topology + ArkFile (path-only basic info).
-     * Index files (index.ets/index.ts) are exceptions: their ArkFile includes export/import info.
-     * Other files are NOT read or parsed.
+     * Downgrade / fallback only: in-place hollow IR — bodies/AST/source stripped and
+     * non-exported classes pruned; {@link ArkFile}/{@link ArkClass}/{@link ArkMethod}
+     * shells remain queryable via the same Scene APIs as SIGNATURES.
+     * Not a valid direct load target.
      */
-    META = 0,
+    INDEX = 0,
 
     /**
-     * Level 1: META + export/import info for ALL ArkFiles + intra-module file dependencies.
+     * Export/import info + namespaces/classes/method signatures (no method bodies).
      */
-    IMPORTS = 1,
+    SIGNATURES = 1,
 
     /**
-     * Level 2: IMPORTS + ArkFile content excluding method bodies
-     * (namespaces, classes, method signatures, parameters, return types).
+     * SIGNATURES + method bodies (ArkBody, CFG, Stmt/Expr).
      */
-    SIGNATURES = 2,
+    BODIES = 2,
+}
 
-    /**
-     * Level 3: SIGNATURES + method bodies (ArkBody, CFG, Stmt/Expr).
-     */
-    BODIES = 3,
+/** Throws if `level` is {@link ModuleDepthLevel.INDEX} (downgrade-only). */
+export function assertDirectLoadLevel(level: ModuleDepthLevel): void {
+    if (level === ModuleDepthLevel.INDEX) {
+        throw new Error('ModuleDepthLevel.INDEX is not a direct load target; use SIGNATURES or BODIES');
+    }
 }

@@ -28,20 +28,17 @@ export type ModuleID = number;
 /**
  * Lifecycle state of an {@link ArkModule}. Stored in the low 3 bits of {@link ArkModule.tags}.
  *
- * The states form an incremental progression: each state is a superset of the previous one,
- * matching the {@link ModuleDepthLevel} data depth levels.
+ * Progression: NOT_LOADED → INDEX → SIGNATURES → BODIES.
+ * INDEX is downgrade-only (hollow export-reachable IR); never a direct loadModule target.
  */
 export enum ModuleLoadState {
-    /** No data loaded yet. */
     NOT_LOADED = 0,
-    /** Module metadata + dependency topology + ArkFile path-only basic info. */
-    META = 1,
-    /** META + export/import info for all ArkFiles + intra-module file dependencies. */
-    IMPORTS = 2,
-    /** IMPORTS + ArkFile content excluding method bodies (namespaces, classes, signatures). */
-    SIGNATURES = 3,
+    /** Hollow export-reachable ArkFile IR (bodies/AST stripped, non-exports pruned). */
+    INDEX = 1,
+    /** Classes/method signatures without method bodies. */
+    SIGNATURES = 2,
     /** SIGNATURES + method bodies (ArkBody, CFG, Stmt/Expr). */
-    BODIES = 4,
+    BODIES = 3,
 }
 
 /**
@@ -97,8 +94,8 @@ export class ArkModule {
     private unresolvedDependencies: Map<string, string> = new Map();
 
     /**
-     * Intra-module file dependency graph, built during file dependency analysis
-     * (IMPORTS level). Undefined until {@link analyzeFileDependencies} has run.
+     * Intra-module file dependency graph, built during import/export analysis on the
+     * way to SIGNATURES. Undefined until {@link analyzeFileDependencies} has run.
      */
     private fileDepGraph?: FileDepGraph;
 
