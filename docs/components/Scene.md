@@ -166,6 +166,7 @@ export enum SceneBuildStage {
 | `namespacesMap` | `@Pkg/file: NS1.NS2` | 嵌套以 `.` 拼 |
 | `classesMap` | `@Pkg/file: ClassName` 或 `@Pkg/file: NS.ClassName` | 命名空间内类带 NS 前缀 |
 | `methodsMap` | `<@Pkg/file: ClassName.methodName(P1)>` | 与 IR 中调用语句签名一致 |
+| `customComponentMap` | 组件简单名 → `ClassSignature` | 构建 `@Component` 时写入；模块 unload 后仍保留，供 ViewTree 建叶子节点 |
 
 详细签名定义见 [src/core/model/ArkSignature.ts](../../src/core/model/ArkSignature.ts) 的 `FileSignature` / `NamespaceSignature` / `ClassSignature` / `MethodSignature` / `FieldSignature`。
 

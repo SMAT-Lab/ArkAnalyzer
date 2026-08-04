@@ -96,6 +96,8 @@ export class Scene {
     private namespacesMap: Map<string, ArkNamespace> = new Map();
     private classesMap: Map<string, ArkClass> = new Map();
     private methodsMap: Map<string, ArkMethod> = new Map();
+    /** Custom @Component name → ClassSignature; written at ArkClass build, kept after module unload for ViewTree stubs. */
+    private customComponentMap: Map<string, ClassSignature> = new Map();
     // TODO: type of key should be signature object
     private sdkArkFilesMap: Map<string, ArkFile> = new Map();
     private sdkGlobalMap: Map<string, ArkExport> = new Map<string, ArkExport>();
@@ -178,6 +180,7 @@ export class Scene {
         this.namespacesMap.clear();
         this.classesMap.clear();
         this.methodsMap.clear();
+        this.customComponentMap.clear();
 
         this.sdkArkFilesMap.clear();
         this.sdkGlobalMap.clear();
@@ -1240,6 +1243,45 @@ export class Scene {
         return arkClass || null;
     }
 
+    /**
+     * Register a custom {@code @Component} into {@link customComponentMap}.
+     * Called from ArkClass builders (full Scene build and module load share the same path).
+     * Entries intentionally survive module unload so ViewTree can still resolve signatures.
+     */
+    public registerCustomComponent(cls: ArkClass): void {
+        if (!cls.hasComponentDecorator()) {
+            return;
+        }
+        const name = cls.getName();
+        if (!name || name.startsWith('%')) {
+            return;
+        }
+        this.customComponentMap.set(name, cls.getSignature());
+    }
+
+    /**
+     * Remove a custom component entry. Not called on module unload — the map must outlive IR.
+     * Used when an ArkClass is explicitly removed from a live Scene, or via {@link clear}.
+     */
+    public unregisterCustomComponent(cls: ArkClass): void {
+        const name = cls.getName();
+        if (!name || !cls.hasComponentDecorator()) {
+            return;
+        }
+        const existing = this.customComponentMap.get(name);
+        if (existing && existing.toMapKey() === cls.getSignature().toMapKey()) {
+            this.customComponentMap.delete(name);
+        }
+    }
+
+    public getCustomComponent(name: string): ClassSignature | undefined {
+        return name ? this.customComponentMap.get(name) : undefined;
+    }
+
+    public getCustomComponentMap(): Map<string, ClassSignature> {
+        return this.customComponentMap;
+    }
+
     private getClassesMap(refresh?: boolean): Map<string, ArkClass> {
         if (refresh || this.buildStage === SceneBuildStage.METHOD_DONE) {
             this.classesMap.clear();
@@ -1333,6 +1375,7 @@ export class Scene {
     }
 
     public removeClass(arkClass: ArkClass): boolean {
+        this.unregisterCustomComponent(arkClass);
         return this.classesMap.delete(arkClass.getSignature().toMapKey());
     }
 
