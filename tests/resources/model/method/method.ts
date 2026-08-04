@@ -160,6 +160,18 @@ function paramInitializerWithSwitch(a = 3): void {
     }
 }
 
+let ternaryDefaultCounter = 0;
+function incrementCounter(): number { ternaryDefaultCounter = ternaryDefaultCounter + 1; return ternaryDefaultCounter; }
+const ternaryDefaultCondition = true;
+function paramInitializerWithTernaryDefault(a = ternaryDefaultCondition ? incrementCounter() : 0, b: string): number {
+    return a;
+}
+
+const nestedTernaryCond = true;
+function paramInitializerWithNestedTernaryDefault(a = nestedTernaryCond ? (nestedTernaryCond ? 1 : 2) : 3): number {
+    return a;
+}
+
 function returnFunc(): Function {
     const nestedReturnFunc = (): void => {};
     return nestedReturnFunc;

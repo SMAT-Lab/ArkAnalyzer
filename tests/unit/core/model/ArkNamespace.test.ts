@@ -113,16 +113,16 @@ describe('ArkNamespace Source Code and Position Test', () => {
         
         const positions = namespace!.getOriginFullPositions();
         expect(positions.length).eq(1);
-        expect(positions[0].getFirstLine()).eq(212);
+        expect(positions[0].getFirstLine()).eq(224);
         expect(positions[0].getFirstCol()).eq(1);
-        expect(positions[0].getLastLine()).eq(214);
+        expect(positions[0].getLastLine()).eq(226);
         expect(positions[0].getLastCol()).eq(2);
     });
 
     it('test getLine for ConstructorTest namespace', async () => {
         const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
         assert.isDefined(namespace);
-        expect(namespace!.getLine()).eq(212);
+        expect(namespace!.getLine()).eq(224);
     });
 
     it('test getColumn for ConstructorTest namespace', async () => {
@@ -157,7 +157,7 @@ describe('ArkNamespace Source Code and Position Test', () => {
         
         const lineColPairs = namespace!.getLineColPairs();
         expect(lineColPairs.length).eq(1);
-        expect(lineColPairs[0][0]).eq(212);
+        expect(lineColPairs[0][0]).eq(224);
         expect(lineColPairs[0][1]).eq(1);
     });
 });
