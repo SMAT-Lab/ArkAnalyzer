@@ -161,7 +161,10 @@ function paramInitializerWithSwitch(a = 3): void {
 }
 
 let ternaryDefaultCounter = 0;
-function incrementCounter(): number { ternaryDefaultCounter = ternaryDefaultCounter + 1; return ternaryDefaultCounter; }
+function incrementCounter(): number {
+    ternaryDefaultCounter = ternaryDefaultCounter + 1;
+    return ternaryDefaultCounter;
+}
 const ternaryDefaultCondition = true;
 function paramInitializerWithTernaryDefault(a = ternaryDefaultCondition ? incrementCounter() : 0, b: string): number {
     return a;
