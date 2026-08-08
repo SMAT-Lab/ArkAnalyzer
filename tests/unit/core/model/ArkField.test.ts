@@ -45,9 +45,9 @@ describe('ArkField Source Code and Position Test', () => {
         
         const position = field!.getOriginFullPosition();
         assert.isDefined(position);
-        expect(position!.getFirstLine()).eq(198);
+        expect(position!.getFirstLine()).eq(213);
         expect(position!.getFirstCol()).eq(5);
-        expect(position!.getLastLine()).eq(200);
+        expect(position!.getLastLine()).eq(215);
         expect(position!.getLastCol()).eq(7);
     });
 

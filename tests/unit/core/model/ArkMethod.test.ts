@@ -81,14 +81,14 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
     goto label2
 
   label2:
-    if condition != false goto label3 label4
+    if b == undefined goto label3 label7
 
   label3:
-    %0 = 'true'
-    goto label5
+    if condition != false goto label4 label5
 
-  label5:
-    if b == undefined goto label6 label7
+  label4:
+    %0 = 'true'
+    goto label6
 
   label6:
     b = %0
@@ -99,9 +99,9 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
     instanceinvoke console.<@%unk/%unk: .log()>(%1)
     return
 
-  label4:
+  label5:
     %0 = 'false'
-    goto label5
+    goto label6
 }
 `;
 
@@ -231,6 +231,70 @@ const methodWithSwitch = `paramInitializerWithSwitch(a?: unknown): void {
   label1:
     instanceinvoke console.<@%unk/%unk: .log()>(a)
     goto label2
+}
+`;
+
+const methodWithTernaryDefault = `paramInitializerWithTernaryDefault(a?: unknown, b: string): number {
+  label0:
+    a = parameter0: unknown
+    b = parameter1: string
+    this = this: @method/method.ts: %dflt
+    if a == undefined goto label1 label5
+
+  label1:
+    if ternaryDefaultCondition != false goto label2 label3
+
+  label2:
+    %0 = staticinvoke <@method/method.ts: %dflt.incrementCounter()>()
+    goto label4
+
+  label4:
+    a = %0
+    goto label5
+
+  label5:
+    return a
+
+  label3:
+    %0 = 0
+    goto label4
+}
+`;
+
+const methodWithNestedTernaryDefault = `paramInitializerWithNestedTernaryDefault(a?: unknown): number {
+  label0:
+    a = parameter0: unknown
+    this = this: @method/method.ts: %dflt
+    if a == undefined goto label1 label8
+
+  label1:
+    if nestedTernaryCond != false goto label2 label6
+
+  label2:
+    if nestedTernaryCond != false goto label3 label4
+
+  label3:
+    %0 = 1
+    goto label5
+
+  label5:
+    %1 = %0
+    goto label7
+
+  label7:
+    a = %1
+    goto label8
+
+  label8:
+    return a
+
+  label4:
+    %0 = 2
+    goto label5
+
+  label6:
+    %1 = 3
+    goto label7
 }
 `;
 
@@ -675,6 +739,22 @@ describe('Method Param with Default Value', () => {
         const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
         assert.isDefined(startingBlockID);
         assert.equal(startingBlockID, 3);
+    });
+
+    it('case12: method with ternary default ir (side-effects)', async () => {
+        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithTernaryDefault');
+        assert.isDefined(method);
+        assert.isNotNull(method);
+        const printer = new ArkIRMethodPrinter(method!);
+        assert.equal(printer.dump(), methodWithTernaryDefault);
+    });
+
+    it('case13: method with nested ternary default ir', async () => {
+        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithNestedTernaryDefault');
+        assert.isDefined(method);
+        assert.isNotNull(method);
+        const printer = new ArkIRMethodPrinter(method!);
+        assert.equal(printer.dump(), methodWithNestedTernaryDefault);
     });
 });
 

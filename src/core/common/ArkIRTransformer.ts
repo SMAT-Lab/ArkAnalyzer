@@ -276,7 +276,6 @@ export class ArkIRTransformer {
         }
 
         const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.tsNodeToValueAndStmts(paramNode.initializer!);
-        stmts.push(...paramInitStmts);
 
         const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));
         ifStmt.setOperandOriginalPositions([FullPosition.DEFAULT, FullPosition.DEFAULT]);
@@ -284,6 +283,8 @@ export class ArkIRTransformer {
 
         const currConditionalOperatorIndex = this.arkValueTransformer.conditionalOperatorNo++;
         stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
+
+        stmts.push(...paramInitStmts);
 
         const assignStmt = new ArkAssignStmt(paramLocal, paramInitValue);
         assignStmt.setOperandOriginalPositions([FullPosition.DEFAULT, ...paramInitPositions]);
