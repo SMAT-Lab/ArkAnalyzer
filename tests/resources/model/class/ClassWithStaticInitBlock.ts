@@ -41,3 +41,10 @@ class Case3 {
         console.log('static block2');
     }
 }
+
+let globalClassField = 42;
+
+class Case4 {
+    static staticRef = globalClassField;
+    instanceRef: number = globalClassField;
+}

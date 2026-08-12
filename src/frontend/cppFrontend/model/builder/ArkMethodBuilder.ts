@@ -24,7 +24,7 @@ import {
     cxxNode2Type,
     isCxxFunctionPointer,
 } from './builderUtils';
-import { ArkParameterRef, ArkThisRef } from '../../../../core/base/Ref';
+import { ArkParameterRef, ArkThisRef, GlobalRef } from '../../../../core/base/Ref';
 import { ArkBody } from '../../../../core/model/ArkBody';
 import { Cfg } from '../../../../core/graph/Cfg';
 import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../../core/base/Expr';
@@ -358,7 +358,12 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     return true;
 }
 
-export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: Stmt[], thisLocal: Local): void {
+export function buildInitMethod(
+    initMethod: ArkMethod,
+    fieldInitializerStmts: Stmt[],
+    thisLocal: Local,
+    globals?: Map<string, GlobalRef> | null
+): void {
     const classType = new ClassType(initMethod.getDeclaringArkClass().getSignature());
     const assignStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(classType));
     const block = new BasicBlock();

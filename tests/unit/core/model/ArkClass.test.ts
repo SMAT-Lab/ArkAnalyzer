@@ -21,6 +21,7 @@ import {
     ClassSignature,
     ClassType,
     CONSTRUCTOR_NAME,
+    GlobalRef,
     Local,
     MethodSignature,
     Stmt,
@@ -149,6 +150,27 @@ describe('ArkClass Test', () => {
         assert.isTrue(classCase3 instanceof ArkClass);
         const classCase3Expect = Class_With_Static_Init_Block_Expect.Case3;
         assertStaticBlockEqual(classCase3 as ArkClass, classCase3Expect);
+    });
+
+    it('init methods should record used globals from field initializers', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        assert.isDefined(arkFile);
+        const classCase4 = arkFile!.getClassWithName('Case4');
+        assert.isTrue(classCase4 instanceof ArkClass);
+
+        const instInit = classCase4!.getInstanceInitMethod();
+        const statInit = classCase4!.getStaticInitMethod();
+
+        const instGlobalName = 'globalClassField';
+        const instUsedGlobal = instInit.getBody()?.getUsedGlobals()?.get(instGlobalName);
+        expect(instUsedGlobal).toBeDefined();
+        expect(instUsedGlobal).toBeInstanceOf(GlobalRef);
+        expect(instInit.getCfg()?.getStmts().some(s => s.toString().includes(instGlobalName))).toBe(true);
+
+        const statUsedGlobal = statInit.getBody()?.getUsedGlobals()?.get(instGlobalName);
+        expect(statUsedGlobal).toBeDefined();
+        expect(statUsedGlobal).toBeInstanceOf(GlobalRef);
+        expect(statInit.getCfg()?.getStmts().some(s => s.toString().includes(instGlobalName))).toBe(true);
     });
 
     it('stmt cfg', async () => {
