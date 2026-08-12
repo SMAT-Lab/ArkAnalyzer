@@ -46,5 +46,5 @@ let globalClassField = 42;
 
 class Case4 {
     static staticRef = globalClassField;
-    instanceRef: number = globalClassField;
+    private number = globalClassField;
 }

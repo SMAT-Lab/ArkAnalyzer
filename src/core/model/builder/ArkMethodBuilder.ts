@@ -444,7 +444,7 @@ export function buildInitMethod(
         stmt.setCfg(cfg);
     }
     cfg.setStartingStmt(assignStmt);
-    cfg.buildDefUseStmt(locals, globals ?? undefined);
+    cfg.buildDefUseStmt(locals);
     cfg.setDeclaringMethod(initMethod);
     initMethod.setBody(new ArkBody(locals, cfg));
     if (globals && globals.size > 0) {
