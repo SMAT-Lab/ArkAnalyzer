@@ -446,23 +446,10 @@ export function buildInitMethod(
     cfg.setStartingStmt(assignStmt);
     cfg.buildDefUseStmt(locals, globals ?? undefined);
     cfg.setDeclaringMethod(initMethod);
-    if (globals) {
-        moveLocalUsedStmtsToGlobals(globals, locals);
-    }
     initMethod.setBody(new ArkBody(locals, cfg));
     if (globals && globals.size > 0) {
         initMethod.getBody()?.setUsedGlobals(globals);
     }
-}
-
-function moveLocalUsedStmtsToGlobals(globals: Map<string, GlobalRef>, locals: Set<Local>): void {
-    globals.forEach((value, key) => {
-        const local = Array.from(locals).find(local => local.getName() === key);
-        if (local !== undefined) {
-            value.addUsedStmts(local.getUsedStmts());
-            locals.delete(local);
-        }
-    });
 }
 
 export function addInitInConstructor(constructor: ArkMethod): void {
