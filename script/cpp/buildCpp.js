@@ -15,7 +15,8 @@
 
 'use strict';
 
-const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require('fs');
+const { cpSync, existsSync, mkdirSync, readdirSync } = require('fs');
+const { rmDirSafe } = require('../shared/fileUtils');
 const { join, resolve, delimiter } = require('path');
 const {
     buildCxxAstRuntimeLib,
@@ -296,7 +297,7 @@ function ensureFreshCppBuildDir() {
         return;
     }
     for (const name of readdirSync(buildDir, { withFileTypes: true })) {
-        rmSync(join(buildDir, name.name), { recursive: true, force: true });
+        rmDirSafe(join(buildDir, name.name));
     }
 }
 

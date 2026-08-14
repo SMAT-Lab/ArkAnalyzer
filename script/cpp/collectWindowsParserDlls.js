@@ -17,7 +17,8 @@
 
 const { spawnSync } = require('child_process');
 const { basename, dirname, join, resolve } = require('path');
-const { closeSync, copyFileSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync } = require('fs');
+const { closeSync, copyFileSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, readdirSync } = require('fs');
+const { rmDirSafe } = require('../shared/fileUtils');
 const { tmpdir } = require('os');
 
 const SYSTEM_DLL = new Set([
@@ -97,7 +98,7 @@ function peDllImportsViaFile(objdump, pePath) {
         }
         return parseDllNamesFromObjdumpText(readFileSync(outFile, 'utf8'));
     } finally {
-        rmSync(dir, { recursive: true, force: true });
+        rmDirSafe(dir);
     }
 }
 

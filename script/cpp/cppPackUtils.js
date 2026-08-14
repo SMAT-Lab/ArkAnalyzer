@@ -32,6 +32,7 @@ const { dirname, join } = require('path');
 const os = require('os');
 
 const useShell = process.platform === 'win32';
+const { rmDirSafe } = require('../shared/fileUtils');
 const CXX_PARSER_PACKAGE = '@arkanalyzer/cxx-ast-parser';
 
 function getProjectRoot() {
@@ -224,18 +225,18 @@ function installFlatbuffersHeaders(version, logPrefix) {
     const srcUrl = `https://github.com/google/flatbuffers/archive/refs/tags/v${version}.zip`;
     downloadUrlToFile(srcUrl, zipPath, logPrefix);
     const extractRoot = join(toolsDir, `_flatbuffers-src-${version}`);
-    rmSync(extractRoot, { recursive: true, force: true });
+    rmDirSafe(extractRoot);
     extractZipArchive(zipPath, extractRoot, logPrefix);
     const extracted = resolveFlatbuffersSourceTree(extractRoot, version);
     if (!extracted) {
         console.error(`${logPrefix} unexpected FlatBuffers source layout under ${extractRoot}`);
         process.exit(1);
     }
-    rmSync(flatbuffersDir, { recursive: true, force: true });
+    rmDirSafe(flatbuffersDir);
     mkdirSync(flatbuffersDir, { recursive: true });
     cpSync(join(extracted, 'include'), includeDir, { recursive: true });
-    rmSync(extractRoot, { recursive: true, force: true });
-    rmSync(zipPath, { force: true });
+    rmDirSafe(extractRoot);
+    rmDirSafe(zipPath);
     console.log(`${logPrefix} installed headers -> ${includeDir}`);
 }
 
@@ -263,7 +264,7 @@ function installFlatcFromReleaseBinary(version, logPrefix) {
     const url = `https://github.com/google/flatbuffers/releases/download/v${version}/${asset}`;
     downloadUrlToFile(url, zipPath, logPrefix);
     const extractDir = join(toolsDir, `_flatc-bin-${version}`);
-    rmSync(extractDir, { recursive: true, force: true });
+    rmDirSafe(extractDir);
     extractZipArchive(zipPath, extractDir, logPrefix);
     const flatcName = process.platform === 'win32' ? 'flatc.exe' : 'flatc';
     const found = findFileRecursive(extractDir, flatcName);
@@ -275,8 +276,8 @@ function installFlatcFromReleaseBinary(version, logPrefix) {
     if (process.platform !== 'win32') {
         chmodSync(flatcPath, 0o755);
     }
-    rmSync(extractDir, { recursive: true, force: true });
-    rmSync(zipPath, { force: true });
+    rmDirSafe(extractDir);
+    rmDirSafe(zipPath);
     console.log(`${logPrefix} installed flatc -> ${flatcPath}`);
     return true;
 }
@@ -287,16 +288,16 @@ function ensureFlatbuffersSourceTree(version, toolsDir, zipPath, logPrefix) {
         return srcRoot;
     }
     const extractRoot = join(toolsDir, `_flatbuffers-src-${version}`);
-    rmSync(extractRoot, { recursive: true, force: true });
+    rmDirSafe(extractRoot);
     extractZipArchive(zipPath, extractRoot, logPrefix);
     const extracted = resolveFlatbuffersSourceTree(extractRoot, version);
     if (!extracted) {
         console.error(`${logPrefix} unexpected FlatBuffers source layout under ${extractRoot}`);
         process.exit(1);
     }
-    rmSync(srcRoot, { recursive: true, force: true });
+    rmDirSafe(srcRoot);
     renameSync(extracted, srcRoot);
-    rmSync(extractRoot, { recursive: true, force: true });
+    rmDirSafe(extractRoot);
     return srcRoot;
 }
 
@@ -310,7 +311,7 @@ function installFlatcFromSourceBuild(version, logPrefix) {
     }
     const srcRoot = ensureFlatbuffersSourceTree(version, toolsDir, zipPath, logPrefix);
     const buildDir = join(toolsDir, `_flatc-build-${version}`);
-    rmSync(buildDir, { recursive: true, force: true });
+    rmDirSafe(buildDir);
     mkdirSync(buildDir, { recursive: true });
     const cmakeConfigure = [
         '-S',
@@ -488,7 +489,7 @@ function runFlatcCodegen(options = {}) {
 function removeLinkedCxxAstRuntimeFromNodeModules() {
     const linked = linkedCxxAstRuntimeDir();
     if (existsSync(linked)) {
-        rmSync(linked, { recursive: true, force: true });
+        rmDirSafe(linked);
     }
 }
 
