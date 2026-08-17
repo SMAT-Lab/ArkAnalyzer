@@ -155,22 +155,47 @@ describe('ArkClass Test', () => {
     it('init methods should record used globals from field initializers', async () => {
         const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
         assert.isDefined(arkFile);
+
+        const expectGlobalRecorded = (className: string, globalName: string): void => {
+            const arkClass = arkFile!.getClassWithName(className);
+            assert.isTrue(arkClass instanceof ArkClass);
+
+            const instUsed = arkClass!.getInstanceInitMethod().getBody()?.getUsedGlobals()?.get(globalName);
+            expect(instUsed).toBeDefined();
+            expect(instUsed).toBeInstanceOf(GlobalRef);
+
+            const statUsed = arkClass!.getStaticInitMethod().getBody()?.getUsedGlobals()?.get(globalName);
+            expect(statUsed).toBeDefined();
+            expect(statUsed).toBeInstanceOf(GlobalRef);
+
+            const method = arkClass!.getMethodWithName('foo')?.getBody()?.getUsedGlobals()?.get(globalName);
+            expect(method).toBeDefined();
+            expect(method).toBeInstanceOf(GlobalRef);
+        };
+        
+        expectGlobalRecorded('Case4', 'globalClassField');
+        expectGlobalRecorded('Case5', 'forwardGlobalClassField');
+        expectGlobalRecorded('Case6', 'importedGlobalClassField');
+        expectGlobalRecorded('Case7', 'ImportedGlobalNS');
+        expectGlobalRecorded('Case8', 'SameFileNS');
+        expectGlobalRecorded('Case9', 'OuterNS');
+    });
+
+    it('unused globals should not be recorded in init method usedGlobals', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        assert.isDefined(arkFile);
         const classCase4 = arkFile!.getClassWithName('Case4');
         assert.isTrue(classCase4 instanceof ArkClass);
 
-        const instInit = classCase4!.getInstanceInitMethod();
-        const statInit = classCase4!.getStaticInitMethod();
+        const instGlobals = classCase4!.getInstanceInitMethod().getBody()?.getUsedGlobals();
+        expect(instGlobals?.get('globalClassField')).toBeDefined();
+        expect(instGlobals?.has('globalClassField2')).toBe(false);
+        expect(instGlobals?.size).toBe(1);
 
-        const instGlobalName = 'globalClassField';
-        const instUsedGlobal = instInit.getBody()?.getUsedGlobals()?.get(instGlobalName);
-        expect(instUsedGlobal).toBeDefined();
-        expect(instUsedGlobal).toBeInstanceOf(GlobalRef);
-        expect(instInit.getCfg()?.getStmts().some(s => s.toString().includes(instGlobalName))).toBe(true);
-
-        const statUsedGlobal = statInit.getBody()?.getUsedGlobals()?.get(instGlobalName);
-        expect(statUsedGlobal).toBeDefined();
-        expect(statUsedGlobal).toBeInstanceOf(GlobalRef);
-        expect(statInit.getCfg()?.getStmts().some(s => s.toString().includes(instGlobalName))).toBe(true);
+        const statGlobals = classCase4!.getStaticInitMethod().getBody()?.getUsedGlobals();
+        expect(statGlobals?.get('globalClassField')).toBeDefined();
+        expect(statGlobals?.has('globalClassField2')).toBe(false);
+        expect(statGlobals?.size).toBe(1);
     });
 
     it('stmt cfg', async () => {
