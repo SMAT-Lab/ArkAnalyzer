@@ -565,6 +565,20 @@ describe("function Test", () => {
         assert.equal(stmt?.toString(), 'arr33 = instanceinvoke arr11.<@built-in/lib.es5.d.ts: Array.concat(@built-in/lib.es5.d.ts: ConcatArray<T>[])>(arr22)');
     })
 
+    it('test array push from Map.get', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const method = file?.getClassWithName('BroadCast')?.getMethodWithName('on');
+        assert.isDefined(method);
+        const stmts = method!.getCfg()?.getStmts() ?? [];
+        const pushStmt = stmts.find(s => s.toString().includes('.push('));
+        assert.isDefined(pushStmt);
+        assert.equal(
+            pushStmt!.toString(),
+            'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)'
+        );
+    })
+
     it('pta union type CallBack 2 function case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);

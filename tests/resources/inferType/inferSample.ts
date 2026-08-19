@@ -292,3 +292,18 @@ function testMap(): void {
     map.set('d', animatorData4)
         .set('e', animatorData5);
 }
+
+class BroadCast {
+    private callbackArray: Map<string, Function[]> = new Map();
+
+    public on(event: string, callback: Function): void {
+        let cbs = this.callbackArray.get(event);
+
+        if (!cbs) {
+            cbs = [];
+            this.callbackArray.set(event, cbs);
+        }
+
+        cbs.push(callback);
+    }
+}

@@ -1129,9 +1129,35 @@ export class TypeInference {
             return leftType;
         }
         if (this.isSubType(rightType, leftType, scene)) {
-            return rightType;
+            // Prefer declared generics when initializer erases them, e.g. `Map<K,V> = new Map()`.
+            return this.preferPreciseClassType(leftType, rightType);
         }
         return leftType;
+    }
+
+    /**
+     * For the same class type, keep the side whose real generic arguments are more precise.
+     * `isSubType` only compares class signatures, so `new Map()` would otherwise replace
+     * a declared `Map<string, Function[]>` and break later method signature inference (e.g. Array.push).
+     */
+    private static preferPreciseClassType(declared: Type, inferred: Type): Type {
+        if (!(declared instanceof ClassType) || !(inferred instanceof ClassType) ||
+            declared.getClassSignature() !== inferred.getClassSignature()) {
+            return inferred;
+        }
+        const declaredG = declared.getRealGenericTypes();
+        const inferredG = inferred.getRealGenericTypes();
+        if (!declaredG || declaredG.length === 0) {
+            return inferred;
+        }
+        if (!inferredG || inferredG.length === 0 || inferredG.length < declaredG.length) {
+            return declared;
+        }
+        const isWeak = (t: Type): boolean => this.checkType(t, x => x instanceof AnyType || x instanceof UnknownType);
+        if (inferredG.some(isWeak) && declaredG.some(t => !isWeak(t))) {
+            return declared;
+        }
+        return inferred;
     }
 
     /**
