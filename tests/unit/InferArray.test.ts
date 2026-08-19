@@ -565,18 +565,87 @@ describe("function Test", () => {
         assert.equal(stmt?.toString(), 'arr33 = instanceinvoke arr11.<@built-in/lib.es5.d.ts: Array.concat(@built-in/lib.es5.d.ts: ConcatArray<T>[])>(arr22)');
     })
 
-    it('test array push from Map.get', () => {
+    describe('generic init erase keeps built-in signatures', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
-        const file = scene.getFile(fileId);
-        const method = file?.getClassWithName('BroadCast')?.getMethodWithName('on');
-        assert.isDefined(method);
-        const stmts = method!.getCfg()?.getStmts() ?? [];
-        const pushStmt = stmts.find(s => s.toString().includes('.push('));
-        assert.isDefined(pushStmt);
-        assert.equal(
-            pushStmt!.toString(),
-            'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)'
-        );
+        const clsName = 'GenericInitEraseTest';
+
+        function getMethodStmts(methodName: string) {
+            const file = scene.getFile(fileId);
+            const method = file?.getClassWithName(clsName)?.getMethodWithName(methodName);
+            assert.isDefined(method, `missing method ${methodName}`);
+            return method!.getCfg()?.getStmts() ?? [];
+        }
+
+        function findInvoke(stmts: { toString(): string }[], needle: string): string {
+            const stmt = stmts.find(s => s.toString().includes(needle));
+            assert.isDefined(stmt, `missing invoke containing ${needle}`);
+            return stmt!.toString();
+        }
+
+        function assertBuiltInInvoke(ir: string, typeAndMethod: string): void {
+            assert.notInclude(ir, '%unk', ir);
+            assert.include(ir, `@built-in/`, ir);
+            assert.include(ir, typeAndMethod, ir);
+        }
+
+        it('Map<string, Function[]> = new Map(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('mapGetThenPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
+        });
+
+        it('Map<string, number[]> = new Map(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('mapGetThenPushNumber'), '.push(');
+            assert.equal(ir, 'instanceinvoke arr.<@built-in/lib.es5.d.ts: Array.push(T[])>(n)');
+        });
+
+        it('Map get then Array.pop', () => {
+            const ir = findInvoke(getMethodStmts('mapGetThenPop'), '.pop(');
+            assertBuiltInInvoke(ir, 'Array.pop');
+        });
+
+        it('Map get then Array.forEach', () => {
+            const ir = findInvoke(getMethodStmts('mapGetThenForEach'), '.forEach(');
+            assertBuiltInInvoke(ir, 'Array.forEach');
+        });
+
+        it('Set<string> = new Set(); add', () => {
+            const ir = findInvoke(getMethodStmts('setAdd'), '.add(');
+            assertBuiltInInvoke(ir, 'Set.add');
+        });
+
+        it('Map = new Map<any, any>(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('anyCtorMapPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke arr.<@built-in/lib.es5.d.ts: Array.push(T[])>(s)');
+        });
+
+        it('Map = new Map<string, any>(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('partialAnyMapPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
+        });
+
+        it('local Map<string, string[]> = new Map(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('localMapPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke arr.<@built-in/lib.es5.d.ts: Array.push(T[])>(s)');
+        });
+
+        it('WeakMap with class key = new WeakMap(); get then push', () => {
+            const file = scene.getFile(fileId);
+            const field = file?.getClassWithName(clsName)?.getFieldWithName('weakMap');
+            const fieldType = field?.getType() as ClassType;
+            assert.isDefined(fieldType?.getRealGenericTypes());
+            assert.isAtLeast(fieldType!.getRealGenericTypes()!.length, 2);
+            const ir = findInvoke(getMethodStmts('weakMapPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
+        });
+
+        it('Map.get return keeps value generic (not bare V)', () => {
+            const stmts = getMethodStmts('mapGetThenPush');
+            const getStmt = stmts.find(s => s.toString().includes('Map.get')) as ArkAssignStmt;
+            assert.isDefined(getStmt);
+            const getType = getStmt.getRightOp().getType().toString();
+            assert.notInclude(getType, 'V|undefined');
+            assert.include(getType, 'Function[]');
+        });
     })
 
     it('pta union type CallBack 2 function case', () => {

@@ -1136,9 +1136,11 @@ export class TypeInference {
     }
 
     /**
-     * For the same class type, keep the side whose real generic arguments are more precise.
-     * `isSubType` only compares class signatures, so `new Map()` would otherwise replace
-     * a declared `Map<string, Function[]>` and break later method signature inference (e.g. Array.push).
+     * For the same class type, keep the more precise real generic arguments.
+     * `isSubType` only compares class signatures, so weak constructors such as
+     * `new Map()` / `new Map<any, any>()` / `new Map<string, any>()` would otherwise
+     * replace a declared `Map<string, Function[]>` and break later method signature
+     * inference (e.g. Array.push on Map.get result).
      */
     private static preferPreciseClassType(declared: Type, inferred: Type): Type {
         if (!(declared instanceof ClassType) || !(inferred instanceof ClassType) ||
@@ -1150,14 +1152,27 @@ export class TypeInference {
         if (!declaredG || declaredG.length === 0) {
             return inferred;
         }
-        if (!inferredG || inferredG.length === 0 || inferredG.length < declaredG.length) {
+        if (!inferredG || inferredG.length === 0) {
             return declared;
         }
         const isWeak = (t: Type): boolean => this.checkType(t, x => x instanceof AnyType || x instanceof UnknownType);
-        if (inferredG.some(isWeak) && declaredG.some(t => !isWeak(t))) {
-            return declared;
+        const len = Math.max(declaredG.length, inferredG.length);
+        const merged: Type[] = [];
+        let usedDeclaredSlot = false;
+        for (let i = 0; i < len; i++) {
+            const declaredSlot = declaredG[i];
+            const inferredSlot = inferredG[i];
+            if (declaredSlot && (!inferredSlot || isWeak(inferredSlot)) && !isWeak(declaredSlot)) {
+                merged.push(declaredSlot);
+                usedDeclaredSlot = true;
+            } else if (inferredSlot) {
+                merged.push(inferredSlot);
+            } else if (declaredSlot) {
+                merged.push(declaredSlot);
+                usedDeclaredSlot = true;
+            }
         }
-        return inferred;
+        return usedDeclaredSlot ? new ClassType(declared.getClassSignature(), merged) : inferred;
     }
 
     /**
