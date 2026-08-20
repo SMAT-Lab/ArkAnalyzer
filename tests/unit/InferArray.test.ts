@@ -638,6 +638,19 @@ describe("function Test", () => {
             assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
         });
 
+        it('type alias declared Map<string, Function[]> = new Map(); get then push', () => {
+            const file = scene.getFile(fileId);
+            const field = file?.getClassWithName(clsName)?.getFieldWithName('callbackAliasMap');
+            assert.isTrue(field?.getType() instanceof AliasType);
+            const ir = findInvoke(getMethodStmts('callbackAliasPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
+        });
+
+        it('alias-typed initializer (AnyMap = Map<any, any>) keeps declared generics', () => {
+            const ir = findInvoke(getMethodStmts('aliasParamPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke arr.<@built-in/lib.es5.d.ts: Array.push(T[])>(s)');
+        });
+
         it('Map.get return keeps value generic (not bare V)', () => {
             const stmts = getMethodStmts('mapGetThenPush');
             const getStmt = stmts.find(s => s.toString().includes('Map.get')) as ArkAssignStmt;

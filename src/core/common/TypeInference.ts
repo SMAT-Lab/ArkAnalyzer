@@ -1142,7 +1142,9 @@ export class TypeInference {
      * replace a declared `Map<string, Function[]>` and break later method signature
      * inference (e.g. Array.push on Map.get result).
      */
-    private static preferPreciseClassType(declared: Type, inferred: Type): Type {
+    private static preferPreciseClassType(parent: Type, child: Type): Type {
+        const declared = parent instanceof AliasType ? this.replaceAliasType(parent) : parent;
+        const inferred = child instanceof AliasType ? this.replaceAliasType(child) : child;
         if (!(declared instanceof ClassType) || !(inferred instanceof ClassType) ||
             declared.getClassSignature() !== inferred.getClassSignature()) {
             return inferred;

@@ -267,7 +267,7 @@ function assertGlobalsEqual(actualGlobals: Map<string, Value> | undefined, expec
         return;
     }
     for (let i = 0; i < expectGlobals.length; i++) {
-        const actualGlobal = actualGlobals!.get(expectGlobals[i].name);
+        const actualGlobal: Value | undefined = actualGlobals!.get(expectGlobals[i].name);
         assert.isDefined(actualGlobal);
         if (expectGlobals[i].instanceof !== undefined) {
             assert.isTrue(actualGlobal instanceof expectGlobals[i].instanceof);

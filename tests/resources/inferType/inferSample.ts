@@ -293,6 +293,9 @@ function testMap(): void {
         .set('e', animatorData5);
 }
 
+type CallbackMap = Map<string, Function[]>;
+type AnyMap = Map<any, any>;
+
 /**
  * Cases where declared container generics are erased by a weak initializer
  * (`new Map()` / `new Set()` / `new Map<any, any>()`), then a follow-up call
@@ -305,6 +308,7 @@ class GenericInitEraseTest {
     private anyCtorMap: Map<string, string[]> = new Map<any, any>();
     private partialAnyMap: Map<string, Function[]> = new Map<string, any>();
     private weakMap: WeakMap<A, Function[]> = new WeakMap();
+    private callbackAliasMap: CallbackMap = new Map();
 
     // Map<K, T[]> = new Map(); then get + push
     public mapGetThenPush(event: string, callback: Function): void {
@@ -388,5 +392,26 @@ class GenericInitEraseTest {
             this.weakMap.set(key, cbs);
         }
         cbs.push(callback);
+    }
+
+    // Declared through a type alias: CallbackMap = Map<string, Function[]> = new Map()
+    public callbackAliasPush(event: string, callback: Function): void {
+        let cbs = this.callbackAliasMap.get(event);
+        if (!cbs) {
+            cbs = [];
+            this.callbackAliasMap.set(event, cbs);
+        }
+        cbs.push(callback);
+    }
+
+    // Alias on the initializer side: parameter typed AnyMap (Map<any, any>)
+    public aliasParamPush(weakMap: AnyMap, key: string, s: string): void {
+        let map: Map<string, string[]> = weakMap;
+        let arr = map.get(key);
+        if (!arr) {
+            arr = [];
+            map.set(key, arr);
+        }
+        arr.push(s);
     }
 }
