@@ -659,6 +659,11 @@ describe("function Test", () => {
             assert.notInclude(getType, 'V|undefined');
             assert.include(getType, 'Function[]');
         });
+
+        it('Map<string, Map<string, Function[]>> = new Map(); get then push', () => {
+            const ir = findInvoke(getMethodStmts('recursiveMapPush'), '.push(');
+            assert.equal(ir, 'instanceinvoke cbs.<@built-in/lib.es5.d.ts: Array.push(T[])>(callback)');
+        });
     })
 
     it('pta union type CallBack 2 function case', () => {

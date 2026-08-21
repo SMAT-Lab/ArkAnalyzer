@@ -309,6 +309,7 @@ class GenericInitEraseTest {
     private partialAnyMap: Map<string, Function[]> = new Map<string, any>();
     private weakMap: WeakMap<A, Function[]> = new WeakMap();
     private callbackAliasMap: CallbackMap = new Map();
+    private recursiveMap: Map<string, CallbackMap> = new Map();
 
     // Map<K, T[]> = new Map(); then get + push
     public mapGetThenPush(event: string, callback: Function): void {
@@ -413,5 +414,19 @@ class GenericInitEraseTest {
             map.set(key, arr);
         }
         arr.push(s);
+    }
+
+    public recursiveMapPush(event: string, callback: Function): void {
+        let map = this.recursiveMap.get(event);
+        if (!map) {
+            map = new Map();
+            this.recursiveMap.set(event, map);
+        }
+        let cbs = map.get(event);
+        if (!cbs) {
+            cbs = [];
+            map.set(event, cbs);
+        }
+        cbs.push(callback);
     }
 }

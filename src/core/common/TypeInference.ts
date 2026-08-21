@@ -1129,52 +1129,9 @@ export class TypeInference {
             return leftType;
         }
         if (this.isSubType(rightType, leftType, scene)) {
-            // Prefer declared generics when initializer erases them, e.g. `Map<K,V> = new Map()`.
-            return this.preferPreciseClassType(leftType, rightType);
+            return rightType;
         }
         return leftType;
-    }
-
-    /**
-     * For the same class type, keep the more precise real generic arguments.
-     * `isSubType` only compares class signatures, so weak constructors such as
-     * `new Map()` / `new Map<any, any>()` / `new Map<string, any>()` would otherwise
-     * replace a declared `Map<string, Function[]>` and break later method signature
-     * inference (e.g. Array.push on Map.get result).
-     */
-    private static preferPreciseClassType(parent: Type, child: Type): Type {
-        const declared = parent instanceof AliasType ? this.replaceAliasType(parent) : parent;
-        const inferred = child instanceof AliasType ? this.replaceAliasType(child) : child;
-        if (!(declared instanceof ClassType) || !(inferred instanceof ClassType) ||
-            declared.getClassSignature() !== inferred.getClassSignature()) {
-            return inferred;
-        }
-        const declaredG = declared.getRealGenericTypes();
-        const inferredG = inferred.getRealGenericTypes();
-        if (!declaredG || declaredG.length === 0) {
-            return inferred;
-        }
-        if (!inferredG || inferredG.length === 0) {
-            return declared;
-        }
-        const isWeak = (t: Type): boolean => this.checkType(t, x => x instanceof AnyType || x instanceof UnknownType);
-        const len = Math.max(declaredG.length, inferredG.length);
-        const merged: Type[] = [];
-        let usedDeclaredSlot = false;
-        for (let i = 0; i < len; i++) {
-            const declaredSlot = declaredG[i];
-            const inferredSlot = inferredG[i];
-            if (declaredSlot && (!inferredSlot || isWeak(inferredSlot)) && !isWeak(declaredSlot)) {
-                merged.push(declaredSlot);
-                usedDeclaredSlot = true;
-            } else if (inferredSlot) {
-                merged.push(inferredSlot);
-            } else if (declaredSlot) {
-                merged.push(declaredSlot);
-                usedDeclaredSlot = true;
-            }
-        }
-        return usedDeclaredSlot ? new ClassType(declared.getClassSignature(), merged) : inferred;
     }
 
     /**
@@ -1188,6 +1145,9 @@ export class TypeInference {
         }
         const fatherClass = scene.getClass(declare.getClassSignature());
         let childClass = scene.getClass(real.getClassSignature());
+        if (fatherClass === childClass) {
+            return false;
+        }
         while (childClass) {
             if (childClass === fatherClass) {
                 return true;
