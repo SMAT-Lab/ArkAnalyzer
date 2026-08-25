@@ -21,6 +21,7 @@ import {
     ClassSignature,
     ClassType,
     CONSTRUCTOR_NAME,
+    GlobalRef,
     Local,
     MethodSignature,
     Stmt,
@@ -149,6 +150,52 @@ describe('ArkClass Test', () => {
         assert.isTrue(classCase3 instanceof ArkClass);
         const classCase3Expect = Class_With_Static_Init_Block_Expect.Case3;
         assertStaticBlockEqual(classCase3 as ArkClass, classCase3Expect);
+    });
+
+    it('init methods should record used globals from field initializers', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        assert.isDefined(arkFile);
+
+        const expectGlobalRecorded = (className: string, globalName: string): void => {
+            const arkClass = arkFile!.getClassWithName(className);
+            assert.isTrue(arkClass instanceof ArkClass);
+
+            const instUsed = arkClass!.getInstanceInitMethod().getBody()?.getUsedGlobals()?.get(globalName);
+            expect(instUsed).toBeDefined();
+            expect(instUsed).toBeInstanceOf(GlobalRef);
+
+            const statUsed = arkClass!.getStaticInitMethod().getBody()?.getUsedGlobals()?.get(globalName);
+            expect(statUsed).toBeDefined();
+            expect(statUsed).toBeInstanceOf(GlobalRef);
+
+            const method = arkClass!.getMethodWithName('foo')?.getBody()?.getUsedGlobals()?.get(globalName);
+            expect(method).toBeDefined();
+            expect(method).toBeInstanceOf(GlobalRef);
+        };
+        
+        expectGlobalRecorded('Case4', 'globalClassField');
+        expectGlobalRecorded('Case5', 'forwardGlobalClassField');
+        expectGlobalRecorded('Case6', 'importedGlobalClassField');
+        expectGlobalRecorded('Case7', 'ImportedGlobalNS');
+        expectGlobalRecorded('Case8', 'SameFileNS');
+        expectGlobalRecorded('Case9', 'OuterNS');
+    });
+
+    it('unused globals should not be recorded in init method usedGlobals', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        assert.isDefined(arkFile);
+        const classCase4 = arkFile!.getClassWithName('Case4');
+        assert.isTrue(classCase4 instanceof ArkClass);
+
+        const instGlobals = classCase4!.getInstanceInitMethod().getBody()?.getUsedGlobals();
+        expect(instGlobals?.get('globalClassField')).toBeDefined();
+        expect(instGlobals?.has('globalClassField2')).toBe(false);
+        expect(instGlobals?.size).toBe(1);
+
+        const statGlobals = classCase4!.getStaticInitMethod().getBody()?.getUsedGlobals();
+        expect(statGlobals?.get('globalClassField')).toBeDefined();
+        expect(statGlobals?.has('globalClassField2')).toBe(false);
+        expect(statGlobals?.size).toBe(1);
     });
 
     it('stmt cfg', async () => {

@@ -30,7 +30,7 @@ import {
 } from './builderUtils';
 import { cloneText } from '../../common/StringUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../base/Ref';
+import { ArkParameterRef, ArkThisRef, ClosureFieldRef, GlobalRef } from '../../base/Ref';
 import { ArkBody } from '../ArkBody';
 import { Cfg } from '../../graph/Cfg';
 import { ArkInstanceInvokeExpr } from '../../base/Expr';
@@ -419,7 +419,12 @@ export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClas
     return true;
 }
 
-export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: Stmt[], thisLocal: Local): void {
+export function buildInitMethod(
+    initMethod: ArkMethod,
+    fieldInitializerStmts: Stmt[],
+    thisLocal: Local,
+    globals?: Map<string, GlobalRef> | null
+): void {
     const classType = new ClassType(initMethod.getDeclaringArkClass().getSignature());
     const assignStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(classType));
     const block = new BasicBlock();
@@ -442,6 +447,9 @@ export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: St
     cfg.buildDefUseStmt(locals);
     cfg.setDeclaringMethod(initMethod);
     initMethod.setBody(new ArkBody(locals, cfg));
+    if (globals && globals.size > 0) {
+        initMethod.getBody()?.setUsedGlobals(globals);
+    }
 }
 
 export function addInitInConstructor(constructor: ArkMethod): void {
