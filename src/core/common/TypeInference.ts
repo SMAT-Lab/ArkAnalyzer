@@ -1117,16 +1117,6 @@ export class TypeInference {
      * Otherwise, returns the declared type.
      */
     public static inferRefinedValueType(value: Value, scene: Scene): Type {
-        if (value instanceof Local) {
-            const method = value.getDeclaringStmt()?.getCfg()?.getDeclaringMethod();
-            if (method) {
-                console.log('method:', method.getName());
-                // console.log('file:', method.getDeclaringArkFile().getFilePath());
-            }
-            const stmt = value.getDeclaringStmt();
-            const line = stmt?.getOperandOriginalPosition(value)?.getFirstLine();
-            console.log('value line:', line);
-        }
         const rightType = ModelUtils.findRefInitValue(value, scene).getType();
         if (rightType instanceof EnumValueType) {
             return rightType;
