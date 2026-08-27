@@ -41,7 +41,7 @@ import { Scene } from '../../Scene';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
 
 export class SdkUtils {
-    private static esVersion: string = 'ES2017';
+    private static esVersion: string = 'ES2021';
     private static esVersionMap: Map<string, string> = new Map<string, string>([
         ['ES2017', 'lib.es2020.d.ts'],
         ['ES2021', 'lib.es2021.d.ts']

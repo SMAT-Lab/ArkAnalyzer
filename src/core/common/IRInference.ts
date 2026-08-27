@@ -574,7 +574,7 @@ export class IRInference {
         } else if (declaredClass?.hasComponentDecorator()) {
             realTypes = [new ClassType(declaredClass?.getSignature())];
         } else {
-            realTypes = baseType.getRealGenericTypes() ?? declaredClass?.getRealTypes();
+            realTypes = expr.getRealGenericTypes() ?? baseType.getRealGenericTypes() ?? declaredClass?.getRealTypes();
         }
         return realTypes;
     }
