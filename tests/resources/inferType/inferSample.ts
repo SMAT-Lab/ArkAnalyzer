@@ -292,3 +292,141 @@ function testMap(): void {
     map.set('d', animatorData4)
         .set('e', animatorData5);
 }
+
+type CallbackMap = Map<string, Function[]>;
+type AnyMap = Map<any, any>;
+
+/**
+ * Cases where declared container generics are erased by a weak initializer
+ * (`new Map()` / `new Set()` / `new Map<any, any>()`), then a follow-up call
+ * must still resolve built-in method signatures via the declared type.
+ */
+class GenericInitEraseTest {
+    private callbackArray: Map<string, Function[]> = new Map();
+    private numberArrayMap: Map<string, number[]> = new Map();
+    private nameSet: Set<string> = new Set();
+    private anyCtorMap: Map<string, string[]> = new Map<any, any>();
+    private partialAnyMap: Map<string, Function[]> = new Map<string, any>();
+    private weakMap: WeakMap<A, Function[]> = new WeakMap();
+    private callbackAliasMap: CallbackMap = new Map();
+    private recursiveMap: Map<string, CallbackMap> = new Map();
+
+    // Map<K, T[]> = new Map(); then get + push
+    public mapGetThenPush(event: string, callback: Function): void {
+        let cbs = this.callbackArray.get(event);
+        if (!cbs) {
+            cbs = [];
+            this.callbackArray.set(event, cbs);
+        }
+        cbs.push(callback);
+    }
+
+    // Same pattern with number[] value type
+    public mapGetThenPushNumber(key: string, n: number): void {
+        let arr = this.numberArrayMap.get(key);
+        if (!arr) {
+            arr = [];
+            this.numberArrayMap.set(key, arr);
+        }
+        arr.push(n);
+    }
+
+    // Map.get then other Array built-ins
+    public mapGetThenPop(key: string): number | undefined {
+        let arr = this.numberArrayMap.get(key);
+        if (!arr) {
+            return undefined;
+        }
+        return arr.pop();
+    }
+
+    public mapGetThenForEach(event: string): void {
+        let cbs = this.callbackArray.get(event);
+        if (cbs) {
+            cbs.forEach((cb: Function): void => {
+                cb();
+            });
+        }
+    }
+
+    // Set<T> = new Set(); then add (T erased to any without the fix)
+    public setAdd(name: string): void {
+        this.nameSet.add(name);
+    }
+
+    // Declared precise map, constructed as Map<any, any>
+    public anyCtorMapPush(key: string, s: string): void {
+        let arr = this.anyCtorMap.get(key);
+        if (!arr) {
+            arr = [];
+            this.anyCtorMap.set(key, arr);
+        }
+        arr.push(s);
+    }
+
+    // Only value type erased: Map<string, any> initializer vs Map<string, Function[]>
+    public partialAnyMapPush(key: string, callback: Function): void {
+        let cbs = this.partialAnyMap.get(key);
+        if (!cbs) {
+            cbs = [];
+            this.partialAnyMap.set(key, cbs);
+        }
+        cbs.push(callback);
+    }
+
+    // Local variable with annotation + weak initializer
+    public localMapPush(key: string, s: string): void {
+        let map: Map<string, string[]> = new Map();
+        let arr = map.get(key);
+        if (!arr) {
+            arr = [];
+            map.set(key, arr);
+        }
+        arr.push(s);
+    }
+
+    // WeakMap<A, Function[]> = new WeakMap(); then get + push
+    public weakMapPush(key: A, callback: Function): void {
+        let cbs = this.weakMap.get(key);
+        if (!cbs) {
+            cbs = [];
+            this.weakMap.set(key, cbs);
+        }
+        cbs.push(callback);
+    }
+
+    // Declared through a type alias: CallbackMap = Map<string, Function[]> = new Map()
+    public callbackAliasPush(event: string, callback: Function): void {
+        let cbs = this.callbackAliasMap.get(event);
+        if (!cbs) {
+            cbs = [];
+            this.callbackAliasMap.set(event, cbs);
+        }
+        cbs.push(callback);
+    }
+
+    // Alias on the initializer side: parameter typed AnyMap (Map<any, any>)
+    public aliasParamPush(weakMap: AnyMap, key: string, s: string): void {
+        let map: Map<string, string[]> = weakMap;
+        let arr = map.get(key);
+        if (!arr) {
+            arr = [];
+            map.set(key, arr);
+        }
+        arr.push(s);
+    }
+
+    public recursiveMapPush(event: string, callback: Function): void {
+        let map = this.recursiveMap.get(event);
+        if (!map) {
+            map = new Map();
+            this.recursiveMap.set(event, map);
+        }
+        let cbs = map.get(event);
+        if (!cbs) {
+            cbs = [];
+            map.set(event, cbs);
+        }
+        cbs.push(callback);
+    }
+}

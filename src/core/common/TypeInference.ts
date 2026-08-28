@@ -1143,6 +1143,9 @@ export class TypeInference {
         if (!(declare instanceof ClassType) || !(real instanceof ClassType)) {
             return false;
         }
+        if (real.getClassSignature().getClassName() === declare.getClassSignature().getClassName()) {
+            return false;
+        }
         const fatherClass = scene.getClass(declare.getClassSignature());
         let childClass = scene.getClass(real.getClassSignature());
         while (childClass) {
