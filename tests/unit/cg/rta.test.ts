@@ -80,3 +80,42 @@ describe('RTA test', () => {
     });
 });
 
+describe('RTA whole-project (projectStart)', () => {
+    const config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
+
+    const scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    const cg = new CallGraph(scene);
+    const cgBuilder = new CallGraphBuilder(cg, scene);
+    cgBuilder.buildRTA4WholeProject(true);
+
+    it('builds without preset entries and still resolves instantiated virtual callees', () => {
+        const entries = cg.getEntries();
+        assert(entries !== undefined && entries.length > 0, 'projectStart should set CG entries');
+
+        const makeSoundMethod = scene.getMethods().find(m => m.getName() === 'makeSound')!;
+        const cgNode = cg.getCallGraphNodeByMethod(makeSoundMethod.getSignature());
+        const calleeNodes = cgNode.getOutgoingEdges() ?? new Set();
+        const actualCalleeSignatures = Array.from(calleeNodes).map(node =>
+            (node.getDstNode() as CallGraphNode).getMethod()
+        );
+
+        const dogSound = scene.getClasses().find(c => c.getName() === 'Dog')!
+            .getMethods().find(m => m.getName() === 'sound')!.getSignature();
+        const catSound = scene.getClasses().find(c => c.getName() === 'Cat')!
+            .getMethods().find(m => m.getName() === 'sound')!.getSignature();
+
+        assert(
+            actualCalleeSignatures.includes(dogSound),
+            `Expected callee ${dogSound} not found in actual callees: ${actualCalleeSignatures.join(', ')}`
+        );
+        assert(
+            actualCalleeSignatures.includes(catSound),
+            `Expected callee ${catSound} not found in actual callees: ${actualCalleeSignatures.join(', ')}`
+        );
+    });
+});
+

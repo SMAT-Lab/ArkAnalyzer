@@ -122,20 +122,26 @@ export abstract class AbstractAnalysis {
         this.cg.endStat();
     }
 
+    /**
+     * Whole-project CG: scan every non-SDK method once (`isProject=true`, no call-edge enqueue).
+     * `processedMethod` is initialized so RTA late callback edges (`emitCallbackEdge`) can query it
+     * without going through `init()`, which would seed the entry worklist.
+     */
     public projectStart(displayGeneratedMethod: boolean): void {
         this.cg.startStat();
         this.cgBuilder.buildCGNodes(this.scene.getMethods());
+        this.initProcessedMethod();
 
-        for (let n of this.cg.getNodesIter()) {
-            let cgNode = n as CallGraphNode;
-
-            if (cgNode.isSdkMethod()) {
+        for (const n of this.cg.getNodesIter()) {
+            const cgNode = n as CallGraphNode;
+            const id = cgNode.getID();
+            if (cgNode.isSdkMethod() || this.processedMethod.contains(id)) {
                 continue;
             }
+            this.processedMethod.insert(id);
 
-            this.preProcessMethod(cgNode.getID());
-
-            this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
+            this.preProcessMethod(id);
+            this.processMethod(id, displayGeneratedMethod, true);
         }
 
         this.cgBuilder.setEntries();
@@ -163,8 +169,12 @@ export abstract class AbstractAnalysis {
         }
     }
 
-    protected init(): void {
+    protected initProcessedMethod(): void {
         this.processedMethod = new (createPtsCollectionCtor(PtsCollectionType.BitVector))();
+    }
+
+    protected init(): void {
+        this.initProcessedMethod();
         this.cg.getEntries().forEach(entryFunc => {
             this.workList.push(entryFunc);
         });
