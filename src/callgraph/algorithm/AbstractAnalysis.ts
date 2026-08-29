@@ -199,8 +199,6 @@ export abstract class AbstractAnalysis {
                 }
 
                 this.resolveCall(cgNode.getID(), stmt).forEach(callSite => {
-                    this.cg.addStmtToCallSiteMap(stmt, callSite);
-                    this.cg.addMethodToCallSiteMap(callSite.calleeFuncID, callSite);
                     this.processCallSite(methodID, callSite, displayGeneratedMethod, isProject);
                 });
             });
