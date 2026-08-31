@@ -250,3 +250,18 @@ function case18(): void {
             break;
     }
 }
+
+function case19(): void {
+    let a = 0;
+    let b = 1;
+    switch (a) {
+        case 1:
+            b = 11;
+        default:
+            b = 99;
+            break;
+        case 2:
+            b = 22;
+            break;
+    }
+}
