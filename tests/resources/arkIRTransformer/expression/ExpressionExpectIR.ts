@@ -852,6 +852,30 @@ export const CallExpression_Expect_IR = {
             [28, 39, 28, 46]],
         },
         {
+            text: '%2 = instanceinvoke obj.<@%unk/%unk: .call400()>()',
+            operandOriginalPositions: [[31, 12, 32, 15], [31, 12, 32, 15], [31, 12, 31, 15]],
+        },
+        {
+            text: 'a300 = instanceinvoke %2.<@%unk/%unk: .call500()>(para1)',
+            operandOriginalPositions: [[31, 5, 31, 9], [31, 12, 33, 20], [31, 12, 32, 15], [33, 14, 33, 19]],
+        },
+        {
+            text: '%3 = staticinvoke <@%unk/%unk: .call600()>()',
+            operandOriginalPositions: [[35, 12, 35, 21], [35, 12, 35, 21]],
+        },
+        {
+            text: '%4 = instanceinvoke %3.<@%unk/%unk: .call700()>()',
+            operandOriginalPositions: [[35, 12, 36, 15], [35, 12, 36, 15], [35, 12, 35, 21]],
+        },
+        {
+            text: 'a500 = instanceinvoke %4.<@%unk/%unk: .call800()>()',
+            operandOriginalPositions: [[35, 5, 35, 9], [35, 12, 37, 15], [35, 12, 36, 15]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .call900()>()',
+            operandOriginalPositions: [[40, 1, 40, 15], [40, 1, 40, 4]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],

@@ -343,6 +343,46 @@ export abstract class Stmt {
     }
 
     /**
+     * Returns the absolute source position of the first function/method call
+     * whose callee identifier is `name` within this statement's original text.
+     * Matches `name()`, `obj.name()`, and `obj?.name()` (best-effort regex).
+     * @param name - Callee identifier to locate.
+     * @returns Absolute 1-based `{ line, col }` of the start of `name`,
+     *          or `{ line: -1, col: -1 }` if not found / text unavailable.
+     */
+    public getFirstCallNamePosition(name: string): { line: number; col: number } {
+        const notFound = { line: -1, col: -1 };
+        const text = this.getOriginalText();
+        if (!text || !name) {
+            return notFound;
+        }
+        const origin = this.getOriginPositionInfo();
+        const originLine = origin.getLineNo();
+        const originCol = origin.getColNo();
+        if (originLine < 0 || originCol < 0) {
+            return notFound;
+        }
+        // Identifiers may contain `$` (e.g. $temp); other regex metacharacters cannot appear in a name.
+        const escaped = name.replace(/\$/g, '\\$');
+        const pattern = new RegExp(
+            `(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])\\s*(?:<[^>]*>)?\\s*\\(`
+        );
+        const match = pattern.exec(text);
+        if (!match) {
+            return notFound;
+        }
+        const index = match.index;
+        const before = text.slice(0, index);
+        const relativeLine = before.split('\n').length - 1;
+        const lastNl = before.lastIndexOf('\n');
+        const colInText = lastNl === -1 ? index + 1 : index - lastNl;
+        if (relativeLine === 0) {
+            return { line: originLine, col: originCol + (colInText - 1) };
+        }
+        return { line: originLine + relativeLine, col: colInText };
+    }
+
+    /**
      * Clears the cached source text, forcing re-extraction on next getOriginalText call.
      */
     public clearSourceCode(): void {

@@ -16,7 +16,7 @@
 import { describe, expect, it, assert } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
-import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt } from '../../../../src';
+import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt } from '../../../../src';
 
 describe('Stmt Source Code and Position Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
@@ -200,6 +200,84 @@ describe('Stmt Source Code and Position Test', () => {
             assert.isDefined(pos3);
             expect(pos3!.getFirstLine()).toBe(22);
             expect(pos3!.getFirstCol()).toBe(14);
+        });
+    });
+
+    describe('getFirstCallNamePosition', () => {
+        const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+        const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
+        const callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
+
+        function findStmtByOriginalText(text: string): Stmt {
+            const stmt = callStmts?.find((s) => s.getOriginalText() === text);
+            assert.isDefined(stmt);
+            return stmt!;
+        }
+
+        function findStmtByOriginalTextIncludes(substr: string): Stmt {
+            const stmt = callStmts?.find((s) => s.getOriginalText()?.includes(substr));
+            assert.isDefined(stmt);
+            return stmt!;
+        }
+
+        function findStmtByIrText(substr: string): Stmt {
+            const stmt = callStmts?.find((s) => s.toString().includes(substr));
+            assert.isDefined(stmt);
+            return stmt!;
+        }
+
+        it('returns absolute position for static call call10()', () => {
+            const stmt = findStmtByOriginalText('call10();');
+            expect(stmt.getFirstCallNamePosition('call10')).toEqual({ line: 23, col: 1 });
+        });
+
+        it('returns absolute position for member call call1()', () => {
+            const stmt = findStmtByOriginalText('a1.call1();');
+            expect(stmt.getFirstCallNamePosition('call1')).toEqual({ line: 17, col: 4 });
+        });
+
+        it('returns absolute position for member call call2()', () => {
+            const stmt = findStmtByOriginalText('let a2 = a3.call2();');
+            expect(stmt.getFirstCallNamePosition('call2')).toEqual({ line: 18, col: 13 });
+        });
+
+        it('returns the first matching name in a single-line call chain', () => {
+            const stmt = findStmtByOriginalTextIncludes('call200().call300');
+            expect(stmt.getFirstCallNamePosition('call200')).toEqual({ line: 28, col: 12 });
+            expect(stmt.getFirstCallNamePosition('call300')).toEqual({ line: 28, col: 22 });
+        });
+
+        it('returns absolute position for multiline member call chain', () => {
+            const stmt = findStmtByIrText('call400()');
+            expect(stmt.getFirstCallNamePosition('call400')).toEqual({ line: 32, col: 6 });
+            expect(stmt.getFirstCallNamePosition('call500')).toEqual({ line: 33, col: 6 });
+        });
+
+        it('returns absolute position for multiline static call chain', () => {
+            const stmt = findStmtByIrText('call600()');
+            expect(stmt.getFirstCallNamePosition('call600')).toEqual({ line: 35, col: 12 });
+            expect(stmt.getFirstCallNamePosition('call700')).toEqual({ line: 36, col: 6 });
+            expect(stmt.getFirstCallNamePosition('call800')).toEqual({ line: 37, col: 6 });
+        });
+
+        it('returns absolute position for optional chain call900()', () => {
+            const stmt = findStmtByOriginalText('obj?.call900();');
+            expect(stmt.getFirstCallNamePosition('call900')).toEqual({ line: 40, col: 6 });
+        });
+
+        it('returns -1,-1 when name is not a call', () => {
+            const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
+            expect(stmt.getFirstCallNamePosition('para1')).toEqual({ line: -1, col: -1 });
+        });
+
+        it('returns -1,-1 for empty name', () => {
+            const stmt = findStmtByOriginalText('call10();');
+            expect(stmt.getFirstCallNamePosition('')).toEqual({ line: -1, col: -1 });
+        });
+
+        it('returns -1,-1 when original text is missing', () => {
+            const stmt = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
+            expect(stmt.getFirstCallNamePosition('call10')).toEqual({ line: -1, col: -1 });
         });
     });
 });
