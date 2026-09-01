@@ -123,7 +123,17 @@ export class SwitchBuilder {
         const expectedSuccessorsOfCaseIfBlock: BasicBlock[] = [];
         const defaultStmtBuilder = switchStmtBuilder.default;
         if (defaultStmtBuilder && defaultStmtBuilder.block) {
-            expectedSuccessorsOfCaseIfBlock.push(...successorsOfBlockContainSwitch.splice(-1, 1));
+            // default may appear before later cases; identify by block identity, not list position
+            if (!blockBuilderToCfgBlock.has(defaultStmtBuilder.block)) {
+                logger.error(`can't find basicBlock corresponding to the default blockBuilder.`);
+                return false;
+            }
+            const defaultBasicBlock = blockBuilderToCfgBlock.get(defaultStmtBuilder.block)!;
+            const defaultIndex = successorsOfBlockContainSwitch.indexOf(defaultBasicBlock);
+            if (defaultIndex !== -1) {
+                successorsOfBlockContainSwitch.splice(defaultIndex, 1);
+            }
+            expectedSuccessorsOfCaseIfBlock.push(defaultBasicBlock);
         } else {
             const afterSwitchStmtBuilder = switchStmtBuilder.afterSwitch;
             const afterSwitchBlockBuilder = afterSwitchStmtBuilder?.block;
