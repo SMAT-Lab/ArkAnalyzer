@@ -266,6 +266,11 @@ export class CallGraph extends BaseExplicitGraph {
         return this.stmtToDynCallSitemap.get(stmt);
     }
 
+    public recordCallSite(stmt: Stmt, cs: CallSite): void {
+        this.addStmtToCallSiteMap(stmt, cs);
+        this.addMethodToCallSiteMap(cs.calleeFuncID, cs);
+    }
+
     public addStmtToCallSiteMap(stmt: Stmt, cs: CallSite): boolean {
         if (this.stmtToCallSitemap.has(stmt)) {
             this.stmtToCallSitemap.get(stmt)!.push(cs);

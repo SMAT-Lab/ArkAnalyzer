@@ -42,9 +42,7 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
         // process anonymous method call
         this.getParamAnonymousMethod(invokeExpr).forEach(method => {
             const nodeID = this.cg.getCallGraphNodeByMethod(method).getID();
-            resolveResult.push(
-                this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, nodeID, callerMethod)
-            );
+            resolveResult.push(this.newRecordedCallSite(invokeStmt, nodeID, callerMethod));
         });
 
         let calleeMethod = this.resolveInvokeExpr(invokeExpr);
@@ -59,9 +57,7 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
             this.checkSuperInvoke(invokeStmt, declareClass, stmtDeclareClass)) {
             // get specific method
             const nodeID = this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID();
-            resolveResult.push(
-                this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, nodeID, callerMethod)
-            );
+            resolveResult.push(this.newRecordedCallSite(invokeStmt, nodeID, callerMethod));
         } else {
             const classHierarchy = this.getClassHierarchy(declareClass);
             const calleeMethodName = calleeMethod.getName();
@@ -80,16 +76,19 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
                 }
 
                 if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
-                    resolveResult.push(
-                        this.cg.getCallSiteManager().newCallSite(
-                            invokeStmt, undefined,
-                            this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod
-                        ));
+                    const nodeID = this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID();
+                    resolveResult.push(this.newRecordedCallSite(invokeStmt, nodeID, callerMethod));
                 }
             }
         }
 
         return resolveResult;
+    }
+
+    private newRecordedCallSite(invokeStmt: Stmt, calleeFuncID: NodeID, callerMethod: NodeID): CallSite {
+        const cs = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, calleeFuncID, callerMethod);
+        this.cg.recordCallSite(invokeStmt, cs);
+        return cs;
     }
 
     protected preProcessMethod(): CallSite[] {
