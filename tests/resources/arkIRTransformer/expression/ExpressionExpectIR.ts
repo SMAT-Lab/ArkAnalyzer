@@ -876,6 +876,26 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [[40, 1, 40, 15], [40, 1, 40, 4]],
         },
         {
+            text: 'staticinvoke <@%unk/%unk: .prefixCall10()>()',
+            operandOriginalPositions: [[43, 1, 43, 15]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .$tempCall()>()',
+            operandOriginalPositions: [[44, 1, 44, 12]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callSpace()>()',
+            operandOriginalPositions: [[45, 1, 45, 13]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .genericCall()>()',
+            operandOriginalPositions: [[46, 1, 46, 17]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callNewline()>()',
+            operandOriginalPositions: [[47, 1, 48, 3]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],
