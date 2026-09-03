@@ -265,6 +265,37 @@ describe('Stmt Source Code and Position Test', () => {
             expect(stmt.getFirstCallNamePosition('call900')).toEqual({ line: 40, col: 6 });
         });
 
+        it('does not match identifier prefixes or suffixes', () => {
+            const call10Stmt = findStmtByOriginalText('call10();');
+            expect(call10Stmt.getFirstCallNamePosition('call1')).toEqual({ line: -1, col: -1 });
+            expect(call10Stmt.getFirstCallNamePosition('call')).toEqual({ line: -1, col: -1 });
+            expect(call10Stmt.getFirstCallNamePosition('call100')).toEqual({ line: -1, col: -1 });
+
+            const prefixStmt = findStmtByOriginalText('prefixCall10();');
+            expect(prefixStmt.getFirstCallNamePosition('call10')).toEqual({ line: -1, col: -1 });
+            expect(prefixStmt.getFirstCallNamePosition('prefixCall10')).toEqual({ line: 43, col: 1 });
+        });
+
+        it('returns absolute position for $ identifier call', () => {
+            const stmt = findStmtByOriginalText('$tempCall();');
+            expect(stmt.getFirstCallNamePosition('$tempCall')).toEqual({ line: 44, col: 1 });
+        });
+
+        it('matches call name with whitespace before parenthesis', () => {
+            const stmt = findStmtByOriginalText('callSpace ();');
+            expect(stmt.getFirstCallNamePosition('callSpace')).toEqual({ line: 45, col: 1 });
+        });
+
+        it('matches simple generic type arguments', () => {
+            const stmt = findStmtByOriginalText('genericCall<T>();');
+            expect(stmt.getFirstCallNamePosition('genericCall')).toEqual({ line: 46, col: 1 });
+        });
+
+        it('matches call name with newline before parenthesis', () => {
+            const stmt = findStmtByIrText('callNewline()');
+            expect(stmt.getFirstCallNamePosition('callNewline')).toEqual({ line: 47, col: 1 });
+        });
+
         it('returns -1,-1 when name is not a call', () => {
             const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
             expect(stmt.getFirstCallNamePosition('para1')).toEqual({ line: -1, col: -1 });

@@ -39,6 +39,14 @@ let a500 = call600()
 // optional chain
 obj?.call900();
 
+// regex contract: identifier boundaries, $, whitespace, generics
+prefixCall10();
+$tempCall();
+callSpace ();
+genericCall<T>();
+callNewline
+();
+
 // ptr invoke expr test
 function returnFunc1(): () => void {
     const nestedReturnFunc:()=>void = () => {
