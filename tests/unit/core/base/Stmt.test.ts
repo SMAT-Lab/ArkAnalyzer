@@ -16,7 +16,7 @@
 import { describe, expect, it, assert } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
-import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt } from '../../../../src';
+import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt, FullPosition } from '../../../../src';
 
 describe('Stmt Source Code and Position Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
@@ -203,7 +203,7 @@ describe('Stmt Source Code and Position Test', () => {
         });
     });
 
-    describe('getFirstCallNamePosition', () => {
+    describe('getInvokeFullPosition', () => {
         const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
         const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
         const callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
@@ -226,89 +226,96 @@ describe('Stmt Source Code and Position Test', () => {
             return stmt!;
         }
 
-        it('returns absolute position for static call call10()', () => {
+        function expectFullPos(pos: FullPosition, firstLine: number, firstCol: number, lastLine: number, lastCol: number): void {
+            expect(pos.getFirstLine()).toBe(firstLine);
+            expect(pos.getFirstCol()).toBe(firstCol);
+            expect(pos.getLastLine()).toBe(lastLine);
+            expect(pos.getLastCol()).toBe(lastCol);
+        }
+
+        it('returns full position for static call call10()', () => {
             const stmt = findStmtByOriginalText('call10();');
-            expect(stmt.getFirstCallNamePosition('call10')).toEqual({ line: 23, col: 1 });
+            expectFullPos(stmt.getInvokeFullPosition('call10'), 23, 1, 23, 9);
         });
 
-        it('returns absolute position for member call call1()', () => {
+        it('returns full position for member call call1()', () => {
             const stmt = findStmtByOriginalText('a1.call1();');
-            expect(stmt.getFirstCallNamePosition('call1')).toEqual({ line: 17, col: 4 });
+            expectFullPos(stmt.getInvokeFullPosition('call1'), 17, 4, 17, 11);
         });
 
-        it('returns absolute position for member call call2()', () => {
+        it('returns full position for member call call2()', () => {
             const stmt = findStmtByOriginalText('let a2 = a3.call2();');
-            expect(stmt.getFirstCallNamePosition('call2')).toEqual({ line: 18, col: 13 });
+            expectFullPos(stmt.getInvokeFullPosition('call2'), 18, 13, 18, 20);
         });
 
-        it('returns the first matching name in a single-line call chain', () => {
+        it('returns the first matching invoke in a single-line call chain', () => {
             const stmt = findStmtByOriginalTextIncludes('call200().call300');
-            expect(stmt.getFirstCallNamePosition('call200')).toEqual({ line: 28, col: 12 });
-            expect(stmt.getFirstCallNamePosition('call300')).toEqual({ line: 28, col: 22 });
+            expectFullPos(stmt.getInvokeFullPosition('call200'), 28, 12, 28, 21);
+            expectFullPos(stmt.getInvokeFullPosition('call300'), 28, 22, 28, 47);
         });
 
-        it('returns absolute position for multiline member call chain', () => {
+        it('returns full position for multiline member call chain', () => {
             const stmt = findStmtByIrText('call400()');
-            expect(stmt.getFirstCallNamePosition('call400')).toEqual({ line: 32, col: 6 });
-            expect(stmt.getFirstCallNamePosition('call500')).toEqual({ line: 33, col: 6 });
+            expectFullPos(stmt.getInvokeFullPosition('call400'), 32, 6, 32, 15);
+            expectFullPos(stmt.getInvokeFullPosition('call500'), 33, 6, 33, 20);
         });
 
-        it('returns absolute position for multiline static call chain', () => {
+        it('returns full position for multiline static call chain', () => {
             const stmt = findStmtByIrText('call600()');
-            expect(stmt.getFirstCallNamePosition('call600')).toEqual({ line: 35, col: 12 });
-            expect(stmt.getFirstCallNamePosition('call700')).toEqual({ line: 36, col: 6 });
-            expect(stmt.getFirstCallNamePosition('call800')).toEqual({ line: 37, col: 6 });
+            expectFullPos(stmt.getInvokeFullPosition('call600'), 35, 12, 35, 21);
+            expectFullPos(stmt.getInvokeFullPosition('call700'), 36, 6, 36, 15);
+            expectFullPos(stmt.getInvokeFullPosition('call800'), 37, 6, 37, 15);
         });
 
-        it('returns absolute position for optional chain call900()', () => {
+        it('returns full position for optional chain call900()', () => {
             const stmt = findStmtByOriginalText('obj?.call900();');
-            expect(stmt.getFirstCallNamePosition('call900')).toEqual({ line: 40, col: 6 });
+            expectFullPos(stmt.getInvokeFullPosition('call900'), 40, 6, 40, 15);
         });
 
         it('does not match identifier prefixes or suffixes', () => {
             const call10Stmt = findStmtByOriginalText('call10();');
-            expect(call10Stmt.getFirstCallNamePosition('call1')).toEqual({ line: -1, col: -1 });
-            expect(call10Stmt.getFirstCallNamePosition('call')).toEqual({ line: -1, col: -1 });
-            expect(call10Stmt.getFirstCallNamePosition('call100')).toEqual({ line: -1, col: -1 });
+            expect(call10Stmt.getInvokeFullPosition('call1')).toBe(FullPosition.DEFAULT);
+            expect(call10Stmt.getInvokeFullPosition('call')).toBe(FullPosition.DEFAULT);
+            expect(call10Stmt.getInvokeFullPosition('call100')).toBe(FullPosition.DEFAULT);
 
             const prefixStmt = findStmtByOriginalText('prefixCall10();');
-            expect(prefixStmt.getFirstCallNamePosition('call10')).toEqual({ line: -1, col: -1 });
-            expect(prefixStmt.getFirstCallNamePosition('prefixCall10')).toEqual({ line: 43, col: 1 });
+            expect(prefixStmt.getInvokeFullPosition('call10')).toBe(FullPosition.DEFAULT);
+            expectFullPos(prefixStmt.getInvokeFullPosition('prefixCall10'), 43, 1, 43, 15);
         });
 
-        it('returns absolute position for $ identifier call', () => {
+        it('returns full position for $ identifier call', () => {
             const stmt = findStmtByOriginalText('$tempCall();');
-            expect(stmt.getFirstCallNamePosition('$tempCall')).toEqual({ line: 44, col: 1 });
+            expectFullPos(stmt.getInvokeFullPosition('$tempCall'), 44, 1, 44, 12);
         });
 
-        it('matches call name with whitespace before parenthesis', () => {
+        it('matches call with whitespace before parenthesis', () => {
             const stmt = findStmtByOriginalText('callSpace ();');
-            expect(stmt.getFirstCallNamePosition('callSpace')).toEqual({ line: 45, col: 1 });
+            expectFullPos(stmt.getInvokeFullPosition('callSpace'), 45, 1, 45, 13);
         });
 
         it('matches simple generic type arguments', () => {
             const stmt = findStmtByOriginalText('genericCall<T>();');
-            expect(stmt.getFirstCallNamePosition('genericCall')).toEqual({ line: 46, col: 1 });
+            expectFullPos(stmt.getInvokeFullPosition('genericCall'), 46, 1, 46, 17);
         });
 
-        it('matches call name with newline before parenthesis', () => {
+        it('matches call with newline before parenthesis', () => {
             const stmt = findStmtByIrText('callNewline()');
-            expect(stmt.getFirstCallNamePosition('callNewline')).toEqual({ line: 47, col: 1 });
+            expectFullPos(stmt.getInvokeFullPosition('callNewline'), 47, 1, 48, 3);
         });
 
-        it('returns -1,-1 when name is not a call', () => {
+        it('returns DEFAULT when name is not a call', () => {
             const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
-            expect(stmt.getFirstCallNamePosition('para1')).toEqual({ line: -1, col: -1 });
+            expect(stmt.getInvokeFullPosition('para1')).toBe(FullPosition.DEFAULT);
         });
 
-        it('returns -1,-1 for empty name', () => {
+        it('returns DEFAULT for empty name', () => {
             const stmt = findStmtByOriginalText('call10();');
-            expect(stmt.getFirstCallNamePosition('')).toEqual({ line: -1, col: -1 });
+            expect(stmt.getInvokeFullPosition('')).toBe(FullPosition.DEFAULT);
         });
 
-        it('returns -1,-1 when original text is missing', () => {
+        it('returns DEFAULT when original text is missing', () => {
             const stmt = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
-            expect(stmt.getFirstCallNamePosition('call10')).toEqual({ line: -1, col: -1 });
+            expect(stmt.getInvokeFullPosition('call10')).toBe(FullPosition.DEFAULT);
         });
     });
 });

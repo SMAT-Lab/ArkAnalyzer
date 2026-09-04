@@ -343,24 +343,28 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the absolute source position of the first function/method call
-     * whose callee identifier is `name` within this statement's original text.
-     * Matches `name()`, `obj.name()`, and `obj?.name()` (best-effort regex).
+     * Returns the absolute full position of the first invoke whose callee identifier is
+     * `name` within this statement's original text (best-effort regex).
+     * The range starts at the first character of `name` and ends at the column to the
+     * right of the matching `)` (same half-open convention as {@link getOriginFullPosition}).
+     * Matches `name()`, `obj.name()`, and `obj?.name()`.
      * @param name - Callee identifier to locate.
-     * @returns Absolute 1-based `{ line, col }` of the start of `name`,
-     *          or `{ line: -1, col: -1 }` if not found / text unavailable.
+     * @returns Absolute `FullPosition` of the invoke `name(...)`, or `FullPosition.DEFAULT`
+     *          if not found / text unavailable / this statement has no invoke expression.
      */
-    public getFirstCallNamePosition(name: string): { line: number; col: number } {
-        const notFound = { line: -1, col: -1 };
+    public getInvokeFullPosition(name: string): FullPosition {
+        if (!this.getInvokeExpr() || !name) {
+            return FullPosition.DEFAULT;
+        }
         const text = this.getOriginalText();
-        if (!text || !name) {
-            return notFound;
+        if (!text || text.indexOf(name) === -1) {
+            return FullPosition.DEFAULT;
         }
         const origin = this.getOriginPositionInfo();
         const originLine = origin.getLineNo();
         const originCol = origin.getColNo();
         if (originLine < 0 || originCol < 0) {
-            return notFound;
+            return FullPosition.DEFAULT;
         }
         // Identifiers may contain `$` (e.g. $temp); other regex metacharacters cannot appear in a name.
         const escaped = name.replace(/\$/g, '\\$');
@@ -369,17 +373,45 @@ export abstract class Stmt {
         );
         const match = pattern.exec(text);
         if (!match) {
-            return notFound;
+            return FullPosition.DEFAULT;
         }
-        const index = match.index;
-        const before = text.slice(0, index);
-        const relativeLine = before.split('\n').length - 1;
-        const lastNl = before.lastIndexOf('\n');
-        const colInText = lastNl === -1 ? index + 1 : index - lastNl;
-        if (relativeLine === 0) {
-            return { line: originLine, col: originCol + (colInText - 1) };
+        const startOffset = match.index;
+        const openParenOffset = startOffset + match[0].length - 1;
+        let depth = 0;
+        let closeParenOffset = -1;
+        for (let i = openParenOffset; i < text.length; i++) {
+            const ch = text[i];
+            if (ch === '(') {
+                depth++;
+            } else if (ch === ')') {
+                depth--;
+                if (depth === 0) {
+                    closeParenOffset = i;
+                    break;
+                }
+            }
         }
-        return { line: originLine + relativeLine, col: colInText };
+        if (closeParenOffset === -1) {
+            return FullPosition.DEFAULT;
+        }
+
+        const startBefore = text.slice(0, startOffset);
+        const startRelLine = startBefore.split('\n').length - 1;
+        const startLastNl = startBefore.lastIndexOf('\n');
+        const startColInText = startLastNl === -1 ? startOffset + 1 : startOffset - startLastNl;
+        const firstLine = originLine + startRelLine;
+        const firstCol = startRelLine === 0 ? originCol + (startColInText - 1) : startColInText;
+
+        // Exclusive end: column to the right of `)`, matching FullPosition / TS getEnd() convention.
+        const endOffset = closeParenOffset + 1;
+        const endBefore = text.slice(0, endOffset);
+        const endRelLine = endBefore.split('\n').length - 1;
+        const endLastNl = endBefore.lastIndexOf('\n');
+        const endColInText = endLastNl === -1 ? endOffset + 1 : endOffset - endLastNl;
+        const lastLine = originLine + endRelLine;
+        const lastCol = endRelLine === 0 ? originCol + (endColInText - 1) : endColInText;
+
+        return new FullPosition(firstLine, firstCol, lastLine, lastCol);
     }
 
     /**
