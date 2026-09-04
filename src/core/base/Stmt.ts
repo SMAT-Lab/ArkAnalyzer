@@ -343,19 +343,56 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the absolute full position of the first invoke whose callee identifier is
-     * `name` within this statement's original text (best-effort regex).
-     * The range starts at the first character of `name` and ends at the column to the
-     * right of the matching `)` (same half-open convention as {@link getOriginFullPosition}).
-     * Matches `name()`, `obj.name()`, and `obj?.name()`.
-     * @param name - Callee identifier to locate.
-     * @returns Absolute `FullPosition` of the invoke `name(...)`, or `FullPosition.DEFAULT`
-     *          if not found / text unavailable / this statement has no invoke expression.
+     * Returns the absolute full position of the invoke whose callee identifier is `name`
+     * within this statement (best-effort).
+     * Prefers the invoke operand's AST span: locate `name` inside that fragment for the
+     * start, and use the fragment end (column to the right of `)`) as the end — same
+     * half-open convention as {@link getOriginFullPosition}. Falls back to scanning
+     * {@link getOriginalText} with parenthesis matching when operand positions are missing.
+     * @param name - Callee identifier; must match this statement's invoke method name.
+     * @returns Absolute `FullPosition` of `name(...)`, or `FullPosition.DEFAULT` if not found.
      */
     public getInvokeFullPosition(name: string): FullPosition {
-        if (!this.getInvokeExpr() || !name) {
+        if (!name) {
             return FullPosition.DEFAULT;
         }
+        const invoke = this.getInvokeExpr();
+        if (!invoke) {
+            return FullPosition.DEFAULT;
+        }
+        const methodName = invoke.getMethodSignature().getMethodSubSignature().getMethodName();
+        if (methodName !== name) {
+            return FullPosition.DEFAULT;
+        }
+
+        const invokePos = this.getOperandOriginalPosition(invoke);
+        if (invokePos && invokePos.getFirstLine() > 0 && invokePos.getFirstCol() > 0 &&
+            invokePos.getLastLine() > 0 && invokePos.getLastCol() > 0) {
+            const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
+            const frag = extractSourceTextByFullPosition(arkFile?.getCode(), invokePos);
+            if (frag && frag.indexOf(name) !== -1) {
+                const escaped = name.replace(/\$/g, '\\$');
+                const pattern = new RegExp(
+                    `(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])\\s*(?:<[^>]*>)?\\s*\\(`
+                );
+                const match = pattern.exec(frag);
+                if (match) {
+                    const startOffset = match.index;
+                    const originLine = invokePos.getFirstLine();
+                    const originCol = invokePos.getFirstCol();
+                    const startBefore = frag.slice(0, startOffset);
+                    const startRelLine = startBefore.split('\n').length - 1;
+                    const startLastNl = startBefore.lastIndexOf('\n');
+                    const startColInText = startLastNl === -1 ? startOffset + 1 : startOffset - startLastNl;
+                    const firstLine = originLine + startRelLine;
+                    const firstCol = startRelLine === 0 ? originCol + (startColInText - 1) : startColInText;
+                    // End is the CallExpression span end (right of matching `)`); no depth scan needed.
+                    return new FullPosition(firstLine, firstCol, invokePos.getLastLine(), invokePos.getLastCol());
+                }
+            }
+        }
+
+        // Fallback: scan the whole statement original text with parenthesis matching.
         const text = this.getOriginalText();
         if (!text || text.indexOf(name) === -1) {
             return FullPosition.DEFAULT;
@@ -366,7 +403,6 @@ export abstract class Stmt {
         if (originLine < 0 || originCol < 0) {
             return FullPosition.DEFAULT;
         }
-        // Identifiers may contain `$` (e.g. $temp); other regex metacharacters cannot appear in a name.
         const escaped = name.replace(/\$/g, '\\$');
         const pattern = new RegExp(
             `(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])\\s*(?:<[^>]*>)?\\s*\\(`
@@ -402,7 +438,6 @@ export abstract class Stmt {
         const firstLine = originLine + startRelLine;
         const firstCol = startRelLine === 0 ? originCol + (startColInText - 1) : startColInText;
 
-        // Exclusive end: column to the right of `)`, matching FullPosition / TS getEnd() convention.
         const endOffset = closeParenOffset + 1;
         const endBefore = text.slice(0, endOffset);
         const endRelLine = endBefore.split('\n').length - 1;

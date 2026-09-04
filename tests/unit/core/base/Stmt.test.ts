@@ -214,12 +214,6 @@ describe('Stmt Source Code and Position Test', () => {
             return stmt!;
         }
 
-        function findStmtByOriginalTextIncludes(substr: string): Stmt {
-            const stmt = callStmts?.find((s) => s.getOriginalText()?.includes(substr));
-            assert.isDefined(stmt);
-            return stmt!;
-        }
-
         function findStmtByIrText(substr: string): Stmt {
             const stmt = callStmts?.find((s) => s.toString().includes(substr));
             assert.isDefined(stmt);
@@ -248,23 +242,22 @@ describe('Stmt Source Code and Position Test', () => {
             expectFullPos(stmt.getInvokeFullPosition('call2'), 18, 13, 18, 20);
         });
 
-        it('returns the first matching invoke in a single-line call chain', () => {
-            const stmt = findStmtByOriginalTextIncludes('call200().call300');
-            expectFullPos(stmt.getInvokeFullPosition('call200'), 28, 12, 28, 21);
-            expectFullPos(stmt.getInvokeFullPosition('call300'), 28, 22, 28, 47);
+        it('returns invoke position on the IR stmt that owns that call', () => {
+            expectFullPos(findStmtByIrText('.call200()').getInvokeFullPosition('call200'), 28, 12, 28, 21);
+            expectFullPos(findStmtByIrText('.call300()').getInvokeFullPosition('call300'), 28, 22, 28, 47);
+            expect(findStmtByIrText('.call200()').getInvokeFullPosition('call300')).toBe(FullPosition.DEFAULT);
+            expect(findStmtByIrText('.call300()').getInvokeFullPosition('call200')).toBe(FullPosition.DEFAULT);
         });
 
         it('returns full position for multiline member call chain', () => {
-            const stmt = findStmtByIrText('call400()');
-            expectFullPos(stmt.getInvokeFullPosition('call400'), 32, 6, 32, 15);
-            expectFullPos(stmt.getInvokeFullPosition('call500'), 33, 6, 33, 20);
+            expectFullPos(findStmtByIrText('.call400()').getInvokeFullPosition('call400'), 32, 6, 32, 15);
+            expectFullPos(findStmtByIrText('.call500()').getInvokeFullPosition('call500'), 33, 6, 33, 20);
         });
 
         it('returns full position for multiline static call chain', () => {
-            const stmt = findStmtByIrText('call600()');
-            expectFullPos(stmt.getInvokeFullPosition('call600'), 35, 12, 35, 21);
-            expectFullPos(stmt.getInvokeFullPosition('call700'), 36, 6, 36, 15);
-            expectFullPos(stmt.getInvokeFullPosition('call800'), 37, 6, 37, 15);
+            expectFullPos(findStmtByIrText('.call600()').getInvokeFullPosition('call600'), 35, 12, 35, 21);
+            expectFullPos(findStmtByIrText('.call700()').getInvokeFullPosition('call700'), 36, 6, 36, 15);
+            expectFullPos(findStmtByIrText('.call800()').getInvokeFullPosition('call800'), 37, 6, 37, 15);
         });
 
         it('returns full position for optional chain call900()', () => {
@@ -299,8 +292,7 @@ describe('Stmt Source Code and Position Test', () => {
         });
 
         it('matches call with newline before parenthesis', () => {
-            const stmt = findStmtByIrText('callNewline()');
-            expectFullPos(stmt.getInvokeFullPosition('callNewline'), 47, 1, 48, 3);
+            expectFullPos(findStmtByIrText('.callNewline()').getInvokeFullPosition('callNewline'), 47, 1, 48, 3);
         });
 
         it('returns DEFAULT when name is not a call', () => {
