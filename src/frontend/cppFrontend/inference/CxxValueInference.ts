@@ -24,6 +24,8 @@ import { IRInference } from '../../../core/common/IRInference';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { TypeInference } from '../../../core/common/TypeInference';
 import { Local } from '../../../core/base/Local';
+import { FieldSignature } from '../../../core/model/ArkSignature';
+import { SignatureCanonicalizerRegistry } from '../../../core/common/SignatureCanonicalizerRegistry';
 import { TypeInference as CxxTypeInference } from '../common/TypeInference';
 import { IRInference as CxxIRInference } from '../common/IRInference';
 import { CxxModelUtils } from '../common/ModelUtils';
@@ -37,11 +39,37 @@ export class CxxFieldRefInference extends FieldRefInference {
     public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
         const baseType = CxxTypeInference.replaceAliasType(value.getBase().getType());
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        const newFieldSignature = CxxIRInference.generateNewFieldSignature(value, arkMethod.getDeclaringArkClass(), baseType);
-        if (newFieldSignature) {
-            value.setFieldSignature(newFieldSignature);
-            if (newFieldSignature.isStatic()) {
-                return new ArkStaticFieldRef(newFieldSignature);
+        // A2 推广（cpp）：判别联合消费——保持原语义顺序（先更新 value 再判 static）。
+        const resolution = CxxIRInference.generateNewFieldSignature(value, arkMethod.getDeclaringArkClass(), baseType);
+        if (resolution !== null) {
+            if ('formalId' in resolution) {
+                if (resolution.formalId > 0) {
+                    value.graduateToFormal(resolution.formalId);
+                    if (resolution.staticFlag) {
+                        // 替换埋葬（round27）：graduateToFormal 已 retire（formal 分支
+                        // 本就正确）——此处返回的 static ref 产物为 canonical。
+                        const canonical = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(resolution.formalId);
+                        return new ArkStaticFieldRef(canonical!);
+                    }
+                }
+            } else {
+                const params = resolution;
+                value.updateFieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, params.namespaceDeclared);
+                if (params.staticFlag) {
+                    // 替换埋葬：static params 形态——value 的 temp 行已被 update
+                    // （就地演进保持），但 value 即将被返回的 static ref 替换（IR 层
+                    // 替换）——纯 retire（params 值非 formal，无归宿记录）。
+                    value.retireTemp();
+                    let staticSig: FieldSignature;
+                    if (typeof params.declaringOrID === 'number') {
+                        staticSig = params.namespaceDeclared
+                            ? new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, true)
+                            : new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
+                    } else {
+                        staticSig = new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
+                    }
+                    return new ArkStaticFieldRef(staticSig);
+                }
             }
         }
         return undefined;

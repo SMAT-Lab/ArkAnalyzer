@@ -100,17 +100,18 @@ describe('ArkInstanceFieldRef', () => {
         expect(ref.isDynamic()).toBe(true);
     });
 
-    it('setBase / setFieldSignature update fields', () => {
+    it('setBase / updateFieldSignature update fields', () => {
         const sig1 = new FieldSignature('a', 0, NumberType.getInstance());
-        const sig2 = new FieldSignature('b', 0, StringType.getInstance());
         const ref = new ArkInstanceFieldRef(new Local('o'), sig1);
 
         const newBase = new Local('o2');
         ref.setBase(newBase);
-        ref.setFieldSignature(sig2);
+        // A2：参数式决策表更新（值变化场景——终点不确定）。
+        ref.updateFieldSignature('b', 0, StringType.getInstance(), false);
 
         expect(ref.getBase()).toBe(newBase);
-        expect(ref.getFieldSignature()).toBe(sig2);
+        // 决策表：未毕业就地演进（旧实例 S 抄入新值，编号不变、零新登记）。
+        expect(ref.getFieldSignature().getFieldName()).toBe('b');
         expect(ref.getFieldName()).toBe('b');
         expect(ref.getType()).toBe(StringType.getInstance());
     });

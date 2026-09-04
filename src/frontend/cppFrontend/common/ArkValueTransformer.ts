@@ -2171,7 +2171,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         let classType: ClassType;
         let classSignature: ClassSignature;
-        if (refType instanceof ClassType) {
+        // round32：unclear stub 守卫——inferUnclearRefName 兜底会构造 %unk stub
+        // ClassType（file 级函数上下文的局部类等场景解析 miss），被这里短路采纳
+        // 会把 %unk 泄漏进 IR（structBinding Person 实证）。stub 降级走 else 的
+        // 域内解析链（findClassByShortName 局部类候选 + file 级直查），域内也
+        // miss 时兜底构造与原 stub 等价——行为仅在"域内可解析却被 stub 短路"
+        // 的场景升级。
+        if (refType instanceof ClassType && !refType.isUnclear()) {
             classType = refType;
         } else if (refType instanceof AliasType && refType.getOriginalType() instanceof ClassType) {
             classType = refType.getOriginalType() as ClassType;

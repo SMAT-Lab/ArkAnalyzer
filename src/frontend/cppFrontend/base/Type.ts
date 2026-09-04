@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -284,6 +284,10 @@ export class CxxCharType extends Type {
         return this.oriTypeName;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     public getTypeString(): string {
         if (this.oriTypeName) {
             return cxxStdTypeNameToStr(this.oriTypeName);
@@ -394,6 +398,10 @@ export class PointerType extends Type {
 
     public getLevel(): number {
         return this.level;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        return this.getBaseType().isUnclearWithVisited(visited);
     }
 
     public getTypeString(): string {
@@ -527,6 +535,10 @@ export class ReferenceType extends Type {
         return this.category;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        return this.getBaseType().isUnclearWithVisited(visited);
+    }
+
     public setSourceValue(sourceValue: Value): void {
         this.sourceValue = sourceValue;
     }
@@ -561,6 +573,10 @@ export class Thread extends Type {
         super();
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     getTypeString(): string {
         return 'thread ';
     }
@@ -582,6 +598,12 @@ export class TypeInfo extends Type {
 
     public getType(): Type {
         return this.type;
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // RTTI descriptor leaf: the held type is descriptive metadata, not a value type
+        // whose uncertainty should propagate (historical semantics: always false).
+        return false;
     }
 
     public getTypeString(): string {
@@ -617,6 +639,16 @@ export class CxxArrayType extends Type {
 
     public setBaseType(newType: Type): void {
         this.baseType = newType;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Aligned with core ArrayType (full semantics): the array is unclear iff its
+        // base type is unclear.
+        return this.getBaseType().isUnclearWithVisited(visited);
     }
 
     public getDimension(): number {
@@ -669,6 +701,11 @@ export class AutoType extends Type {
 
     private constructor() {
         super();
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // `auto` is deduced before use; the type itself is not an unclear placeholder
+        return false;
     }
 
     public getTypeString(): string {

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { SignatureCanonicalizerRegistry, TempSpaceStats } from '../core/common/SignatureCanonicalizerRegistry';
+
 /**
  * Stage Statistics Module
  *
@@ -24,12 +26,16 @@
  * - `enabled` switch: every public method early-returns when disabled (zero overhead).
  * - Named timers via `startStage(name)` / `endStage(name)`; repeated names auto-suffix
  *   with `#2`, `#3`, ... so multiple `inferTypes()` calls are distinguished.
+ * - Stage nesting: a stage started while another is still running becomes its child
+ *   (stack top at start time = parent); the report renders children indented.
  * - Memory peak tracked via synchronous checkpoint sampling at key points
  *   (`start`, `startStage`, `endStage`, `finish`, and `recordMemoryCheckpoint`).
  *   No `setInterval` is used — Node.js single-threaded event loop cannot schedule
  *   timer callbacks during CPU-intensive synchronous operations (AST parsing, IR
  *   construction, type inference), making interval-based sampling unreliable.
  * - `customCounters` Map for extensible, module-specific counters.
+ * - `recordSignatureStats(label)`: signature-space snapshots (formal canonicalizer
+ *   sizes + temp index-table stats) at checkpoints like post-build / post-infer.
  */
 
 /**
@@ -39,6 +45,9 @@
  * future stages (e.g. CG, PTA) can pass their own names or extend this enum.
  * Using the enum provides compile-time safety and IDE autocompletion for
  * well-known stages, while the string overload keeps the interface open.
+ *
+ * Hierarchy: a stage started while another stage is still running becomes its
+ * child (nesting is captured automatically; the report renders indentation).
  */
 export enum StageName {
     /** 构建总阶段（Scene 构建入口整体，含其下全部细分阶段）。 */
@@ -47,6 +56,10 @@ export enum StageName {
     BuilderParseConfigs = 'builderParseConfigs',
     /** 细分：SDK 构建与推断阶段（SceneBuilder.buildSdkStage）。 */
     BuilderSdk = 'builderSdk',
+    /** 细分（BuilderSdk 子阶段）：SDK 源文件注册构建（buildSdk 逐文件解析注册）。 */
+    BuilderSdkFiles = 'builderSdkFiles',
+    /** 细分（BuilderSdk 子阶段）：SDK 类型推导与 global API 合并（doInfer + mergeGlobalAPI + postInferredSdk）。 */
+    BuilderSdkInfer = 'builderSdkInfer',
     /** 细分：project 文件 DFS 构建（SceneBuilder.buildProjectFiles）。 */
     BuilderFiles = 'builderFiles',
     /** 细分：方法体构建（SceneBuilder.buildAllMethodBodies）。 */
@@ -55,6 +68,18 @@ export enum StageName {
     InferTypes = 'inferTypes',
     /** 推断收尾（buildStage 推进 + temp 完整性检查 + validate + 各 dispose）。 */
     InferTypesFinalize = 'inferTypesFinalize',
+}
+
+/**
+ * Snapshot of signature-space sizes at a checkpoint (e.g. post-build / post-infer).
+ * - formal: entry count (size) of each formal canonicalizer (dense ID space = total interned).
+ * - temp: index-table stats per space (live = non-retired, retired = migrated;
+ *   three-number invariant total = live + retired, see TempSignatureCanonicalizer).
+ */
+export interface SignatureStatsSnapshot {
+    label: string;
+    formal: { file: number; class: number; namespace: number; field: number; method: number };
+    temp: { class: TempSpaceStats; method: TempSpaceStats; field: TempSpaceStats };
 }
 
 /**
@@ -71,6 +96,8 @@ export interface MemorySnapshot {
  */
 export interface StageStatEntry {
     name: string;
+    /** Unique name of the enclosing running stage at start time (undefined = top level). */
+    parent?: string;
     durationMs: number;
     memBefore: MemorySnapshot;
     memPeak: MemorySnapshot;
@@ -87,6 +114,8 @@ export interface StageStatisticsData {
     globalMemPeak: MemorySnapshot;
     globalMemAfter: MemorySnapshot;
     customCounters: Map<string, number>;
+    /** Signature-space snapshots at checkpoints (post-build / post-infer), in record order. */
+    signatureSnapshots: SignatureStatsSnapshot[];
 }
 
 function emptySnapshot(): MemorySnapshot {
@@ -115,6 +144,8 @@ interface RunningStage {
     startTime: number;
     memBefore: MemorySnapshot;
     sampledPeak: MemorySnapshot;
+    /** Unique name of the enclosing running stage (stack top at start time). */
+    parentName?: string;
 }
 
 export class StageStatistics {
@@ -130,6 +161,7 @@ export class StageStatistics {
     private readonly stageNameCounts: Map<string, number> = new Map();
     private readonly completedStages: StageStatEntry[] = [];
     private readonly customCounters: Map<string, number> = new Map();
+    private readonly signatureSnapshots: SignatureStatsSnapshot[] = [];
 
     constructor(enabled: boolean = false) {
         this.enabled = enabled;
@@ -168,6 +200,9 @@ export class StageStatistics {
 
     /**
      * Start a named stage. If the same name has been used before, a suffix `#N` is appended.
+     *
+     * Nesting: the most recently started still-running stage (stack top) becomes
+     * this stage's parent — the report renders children indented under it.
      */
     public startStage(name: string): void {
         if (!this.enabled) {
@@ -181,6 +216,7 @@ export class StageStatistics {
             startTime: Date.now(),
             memBefore,
             sampledPeak: { ...memBefore },
+            parentName: this.currentStackTop(uniqueName),
         });
     }
 
@@ -206,6 +242,7 @@ export class StageStatistics {
         const memPeak = maxSnapshot(rs.sampledPeak, memAfter);
         this.completedStages.push({
             name: uniqueName,
+            parent: rs.parentName,
             durationMs: Date.now() - rs.startTime,
             memBefore: rs.memBefore,
             memPeak,
@@ -261,6 +298,29 @@ export class StageStatistics {
     }
 
     /**
+     * Snapshot the signature-space sizes at a checkpoint (e.g. 'post-build' /
+     * 'post-infer'): formal canonicalizer entry counts per space + temp
+     * index-table stats (live/retired/replaced). Read-only against the registry.
+     */
+    public recordSignatureStats(label: string): void {
+        if (!this.enabled) {
+            return;
+        }
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        this.signatureSnapshots.push({
+            label,
+            formal: {
+                file: reg.fileSigCanonicalizer.size(),
+                class: reg.classSigCanonicalizer.size(),
+                namespace: reg.namespaceSigCanonicalizer.size(),
+                field: reg.fieldSigCanonicalizer.size(),
+                method: reg.methodSigCanonicalizer.size(),
+            },
+            temp: SignatureCanonicalizerRegistry.getTempSpacesStats(),
+        });
+    }
+
+    /**
      * Get the complete statistics data. Auto-finishes if still running.
      */
     public getStatistics(): StageStatisticsData {
@@ -275,6 +335,11 @@ export class StageStatistics {
             globalMemPeak: { ...this.globalSampledPeak },
             globalMemAfter: { ...this.globalMemAfter },
             customCounters: new Map(this.customCounters),
+            signatureSnapshots: this.signatureSnapshots.map(s => ({
+                label: s.label,
+                formal: { ...s.formal },
+                temp: { class: { ...s.temp.class }, method: { ...s.temp.method }, field: { ...s.temp.field } },
+            })),
         };
     }
 
@@ -286,6 +351,7 @@ export class StageStatistics {
         this.stageNameCounts.clear();
         this.completedStages.length = 0;
         this.customCounters.clear();
+        this.signatureSnapshots.length = 0;
         this.startTime = 0;
         this.endTime = 0;
         this.globalSampledPeak = emptySnapshot();
@@ -317,6 +383,21 @@ export class StageStatistics {
             return name;
         }
         return `${name}#${count}`;
+    }
+
+    /**
+     * The most recently started still-running stage (Map insertion order = start
+     * order; the last key is the stack top). The stage being started itself is
+     * excluded from the candidate set.
+     */
+    private currentStackTop(excludeName: string): string | undefined {
+        let top: string | undefined;
+        for (const key of this.runningStages.keys()) {
+            if (key !== excludeName) {
+                top = key;
+            }
+        }
+        return top;
     }
 
     /**

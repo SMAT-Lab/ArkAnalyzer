@@ -35,6 +35,7 @@ import path from 'path';
 import { Sdk } from '../../Config';
 import { ALL, DEFAULT, TEMP_EXPORT_ALL_PREFIX, THIS_NAME } from './TSConst';
 import { buildDefaultExportInfo } from '../model/builder/ArkExportBuilder';
+import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -66,8 +67,35 @@ import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
     public static popMethodSignatureCache = new Map<string, MethodSignature>();
+    /**
+     * 组件方法 stub 签名缓存（round28 M1，`${className}.${methodName}` 键）：
+     * 组件 create/branch/If/Repeat 派生签名原每语句 new 一行 temp（ClassSignature
+     * 经工厂白名单共享但 MethodSignature 每次 new）——缓存实例后 register 幂等同
+     * ID，每组件名每方法名全应用仅 1 行（pop 缓存对 pop 已证同款消除力）。
+     * 仅缓存 stub 实例（formal miss 场景），SDK formal 命中路径不经过本缓存。
+     * dispose 自愈：stub 跨 Scene 复用时 clear 剥 symbol → 重新登记（round22
+     * 语义），故不在 dispose 清理链强制清除（与 pop 缓存的 formal 实例不同，
+     * 后者持 SigID 需清理）。命名格式与 buildMethodSignatureFromClassNameAndMethodName
+     * 的 (className, methodName) 参数序对齐。
+     */
+    public static componentMethodSigCache = new Map<string, MethodSignature>();
     /** @internal Get the Registry singleton. */
     private static registry: SignatureCanonicalizerRegistry = SignatureCanonicalizerRegistry.getInstance();
+
+    /**
+     * @internal 取或建组件方法 stub 签名（round28 M1 缓存入口；className 必须在
+     * 组件白名单内——调用面 generateComponentCreationStmts / ArkIRTransformer 的
+     * If/Repeat 分支，均为白名单组件名/常量）。
+     */
+    public static getOrCreateComponentMethodSig(className: string, methodName: string): MethodSignature {
+        const key = `${className}.${methodName}`;
+        let sig = this.componentMethodSigCache.get(key);
+        if (sig === undefined) {
+            sig = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(className, methodName);
+            this.componentMethodSigCache.set(key, sig);
+        }
+        return sig;
+    }
 
     /*
      * Set static field to be null, then all related objects could be freed by GC.
@@ -76,6 +104,13 @@ export class ModelUtils {
     public static dispose(): void {
         this.implicitArkUIBuilderMethods.clear();
         this.popMethodSignatureCache.clear();
+        // round28：组件/slice stub 签名缓存同款清理——**必须**与 popMethodSignatureCache
+        // 同生命周期（构建结束即清）。MethodSignature 实例内部的 declaringClassTempSigID
+        // 在构造时固化——跨 Registry（dispose 重建）复用时该字段 stale → 声明类三级查
+        // 落空 → 降级 DEFAULT（实测 Row.create() 变 %unk.create()）。存实例的"dispose
+        // 自愈"只覆盖顶层 register，不覆盖实例内部固化字段。
+        this.componentMethodSigCache.clear();
+        Builtin.clearStubMethodSigCaches();
     }
 
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
@@ -668,6 +703,7 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
  * @param im importInfo or exportInfo
  */
 export function getArkFile(im: FromInfo): ArkFile | null {
+    // TODO: 这个方法的性能很差，需要结合id化后的架构进行重构。
     const from = im.getFrom();
     if (!from) {
         return null;

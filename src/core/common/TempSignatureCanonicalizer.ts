@@ -14,79 +14,82 @@
  */
 
 /**
- * 弱引用的最小形态（ES2021 WeakRef；本项目 target 为 es2016 未含其 lib，
- * 运行时 Node 14+ 原生支持，此处仅补类型）。
- */
-interface MinimalWeakRef<T extends object> {
-    deref(): T | undefined;
-}
-type WeakRefCtorType = new <T extends object>(target: T) => MinimalWeakRef<T>;
-const WeakRefCtor: WeakRefCtorType = (globalThis as unknown as { WeakRef: WeakRefCtorType }).WeakRef;
-
-/**
- * 临时签名的弱注册表（弱引用语义）。
+ * 临时签名的索引表（三版，B 轮；替换二版的 WeakRef 弱注册表）。
  *
- * 设计（替换原"引用语义 + refcount"模型——该模型的 refcount 在推断期 Type 替换
- * 丢弃路径上无增减闭环，计数虚高且 canonicalizer 强引用签名对象导致内存泄漏）：
+ * 设计演进：
+ * - 一版（refcount）：Map<id, sig> + 引用计数——release 配对要求高、计数不精确
+ *   （R10 共享场景 register 1 次持有 2~N 个），已退役；
+ * - 二版（弱表）：Map<id, WeakRef> + FinalizationRegistry 三层自动销毁——GC 驱动
+ *   的条目清理带 KeepDuringJob 时序不确定性，WeakRef/FR 对 V8 GC 有真实开销，
+ *   已退役（round20/B 轮）；
+ * - 三版（索引表，当前）：slot 数组强引用 + 单调 nextId + 显式 retire（迁移置空）
+ *   + temp→formal 替换记录。持有者的存活锚点职责由 slot 统一接管（持有者锚删除
+ *   随 B 轮批 2/3 落地——slot[id] === register 时的传入实例，取回逐字节等价）。
  *
- * 1. ID 挂在签名对象的 symbol 属性上（对象自带键）：
- *    - register(sig) 的 sig 必为活对象——symbol 命中即"我注册过"，复用 ID 安全；
- *    - 死槽只出现在 refs 数组（WeakRef deref 为 undefined），新 register 永不
- *      命中死槽，无"B 复用 A 的 ID 导致错误共享"风险。
+ * 1. 存储结构：`slots: (S | undefined)[]`——下标即 tempSigID，强引用签名实例；
+ *    置空（retire）= 已迁移。
+ *    - ID 从 0 单调分配、永不复用（FieldSignature.hashCode 混入 tempSigID，
+ *      复用会造成同值签名 hash 语义混乱）；
+ *    - register(sig) 的 sig 必为活对象——symbol 属性命中即"我注册过"，复用 ID
+ *      安全；retire 后 symbol 保留（审计追溯），同实例再次 register 返回原 ID
+ *      （消费方经 getReplacement 直达 formal——"下一处直接使用 formal ID"）。
  *
- * 2. refs 数组持 WeakRef（非强引用）：最后一个持有者（Type/Signature 对象自身
- *    强引用签名实例作为锚点）死亡后，签名对象可被 GC 回收——内存泄漏根治。
+ * 2. 生命周期（全保留，设计决策 §26.3）：未 retire 的 slot 永不强清——slot 是
+ *    完整注册审计表（任何 temp ID 可追溯取回，弱表给不了的能力）。"推导中间
+ *    垃圾"（持有者已死但未 retire 的条目）钉活到 Registry.dispose——内存代价
+ *    知情权衡（量级压缩靠 A2 源头减量，非注册侧清理）。强引用下无自动清理是
+ *    JS 根本约束（无 finalizer 可感知强可达对象的持有者消亡）。
  *
- * 3. size() 为主动清扫式：全表 deref，死槽置 undefined，返回精确存活量。
- *    存活量 = 仍被持有者锚定的未解析签名数（含 Builtin stubCache 常驻基线——
- *    共享 stub 被缓存强引用，SDK 解析后仍计入）。注意 KeepDuringJob 语义：
- *    清扫会把对象钉活至当前 GC job 结束，调用频率应保持低（推断结束 1 次）。
+ * 3. 迁移与替换记录：retireWithReplacement(id, formalId) 在持有者显式重路由到
+ *    formal 时调用（slot 置空 + replacements 记录 temp→formal 归宿）。共享该
+ *    temp 签名的其他持有者（R10）经 getReplacement 找到 formal ID（三级查的
+ *    fallback），或惰性物化写回自己的 formal SigID 字段（tempSigID 保留作
+ *    "曾 temp"审计痕迹）。
  *
- * 3b. 两层内存真相（读数解读，机制实证）：
- *    - 死 stub 的堆内存：WeakRef 不阻止回收——对象被判死后首次 major GC 即
- *      释放（这部分内存始终是及时释放的）；
- *    - WeakRef 条目（读数）：条目清空发生在 GC 之后的 job 边界（V8
- *      ClearKeptObjects）——同步时点（如推断刚结束）的 live 读数是含
- *      pending-dead 的上界；促使条目清理见 Registry.settleTempSpaces
- *      （--expose-gc 进程下多轮 gc × 跨 job 边界，机制验证的最小充分手段）。
- *
- * 4. 归因预留：弱注册表只回答"该签名现在是否存活"，不回答"谁在持有"（JS 语言
- *    无引用自省）。清扫后的存活集是未来 debugTempUsage(sigId) 反向扫描
- *    （遍历存活 model 的 locals/fields/返回类型，命中即持有者，
- *    经 Local.getUsedStmts() 归因到 stmt）的精确输入集——refcount 模型因虚高
- *    提供不了这个集合。
+ * 4. 可观测性（同步即精确——无 pending-dead 窗口，settle 的 gc 轮次已退役）：
+ *    三数自洽 totalRegistered = liveCount + retiredCount；liveIds（非空 slot
+ *    遗留视图）/ registeredIds（全区间审计视图，含已置空——可经 getReplacement
+ *    追溯归宿）/ replacedCount（有 formal 归宿记录的迁移数，≤ retired）。
  */
 export class TempSignatureCanonicalizer<S extends object> {
-    private idSymbol: symbol = Symbol('ArkAnalyzerTempSigId');
-    /** ID → 弱引用（死槽为 undefined，不复用）。 */
-    private refs: (MinimalWeakRef<S> | undefined)[] = [];
+    /** slot 数组：下标 = tempSigID，强引用；undefined = 已迁移（retire）。 */
+    private slots: (S | undefined)[] = [];
+    /** 单调递增的下一个 ID，永不复用（= 历史注册总量）。 */
+    private nextId: number = 0;
+    /** 未迁移（非空 slot）计数——register 新分配 ++ / retire 置空 --。 */
+    private liveCount: number = 0;
+    /** 已迁移（置空）计数。 */
+    private retiredCount: number = 0;
+    /** temp → formal 替换记录（迁移时的归宿），get(id) miss 时的 fallback。 */
+    private replacements = new Map<number, number>();
 
-    /**
-     * 注册签名对象：同一实例重复注册复用同一 ID；新实例分配新 ID。
-     * sig 必为活对象（方法入参），因此 symbol 命中即可安全复用。
-     */
+    private idSymbol: symbol = Symbol('ArkAnalyzerTempSigId');
+
+    /** 注册签名对象：同一实例重复注册复用同一 ID；新实例分配新 ID。 */
     public register(sig: S): number {
         const keyed = sig as { [key: symbol]: number | undefined };
         const existing = keyed[this.idSymbol];
         if (existing !== undefined) {
-            // 该实例注册过且仍持有效弱引用（实例活着，WeakRef 必未死）。
             return existing;
         }
-        const id = this.refs.length;
+        const id = this.nextId++;
         keyed[this.idSymbol] = id;
-        this.refs.push(new WeakRefCtor<S>(sig));
+        this.slots[id] = sig;
+        this.liveCount++;
         return id;
     }
 
     /**
-     * 按 ID 取签名对象。对象已被 GC 回收时返回 undefined（死槽）。
+     * 按 ID 取签名对象。已迁移（retire 置空）返回 undefined——消费方应查
+     * {@link getReplacement} 获得 formal 归宿（三级查的 fallback）。
      */
     public get(id: number): S | undefined {
-        return this.refs[id]?.deref();
+        return this.slots[id];
     }
 
     /**
      * 查询签名对象的 tempSigID，不注册。未注册返回 -1。
+     * symbol 在 retire 后不清（实例属性，审计追溯保留）。
      */
     public getExistingTempId(sig: S): number {
         const keyed = sig as { [key: symbol]: number | undefined };
@@ -94,60 +97,99 @@ export class TempSignatureCanonicalizer<S extends object> {
         return existing === undefined ? -1 : existing;
     }
 
+    /** 迁移置空（幂等）。供持有者显式重路由 formal 时经 retireWithReplacement 调用。 */
+    public retire(id: number): void {
+        if (this.slots[id] !== undefined) {
+            this.slots[id] = undefined;
+            this.retiredCount++;
+            this.liveCount--;
+        }
+    }
+
     /**
-     * 精确存活量：主动清扫全表（死槽置 undefined），返回仍存活（被持有者锚定）
-     * 的签名数。低频调用（推断结束后检查用）。
+     * 迁移置空 + 记录 formal 归宿（幂等；重复调用以首次记录为准）。
+     * 共享该 temp 签名的其他持有者经 {@link getReplacement} 拿到 formal ID。
+     */
+    public retireWithReplacement(id: number, formalId: number): void {
+        this.retire(id);
+        if (!this.replacements.has(id)) {
+            this.replacements.set(id, formalId);
+        }
+    }
+
+    /** 查询迁移记录的 formal 归宿。-1 = 无记录（未迁移或 clear 后重置）。 */
+    public getReplacement(id: number): number {
+        return this.replacements.get(id) ?? -1;
+    }
+
+    /**
+     * 未迁移（非空 slot）量——"最终遗留的 temp sig 数"（含推导中间垃圾与未成功
+     * 推导的活签名；全保留语义下二者由审计视图区分归因）。
      */
     public size(): number {
-        return this.sweep();
+        return this.liveCount;
     }
 
-    /**
-     * 历史注册总量（含已回收），调试用途。
-     */
+    /** 历史注册总量（= nextId，永不复用）。 */
     public totalRegistered(): number {
-        return this.refs.length;
+        return this.nextId;
     }
 
-    /**
-     * 弱注册表统计（与 size() 共用同一次清扫，避免双重钉活对象）：
-     * - liveCount：存活（仍被锚定）的签名数——含 Builtin stub 池等常驻基线；
-     * - totalRegistered：历史注册总量（含已回收）；
-     * - deadSlots：死槽数（total − live）——大于 0 即发生过 GC 回收的证据，
-     *   反映回收活跃度（与 liveCount 联合解读：live 高 dead 低 = 真未解析多；
-     *   dead 高 = 多数为已被推断替换丢弃的历史噪声）。
-     */
-    public getStats(): { liveCount: number; totalRegistered: number; deadSlots: number } {
-        const liveCount = this.sweep();
-        const total = this.refs.length;
-        return { liveCount, totalRegistered: total, deadSlots: total - liveCount };
+    /** 已迁移（置空）总量。三数自洽：totalRegistered = size + retired。 */
+    public retired(): number {
+        return this.retiredCount;
     }
 
-    /** 单次清扫：死槽置 undefined，返回存活数。 */
-    private sweep(): number {
-        let liveCount = 0;
-        for (let i = 0; i < this.refs.length; i++) {
-            const ref = this.refs[i];
-            if (ref !== undefined && ref.deref() === undefined) {
-                this.refs[i] = undefined; // 死槽清理（位置不复用，见类注释）
-            } else if (ref !== undefined) {
-                liveCount++;
+    /** 全区间审计视图：[0, nextId) 的全部 ID（含已置空——可经 getReplacement 追溯归宿）。 */
+    public registeredIds(): number[] {
+        const ids: number[] = [];
+        for (let i = 0; i < this.nextId; i++) {
+            ids.push(i);
+        }
+        return ids;
+    }
+
+    /** 遗留视图：非空 slot 的 ID 集。 */
+    public liveIds(): number[] {
+        const ids: number[] = [];
+        for (let i = 0; i < this.nextId; i++) {
+            if (this.slots[i] !== undefined) {
+                ids.push(i);
             }
         }
-        return liveCount;
+        return ids;
     }
 
     /**
-     * 清空：活对象移除 symbol 属性，全部状态重置。
+     * 索引表统计（同步即精确）：
+     * - liveCount：未迁移（非空 slot）的签名数；
+     * - totalRegistered：历史注册总量（nextId）；
+     * - retiredCount：已迁移（置空）总量——total = live + retired 三数自洽；
+     * - replacedCount：有 formal 归宿记录的迁移数（≤ retired）。
+     */
+    public getStats(): { liveCount: number; totalRegistered: number; retiredCount: number; replacedCount: number } {
+        return {
+            liveCount: this.liveCount,
+            totalRegistered: this.nextId,
+            retiredCount: this.retiredCount,
+            replacedCount: this.replacements.size,
+        };
+    }
+
+    /**
+     * 清空：活对象移除 symbol 属性，全部状态重置（ID 空间归零重用）。
      */
     public clear(): void {
-        for (const ref of this.refs) {
-            const sig = ref?.deref();
+        for (const sig of this.slots) {
             if (sig !== undefined) {
                 delete (sig as { [key: symbol]: number | undefined })[this.idSymbol];
             }
         }
-        this.refs = [];
+        this.slots = [];
+        this.nextId = 0;
+        this.liveCount = 0;
+        this.retiredCount = 0;
+        this.replacements = new Map();
         this.idSymbol = Symbol('ArkAnalyzerTempSigId');
     }
 }

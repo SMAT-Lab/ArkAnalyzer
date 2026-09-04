@@ -87,17 +87,11 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
      */
     private methodSigID!: number;
     /**
-     * @internal temp MethodSigID（弱注册表）。undefined = formal 路径。
+     * @internal temp MethodSigID（索引表）。undefined = 纯 formal 路径。
+     * 惰性物化后保留作"曾 temp"审计痕迹（methodSigID ≥ 0 && tempSigID ≠
+     * undefined = 已迁移痕迹态）。
      */
     private tempMethodSigID?: number;
-    /**
-     * @internal 锚定的签名实例（构造/setMethodSignature 时传入）：
-     * - 两路径共用的值视图（display 缓存载体——AliasClassSignature 别名只在
-     *   传入实例上，formal 命中不替换为 canonical）；
-     * - temp 路径兼作弱注册表的存活锚点（最后一个持有者死亡后签名才可被 GC
-     *   回收）。
-     */
-    private tempMethodSignature?: MethodSignature;
     private args: Value[];
     private realGenericTypes?: Type[];
     private spreadFlags?: boolean[]; // flags to indicate whether the argument is spread, which is undefined  when no spread argument exists.
@@ -113,22 +107,19 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     }
 
     /**
-     * 两分路由（构造与 setMethodSignature 共用）：
+     * 两分路由（构造与 setMethodSignature 共用；B 轮批 3 起锚定退役——temp 侧
+     * 存活/取回职责由索引表 slot 承载，slot[id] === 构造时传入实例，取回逐字节
+     * 等价）：
      *
      * ① formal 只读命中（getExistingId，不写 formal 空间——防无 model 空洞）
-     *    → 持 formal ID（身份视图）。值视图仍**锚定传入实例**：display 缓存
-     *    （如 AliasClassSignature 别名——ForEach/Column 的 pop 调用点）只在传入
-     *    实例上，返回 canonical 会丢 display 导致 ViewTree 归属错位（实测回归：
-     *    pop 的 declaring class 全部折叠为 CommonMethod）。这与旧实现（持传入
-     *    实例 + 惰性 ID 查询）的读语义一致——formal 命中不改变读视图。
-     *    注意：fieldRef 的单向精度栅栏在 method 空间**不可达**——
-     *    MethodSignature.equals 含 returnType（仅返回类型不同的重载合法分 ID），
-     *    "unclear canonical 被 clear incoming 值命中" 前提永不成立（值不相等必
-     *    miss formal 走 temp，二者是不同方法）。canonical returnType 的精化由
-     *    TypeInference.inferSignatureReturnType 既有路径承担。
+     *    → 持 formal ID；重路由场景旧 tempSigID 经 retireWithReplacement 显式
+     *    迁移（置空 slot + 记录 formal 归宿——共享该 temp 签名的其他持有者经
+     *    替换记录直达 formal）。R11 语义随批 3 实证（B2.5 插桩：真实工程 7 处
+     *    mutate 全部打 model 侧签名或 temp stub——formal 副本的 per-use 视图
+     *    无生产依赖）退役。
      *
-     * ② 未命中（stub / 占位 / 推断中间态）→ temp 路由：锚定传入实例 +
-     *    tempMethodSigCanonicalizer 弱注册（同实例幂等复用 ID）。
+     * ② 未命中（stub / 占位 / 推断中间态）→ temp 路由：索引表登记（同实例幂等
+     *    复用 ID，slot 强持有传入实例）。
      *
      * 注意：不做泛型双视图——invoke expr 的泛型实例化由自有的 realGenericTypes
      * 字段承担（getType() 读取时动态替换），签名自身保持定义点形态（V/T），
@@ -137,9 +128,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     private route(methodSignature: MethodSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
-        // 两种路径都锚定传入实例（值视图，display 载体）；差异仅在身份视图与 temp 注册。
-        this.tempMethodSignature = methodSignature;
         if (existingId !== -1) {
+            if (this.tempMethodSigID !== undefined) {
+                reg.tempMethodSigCanonicalizer.retireWithReplacement(this.tempMethodSigID, existingId);
+            }
             this.methodSigID = existingId;
             this.tempMethodSigID = undefined;
         } else {
@@ -175,22 +167,40 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
      ```
      */
     /**
-     * 返回 invoke expr 持有的签名实例（构造/setMethodSignature 时锚定的传入实例）。
-     * display 缓存（AliasClassSignature 别名）保留在传入实例上——formal 命中时
-     * 不替换为 canonical（canonical 无 display，会丢失 ViewTree 等消费方的归属
-     * 信息）。ID 仅用于身份（getMethodSigID）与查询。
+     * 返回 invoke expr 持有的方法签名（B 轮批 3 起三级查）：
+     * ① formal（methodSigID ≥ 0）→ canonical；
+     * ② temp slot（未迁移）→ 构造时传入实例；
+     * ③ 替换记录（已迁移）→ formal 实例 + 惰性物化（写回 methodSigID，
+     *    tempSigID 保留作"曾 temp"审计痕迹）。
+     * alias 签名（U+ 一等 formal）下 canonical 即 alias 实例——
+     * getDeclaringClassSignature().getClassName() 的 display 多态直接生效。
      */
     public getMethodSignature(): MethodSignature {
-        if (this.tempMethodSignature !== undefined) {
-            return this.tempMethodSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.methodSigID >= 0) {
+            return reg.methodSigCanonicalizer.get(this.methodSigID)!;
+        }
+        if (this.tempMethodSigID !== undefined) {
+            const sig = reg.tempMethodSigCanonicalizer.get(this.tempMethodSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            const formalId = reg.tempMethodSigCanonicalizer.getReplacement(this.tempMethodSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.methodSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.methodSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('AbstractInvokeExpr has no signature');
     }
 
     /**
      * 替换签名（推断解析后的真实方法签名回写，如 inferInstanceInvokeExpr 的
-     * matchMethodSignature 产物）。两分路由同构造；旧 temp 引用无需显式释放
-     * （弱注册表由 GC 收敛——本对象丢弃旧锚点后，若无其他持有者则旧签名可回收）。
+     * matchMethodSignature 产物）。两分路由同构造；旧 temp 注册经
+     * retireWithReplacement 显式迁移（共享持有者走替换记录 fallback）。
      */
     public setMethodSignature(newMethodSignature: MethodSignature): void {
         this.route(newMethodSignature);
@@ -204,6 +214,18 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     /** @internal Get the temp MethodSigID for the unresolved-signature registration. */
     public getTempSigID(): number | undefined {
         return this.tempMethodSigID;
+    }
+
+    /**
+     * @internal 替换埋葬（round28 M3——对齐 Ref.retireTemp）：本 expr 即将从
+     * IR 被整体替换（如 replaceSuper2Constructor 的 super → 构造器签名换 expr），
+     * 替换后无任何持有者——temp 行在替换点显式 retire。纯 retire（产物签名
+     * 另有构造，无字段归宿可记）；幂等（行已划 no-op；formal 路径恒 no-op）。
+     */
+    public retireTemp(): void {
+        if (this.methodSigID === -1 && this.tempMethodSigID !== undefined) {
+            SignatureCanonicalizerRegistry.getInstance().tempMethodSigCanonicalizer.retire(this.tempMethodSigID);
+        }
     }
 
     /**

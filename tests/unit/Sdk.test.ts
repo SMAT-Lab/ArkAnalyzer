@@ -82,7 +82,10 @@ describe('SDK Global Map Test', () => {
         expect(declareSignatures?.length).toEqual(1);
         expect((declareSignatures as MethodSignature[])[0].toString())
             .toEqual(`@/api/${apiFile}: ${apiCls}.${apiName}(@/api/${apiFile}: ${apiCls}.%AM2(Args))`);
-        expect((declareSignatures as MethodSignature[])[0].getType().toString()).toEqual(`@/api/${apiFile}: WrappedBuilder<Args extends @%unk/%unk: Object[]>`);
+        expect((declareSignatures as MethodSignature[])[0].getType().toString()).toEqual(`@/api/${apiFile}: WrappedBuilder<Args extends @built-in/lib.es5.d.ts: Object[]>`);
+        // The generic constraint `Args extends Object[]` is now fully resolved (the
+        // historical narrow predicate probe missed an Array-of-stub-class constraint and
+        // left it as '%unk: Object[]'; unified full recursion resolves the base class).
         expect(declareLines).toEqual([3503]);
         expect(declareColumns).toEqual([1]);
     });

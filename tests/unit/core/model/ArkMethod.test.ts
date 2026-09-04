@@ -570,7 +570,13 @@ describe('Nested Method in Class', () => {
 
         const stmts = outerMethod?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
+        // Scope-precise resolution: the callee is NestedTestClass.outerMethod's own nested
+        // innerFunction1 (composed name %innerFunction1$outerMethod). The historical
+        // origin-prefix matching resolved it across scopes to %dflt.%innerFunction1$outerFunction1
+        // (the file-level outerFunction1's nested function of the same origin name) — a quirk
+        // retired with B2; this expectation now matches the lexical scope, consistent with the
+        // usedGlobals type assertion below.
+        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: NestedTestClass.%innerFunction1$outerMethod()>()');
         expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke innerFunction2<@method/method.ts: NestedTestClass.%AM1$outerMethod()>()');
         expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke innerFunction3<@method/method.ts: NestedTestClass.%AM2$outerMethod()>()');
 

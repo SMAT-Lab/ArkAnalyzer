@@ -14,7 +14,7 @@
  */
 
 import * as fs from 'fs';
-import { MemorySnapshot, StageStatisticsData } from './StageStatistics';
+import { MemorySnapshot, StageStatEntry, StageStatisticsData } from './StageStatistics';
 
 /**
  * A logical section of the statistics report.
@@ -32,6 +32,7 @@ export interface StageStatisticsReport {
     timestamp: string;
     summary: ReportSection;
     stages: ReportSection;
+    signatures: ReportSection;
     custom: ReportSection;
 }
 
@@ -81,6 +82,7 @@ export class StageStatisticsReporter {
             timestamp: formatLocalTimestamp(),
             summary: this.generateSummarySection(data),
             stages: this.generateStagesSection(data),
+            signatures: this.generateSignatureSection(data),
             custom: this.generateCustomSection(data),
         };
     }
@@ -101,13 +103,37 @@ export class StageStatisticsReporter {
     }
 
     private static generateStagesSection(data: StageStatisticsData): ReportSection {
-        const entries: string[] = [];
+        // 层级树形渲染：按 parent 关系组树（完成序天然子先于父，平铺会散乱），
+        // DFS 先序输出——父阶段在前，子阶段按各自完成序缩进跟随。两遍扫描（先
+        // 建全量索引再连边——完成序中父后于子，单遍会误判 root）。parent 链断落
+        // （如父阶段未记录）按顶层渲染，防御不崩。
+        const byName = new Map<string, { stage: StageStatEntry; children: StageStatEntry[] }>();
         for (const stage of data.stages) {
-            entries.push(`[${stage.name}]`);
-            entries.push(`  Duration: ${fmtMs(stage.durationMs)}`);
-            entries.push(`  ${memLine('  Before', stage.memBefore)}`);
-            entries.push(`  ${memLine('  Peak', stage.memPeak)}`);
-            entries.push(`  ${memLine('  After', stage.memAfter)}`);
+            byName.set(stage.name, { stage, children: [] });
+        }
+        const roots: StageStatEntry[] = [];
+        for (const stage of data.stages) {
+            const p = stage.parent;
+            if (p !== undefined && byName.has(p)) {
+                byName.get(p)!.children.push(stage);
+            } else {
+                roots.push(stage);
+            }
+        }
+        const entries: string[] = [];
+        const render = (stage: StageStatEntry, depth: number): void => {
+            const indent = '  '.repeat(depth);
+            entries.push(`${indent}[${stage.name}]`);
+            entries.push(`${indent}  Duration: ${fmtMs(stage.durationMs)}`);
+            entries.push(`${indent}  ${memLine('  Before', stage.memBefore)}`);
+            entries.push(`${indent}  ${memLine('  Peak', stage.memPeak)}`);
+            entries.push(`${indent}  ${memLine('  After', stage.memAfter)}`);
+            for (const child of byName.get(stage.name)!.children) {
+                render(child, depth + 1);
+            }
+        };
+        for (const root of roots) {
+            render(root, 0);
         }
         if (entries.length === 0) {
             entries.push('(no stages recorded)');
@@ -118,6 +144,38 @@ export class StageStatisticsReporter {
         });
         return {
             title: 'Stage Statistics',
+            data: dataMap,
+        };
+    }
+
+    private static generateSignatureSection(data: StageStatisticsData): ReportSection {
+        const entries: string[] = [];
+        for (const snap of data.signatureSnapshots) {
+            const formalTotal = snap.formal.file + snap.formal.class + snap.formal.namespace + snap.formal.field + snap.formal.method;
+            entries.push(`[${snap.label}]`);
+            entries.push(
+                `  Formal: file=${snap.formal.file.toLocaleString()} class=${snap.formal.class.toLocaleString()} namespace=${snap.formal.namespace.toLocaleString()}` +
+                    ` field=${snap.formal.field.toLocaleString()} method=${snap.formal.method.toLocaleString()} (total=${formalTotal.toLocaleString()})`
+            );
+            entries.push(
+                `  Temp class : live=${snap.temp.class.liveCount.toLocaleString()} total=${snap.temp.class.totalRegistered.toLocaleString()}` +
+                    ` retired=${snap.temp.class.retiredCount.toLocaleString()} replaced=${snap.temp.class.replacedCount.toLocaleString()}`
+            );
+            entries.push(
+                `  Temp method: live=${snap.temp.method.liveCount.toLocaleString()} total=${snap.temp.method.totalRegistered.toLocaleString()}` +
+                    ` retired=${snap.temp.method.retiredCount.toLocaleString()} replaced=${snap.temp.method.replacedCount.toLocaleString()}`
+            );
+            entries.push(
+                `  Temp field : live=${snap.temp.field.liveCount.toLocaleString()} total=${snap.temp.field.totalRegistered.toLocaleString()}` +
+                    ` retired=${snap.temp.field.retiredCount.toLocaleString()} replaced=${snap.temp.field.replacedCount.toLocaleString()}`
+            );
+        }
+        const dataMap: Record<string, string | number> = {};
+        entries.forEach((line, i) => {
+            dataMap[`line${i}`] = line;
+        });
+        return {
+            title: 'Signature Statistics',
             data: dataMap,
         };
     }
@@ -144,6 +202,9 @@ export class StageStatisticsReporter {
         out += `Generated Time: ${report.timestamp}\n\n`;
         out += this.formatSection(report.summary);
         out += this.formatStageSection(report.stages);
+        if (Object.keys(report.signatures.data).length > 0) {
+            out += this.formatStageSection(report.signatures);
+        }
         if (Object.keys(report.custom.data).length > 0) {
             out += this.formatSection(report.custom);
         }

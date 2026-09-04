@@ -78,6 +78,30 @@ export class SceneBuilder {
      * Scene.getUnhandledFilePaths() 恰好暴露失败文件摘要。
      */
     private readonly unhandledFilePaths: Set<string>;
+    /**
+     * from → 直接解析出的物理文件路径列表（性能缓存）。key 精确对齐
+     * {@link getOriginPath} 的解析语义：相对形式（`./`、`../`）带声明文件
+     * 所在目录前缀（`dirname + '\x00' + from`——同目录文件的相同相对 from
+     * 才允许共享）；模块名形式（`@ohos/xxx`、裸名）用 from 本身（解析只走
+     * ohPkgContentMap / projectDir / tsconfig 全局映射，与声明文件位置无关）。
+     * 空数组也缓存（负缓存——解析失败的 from 原先每次都要走完全部分支才失败）。
+     * **只缓存纯函数结果（from → paths），绝不缓存"文件要不要构建"的决策**——
+     * 后者依赖 filesMap/unhandledFilePaths 等可变状态，命中后必须逐个经
+     * {@link getDependencyFilesDeeply} 的三重防重入入口重新仲裁。
+     */
+    private fromResolutionCache: Map<string, string[]> = new Map();
+    /**
+     * 解析产出收集栈（嵌套隔离）：parseFrom 未命中时 push 新槽，嵌套递归构建
+     * 触发的 parseFrom 各归各的槽；pop 时整槽写入 fromResolutionCache——
+     * 条目只含该 from 的"直接"产出，不含递归依赖自身的解析结果。
+     */
+    private fromResolutionStack: string[][] = [];
+    /**
+     * inner oh-package 内容缓存（兜底）：不同 from 首次解析触达同一 inner
+     * oh-package 的残余重复读盘。独立于 ohPkgContentMap——后者正被
+     * for...of 遍历，遍历中插入 key 会改变迭代行为（JS Map 迭代可见新增项）。
+     */
+    private resolvedOhPkgCache: Map<string, { [k: string]: unknown }> = new Map();
 
     constructor(scene: Scene, sceneConfig: SceneConfig) {
         this.scene = scene;
@@ -320,18 +344,43 @@ export class SceneBuilder {
     }
 
     private parseFrom(from: string, arkFile: ArkFile): void {
-        if (/^@[a-z|\-]+?\/?/.test(from) || /^[a-z][a-z0-9._-]*[a-z0-9]$/.test(from)) {
-            // TODO: if there are more than one modules with the same name e.g. @lib1, here may got the wrong dependency
-            // It is better to loop all oh pkg with priority rather than the map key order. But it should be very complicated.
-            // Currently it is ok because it's with low probability and order error only affects type accuracy but has no other impact.
-            for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
-                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
+        // from 解析缓存（性能优化，行为等价）：相同 (上下文, from) 的定位链
+        // （全量 ohPkgContentMap 遍历 + existsSync + 目录枚举 + 可能的 JSON5
+        // 读盘）只执行一次，重复 from 以 O(1) Map 查找复用解析结果。键设计
+        // 对齐 getOriginPath 的语义（相对 from 依赖声明文件目录，模块名形式
+        // 全项目一致）——勿改动该判定正则。命中后必须逐个经
+        // getDependencyFilesDeeply 重新仲裁（不缓存构建决策，防 disposeModule
+        // 等状态变化下静默丢构建）。
+        const isRelative = /^\.{1,2}\//.test(from);
+        const cacheKey = isRelative ? path.dirname(arkFile.getFilePath()) + '\x00' + from : from;
+        const cached = this.fromResolutionCache.get(cacheKey);
+        if (cached) {
+            for (const resolvedPath of cached) {
+                this.getDependencyFilesDeeply(resolvedPath);
             }
-        } else if (/^([^@]*\/)([^\/]*)$/.test(from) || /^[\.\./|\.\.]+$/.test(from)) {
-            this.findRelativeDependenciesByOhPkg(from, arkFile);
-        } else if (/^[@a-zA-Z0-9]+(\/[a-zA-Z0-9]+)*$/.test(from)) {
-            this.findDependenciesByTsConfig(from);
+            return;
         }
+        const resolvedPaths: string[] = [];
+        this.fromResolutionStack.push(resolvedPaths);
+        try {
+            // —— 以下为原有三分支逻辑，逐字保留，不做任何修改 ——
+            if (/^@[a-z|\-]+?\/?/.test(from) || /^[a-z][a-z0-9._-]*[a-z0-9]$/.test(from)) {
+                // TODO: if there are more than one modules with the same name e.g. @lib1, here may got the wrong dependency
+                // It is better to loop all oh pkg with priority rather than the map key order. But it should be very complicated.
+                // Currently it is ok because it's with low probability and order error only affects type accuracy but has no other impact.
+                for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
+                    this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
+                }
+            } else if (/^([^@]*\/)([^\/]*)$/.test(from) || /^[\.\./|\.\.]+$/.test(from)) {
+                this.findRelativeDependenciesByOhPkg(from, arkFile);
+            } else if (/^[@a-zA-Z0-9]+(\/[a-zA-Z0-9]+)*$/.test(from)) {
+                this.findDependenciesByTsConfig(from);
+            }
+            // —— 原有逻辑结束 ——
+        } finally {
+            this.fromResolutionStack.pop();
+        }
+        this.fromResolutionCache.set(cacheKey, resolvedPaths);
     }
 
     private findDependenciesByTsConfig(from: string): void {
@@ -463,7 +512,14 @@ export class SceneBuilder {
             }
             const innerOhpackagePath = path.join(ohPkgContentPath.replace(OH_PACKAGE_JSON5, ''), modulePath.toString(), OH_PACKAGE_JSON5);
             if (!this.ohPkgContentMap.has(innerOhpackagePath)) {
-                const innerModuleOhPkgContent = fetchDependenciesFromFile(innerOhpackagePath);
+                // inner oh-package 内容缓存（同步读盘 + JSON5 解析只做一次）。
+                // 特意不写回 ohPkgContentMap——parseFrom/findRelativeDependenciesByOhPkg
+                // 正在 for...of 遍历它，遍历中插入 key 会改变迭代行为；独立 Map 零风险。
+                let innerModuleOhPkgContent = this.resolvedOhPkgCache.get(innerOhpackagePath);
+                if (!innerModuleOhPkgContent) {
+                    innerModuleOhPkgContent = fetchDependenciesFromFile(innerOhpackagePath);
+                    this.resolvedOhPkgCache.set(innerOhpackagePath, innerModuleOhPkgContent);
+                }
                 this.findDependenciesByOhPkg(innerOhpackagePath, innerModuleOhPkgContent, from);
             }
         }
@@ -475,6 +531,14 @@ export class SceneBuilder {
     }
 
     private addFileNode2DependencyGrap(filePath: string): void {
+        // 汇点收集：三个解析产出路径（findFilesByPathArray / findFilesByExtNameArray /
+        // findDependenciesByOhPkg）都经过本方法——当前 parseFrom 槽（若在解析中）
+        // 记录产出供缓存条目。getDependencyFilesDeeply 照常执行（构建决策与
+        // 缓存收集正交，命中路径在 parseFrom 内直接调用它）。
+        const current = this.fromResolutionStack[this.fromResolutionStack.length - 1];
+        if (current) {
+            current.push(filePath);
+        }
         this.getDependencyFilesDeeply(filePath);
     }
 
@@ -489,6 +553,8 @@ export class SceneBuilder {
         this.scene.getStageStatisticsCollector()?.startStage(StageName.BuilderSdk);
         const scene = this.scene;
         const sceneConfig = this.sceneConfig;
+        // 子阶段 1：SDK 源文件注册构建（逐文件解析 + 注册 formal 空间）。
+        this.scene.getStageStatisticsCollector()?.startStage(StageName.BuilderSdkFiles);
         // handle sdks
         if (scene.getOptions().enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
             sceneConfig.getSdksObj().unshift(SdkUtils.getBuiltInSdk());
@@ -506,6 +572,9 @@ export class SceneBuilder {
                 }
             }
         });
+        this.scene.getStageStatisticsCollector()?.endStage(StageName.BuilderSdkFiles);
+        // 子阶段 2：SDK 类型推导与 global API 合并。
+        this.scene.getStageStatisticsCollector()?.startStage(StageName.BuilderSdkInfer);
         if (scene.getBuildStage() < SceneBuildStage.SDK_INFERRED) {
             this.registry.fileSigCanonicalizer
                 .getModels()
@@ -526,6 +595,7 @@ export class SceneBuilder {
                 });
             scene.setBuildStage(SceneBuildStage.SDK_INFERRED);
         }
+        this.scene.getStageStatisticsCollector()?.endStage(StageName.BuilderSdkInfer);
         scene.setFileLanguages(sceneConfig.getFileLanguages());
         SdkUtils.extendArkUI(scene);
         // SDK 阶段结束：标记 project/SDK FileSigID 边界，此后注册的文件均为 project 文件。

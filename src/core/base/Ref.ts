@@ -14,10 +14,10 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { FieldSignature } from '../model/ArkSignature';
+import { BaseSignature, ClassSignature, FieldSignature } from '../model/ArkSignature';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { Local } from './Local';
-import { ArrayType, ClassType, GenericType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
+import { AnyType, ArrayType, ClassType, GenericType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../model/ArkMethod';
@@ -128,22 +128,24 @@ export class ArkArrayRef extends AbstractRef {
 export abstract class AbstractFieldRef extends AbstractRef {
     /**
      * @internal formal FieldSigID。-1 = 完全未注册（纯 temp-held）。
-     * 泛型双视图形态下为定义点字段的 formal ID（≥0），此时值视图在 temp——
-     * 见 {@link #tempFieldSignature} 注释。
      */
     private fieldSigID!: number;
     /**
-     * @internal temp FieldSigID（弱注册表）。undefined = 纯 formal 路径。
+     * @internal temp FieldSigID（索引表）。undefined = formal 路径。
+     * 惰性物化后保留作"曾 temp"审计痕迹。
      */
     private tempFieldSigID?: number;
     /**
-     * @internal 锚定的签名实例（构造/setFieldSignature 时传入）：
-     * - temp 路径（未命中 / 泛型双视图）：值视图 + 弱注册表的存活锚点
-     *   （最后一个持有者死亡后签名才可被 GC 回收）；
-     * - formal 路径：undefined——getFieldSignature() 返回 canonical 实例
-     *   （活视图，见 route 注释的栅栏说明）。
+     * @internal 泛型字段的实例化实参表（R 轮，Expr.realGenericTypes 同构）。
+     * 泛型字段（定义点 type 为 GenericType，如 `Box<T>.items: T[]`）的 fieldRef
+     * 持定义点 formal 签名（身份），使用点的实例化（`b.items` → string[]）由
+     * 本实参表承载——getType() 读取时动态组合（replaceTypeWithReal），签名
+     * 自身保持定义点形态（T[]）。undefined = 无实例化上下文（static 访问 /
+     * 未解析 base），getType() 返回定义点 type 原样。
+     * 推导链的泛型分支（IRInference.genFieldSignature / getFieldSignature）
+     * 在命中泛型 ArkField 时从 baseType 提取实参写入。
      */
-    private tempFieldSignature?: FieldSignature;
+    private realFieldTypes?: Type[];
 
     constructor(fieldSignature: FieldSignature) {
         super();
@@ -151,51 +153,26 @@ export abstract class AbstractFieldRef extends AbstractRef {
     }
 
     /**
-     * 三分路由（构造与 setFieldSignature 共用）：
-     *
-     * ① 未命中 → temp 路由：锚定传入实例 + 弱注册（同实例幂等复用 ID）。
-     *
-     * ② 命中且 canonical.type 为 GenericType（定义点带泛型参数的字段）
-     *    → 泛型双视图路由：formal 中的签名是**定义点视角**（type = 泛型参数 T，
-     *    不携带使用点的实例化类型），使用点构造的签名（携带实例化 type）不能套用
-     *    formal 持有——锚定传入实例走 temp（保留 per-use 实例化，多调用点不同
-     *    实例化互不干扰），fieldSigID 仍保留定义点 formal ID（身份视图：供
-     *    getFieldSigID 按字段身份查询）。
-     *
-     * ③ 命中且非泛型 → formal 路由：持 formal ID，getFieldSignature() 返回
-     *    canonical 实例（活视图——推断对 canonical 的类型精化实时可见）。
-     *    构造/setFieldSignature 时执行**单向精度栅栏**：canonical.type 为
-     *    unclear（Unknown/UnclearRef/Null/Undefined/GenericType/unclear
-     *    ClassType）且传入 type 为 clear 时，将传入 type 写入 canonical
-     *    （精确化写穿，与 repairFieldType 等既有 canonical setType 模式同性质
-     *    ——只写 type 不碰身份/model）；其余情形（clear→unclear 倒退、
-     *    clear→不同 clear 竞争）一律不更新。
+     * 首路径路由（构造器专用）：formal 只读命中 → 持 formal ID（栅栏精化）；
+     * miss → temp 登记（**持有者全生命周期唯一一次登记**——A2 决策表后，更新
+     * 路径不再产生新登记）。
      */
     private route(fieldSignature: FieldSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const existingId = reg.fieldSigCanonicalizer.getExistingId(fieldSignature);
         if (existingId !== -1) {
             const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
-            if (canonical.getType() instanceof GenericType) {
-                // ② 泛型双视图：值视图走 temp（per-use 实例化），身份视图保留 formal ID。
-                this.fieldSigID = existingId;
-                this.tempFieldSignature = fieldSignature;
-                this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
-                return;
-            }
-            // ③ formal + 单向精度栅栏。
+            // formal 路由 + 单向精度栅栏。
             const canonicalType = canonical.getType();
             const incomingType = fieldSignature.getType();
             if (TypeInference.isUnclearType(canonicalType) && !TypeInference.isUnclearType(incomingType)) {
                 canonical.setType(incomingType);
             }
             this.fieldSigID = existingId;
-            this.tempFieldSignature = undefined;
             this.tempFieldSigID = undefined;
         } else {
-            // ① temp 路由。
+            // temp 路由。
             this.fieldSigID = -1;
-            this.tempFieldSignature = fieldSignature;
             this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
         }
     }
@@ -226,28 +203,176 @@ export abstract class AbstractFieldRef extends AbstractRef {
   ```
      */
     /**
-     * 返回 fieldRef 的值视图签名：
-     * - formal 路径：canonical 实例（活视图）；
-     * - temp / 泛型双视图路径：锚定的传入实例（使用点实例化形态）。
+     * 返回 fieldRef 的值视图签名（B 轮批 3 起三级查）：
+     * ① formal（fieldSigID ≥ 0）→ canonical（活视图；泛型字段为定义点形态，
+     *    实例化由 {@link getType} 组合）；
+     * ② temp slot（未迁移）→ 构造时传入实例；
+     * ③ 替换记录（已迁移）→ formal 实例 + 惰性物化（tempSigID 保留作痕迹）。
      */
     public getFieldSignature(): FieldSignature {
-        if (this.tempFieldSignature !== undefined) {
-            return this.tempFieldSignature;
-        }
-        const sig = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(this.fieldSigID);
-        if (sig !== undefined) {
-            return sig;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.fieldSigID >= 0) {
+            const sig = reg.fieldSigCanonicalizer.get(this.fieldSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+        } else if (this.tempFieldSigID !== undefined) {
+            const sig = reg.tempFieldSigCanonicalizer.get(this.tempFieldSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            const formalId = reg.tempFieldSigCanonicalizer.getReplacement(this.tempFieldSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.fieldSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.fieldSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('AbstractFieldRef has no signature');
     }
 
     /**
-     * 替换签名（推断解析后的真实字段签名回写）。三分路由同构造；旧 temp 引用
-     * 无需显式释放（弱注册表由 GC 收敛——本对象丢弃旧锚点后，若无其他持有者
-     * 则旧签名可回收）。
+     * 参数式替换签名（A2 推广终态——推导链更新的唯一决策表入口，零中间实例）：
+     * 不经 new N，直接按参数对 S 就地赋值（applyFields）。决策表：
+     * ① 未毕业（temp 行还在）：无条件把新值写进 S（编号不变——共享该实例的
+     *    持有者即时看到新值，一处改处处生效），再查 formal——命中则毕业三连
+     *    （换编号 + 划行 + 记替换）+ declaring 联动；miss 保持（零登记）。
+     * ② 已毕业：N 查 formal 命中换编号 / miss 保持现状（已解析不倒退）。
+     * 行已划（共享链已被他人收敛）→ 惰性物化后按 ②；stale → 首路径兜底。
+     * 定义点 canonical 回写（终点确定）走 {@link graduateToFormal} 快路径。
      */
-    public setFieldSignature(newFieldSignature: FieldSignature): void {
-        this.route(newFieldSignature);
+    public updateFieldSignature(fieldName: string, declaringOrID: BaseSignature | number, type: Type, staticFlag: boolean, namespaceDeclared: boolean = false): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // ① 未毕业分支。
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            const tempId = this.tempFieldSigID;
+            const S = reg.tempFieldSigCanonicalizer.get(tempId);
+            if (S !== undefined) {
+                const oldDeclTempId = S.getDeclaringClassTempSigID();
+                S.applyFields(fieldName, declaringOrID, type, staticFlag, namespaceDeclared);
+                const existingId = reg.fieldSigCanonicalizer.getExistingId(S);
+                if (existingId !== -1) {
+                    const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+                    const canonicalType = canonical.getType();
+                    if (TypeInference.isUnclearType(canonicalType) && !TypeInference.isUnclearType(type)) {
+                        canonical.setType(type);
+                    }
+                    this.fieldSigID = existingId;
+                    this.tempFieldSigID = undefined;
+                    reg.tempFieldSigCanonicalizer.retireWithReplacement(tempId, existingId);
+                    // declaring 联动：新值 declaring 为 formal class 时同步收敛 temp class 行。
+                    const declSig = S.getDeclaringSignature();
+                    if (oldDeclTempId !== undefined && declSig instanceof ClassSignature && !declSig.isUnclear()) {
+                        const declFormalId = S.getDeclaringClassSigID();
+                        if (declFormalId !== undefined && declFormalId > 0) {
+                            reg.tempClassSigCanonicalizer.retireWithReplacement(oldDeclTempId, declFormalId);
+                        }
+                    }
+                }
+                return;
+            }
+            const formalId = reg.tempFieldSigCanonicalizer.getReplacement(tempId);
+            if (formalId !== -1) {
+                this.fieldSigID = formalId;
+            } else {
+                // stale 兜底：构造真实例走首路径（登记一次）。低频路径（Registry 重建等）。
+                this.route(AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared));
+                return;
+            }
+        }
+        // ② 已毕业分支：只查不降级（低频路径——多轮推导的精化；probe 为值查载体，短命实例可接受）。
+        if (this.fieldSigID >= 0) {
+            const probe = AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared);
+            const existingId = reg.fieldSigCanonicalizer.getExistingId(probe);
+            if (existingId !== -1) {
+                const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+                const canonicalType = canonical.getType();
+                if (TypeInference.isUnclearType(canonicalType) && !TypeInference.isUnclearType(type)) {
+                    canonical.setType(type);
+                }
+                this.fieldSigID = existingId;
+            }
+            return;
+        }
+        // 防御兜底（理论不可达）。
+        this.route(AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared));
+    }
+
+    /** @internal 兜底/probe 构造（联合类型按重载收窄分发；低频路径）。 */
+    private static buildFallbackSignature(fieldName: string, declaringOrID: BaseSignature | number, type: Type, staticFlag: boolean, namespaceDeclared: boolean): FieldSignature {
+        if (typeof declaringOrID === 'number') {
+            return namespaceDeclared ? new FieldSignature(fieldName, declaringOrID, type, staticFlag, true) : new FieldSignature(fieldName, declaringOrID, type, staticFlag);
+        }
+        return new FieldSignature(fieldName, declaringOrID, type, staticFlag);
+    }
+
+    /**
+     * @internal 毕业到正式签名（定义点回写专用快路径）：formalId 必为正式表
+     * 有效条目（调用方从 model 直取，如 `arkField.getFieldSigID()`），终点确定
+     * ——跳过决策表的值演进与值查，直接换编号 + 划旧 temp 行 + 记替换 +
+     * declaring 联动（联动归宿经一次 key 直查从 canonical 取）。决策表
+     * （updateFieldSignature）保留给终点不确定的场景（stub 演进/中间态）。
+     * 无效 ID（≤0 或条目不存在 = stale）：防御性不动作（持有者保持现状）——
+     * 校验必须在开头（已毕业分支的无条件赋值若放入 stale ID，后续取回将 throw）。
+     */
+    public graduateToFormal(formalId: number): void {
+        if (formalId <= 0) {
+            return;
+        }
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const canonical = reg.fieldSigCanonicalizer.get(formalId);
+        if (canonical === undefined) {
+            return; // stale ID（Registry 重建等）——防御性不动作
+        }
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            const tempId = this.tempFieldSigID;
+            const S = reg.tempFieldSigCanonicalizer.get(tempId);
+            if (S !== undefined) {
+                // declaring 联动（毕业的组成部分）：旧 declaring temp 行同步收敛，
+                // 共享该 declaring stub 的持有者经替换记录自动跟随。
+                const oldDeclTempId = S.getDeclaringClassTempSigID();
+                const declFormalId = canonical.getDeclaringClassSigID();
+                if (oldDeclTempId !== undefined && declFormalId !== undefined && declFormalId > 0) {
+                    reg.tempClassSigCanonicalizer.retireWithReplacement(oldDeclTempId, declFormalId);
+                }
+                reg.tempFieldSigCanonicalizer.retireWithReplacement(tempId, formalId);
+            }
+            // 行已划（共享链已被首毕业者收敛）：仅换编号（替换记录已登记）。
+            this.fieldSigID = formalId;
+            this.tempFieldSigID = undefined;
+            return;
+        }
+        // 已毕业：直接换编号（重复回写 = 无操作；stale 已在开头拦截）。
+        this.fieldSigID = formalId;
+    }
+
+    /**
+     * @internal 替换埋葬（round27——"谁替换谁埋葬"）：本 ref 即将从 IR 被
+     * 新值替换（ValueInference.postInfer 的 replaceDef/replaceUse），替换后
+     * 无任何持有者——temp 行在替换点显式 retire，消除"被替换 ref 的登记
+     * 留存"死条目。纯 retire（无替换记录）：被替换产物无字段归宿（ArrayType
+     * 转换 / getter invoke / params 形态新 static ref 自走首路径）。
+     * 幂等：行已划（其他路径已 retire）时 no-op；formal 路径（无 temp 编号）
+     * 恒 no-op。共享安全：被替换的旧 ref 均为 builder 逐访问 new 的实例
+     * （temp 空间实例语义，独占行，无共享者）。
+     */
+    public retireTemp(): void {
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            SignatureCanonicalizerRegistry.getInstance().tempFieldSigCanonicalizer.retire(this.tempFieldSigID);
+        }
+    }
+
+    /**
+     * @internal 替换埋葬（带归宿版）：同 {@link retireTemp}，但替换产物为
+     * formal canonical（static 转换等 formalId 已知场景）——retire 同时记录
+     * 替换（temp → formal），供诊断追溯。
+     */
+    public retireTempTo(formalId: number): void {
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined && formalId > 0) {
+            SignatureCanonicalizerRegistry.getInstance().tempFieldSigCanonicalizer.retireWithReplacement(this.tempFieldSigID, formalId);
+        }
     }
 
     /** @internal Get the formal FieldSigID（身份视图；泛型双视图下为定义点字段 ID）。-1 = 纯 temp-held。 */
@@ -260,8 +385,27 @@ export abstract class AbstractFieldRef extends AbstractRef {
         return this.tempFieldSigID;
     }
 
+    /** @internal Get the generic instantiation real types of the field (R 轮，Expr.realGenericTypes 同构)。 */
+    public getRealFieldTypes(): Type[] | undefined {
+        return this.realFieldTypes;
+    }
+
+    /**
+     * @internal Set the generic instantiation real types. Called by the inference
+     * chains when a generic ArkField is resolved against an instantiated base type.
+     * The signature itself stays in its declaration-site form (T[]); this table is
+     * the per-use instantiation carrier (see field JSDoc).
+     */
+    public setRealFieldTypes(realTypes: Type[] | undefined): void {
+        this.realFieldTypes = realTypes;
+    }
+
     public getType(): Type {
-        return this.getFieldSignature().getType();
+        const type = this.getFieldSignature().getType();
+        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realFieldTypes) {
+            return TypeInference.replaceTypeWithReal(type, this.realFieldTypes);
+        }
+        return type;
     }
 }
 

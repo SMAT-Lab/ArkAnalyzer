@@ -25,9 +25,9 @@ function makeSig(name: string): TestSig {
     return { name, toMapKey: () => name };
 }
 
-// 弱注册表语义测试（替换原 refcount 模型用例）：
-// register 同实例复用 ID / 异实例新 ID；无 release——GC 驱动收敛，
-// size() 为主动清扫后的精确存活量；持有者（本测试的局部变量）锚定即存活。
+// 三版索引表语义测试（替换二版弱表用例）：
+// register 同实例复用 ID / 异实例新 ID；slot 强持有（全保留）；retire 显式迁移置空
+// + temp→formal 替换记录；三数自洽 totalRegistered = liveCount + retiredCount。
 describe('TempSignatureCanonicalizer Test', () => {
     it('register assigns different IDs for different object instances with same value', () => {
         const c = new TempSignatureCanonicalizer<TestSig>();
@@ -57,30 +57,18 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(c.totalRegistered()).toBe(1);
     });
 
-    it('size counts live (anchored) signatures after sweep', () => {
+    it('size counts non-retired slots (strongly held by the index table)', () => {
         const c = new TempSignatureCanonicalizer<TestSig>();
         expect(c.size()).toBe(0);
         const sig1 = makeSig('a');
         const sig2 = makeSig('b');
         c.register(sig1);
         c.register(sig2);
-        // 两个实例均被局部变量锚定（存活），同值异实例各计 1。
+        // slot 强持有（全保留语义）：注册即计数，与持有者存亡无关。
         expect(c.size()).toBe(2);
     });
 
-    it('size does not count dead slots (dropped instances swept away)', () => {
-        const c = new TempSignatureCanonicalizer<TestSig>();
-        // 注册后丢弃唯一持有者——实例不可达。不依赖显式 gc()：通过FinalizationRegistry
-        // 不可行（异步），此处用"丢弃 + 重新注册新实例不复活旧槽"验证语义即可；
-        // GC 驱动的死槽清扫为非确定性行为，不在断言范围（见弱注册表设计注释）。
-        c.register(makeSig('dropped'));
-        const kept = makeSig('kept');
-        const keptId = c.register(kept);
-        expect(c.get(keptId)).toBe(kept);
-        expect(c.totalRegistered()).toBe(2);
-    });
-
-    it('get returns the signature object by ID while anchored', () => {
+    it('get returns the signature object by ID while the slot is live', () => {
         const c = new TempSignatureCanonicalizer<TestSig>();
         const sig = makeSig('foo');
         const id = c.register(sig);
@@ -116,20 +104,17 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(c.size()).toBe(2);
     });
 
-    it('getStats reports live/total/dead consistently', () => {
+    it('getStats reports live/total/retired with the three-number invariant', () => {
         const c = new TempSignatureCanonicalizer<TestSig>();
-        expect(c.getStats()).toEqual({ liveCount: 0, totalRegistered: 0, deadSlots: 0 });
-        const sig1 = makeSig('a');
-        const sig2 = makeSig('b');
-        c.register(sig1);
-        c.register(sig2);
-        // 两实例均存活（被局部变量锚定）：live=2、total=2、dead=0。
-        // 注：测试作用域内实例可达即存活——GC 是否已运行不影响（未回收的 WeakRef
-        // deref 非空）；deadSlots 仅在实例被回收后才可能大于 0（非确定性，不硬断言）。
+        expect(c.getStats()).toEqual({ liveCount: 0, totalRegistered: 0, retiredCount: 0, replacedCount: 0 });
+        c.register(makeSig('a'));
+        c.register(makeSig('b'));
         const stats = c.getStats();
         expect(stats.liveCount).toBe(2);
         expect(stats.totalRegistered).toBe(2);
-        expect(stats.deadSlots).toBe(0);
+        expect(stats.retiredCount).toBe(0);
+        // 三数自洽：total = live + retired。
+        expect(stats.totalRegistered).toBe(stats.liveCount + stats.retiredCount);
     });
 
     it('clear resets the registry and strips symbol ids from live objects', () => {
@@ -154,5 +139,84 @@ describe('TempSignatureCanonicalizer Test', () => {
         c.register(makeSig('b'));
         c.clear();
         expect(c.register(makeSig('c'))).toBe(0);
+    });
+
+    it('registeredIds is the full audit view; liveIds is the non-retired view', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        expect(c.registeredIds()).toEqual([]);
+        const sig1 = makeSig('a');
+        const sig2 = makeSig('b');
+        c.register(sig1);
+        c.register(sig2);
+        expect(c.registeredIds()).toEqual([0, 1]);
+        expect(c.liveIds()).toEqual([0, 1]);
+        // retire 后：审计视图仍含全部 ID（可追溯），遗留视图收敛。
+        c.retire(0);
+        expect(c.registeredIds()).toEqual([0, 1]);
+        expect(c.liveIds()).toEqual([1]);
+        expect(c.size()).toBe(1);
+    });
+
+    // --- 三版（索引表）核心语义：retire / 替换记录 / 幂等 ---
+
+    it('retire blanks the slot idempotently and maintains the counters', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        const sig = makeSig('a');
+        const id = c.register(sig);
+        expect(c.retire(id)).toBeUndefined();
+        expect(c.get(id)).toBeUndefined();
+        expect(c.size()).toBe(0);
+        expect(c.retired()).toBe(1);
+        expect(c.totalRegistered()).toBe(1);
+        // 幂等：重复 retire 不再计数。
+        c.retire(id);
+        expect(c.retired()).toBe(1);
+        expect(c.size()).toBe(0);
+        // 三数自洽保持。
+        const st = c.getStats();
+        expect(st.totalRegistered).toBe(st.liveCount + st.retiredCount);
+    });
+
+    it('retireWithReplacement records the formal destination for shared holders', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        const sig = makeSig('shared');
+        const tempId = c.register(sig);
+        expect(c.getReplacement(tempId)).toBe(-1);
+        c.retireWithReplacement(tempId, 88);
+        // slot 置空 + 归宿可查（三级查 fallback："下一处直接使用 formal ID"）。
+        expect(c.get(tempId)).toBeUndefined();
+        expect(c.getReplacement(tempId)).toBe(88);
+        // 重复调用以首次记录为准（幂等）。
+        c.retireWithReplacement(tempId, 99);
+        expect(c.getReplacement(tempId)).toBe(88);
+        const st = c.getStats();
+        expect(st.retiredCount).toBe(1);
+        expect(st.replacedCount).toBe(1);
+    });
+
+    it('retired instance re-register returns the original ID (symbol survives retire)', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        const sig = makeSig('revive-path');
+        const id = c.register(sig);
+        c.retireWithReplacement(id, 7);
+        // symbol 在 retire 后保留：同实例再次 register 返回原 ID——消费方经
+        // getReplacement 直达 formal（不复活 slot）。
+        expect(c.register(sig)).toBe(id);
+        expect(c.get(id)).toBeUndefined();
+        expect(c.getReplacement(id)).toBe(7);
+        // 计数不因重复 register 变化。
+        expect(c.totalRegistered()).toBe(1);
+        expect(c.size() + c.retired()).toBe(1);
+    });
+
+    it('clear wipes the replacement records', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        const id = c.register(makeSig('a'));
+        c.retireWithReplacement(id, 42);
+        expect(c.getReplacement(id)).toBe(42);
+        c.clear();
+        expect(c.getReplacement(id)).toBe(-1);
+        expect(c.retired()).toBe(0);
+        expect(c.getStats()).toEqual({ liveCount: 0, totalRegistered: 0, retiredCount: 0, replacedCount: 0 });
     });
 });

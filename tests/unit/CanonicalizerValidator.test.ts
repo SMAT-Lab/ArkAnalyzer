@@ -16,14 +16,23 @@
 import { describe, expect, it } from 'vitest';
 import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 import { CanonicalizerValidator } from '../../src/core/common/CanonicalizerValidator';
-import { FileSignature, NamespaceSignature, ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../src/core/model/ArkSignature';
+import {
+    FileSignature,
+    NamespaceSignature,
+    ClassSignature,
+    FieldSignature,
+    MethodSignature,
+    MethodSubSignature,
+    AliasClassSignature,
+    internAliasMethodSignature,
+} from '../../src/core/model/ArkSignature';
 import { ArkFile, Language } from '../../src/core/model/ArkFile';
 import { ArkNamespace } from '../../src/core/model/ArkNamespace';
 import { ArkClass } from '../../src/core/model/ArkClass';
 import { ArkField } from '../../src/core/model/ArkField';
 import { ArkMethod } from '../../src/core/model/ArkMethod';
 import { MethodParameter } from '../../src/core/model/builder/ArkMethodBuilder';
-import { NumberType } from '../../src/core/base/Type';
+import { ClassType, NumberType } from '../../src/core/base/Type';
 import { SceneConfig } from '../../src/Config';
 
 describe('CanonicalizerValidator file space Test', () => {
@@ -693,7 +702,9 @@ describe('CanonicalizerValidator method space Test', () => {
         otherCls.setSignature(new ClassSignature('MtdM4cOther', file.getFileSignature()));
         file.addArkClass(otherCls);
         const divergent = new ArkMethod(otherCls.getClassSigID());
-        divergent.setImplementationSignature(new MethodSignature(otherCls.getClassSigID(), new MethodSubSignature('divergent', [], NumberType.getInstance(), false)));
+        divergent.setImplementationSignature(
+            new MethodSignature(otherCls.getClassSigID(), new MethodSubSignature('divergent', [], NumberType.getInstance(), false))
+        );
         const divergentSigID = divergent.getMethodSigID()!;
         reg.methodSigCanonicalizer.setModel(id, divergent); // 签名声明 cls，model 自报 otherCls
         try {
@@ -740,5 +751,149 @@ describe('CanonicalizerValidator method space Test', () => {
         expect(cls.getMethod(other.method.getSignature())).toBeNull();
         // 本类方法签名仍正确命中。
         expect(cls.getMethod(cls.getMethods()[0].getSignature())).not.toBeNull();
+    });
+});
+
+describe('CanonicalizerValidator alias entries Test (U+ display normalization)', () => {
+    // U+ 合法形态守护：AliasClassSignature 是一等 formal 签名（独立 ID + 双注册
+    // origin model）。class 空间 C4/C6/C7 与 method 空间 M4/M4b 均按设计豁免
+    // alias 条目——本 describe 固化"豁免不误报、origin 条目守护仍在"。
+
+    /** 在宿主 file 上注册一个真实类（供 alias 双注册挂靠）。 */
+    function setupOriginClass(fileName: string, className: string): ArkClass {
+        const file = new ArkFile(Language.TYPESCRIPT);
+        file.setFileSignature(new FileSignature('proj', fileName));
+        const cls = new ArkClass(file.getFileSigID());
+        cls.setSignature(new ClassSignature(className, file.getFileSignature()));
+        file.addArkClass(cls);
+        return cls;
+    }
+
+    it('C4+C6+C7: alias class entries with dual-registered origin model are legal', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const cls = setupOriginClass('src/cls-val-alias.ts', 'OriginCls');
+        // 构造即 intern formal + 双注册 origin ArkClass model
+        const alias = new AliasClassSignature('AliasName', cls.getSignature());
+        const aliasID = reg.classSigCanonicalizer.getExistingId(alias);
+        expect(aliasID).toBeGreaterThan(0);
+        expect(aliasID).not.toBe(cls.getClassSigID());
+        // 双注册：alias ID 与 origin ID 持同一 ArkClass 实例
+        expect(reg.classSigCanonicalizer.getModel(aliasID)).toBe(cls);
+        // C4（回指 origin ID）/C6（多 ID 挂载）/C7c（顶层 file 的 top-class 列表
+        // 只含 origin ID）——alias 条目全套豁免，零违规
+        const violations = CanonicalizerValidator.validateClassSpace();
+        expect(violations.some(v => v.includes(`C4: model at ID ${aliasID}`))).toBe(false);
+        expect(violations.some(v => v.includes(`C6: model at ID ${aliasID}`))).toBe(false);
+        expect(violations.some(v => v.includes('C7c:') && v.includes(`ID ${aliasID}`))).toBe(false);
+        // origin 条目自身的守护不受豁免影响（正常回指/单挂载/挂链齐全）
+        expect(violations.some(v => v.includes(`C4: model at ID ${cls.getClassSigID()}`))).toBe(false);
+        expect(violations.some(v => v.includes(`C7c: top-level ID ${cls.getClassSigID()}`))).toBe(false);
+    });
+
+    it('M4+M4b+M7: alias method signature with dual-registered origin model is legal', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const cls = setupOriginClass('src/mtd-val-alias.ts', 'MtdAliasHost');
+        const method = new ArkMethod(cls.getClassSigID());
+        const originSig = new MethodSignature(cls.getClassSigID(), new MethodSubSignature('pop', [], NumberType.getInstance(), false));
+        method.setImplementationSignature(originSig);
+        cls.addMethod(method);
+        // 组件 pop 形态：alias MethodSignature + internAliasMethodSignature 双注册
+        const aliasDecl = new AliasClassSignature('Comp', cls.getSignature());
+        const aliasMtdSig = new MethodSignature(aliasDecl, new MethodSubSignature('pop', [], NumberType.getInstance(), false));
+        internAliasMethodSignature(aliasMtdSig, originSig);
+        const aliasMtdID = reg.methodSigCanonicalizer.getExistingId(aliasMtdSig);
+        expect(aliasMtdID).toBeGreaterThan(0);
+        expect(reg.methodSigCanonicalizer.getModel(aliasMtdID)).toBe(method);
+        // M4（model 由 origin 条目持有）/M4b（双侧声明类必然不同）/M7（alias
+        // classSig 条目双注册有 model）——全套合法，零违规
+        const violations = CanonicalizerValidator.validateMethodSpace();
+        expect(violations.some(v => v.includes(`M4: model at ID ${aliasMtdID}`))).toBe(false);
+        expect(violations.some(v => v.includes(`M4b: model at ID ${aliasMtdID}`))).toBe(false);
+        expect(violations.some(v => v.includes('M7:') && v.includes(`ID ${aliasMtdID}`))).toBe(false);
+        // 值查直命中真实方法（scene.getMethod fast path 语义）
+        expect(reg.methodSigCanonicalizer.getModel(reg.methodSigCanonicalizer.getExistingId(aliasMtdSig))).toBe(method);
+    });
+});
+
+describe('CanonicalizerValidator temp spaces Test', () => {
+    it('clean registry produces no temp violations', () => {
+        SignatureCanonicalizerRegistry.dispose();
+        expect(CanonicalizerValidator.validateTempSpaces()).toEqual([]);
+    });
+
+    it('healthy temp registrations (ClassType temp-held anchor) produce no violations', () => {
+        SignatureCanonicalizerRegistry.dispose();
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // An unclear stub never interned into formal: ClassType routes it to the temp
+        // space (formal miss) and holds it as the anchor — register idempotency (T2)
+        // and the anchor's self-carried ID stay consistent by construction.
+        const stub = new ClassSignature('AnchoredStub', 0, undefined);
+        const ct = new ClassType(stub);
+        expect(ct.getTempSigID()).toBeDefined();
+        expect(reg.tempClassSigCanonicalizer.getExistingTempId(stub)).toBe(ct.getTempSigID());
+        expect(CanonicalizerValidator.validateTempSpaces()).toEqual([]);
+        void ct;
+    });
+
+    it('T1: a live temp entry whose value also exists in formal is reported as stale', () => {
+        SignatureCanonicalizerRegistry.dispose();
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // Register into temp first (formal miss at that moment) ...
+        const stub = new ClassSignature('T1StaleStub', 0, undefined);
+        reg.tempClassSigCanonicalizer.register(stub);
+        // ... then the same value lands in formal (real model registration).
+        reg.classSigCanonicalizer.getId(stub);
+        const violations = CanonicalizerValidator.validateTempSpaces();
+        expect(violations.some(v => v.includes('[temp-class] T1'))).toBe(true);
+        expect(violations.some(v => v.includes('stale temp registration'))).toBe(true);
+    });
+
+    it('T3: a model-tree holder declaring a stale temp ID is reported', () => {
+        SignatureCanonicalizerRegistry.dispose();
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // Build a real model chain holding a temp-held ClassType (registered into
+        // temp by the ClassType constructor via the formal-miss route).
+        const stub = new ClassSignature('T3StaleStub', 0, undefined);
+        const ct = new ClassType(stub);
+        const fileA = new ArkFile(Language.TYPESCRIPT);
+        fileA.setFileSignature(new FileSignature('proj', 'src/temp-t3.ts'));
+        const host = new ArkClass(fileA.getFileSigID());
+        host.setSignature(new ClassSignature('T3Host', fileA.getFileSignature(), null));
+        const field = new ArkField(host.getClassSigID());
+        field.setSignature(new FieldSignature('staleField', host.getClassSigID(), ct, false));
+        host.addField(field);
+        SignatureCanonicalizerRegistry.registerClass(host);
+        // 正常态：持有者声明的 tempSigID 在 temp 空间有效，零违规。
+        expect(CanonicalizerValidator.validateTempSpaces().some(v => v.includes('T3:'))).toBe(false);
+        // 模拟 temp 空间独立清空（Registry dispose 的 temp 段单独发生）——模型树
+        // 持有者残留 stale ID。
+        reg.tempClassSigCanonicalizer.clear();
+        const violations = CanonicalizerValidator.validateTempSpaces();
+        expect(violations.some(v => v.includes('[temp-class] T3'))).toBe(true);
+        expect(violations.some(v => v.includes('stale or unregistered ID'))).toBe(true);
+    });
+
+    it('T3: a holder ID backed by a replacement record (retired slot) is legal', () => {
+        SignatureCanonicalizerRegistry.dispose();
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const stub = new ClassSignature('T3ReplacedStub', 0, undefined);
+        const ct = new ClassType(stub);
+        const fileA = new ArkFile(Language.TYPESCRIPT);
+        fileA.setFileSignature(new FileSignature('proj', 'src/temp-t3b.ts'));
+        const host = new ArkClass(fileA.getFileSigID());
+        host.setSignature(new ClassSignature('T3ReplacedHost', fileA.getFileSignature(), null));
+        const field = new ArkField(host.getClassSigID());
+        field.setSignature(new FieldSignature('replacedField', host.getClassSigID(), ct, false));
+        host.addField(field);
+        SignatureCanonicalizerRegistry.registerClass(host);
+        // 迁移场景：slot 置空 + 替换记录（持有者仍声明该 tempSigID——惰性物化
+        // 痕迹态 formalID≥0 && tempSigID≠undefined 同款覆盖）。
+        const tempId = ct.getTempSigID()!;
+        reg.tempClassSigCanonicalizer.retireWithReplacement(tempId, host.getClassSigID());
+        expect(reg.tempClassSigCanonicalizer.get(tempId)).toBeUndefined();
+        expect(reg.tempClassSigCanonicalizer.getReplacement(tempId)).toBe(host.getClassSigID());
+        // replacement 记录背书 → T3 视为有效，零违规。
+        const violations = CanonicalizerValidator.validateTempSpaces();
+        expect(violations.some(v => v.includes('[temp-class] T3'))).toBe(false);
     });
 });

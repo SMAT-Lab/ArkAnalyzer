@@ -224,7 +224,9 @@ export class AbcFieldRefInference extends FieldRefInference {
                     const fieldSignature = new FieldSignature(value.getFieldSignature().getFieldName(), cls.getClassSigID(), UnknownType.getInstance());
                     field.setSignature(fieldSignature);
                     cls.addField(field);
-                    value.setFieldSignature(fieldSignature);
+                    // A2 快路径：field.setSignature 已 intern（formalId 可得）——
+                    // 终点确定，graduateToFormal 直达。
+                    value.graduateToFormal(field.getFieldSigID());
                 }
             }
         }

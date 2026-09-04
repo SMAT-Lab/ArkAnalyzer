@@ -17,8 +17,12 @@ import { describe, expect, it } from 'vitest';
 import { Scene } from '../../src/Scene';
 import { ArkFile, Language } from '../../src/core/model/ArkFile';
 import { ArkClass, ClassCategory } from '../../src/core/model/ArkClass';
+import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkField } from '../../src/core/model/ArkField';
 import { ArkMethod } from '../../src/core/model/ArkMethod';
+import { ArkBody } from '../../src/core/model/ArkBody';
+import { Cfg } from '../../src/core/graph/Cfg';
+import { resetGetMethodFallbackStats, snapshotGetMethodFallbackStats } from '../../src/core/model/ArkClass';
 import { FileSignature, ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../src/core/model/ArkSignature';
 import { UnknownType } from '../../src/core/base/Type';
 import { MethodParameter } from '../../src/core/model/builder/ArkMethodBuilder';
@@ -574,8 +578,8 @@ describe('ArkClass method SigID index Test', () => {
         const methods = arkClass.getMethods(true);
         expect(methods.length).toBe(1);
         expect(methods[0]).toBe(method);
-        expect(arkClass.getTopMethodCount()).toBe(1);
-        expect(arkClass.getTopMethodSigIDs()![0]).toBe(method.getMethodSigID());
+        expect(arkClass.getMethodsWithName('indexed')).toEqual([method]);
+        expect(arkClass.getMethodNameIndex()?.get('indexed')).toEqual([method.getMethodSigID()]);
     });
 
     it('declare-only methods are indexed via their first declare SigID', () => {
@@ -591,21 +595,21 @@ describe('ArkClass method SigID index Test', () => {
         const method = new ArkMethod(arkClass.getClassSigID(), undefined, declareSig);
         arkClass.addMethod(method);
 
-        expect(arkClass.getTopMethodCount()).toBe(1);
-        expect(arkClass.getTopMethodSigIDs()![0]).toBe(method.getDeclareSigIDs()![0]);
+        expect(arkClass.getMethodNameIndex()?.get('declared')).toEqual([method.getDeclareSigIDs()![0]]);
         expect(arkClass.getMethods(true)[0]).toBe(method);
     });
 
-    it('methodMatchesName: nested methods are found by their plain origin name', () => {
+    it('name queries: exact-match only, the origin prefix semantics is retired', () => {
         const scene = new Scene();
         const { arkClass } = setupClassWithMethod(scene, 'NestedNameHost', 'plainMethod');
         const { method: nested } = setupClassWithMethod(scene, 'NestedNameHost', '%nestedFunc$outerFunc');
         arkClass.addMethod(nested);
 
-        // Full composed name and plain origin name both resolve the nested method
+        // Full composed name resolves the nested method
         expect(arkClass.getMethodsWithName('%nestedFunc$outerFunc').map(m => m.getName())).toEqual(['%nestedFunc$outerFunc']);
-        expect(arkClass.getMethodsWithName('nestedFunc').map(m => m.getName())).toEqual(['%nestedFunc$outerFunc']);
-        // The outer-method part does not match
+        // The plain origin name no longer resolves it (origin prefix matching removed)
+        expect(arkClass.getMethodsWithName('nestedFunc')).toEqual([]);
+        // The outer-method part does not match either
         expect(arkClass.getMethodsWithName('outerFunc')).toEqual([]);
     });
 
@@ -627,12 +631,12 @@ describe('ArkClass method SigID index Test', () => {
 
         arkClass.addMethod(first);
         arkClass.addMethod(other);
-        expect(arkClass.getTopMethodCount()).toBe(2);
+        expect(arkClass.getMethods(true).length).toBe(2);
 
-        // Same name replaces in place (position 0 kept), not appended
+        // Same name replaces in place (key order keeps the first-occurrence position), not appended
         const { method: second } = setupClassWithMethod(scene, 'ReplaceHost', 'replaced');
         arkClass.addMethod(second);
-        expect(arkClass.getTopMethodCount()).toBe(2);
+        expect(arkClass.getMethods(true).length).toBe(2);
         const names = arkClass.getMethods(true).map(m => m.getName());
         expect(names[0]).toBe('replaced');
         expect(names[1]).toBe('otherMethod');
@@ -646,10 +650,10 @@ describe('ArkClass method SigID index Test', () => {
         const { method: removed } = setupClassWithMethod(scene, 'RemoveHost', 'removed');
         arkClass.addMethod(kept);
         arkClass.addMethod(removed);
-        expect(arkClass.getTopMethodCount()).toBe(2);
+        expect(arkClass.getMethods(true).length).toBe(2);
 
         expect(arkClass.removeMethod(removed)).toBe(true);
-        expect(arkClass.getTopMethodCount()).toBe(1);
+        expect(arkClass.getMethods(true).length).toBe(1);
         expect(arkClass.getMethods(true).map(m => m.getName())).toEqual(['kept']);
     });
 
@@ -657,11 +661,10 @@ describe('ArkClass method SigID index Test', () => {
         const scene = new Scene();
         const { arkClass, method } = setupClassWithMethod(scene, 'ClearIdxHost', 'cleared');
         arkClass.addMethod(method);
-        expect(arkClass.getTopMethodCount()).toBe(1);
+        expect(arkClass.getMethods(true).length).toBe(1);
 
         arkClass.clearAllReferences();
-        expect(arkClass.getTopMethodCount()).toBe(0);
-        expect(arkClass.getTopMethodSigIDs()).toBeNull();
+        expect(arkClass.getMethodNameIndex()).toBeUndefined();
         expect(arkClass.getMethods(true)).toEqual([]);
     });
 });
@@ -771,5 +774,274 @@ describe('ArkMethod ID-injecting constructor Test', () => {
             p.setType(UnknownType.getInstance());
             return p;
         }
+    });
+});
+
+describe('B1 Full-slot Registration Test', () => {
+    function setupClass(scene: Scene, className: string): ArkClass {
+        const arkFile = new ArkFile(Language.TYPESCRIPT);
+        arkFile.setScene(scene);
+        const fileSig = new FileSignature('proj', `src/${className}.ts`);
+        arkFile.setFileSignature(fileSig);
+        const arkClass = new ArkClass(arkFile.getFileSigID());
+        arkClass.setSignature(new ClassSignature(className, fileSig, null));
+        return arkClass;
+    }
+
+    function makeSig(arkClass: ArkClass, name: string, paramCount: number = 0): MethodSignature {
+        const params: MethodParameter[] = [];
+        for (let i = 0; i < paramCount; i++) {
+            const p = new MethodParameter();
+            p.setName(`p${i}`);
+            p.setType(UnknownType.getInstance());
+            params.push(p);
+        }
+        return new MethodSignature(arkClass.getClassSigID(), new MethodSubSignature(name, params, UnknownType.getInstance(), false));
+    }
+
+    it('declare[k>0] slots resolve via the canonicalizer fast path', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'FullSlotHost');
+        const sigA = makeSig(arkClass, 'multi');
+        const sigB = makeSig(arkClass, 'multi', 2);
+        const method = new ArkMethod(arkClass.getClassSigID(), undefined, [sigA, sigB]);
+        arkClass.addMethod(method);
+
+        // sigB is declare[1] — a non-primary slot that previously had no model and could
+        // only be matched by the getMethod fallback. Now it resolves directly.
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const idB = reg.methodSigCanonicalizer.getExistingId(sigB);
+        expect(idB).toBeGreaterThan(0);
+        expect(reg.methodSigCanonicalizer.getModel(idB)).toBe(method);
+
+        resetGetMethodFallbackStats();
+        expect(arkClass.getMethod(sigA)).toBe(method);
+        expect(arkClass.getMethod(sigB)).toBe(method);
+        // Fast-path hits produce no fallback activity
+        const snap = snapshotGetMethodFallbackStats();
+        expect(snap.fastPathNoModel).toBe(0);
+        expect(snap.fastPathForeignOwner).toBe(0);
+        expect(snap.fallbackMatched).toBe(0);
+        expect(snap.fallbackUnmatched).toBe(0);
+        expect(snap.fallbackNameMiss).toBe(0);
+    });
+
+    it('non-primary declare slot: a body-carrying holder is never evicted by a body-less method', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'ArbiterHost');
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        // F holds sigX via its implementation signature and carries a body
+        const sigX = makeSig(arkClass, 'shared');
+        const implHolder = new ArkMethod(arkClass.getClassSigID(), sigX);
+        implHolder.setBody(new ArkBody(new Set(), new Cfg()));
+        arkClass.addMethod(implHolder);
+
+        // D is body-less and carries sigX as declare[1] (non-primary slot)
+        const sigOther = makeSig(arkClass, 'shared', 1);
+        const bodyless = new ArkMethod(arkClass.getClassSigID(), undefined, [sigOther, sigX]);
+        arkClass.addMethod(bodyless);
+
+        const idX = reg.methodSigCanonicalizer.getExistingId(sigX);
+        expect(reg.methodSigCanonicalizer.getModel(idX)).toBe(implHolder);
+    });
+
+    it('non-primary declare slot: the merge winner replaces a body-less holder', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'TakeoverHost');
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        const sigA = makeSig(arkClass, 'merged');
+        const sigB = makeSig(arkClass, 'merged', 1);
+        const first = new ArkMethod(arkClass.getClassSigID(), undefined, [sigA, sigB]);
+        arkClass.addMethod(first);
+
+        // The merge winner (same declare slots, added later) takes over non-primary slots
+        const winner = new ArkMethod(arkClass.getClassSigID(), undefined, [sigA, sigB]);
+        arkClass.addMethod(winner);
+
+        const idB = reg.methodSigCanonicalizer.getExistingId(sigB);
+        expect(reg.methodSigCanonicalizer.getModel(idB)).toBe(winner);
+        // The primary slot follows the existing terminal-winner semantics
+        const idA = reg.methodSigCanonicalizer.getExistingId(sigA);
+        expect(reg.methodSigCanonicalizer.getModel(idA)).toBe(winner);
+    });
+
+    it('removeMethod unregisters all declare slots symmetrically', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'SymmetricHost');
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        const sigA = makeSig(arkClass, 'sym');
+        const sigB = makeSig(arkClass, 'sym', 3);
+        const method = new ArkMethod(arkClass.getClassSigID(), undefined, [sigA, sigB]);
+        arkClass.addMethod(method);
+
+        const idA = reg.methodSigCanonicalizer.getExistingId(sigA);
+        const idB = reg.methodSigCanonicalizer.getExistingId(sigB);
+        expect(reg.methodSigCanonicalizer.getModel(idA)).toBe(method);
+        expect(reg.methodSigCanonicalizer.getModel(idB)).toBe(method);
+
+        expect(arkClass.removeMethod(method)).toBe(true);
+        expect(reg.methodSigCanonicalizer.getModel(idA)).toBeUndefined();
+        expect(reg.methodSigCanonicalizer.getModel(idB)).toBeUndefined();
+    });
+
+    it('fallback counters classify fast-path misses', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'CounterHost');
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        // A same-name method with a different signature exists in the class
+        const present = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'counted', 1));
+        arkClass.addMethod(present);
+
+        // A signature that is interned but holds no model: fast path reports noModel,
+        // fallback finds the same-name candidate but no signature match
+        const internedOnly = makeSig(arkClass, 'counted', 2);
+        reg.methodSigCanonicalizer.getId(internedOnly);
+        resetGetMethodFallbackStats();
+        expect(arkClass.getMethod(internedOnly)).toBeNull();
+        let snap = snapshotGetMethodFallbackStats();
+        expect(snap.fastPathNoModel).toBe(1);
+        expect(snap.fallbackUnmatched).toBe(1);
+
+        // A never-interned signature whose name does not exist in the class: name miss
+        const unknownSig = makeSig(arkClass, 'neverAdded', 1);
+        resetGetMethodFallbackStats();
+        expect(arkClass.getMethod(unknownSig)).toBeNull();
+        snap = snapshotGetMethodFallbackStats();
+        expect(snap.fallbackNameMiss).toBe(1);
+        expect(snap.fallbackMatched).toBe(0);
+    });
+});
+
+describe('B2 Method Name Index Test', () => {
+    function setupClass(scene: Scene, className: string, language: Language = Language.TYPESCRIPT): ArkClass {
+        const arkFile = new ArkFile(language);
+        arkFile.setScene(scene);
+        const fileSig = new FileSignature('proj', `src/${className}.ts`);
+        arkFile.setFileSignature(fileSig);
+        const arkClass = new ArkClass(arkFile.getFileSigID());
+        arkClass.setSignature(new ClassSignature(className, fileSig, null));
+        return arkClass;
+    }
+
+    function makeSig(arkClass: ArkClass, name: string, paramCount: number = 0, isStatic: boolean = false): MethodSignature {
+        const params: MethodParameter[] = [];
+        for (let i = 0; i < paramCount; i++) {
+            const p = new MethodParameter();
+            p.setName(`p${i}`);
+            p.setType(UnknownType.getInstance());
+            params.push(p);
+        }
+        return new MethodSignature(arkClass.getClassSigID(), new MethodSubSignature(name, params, UnknownType.getInstance(), isStatic));
+    }
+
+    it('CXX overload: same-name methods coexist under one key', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'CxxOverloadHost', Language.CXX);
+
+        const a = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'overloaded'));
+        const b = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'overloaded', 1));
+        arkClass.addMethod(a);
+        arkClass.addMethod(b);
+
+        const found = arkClass.getMethodsWithName('overloaded');
+        expect(found.length).toBe(2);
+        expect(found).toContain(a);
+        expect(found).toContain(b);
+        expect(arkClass.getMethodNameIndex()?.get('overloaded')?.length).toBe(2);
+    });
+
+    it('CXX overload: same-signature re-add replaces the SigID in place', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'CxxReplaceHost', Language.CXX);
+
+        const first = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'replaced', 1));
+        arkClass.addMethod(first);
+        const other = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'other', 1));
+        arkClass.addMethod(other);
+
+        const second = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'replaced', 1));
+        arkClass.addMethod(second);
+
+        expect(arkClass.getMethods(true).length).toBe(2);
+        expect(arkClass.getMethodWithName('replaced')).toBe(second);
+        const ids = arkClass.getMethodNameIndex()?.get('replaced');
+        expect(ids?.length).toBe(1);
+        expect(ids![0]).toBe(second.getMethodSigID());
+    });
+
+    it('non-overload languages: adding foo does not evict %foo$bar (historical quirk fixed)', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'QuirkFixHost');
+
+        const nested = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, '%foo$bar'));
+        arkClass.addMethod(nested);
+        const plain = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'foo'));
+        arkClass.addMethod(plain);
+
+        // Both survive: they are distinct keys in the name index
+        expect(arkClass.getMethodsWithName('foo')).toEqual([plain]);
+        expect(arkClass.getMethodsWithName('%foo$bar')).toEqual([nested]);
+        expect(arkClass.getMethods(true).length).toBe(2);
+    });
+
+    it('static methods are indexed separately from instance methods', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'StaticMirrorHost');
+
+        const instanceMethod = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'both'));
+        arkClass.addMethod(instanceMethod);
+        const staticMethod = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'both', 0, true));
+        staticMethod.addModifier(ModifierType.STATIC);
+        arkClass.addMethod(staticMethod);
+
+        expect(arkClass.getMethodsWithName('both')[0]).toBe(instanceMethod);
+        expect(arkClass.getStaticMethodsWithName('both')[0]).toBe(staticMethod);
+        expect(arkClass.getAllMethodsWithName('both').length).toBe(2);
+        expect(arkClass.getMethodNameIndex()?.has('both')).toBe(true);
+        expect(arkClass.getStaticMethodNameIndex()?.has('both')).toBe(true);
+
+        expect(arkClass.removeMethod(staticMethod)).toBe(true);
+        expect(arkClass.getStaticMethodsWithName('both')).toEqual([]);
+        expect(arkClass.getMethodsWithName('both')[0]).toBe(instanceMethod);
+    });
+
+    it('removeMethod keeps the key alive when same-name siblings remain', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'SiblingHost', Language.CXX);
+
+        const a = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'sibling'));
+        const b = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'sibling', 1));
+        arkClass.addMethod(a);
+        arkClass.addMethod(b);
+
+        expect(arkClass.removeMethod(a)).toBe(true);
+        expect(arkClass.getMethodsWithName('sibling')).toEqual([b]);
+        expect(arkClass.getMethodNameIndex()?.get('sibling')).toEqual([b.getMethodSigID()]);
+    });
+
+    it('evicted SigIDs (no model) are filtered out by name queries', () => {
+        const scene = new Scene();
+        const arkClass = setupClass(scene, 'EvictionHost', Language.CXX);
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        const a = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'evicted'));
+        const b = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'evicted', 1));
+        arkClass.addMethod(a);
+        arkClass.addMethod(b);
+
+        // Simulate eviction: the model entry of a is dropped from the canonicalizer
+        reg.methodSigCanonicalizer.removeModel(a.getMethodSigID()!);
+        expect(arkClass.getMethodsWithName('evicted')).toEqual([b]);
+
+        // Removing the evicted method still cleans the index by ID; the return value is
+        // false because the registry side has nothing left to unregister (existing semantics
+        // of removeMethod: rtn &&= Registry.removeMethod).
+        expect(arkClass.removeMethod(a)).toBe(false);
+        expect(arkClass.getMethodsWithName('evicted')).toEqual([b]);
+        expect(arkClass.getMethodNameIndex()?.get('evicted')).toEqual([b.getMethodSigID()]);
     });
 });

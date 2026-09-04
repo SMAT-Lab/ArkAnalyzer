@@ -334,7 +334,8 @@ describe('Temp ID Mechanism Test', () => {
         const arkField = new ArkField(arkClass.getClassSigID());
         arkField.setSignature(pendingSig);
         arkClass.addField(arkField);
-        ref.setFieldSignature(arkField.getSignature());
+        // A2：定义点 canonical 回写走 graduateToFormal 快路径（ID 直读）。
+        ref.graduateToFormal(arkField.getFieldSigID());
         expect(ref.getFieldSigID()).toBe(arkField.getFieldSigID());
         expect(ref.getTempSigID()).toBeUndefined();
         expect(ref.getFieldSignature()).toBe(arkField.getSignature());
@@ -365,39 +366,42 @@ describe('Temp ID Mechanism Test', () => {
         return { arkClass, arkField };
     }
 
-    it('generic-typed formal field routes to dual view: identity=formal ID, value=temp instance', () => {
+    it('generic field: formal identity + realFieldTypes instantiation (R 轮表示迁移)', () => {
         const { arkField } = setupFieldWith('GenericHost', 'value', new GenericType('T'));
-        const declClassID = arkField.getDeclaringArkClass().getClassSigID();
-        // 使用点构造：身份（field+class）命中定义点 formal，但 type 为实例化类型 number。
-        const useSig = new FieldSignature('value', declClassID, NumberType.getInstance(), false);
-        const ref = new ArkInstanceFieldRef(new Local('base'), useSig);
+        // 新链路形态：定义点签名（type=T，formal 身份）+ ref 上实参表承载使用点实例化。
+        const ref = new ArkInstanceFieldRef(new Local('base'), arkField.getSignature());
+        ref.setRealFieldTypes([NumberType.getInstance()]);
 
-        // 双视图：身份视图 = 定义点 formal ID；值视图 = temp（锚定使用点实例）。
+        // 身份 = 定义点 formal ID；无 temp 注册（原双视图 temp 路由已退役）。
         expect(ref.getFieldSigID()).toBe(arkField.getFieldSigID());
-        expect(ref.getTempSigID()).toBeDefined();
-        expect(ref.getFieldSignature()).toBe(useSig);
-        // per-use 实例化类型可读（值视图保留 number，而非定义点的 T）。
-        expect(ref.getType().toString()).toBe('number');
+        expect(ref.getTempSigID()).toBeUndefined();
+        expect(ref.getFieldSignature()).toBe(arkField.getSignature());
         // 定义点 canonical 不被使用点实例化污染（仍是 T）。
         expect(arkField.getSignature().getType().toString()).toBe('T');
+        // getType() 动态组合：T + [number] → number（Expr.realGenericTypes 同构）。
+        expect(ref.getType().toString()).toBe('number');
+        // 无实例化上下文（static 访问 / 未解析 base）时原样返回定义点 type。
+        ref.setRealFieldTypes(undefined);
+        expect(ref.getType().toString()).toBe('T');
     });
 
     it('generic field: two use sites with different instantiations stay independent', () => {
         const { arkField } = setupFieldWith('GenericHost2', 'value', new GenericType('T'));
-        const declClassID = arkField.getDeclaringArkClass().getClassSigID();
-        const useA = new FieldSignature('value', declClassID, NumberType.getInstance(), false);
-        const useB = new FieldSignature('value', declClassID, StringType.getInstance(), false);
-        const refA = new ArkInstanceFieldRef(new Local('a'), useA);
-        const refB = new ArkInstanceFieldRef(new Local('b'), useB);
+        const refA = new ArkInstanceFieldRef(new Local('a'), arkField.getSignature());
+        refA.setRealFieldTypes([NumberType.getInstance()]);
+        const refB = new ArkInstanceFieldRef(new Local('b'), arkField.getSignature());
+        refB.setRealFieldTypes([StringType.getInstance()]);
 
-        // 两个使用点各自锚定自己的实例化实例（互不干扰，无 first-use 退化）。
-        expect(refA.getFieldSignature()).toBe(useA);
-        expect(refB.getFieldSignature()).toBe(useB);
-        expect(refA.getType().toString()).toBe('number');
-        expect(refB.getType().toString()).toBe('string');
-        // 身份视图同为定义点 formal ID。
+        // 两个使用点共享定义点 canonical（身份一致，签名同为 formal 实例）。
+        expect(refA.getFieldSignature()).toBe(arkField.getSignature());
+        expect(refB.getFieldSignature()).toBe(arkField.getSignature());
         expect(refA.getFieldSigID()).toBe(arkField.getFieldSigID());
         expect(refB.getFieldSigID()).toBe(arkField.getFieldSigID());
+        // per-use 实例化经 getType() 组合——互不干扰，无 first-use 退化。
+        expect(refA.getType().toString()).toBe('number');
+        expect(refB.getType().toString()).toBe('string');
+        // 定义点 canonical 不被任何实例化污染（仍是 T）。
+        expect(arkField.getSignature().getType().toString()).toBe('T');
     });
 
     it('precision fence: unclear canonical type is refined by clear incoming type', () => {
@@ -471,6 +475,7 @@ describe('Temp ID Mechanism Test', () => {
     });
 
     it('invokeExpr with a registered method signature resolves the formal ID read-only', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         const { method } = setupMethodWith('src/ivk-formal.ts', 'InvokeHost', 'invokeMethod', NumberType.getInstance());
         // 值相等的签名（同 class 同 subSig——ID 重载构造，值与 formal 相同）。
         const sig = new MethodSignature(
@@ -480,9 +485,10 @@ describe('Temp ID Mechanism Test', () => {
         const expr = new ArkStaticInvokeExpr(sig, []);
         expect(expr.getMethodSigID()).toBe(method.getMethodSigID());
         expect(expr.getTempSigID()).toBeUndefined();
-        // 锚点语义：getMethodSignature 返回构造时传入实例（display 载体），
-        // 值与 formal canonical 相等（equals），但身份是传入实例。
-        expect(expr.getMethodSignature()).toBe(sig);
+        // B 轮批 3（锚退役）：formal 命中返回 formal canonical（活视图）——
+        // 传入实例的值等价副本不再持有（可被 GC）。值与传入实例 equals。
+        expect(expr.getMethodSignature()).toBe(reg.methodSigCanonicalizer.get(method.getMethodSigID()!));
+        expect(expr.getMethodSignature().equals(sig)).toBe(true);
         expect(expr.getMethodSignature().equals(method.getSignature())).toBe(true);
     });
 
@@ -530,5 +536,34 @@ describe('Temp ID Mechanism Test', () => {
         expect(expr2.getMethodSigID()).toBe(method.getMethodSigID());
         expect(expr2.getTempSigID()).toBeUndefined();
         void reg;
+    });
+
+    it('R10 shared temp signature: one holder migrates, the other resolves via replacement record', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const { method } = setupMethodWith('src/ivk-r10.ts', 'R10Host', 'sharedMethod', NumberType.getInstance());
+        // A、B 两个 expr 持同一 stub 实例（值未注册 formal → temp 路由，同实例
+        // 复用同一 tempSigID——R10 共享场景）。
+        const stubSig = ArkSignatureBuilder.buildMethodSignatureFromMethodName('sharedMethod');
+        const exprA = new ArkStaticInvokeExpr(stubSig, []);
+        const exprB = new ArkStaticInvokeExpr(stubSig, []);
+        const tempId = exprA.getTempSigID()!;
+        expect(tempId).toBeDefined();
+        expect(exprB.getTempSigID()).toBe(tempId);
+        expect(reg.tempMethodSigCanonicalizer.get(tempId)).toBe(stubSig);
+
+        // A 显式迁移（重路由到已注册的 formal 签名）：slot 置空 + 替换记录。
+        exprA.setMethodSignature(method.getSignature());
+        expect(exprA.getMethodSigID()).toBe(method.getMethodSigID());
+        expect(reg.tempMethodSigCanonicalizer.get(tempId)).toBeUndefined();
+        expect(reg.tempMethodSigCanonicalizer.getReplacement(tempId)).toBe(method.getMethodSigID());
+
+        // B 未迁移：三级查 fallback——经替换记录拿到 formal 实例 + 惰性物化
+        //（methodSigID 写回，tempSigID 保留作"曾 temp"痕迹）。
+        expect(exprB.getMethodSigID()).toBe(-1);
+        expect(exprB.getMethodSignature()).toBe(method.getSignature());
+        expect(exprB.getMethodSigID()).toBe(method.getMethodSigID());
+        expect(exprB.getTempSigID()).toBe(tempId);
+        // 二次取回走 formal 快路径（已物化）。
+        expect(exprB.getMethodSignature()).toBe(method.getSignature());
     });
 });

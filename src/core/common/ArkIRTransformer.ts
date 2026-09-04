@@ -37,7 +37,6 @@ import { AliasTypeSignature, FieldSignature, MethodSignature, MethodSubSignature
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
 import { FullPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
@@ -387,10 +386,8 @@ export class ArkIRTransformer {
             if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkStaticInvokeExpr) {
                 const rightOp = stmt.getRightOp() as ArkStaticInvokeExpr;
                 if (rightOp.getMethodSignature().getMethodSubSignature().getMethodName() === COMPONENT_REPEAT) {
-                    const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-                        COMPONENT_REPEAT,
-                        COMPONENT_CREATE_FUNCTION
-                    );
+                    // round28 M1：Repeat.create stub per-key 缓存（原每语句一行 temp）。
+                    const createMethodSignature = ModelUtils.getOrCreateComponentMethodSig(COMPONENT_REPEAT, COMPONENT_CREATE_FUNCTION);
                     const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, rightOp.getArgs());
                     stmt.setRightOp(createInvokeExpr);
                     hasRepeat = true;
@@ -604,6 +601,14 @@ export class ArkIRTransformer {
             } = this.generateAssignStmtForValue(iterableValue, iterablePositions));
             iterableStmts.forEach(stmt => stmts.push(stmt));
         }
+        // round28 教训存档（r3 实证定案，勿再常量化）：iterator/next stub 必须每循环
+        // new 独立实例。共享实例（r2 常量化）的断点在 ValueInference.preInfer 守卫——
+        // 先推导的循环 retireWithReplacement 共享 temp 行后，跟随循环的 expr 在
+        // preInfer 时 getMethodSignature() 物化返回真实签名（lib.es2015）→
+        // needInfer(真实文件)=false 且 isUnclearType(IterableIterator<T>)=false（泛型
+        // 实参不参与，round13 语义）→ 整个推导被跳过 → realGenericTypes 无人设置 →
+        // item 停留形式泛参 T → unknown。"待解析"是 per-expr 语义，共享 temp 行的
+        // "已解析"状态会传染给所有共享者——与 toString/M2a/M2b 同根因（归宿垄断）。
         const iteratorMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_FUNCTION, [], Builtin.ITERATOR_CLASS_TYPE);
         const iteratorMethodSignature = new MethodSignature(0, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);
@@ -616,8 +621,8 @@ export class ArkIRTransformer {
         iteratorStmts.forEach(stmt => stmts.push(stmt));
         (iterator as Local).setType(Builtin.ITERATOR_CLASS_TYPE);
 
-        const nextMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_NEXT, [], Builtin.ITERATOR_RESULT_CLASS_TYPE);
-        const nextMethodSignature = new MethodSignature(0, nextMethodSubSignature);
+        const iteratorNextMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_NEXT, [], Builtin.ITERATOR_RESULT_CLASS_TYPE);
+        const nextMethodSignature = new MethodSignature(0, iteratorNextMethodSubSignature);
         const iteratorNextInvokeExpr = new ArkInstanceInvokeExpr(iterator as Local, nextMethodSignature, []);
         const iteratorNextInvokeExprPositions = [iteratorPositions[0], ...iteratorPositions];
         const {

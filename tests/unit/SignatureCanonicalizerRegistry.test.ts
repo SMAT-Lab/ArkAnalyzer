@@ -151,13 +151,15 @@ describe('SignatureCanonicalizerRegistry Test', () => {
         expect(reg2.customComponentMap.size).toBe(0);
     });
 
-    it('temp canonicalizers are accessible', () => {
+    it('temp canonicalizers are accessible (file/namespace spaces removed — permanently empty)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        expect(reg.tempFileSigCanonicalizer).toBeDefined();
         expect(reg.tempClassSigCanonicalizer).toBeDefined();
         expect(reg.tempMethodSigCanonicalizer).toBeDefined();
-        expect(reg.tempNamespaceSigCanonicalizer).toBeDefined();
         expect(reg.tempFieldSigCanonicalizer).toBeDefined();
+        // tempFile/tempNamespace spaces were removed: FileSignature is the identity root
+        // (never temp-held) and no production path ever registered a namespace into temp.
+        expect((reg as unknown as Record<string, unknown>).tempFileSigCanonicalizer).toBeUndefined();
+        expect((reg as unknown as Record<string, unknown>).tempNamespaceSigCanonicalizer).toBeUndefined();
     });
 
     it('intern returns canonical single instance', () => {
@@ -442,6 +444,7 @@ describe('ClassSignature SigID constructor Test', () => {
         const nsSig = new NamespaceSignature('AliasNS', fileSig, null);
         reg.namespaceSigCanonicalizer.getId(nsSig);
         const origin = new ClassSignature('OriginClass', fileSig, nsSig);
+        const originID = reg.classSigCanonicalizer.getId(origin);
         const alias = new AliasClassSignature('AliasName', origin);
 
         // The alias keeps the origin's declaring SigIDs (forwarded via ID accessors)
@@ -452,9 +455,23 @@ describe('ClassSignature SigID constructor Test', () => {
         // Name semantics: alias name for code, origin name preserved
         expect(alias.getClassName()).toBe('AliasName');
         expect(alias.getOriginName()).toBe('OriginClass');
-        // toString reads the underlying class name (never the polymorphic alias name),
-        // both before and after the SigID refactor.
-        expect(alias.toString()).toBe(`${fileSig.toString()}AliasNS.OriginClass`);
+        // U+（display 归一化）：alias 是一等 formal 签名——身份含 aliasName 维度
+        //（与 origin 值不等、intern 为独立条目），toString/toMapKey 走 getClassName()
+        // 多态（显示 aliasName）。
+        expect(alias.equals(origin)).toBe(false);
+        expect(origin.equals(alias)).toBe(false);
+        const aliasID = reg.classSigCanonicalizer.getId(alias);
+        expect(aliasID).not.toBe(originID);
+        expect(alias.getHashCode()).not.toBe(origin.getHashCode());
+        expect(alias.toString()).toBe(`${fileSig.toString()}AliasNS.AliasName`);
+        expect(alias.toMapKey()).toBe(`${fileSig.toMapKey()}AliasNS.AliasName`);
+        // 同名 alias 值相等且 intern 幂等（同 origin 维度）
+        const alias2 = new AliasClassSignature('AliasName', origin);
+        expect(alias.equals(alias2)).toBe(true);
+        expect(reg.classSigCanonicalizer.getId(alias2)).toBe(aliasID);
+        // 不同 aliasName 是不同签名
+        const alias3 = new AliasClassSignature('OtherName', origin);
+        expect(alias.equals(alias3)).toBe(false);
     });
 });
 
@@ -829,20 +846,22 @@ describe('Unclear stub routing to temp canonicalizer Test', () => {
         expect(ms.isUnclear()).toBe(false);
     });
 
-    it('FieldSignature with an unclear namespace declaring signature routes to namespace temp', () => {
-        const reg = SignatureCanonicalizerRegistry.getInstance();
-        const before = reg.namespaceSigCanonicalizer.size();
+    it('FieldSignature with an unclear namespace declaring signature marks unclear (no temp registration)', () => {
         // Unclear namespace stub: declaring file is DEFAULT
         const nsStub = new NamespaceSignature('NsStub', 0, undefined);
         expect(nsStub.isUnclear()).toBe(true);
 
         const fs = new FieldSignature('nsField', nsStub, UnknownType.getInstance(), false);
 
-        expect(reg.namespaceSigCanonicalizer.size()).toBe(before);
+        // Unclear marking without any temp space (the temp namespace space never had a
+        // production registrant and was removed).
         expect(fs.getDeclaringNamespaceSigID()).toBe(-1);
-        expect(fs.getDeclaringNamespaceTempSigID()).toBeDefined();
         expect(fs.isUnclear()).toBe(true);
-        expect(fs.getDeclaringSignature()).toBe(nsStub);
+        // B 轮（索引表）：display 锚删除后该形态的 SigID 路径无取回（生产不可达
+        // ——生产调用点全走 SigID+true 重载，本形态仅测试可构造）；
+        // getDeclaringSignature 降级 DEFAULT（stale 降级路径 + error log），
+        // 调用方需自持 ns 实例。
+        expect(fs.getDeclaringSignature()).toBe(ClassSignature.DEFAULT);
     });
 
     it('buildMethodSignatureFromClassNameAndMethodName routes its stub through temp (no formal class hole)', () => {
@@ -857,6 +876,40 @@ describe('Unclear stub routing to temp canonicalizer Test', () => {
         expect(ms.isUnclear()).toBe(true);
         // Display name preserved for ViewTree-style consumers
         expect(ms.getDeclaringClassSignature().getClassName()).toBe('ComponentStub');
+    });
+});
+
+describe('Component stub cache Test (ArkSignatureBuilder, A2 批 1)', () => {
+    it('whitelisted component names share one stub instance (and one temp SigID) across factory calls', () => {
+        // 'ForEach' 在 isEtsSystemComponent 的初始内置集合内（SDK 未加载也命中白名单）。
+        const s1 = ArkSignatureBuilder.buildClassSignatureFromClassName('ForEach');
+        const s2 = ArkSignatureBuilder.buildClassSignatureFromClassName('ForEach');
+        expect(s1).toBe(s2);
+        // 组件常量 'View'（COMPONENT_CUSTOMVIEW）同样命中白名单。
+        const v1 = ArkSignatureBuilder.buildClassSignatureFromClassName('View');
+        const v2 = ArkSignatureBuilder.buildClassSignatureFromClassName('View');
+        expect(v1).toBe(v2);
+        expect(v1).not.toBe(s1);
+        // 共享实例 → MethodSignature 构造的 declaring register 幂等复用同一 temp ID
+        //（class 空间"每名字一行"而非"每语句一行"）。
+        const ms1 = new MethodSignature(v1, new MethodSubSignature('create', [], UnknownType.getInstance(), false));
+        const ms2 = new MethodSignature(v2, new MethodSubSignature('create', [], UnknownType.getInstance(), false));
+        expect(ms1.getDeclaringClassTempSigID()).toBe(ms2.getDeclaringClassTempSigID());
+    });
+
+    it('non-whitelisted names (arbitrary class names) keep per-call new instances', () => {
+        const s1 = ArkSignatureBuilder.buildClassSignatureFromClassName('MyArbitraryClass');
+        const s2 = ArkSignatureBuilder.buildClassSignatureFromClassName('MyArbitraryClass');
+        expect(s1).not.toBe(s2);
+        expect(s1.equals(s2)).toBe(true);
+    });
+
+    it('clearComponentStubCache drops the shared instances (next call builds a fresh one)', () => {
+        const s1 = ArkSignatureBuilder.buildClassSignatureFromClassName('View');
+        ArkSignatureBuilder.clearComponentStubCache();
+        const s2 = ArkSignatureBuilder.buildClassSignatureFromClassName('View');
+        expect(s2).not.toBe(s1);
+        expect(s2.equals(s1)).toBe(true);
     });
 });
 

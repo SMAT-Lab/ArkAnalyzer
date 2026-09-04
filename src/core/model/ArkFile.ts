@@ -303,7 +303,7 @@ export class ArkFile {
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
         // O(1) 归属初筛：签名的 declaringFileSigID 直比本 file 的 SigID。
-        if (namespaceSignature.getDeclaringFileSigId() !== this.fileSigID) {
+        if (namespaceSignature.getDeclaringFileSigID() !== this.fileSigID) {
             return null;
         }
         const id = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);

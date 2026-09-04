@@ -43,7 +43,6 @@ import {
     UnknownType,
     VoidType,
 } from '../base/Type';
-import { PointerType, ReferenceType } from '../../frontend/cppFrontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -127,10 +126,11 @@ export class TypeInference {
         }
         if (fieldType) {
             arkField.getSignature().setType(fieldType);
-            fieldRef?.setFieldSignature(arkField.getSignature());
+            // A2 快路径：定义点 canonical 回写（ID 直读，graduateToFormal）。
+            fieldRef?.graduateToFormal(arkField.getFieldSigID());
         } else if (rightType && this.isUnclearType(beforeType) && !this.isUnclearType(rightType)) {
             arkField.getSignature().setType(rightType);
-            fieldRef?.setFieldSignature(arkField.getSignature());
+            fieldRef?.graduateToFormal(arkField.getFieldSigID());
         }
     }
 
@@ -497,40 +497,10 @@ export class TypeInference {
     }
 
     public static isUnclearType(type: Type | null | undefined): boolean {
-        // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
-        if (
-            !type ||
-            type instanceof UnknownType ||
-            type instanceof UnclearReferenceType ||
-            type instanceof NullType ||
-            type instanceof UndefinedType ||
-            type instanceof GenericType
-        ) {
-            return true;
-        } else if (
-            type instanceof ClassType &&
-            (unknownFileName.includes(type.getClassSignature().getDeclaringFileSignature().getFileName()) ||
-                (type.getClassSignature().getClassName() === PROMISE && !type.getRealGenericTypes()))
-        ) {
-            return true;
-        } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
-        } else if (type instanceof ArrayType) {
-            const baseType = type.getBaseType();
-            return this.checkType(baseType, t => t instanceof UnclearReferenceType || baseType instanceof GenericType);
-        } else if (type instanceof AliasType) {
-            return this.isUnclearType(type.getOriginalType());
-        } else if (type instanceof KeyofTypeExpr) {
-            return this.isUnclearType(type.getOpType());
-        } else if (type instanceof TypeQueryExpr) {
-            return (
-                this.isUnclearType(type.getType()) ||
-                !!type.getGenerateTypes()?.find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType))
-            );
-        } else if (type instanceof PointerType || type instanceof ReferenceType) {
-            return this.isUnclearType(type.getBaseType());
-        }
-        return false;
+        // Thin delegate to the polymorphic Type.isUnclear() (each subclass owns its own
+        // criteria; the historical instanceof chain lived here and in the cpp twin — the
+        // two have now converged). Null/undefined inputs stay unclear, as before.
+        return type === null || type === undefined ? true : type.isUnclear();
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.

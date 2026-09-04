@@ -128,10 +128,11 @@ export class TypeInference {
         }
         if (fieldType) {
             arkField.getSignature().setType(fieldType);
-            fieldRef?.setFieldSignature(arkField.getSignature());
+            // A2 快路径：定义点 canonical 回写（ID 直读，graduateToFormal）。
+            fieldRef?.graduateToFormal(arkField.getFieldSigID());
         } else if (rightType && this.isUnclearType(beforeType) && !this.isUnclearType(rightType)) {
             arkField.getSignature().setType(rightType);
-            fieldRef?.setFieldSignature(arkField.getSignature());
+            fieldRef?.graduateToFormal(arkField.getFieldSigID());
         }
     }
 
@@ -579,37 +580,12 @@ export class TypeInference {
      * @returns true if the type is unclear, otherwise false
      */
     public static isUnclearType(type: Type | null | undefined): boolean {
-        // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
-        if (
-            !type ||
-            type instanceof UnknownType ||
-            type instanceof UnclearReferenceType ||
-            type instanceof NullType ||
-            type instanceof UndefinedType ||
-            type instanceof GenericType
-        ) {
-            return true;
-        } else if (
-            type instanceof ClassType &&
-            (type.getClassSignature().getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME ||
-                (type.getClassSignature().getClassName() === PROMISE && !type.getRealGenericTypes()))
-        ) {
-            // The old third condition (virtual builtin file + unresolved generics) is covered
-            // by the UNKNOWN_FILE_NAME check: builtin stubs carry FileSignature.DEFAULT.
-            return true;
-        } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
-        } else if (type instanceof ArrayType) {
-            const baseType = type.getBaseType();
-            return this.checkType(baseType, t => t instanceof UnclearReferenceType || baseType instanceof GenericType);
-        } else if (type instanceof AliasType) {
-            return this.isUnclearType(type.getOriginalType());
-        } else if (type instanceof KeyofTypeExpr) {
-            return this.isUnclearType(type.getOpType());
-        } else if (type instanceof TypeQueryExpr) {
-            return this.isUnclearType(type.getType());
-        }
-        return false;
+        // Thin delegate to the polymorphic Type.isUnclear() — the cpp-specific instanceof
+        // chain (including the PointerType/ReferenceType recursion, now owned by those
+        // classes) has converged with the core semantics. Note: the historical cpp twin
+        // skipped TypeQueryExpr.generateTypes; the unified implementation checks them
+        // (core semantics), which is the only intentional behavioral convergence.
+        return type === null || type === undefined ? true : type.isUnclear();
     }
 
     /**

@@ -23,7 +23,7 @@ import { ClassSignature, FieldSignature, FileSignature, MethodSignature, Namespa
 import { Local } from '../base/Local';
 import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
-import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
+import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../common/Const';
 import { FullPosition, INVALID_LINE } from '../base/Position';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
@@ -60,6 +60,46 @@ export interface heritageClassWithInfo {
     baseClass: ArkClass | undefined | null;
     isVirtual: boolean;
     access: string;
+}
+
+// --- getMethod fallback instrumentation (B1 step-2: hit counting for the narrowing decision) ---
+
+/**
+ * Scene-wide counters for ArkClass.getMethod fallback activity, classified by why the
+ * canonicalizer fast path missed. Data source for the B1 step-3 decision (narrowing the
+ * fallback to CXX/unclear ownership); reset/snapshot are test- and benchmark-facing.
+ */
+const getMethodFallbackStats = {
+    /** Signature interned but holds no model (expected residual: closure-rebuilt declares). */
+    fastPathNoModel: 0,
+    /** Model exists but belongs to another class (C++ cross-class decl/impl borrowing). */
+    fastPathForeignOwner: 0,
+    /** No method with the queried name in this class (legitimate miss). */
+    fallbackNameMiss: 0,
+    /** Fallback traversal matched a method by impl/declare signature equality. */
+    fallbackMatched: 0,
+    /** Same-name candidates exist but none matched the full signature. */
+    fallbackUnmatched: 0,
+};
+
+/** @internal Statistic keys of {@link getMethodFallbackStats}. */
+export type GetMethodFallbackStatKey = keyof typeof getMethodFallbackStats;
+
+/** @internal Increment one getMethod fallback counter. */
+export function recordGetMethodFallbackStat(key: GetMethodFallbackStatKey): void {
+    getMethodFallbackStats[key]++;
+}
+
+/** @internal Return a copy of the current counters. */
+export function snapshotGetMethodFallbackStats(): Readonly<Record<GetMethodFallbackStatKey, number>> {
+    return { ...getMethodFallbackStats };
+}
+
+/** @internal Reset all counters (for test isolation and benchmark sampling windows). */
+export function resetGetMethodFallbackStats(): void {
+    for (const key of Object.keys(getMethodFallbackStats) as GetMethodFallbackStatKey[]) {
+        getMethodFallbackStats[key] = 0;
+    }
 }
 
 /**
@@ -102,13 +142,19 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private genericsTypes?: GenericType[];
     private realTypes?: Type[];
 
-    /** @internal SigIDs of direct instance methods. undefined = no methods allocated yet. */
-    private topMethodSigIDs?: Int32Array;
-    private topMethodCount: number = 0;
+    /**
+     * @internal Name index of direct instance methods: full method name → selected SigIDs
+     * (impl SigID, or the first declare SigID for declare-only methods), in add order.
+     * One entry per method; same-name coexistence only for overload-supported languages (CXX).
+     * undefined = no instance methods yet.
+     */
+    private methodNameIndex?: Map<string, number[]>;
 
-    /** @internal SigIDs of direct static methods. undefined = no static methods allocated yet. */
-    private topStaticMethodSigIDs?: Int32Array;
-    private topStaticMethodCount: number = 0;
+    /**
+     * @internal Name index of direct static methods. Same layout as {@link methodNameIndex}.
+     * undefined = no static methods yet.
+     */
+    private staticMethodNameIndex?: Map<string, number[]>;
 
     /** @internal SigIDs of direct subclasses (parent→child back-references). undefined = none yet. */
     private extendedClassSigIDs?: Int32Array;
@@ -641,21 +687,25 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     public getMethods(generated?: boolean): ArkMethod[] {
         const result: ArkMethod[] = [];
         const reg = this.registry;
-        const arr = this.topMethodSigIDs;
-        if (arr) {
-            for (let i = 0; i < this.topMethodCount; i++) {
-                const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-                if (m && (generated || !m.isGenerated())) {
-                    result.push(m);
+        const index = this.methodNameIndex;
+        if (index) {
+            for (const ids of index.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                    if (m && (generated || !m.isGenerated())) {
+                        result.push(m);
+                    }
                 }
             }
         }
-        const sArr = this.topStaticMethodSigIDs;
-        if (sArr) {
-            for (let i = 0; i < this.topStaticMethodCount; i++) {
-                const m = reg.methodSigCanonicalizer.getModel(sArr[i]);
-                if (m && (generated || !m.isGenerated())) {
-                    result.push(m);
+        const staticIndex = this.staticMethodNameIndex;
+        if (staticIndex) {
+            for (const ids of staticIndex.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                    if (m && (generated || !m.isGenerated())) {
+                        result.push(m);
+                    }
                 }
             }
         }
@@ -677,27 +727,34 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             if (mtd !== undefined && mtd.getDeclaringClassID() === this.classSigID) {
                 return mtd;
             }
+            // B1 埋点（收窄决策数据源）：fast path 落空原因二分——
+            // noModel = 签名已 intern 但无 model（全槽注册后应仅剩闭包重建等）；
+            // foreignOwner = 有 model 但归属他类（C++ 跨类借用）。
+            recordGetMethodFallbackStat(mtd === undefined ? 'fastPathNoModel' : 'fastPathForeignOwner');
         }
         // Fallback: class-local traversal with signature matching.
         // 不能删除（结构性缺口承载者）：
         // ① declare[k>0] 无 model——addMethod 只注册 impl ?? declare[0]，而
         //    matchMethodSignature 为可选参数/重载调用点选出的非首选声明签名
         //    （callgraph callee 解析主链路，PagBuilder/CallGraph/RTA 等）只能在此命中；
+        //    → B1 全槽注册后：declare 槽已注册，此缺口关闭，观察埋点残余；
         // ② 闭包 declare 重建签名（updateNestedMethodWithClosures 只 intern 不注册）；
         // ③ C++ 跨类借用（声明方法借实现侧签名，fast path 归属校验失败后在此命中）。
-        // 收窄路径（独立轮次）：addMethod 补齐 declare 全槽注册（需带仲裁）→ 命中
-        // 计数验证残余 → 最终收窄为 CXX/unclear 归属专属。
+        // 收窄路径（独立轮次）：埋点数据（A2 基准）验证残余 → 最终收窄为 CXX/unclear 归属专属。
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
         const methodsWithSameName = this.getAllMethodsWithName(methodName);
         if (methodsWithSameName.length === 0) {
+            recordGetMethodFallbackStat('fallbackNameMiss');
             return null;
         }
         for (const mtd of methodsWithSameName) {
             let methodMatched = this.findMatchingMethod(mtd, methodSignature);
             if (methodMatched) {
+                recordGetMethodFallbackStat('fallbackMatched');
                 return methodMatched;
             }
         }
+        recordGetMethodFallbackStat('fallbackUnmatched');
         return null;
     }
 
@@ -725,9 +782,10 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // 注：method WithName 系列（getMethodWithName / getStaticMethodWithName /
     // getMethodsWithName / getStaticMethodsWithName / getAllMethodsWithName）不可
-    // 签名化——MethodSignature 身份含参数列表与返回类型，方法名不足以构造签名；
-    // 且 methodMatchesName 的 '%origin$outer' 按 origin 前缀匹配是被测试守护的
-    // 公开语义（替代历史 dual-registration），非内部实现细节。
+    // 签名化——MethodSignature 身份含参数列表与返回类型，方法名不足以构造签名。
+    // 名字查找走类内单键名字索引（methodNameIndex / staticMethodNameIndex，
+    // 完整名精确匹配）；'%origin$outer' 组合名的裸 origin 前缀匹配语义已退役
+    //（origin 键的唯一理由 methodMatchesName 第二分支已删除，嵌套方法以完整名查询）。
     public getMethodWithName(methodName: string): ArkMethod | null {
         const sameNameMethods = this.getMethodsWithName(methodName);
         if (sameNameMethods.length === 0) {
@@ -757,17 +815,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     /**
-     * Whether a method's (possibly composed) name matches the given plain name.
-     * A nested method is stored under its full composed name `%origin$outer`; it should
-     * also be reachable by its plain origin name (replacing the previous dual-registration
-     * of origin names in the method map).
-     */
-    private static methodMatchesName(mtd: ArkMethod, name: string): boolean {
-        const n = mtd.getName();
-        return n === name || n.startsWith(NAME_PREFIX + name + NAME_DELIMITER);
-    }
-
-    /**
      * add a method in class.
      */
     public addMethod(method: ArkMethod): void {
@@ -775,13 +822,50 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (id === undefined || id <= 0) {
             // Unreachable in normal flows: builders always set an implementation or declaration
             // signature before adding the method. Log loudly so violations surface immediately.
-            logger.error(`Cannot add method '${method.getName()}' to class '${this.getName()}': it has no interned signature.`);
+            logger.error(`Cannot add method (SigID=${method.getMethodSigID()}) to class (SigID=${this.getClassSigID()}): it has no interned signature.`);
             return;
         }
+        const canonicalizer = this.registry.methodSigCanonicalizer;
         // The class index is authoritative: registering here (unconditionally) marks the final
         // winner of any same-signature merge chain performed by builders.
-        this.registry.methodSigCanonicalizer.setModel(id, method);
+        canonicalizer.setModel(id, method);
+        // B1 full-slot registration: the remaining declare slots also resolve to this method,
+        // so getMethod(sig) hits the canonicalizer fast path for any declared signature
+        // (previously declare[k>0] had no model and could only be matched by the fallback).
+        const declareSigIDs = method.getDeclareSigIDs();
+        if (declareSigIDs !== null && declareSigIDs !== undefined) {
+            for (let i = 0; i < declareSigIDs.length; i++) {
+                const declareID = declareSigIDs[i];
+                if (declareID > 0 && declareID !== id) {
+                    this.registerDeclareSlotWithArbitration(canonicalizer, declareID, method);
+                }
+            }
+        }
         this.updateMethodIndex(method, id);
+    }
+
+    /**
+     * @internal Register a method as the model of one of its non-primary declare slots.
+     *
+     * Arbitration (single rule, no same-class sibling protection — addMethod is the
+     * terminal registration point where the merge winner must take over same-class
+     * declare slots; compare registerImplModelWithArbitration in ArkMethod for the
+     * construction-time rules):
+     * - a slot already held by a body-carrying method is never taken over by a
+     *   body-less one (C++ decl/impl split added in reverse order).
+     */
+    private registerDeclareSlotWithArbitration(
+        canonicalizer: { getModel(id: number): ArkMethod | undefined; setModel(id: number, model: ArkMethod): void },
+        declareID: number,
+        method: ArkMethod
+    ): void {
+        const existing = canonicalizer.getModel(declareID);
+        if (existing !== undefined && existing !== method) {
+            if (existing.getBody() !== undefined && method.getBody() === undefined) {
+                return;
+            }
+        }
+        canonicalizer.setModel(declareID, method);
     }
 
     /**
@@ -793,20 +877,19 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private updateMethodIndex(newMethod: ArkMethod, sigID: number): void {
         if (newMethod.isStatic()) {
             if (!ModelUtils.isLanguageOverloadSupport(this.getLanguage())) {
-                // Non-overload languages: same-name methods replace each other in place,
-                // preserving the index position of the first occurrence.
-                const insertAt = this.removeStaticMethodsByName(newMethod.getName());
-                this.insertTopStaticMethodSigID(sigID, insertAt);
+                // Non-overload languages: same-name methods replace each other. set() on an
+                // existing key keeps its insertion position, so the first-occurrence order
+                // of getMethods is stable across same-name re-adds.
+                this.setStaticMethodNameEntry(newMethod.getName(), sigID);
             } else if (!this.replaceTopStaticMethodSigIDByMatch(newMethod)) {
-                this.addTopStaticMethodSigID(sigID);
+                this.appendStaticMethodNameEntry(newMethod.getName(), sigID);
             }
             return;
         }
         if (!ModelUtils.isLanguageOverloadSupport(this.getLanguage())) {
-            const insertAt = this.removeMethodsByName(newMethod.getName());
-            this.insertTopMethodSigID(sigID, insertAt);
+            this.setMethodNameEntry(newMethod.getName(), sigID);
         } else if (!this.replaceTopMethodSigIDByMatch(newMethod)) {
-            this.addTopMethodSigID(sigID);
+            this.appendMethodNameEntry(newMethod.getName(), sigID);
         }
     }
 
@@ -817,15 +900,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of methods in the class.
      */
     public getMethodsWithName(methodName: string): ArkMethod[] {
-        const arr = this.topMethodSigIDs;
-        if (!arr) {
+        const ids = this.methodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return [];
         }
         const reg = this.registry;
         const result: ArkMethod[] = [];
-        for (let i = 0; i < this.topMethodCount; i++) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && ArkClass.methodMatchesName(m, methodName)) {
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
                 result.push(m);
             }
         }
@@ -839,15 +922,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of methods in the class.
      */
     public getStaticMethodsWithName(methodName: string): ArkMethod[] {
-        const arr = this.topStaticMethodSigIDs;
-        if (!arr) {
+        const ids = this.staticMethodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return [];
         }
         const reg = this.registry;
         const result: ArkMethod[] = [];
-        for (let i = 0; i < this.topStaticMethodCount; i++) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && ArkClass.methodMatchesName(m, methodName)) {
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
                 result.push(m);
             }
         }
@@ -1003,236 +1086,142 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.staticInitMethodSigID = arkMethod.getMethodSigID();
     }
 
-    // --- Instance method SigID index ---
+    // --- Instance/static method name index ---
 
-    /** @internal Returns the SigIDs of direct instance methods, or null if none exist. */
-    public getTopMethodSigIDs(): Int32Array | null {
-        return this.topMethodSigIDs?.subarray(0, this.topMethodCount) ?? null;
+    /** @internal Returns the instance method name index, or undefined if no instance methods exist. */
+    public getMethodNameIndex(): Map<string, number[]> | undefined {
+        return this.methodNameIndex;
     }
 
-    /** @internal Returns the number of direct instance methods. */
-    public getTopMethodCount(): number {
-        return this.topMethodCount;
+    /** @internal Returns the static method name index, or undefined if no static methods exist. */
+    public getStaticMethodNameIndex(): Map<string, number[]> | undefined {
+        return this.staticMethodNameIndex;
     }
 
-    /** @internal Checks whether a method with the given SigID is a direct instance method. */
-    public hasTopMethodWithID(id: number): boolean {
-        const arr = this.topMethodSigIDs;
-        if (!arr) {
-            return false;
-        }
-        const count = this.topMethodCount;
-        for (let i = 0; i < count; i++) {
-            if (arr[i] === id) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** @internal Ensures the instance method Int32Array has at least minCapacity slots. */
-    private ensureTopMethodCapacity(minCapacity: number): void {
-        if (!this.topMethodSigIDs) {
-            this.topMethodSigIDs = new Int32Array(Math.max(minCapacity, 8));
+    /** @internal Appends the SigID under the method name in the instance index. */
+    private appendMethodNameEntry(name: string, id: number): void {
+        const ids = this.methodNameIndex?.get(name);
+        if (ids !== undefined) {
+            ids.push(id);
             return;
         }
-        if (this.topMethodSigIDs.length < minCapacity) {
-            const newCapacity = Math.max(minCapacity, this.topMethodSigIDs.length * 2);
-            const newArray = new Int32Array(newCapacity);
-            newArray.set(this.topMethodSigIDs.subarray(0, this.topMethodCount));
-            this.topMethodSigIDs = newArray;
-        }
+        (this.methodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
     }
 
-    /** @internal Appends an instance method SigID to the index. */
-    private addTopMethodSigID(id: number): void {
-        this.ensureTopMethodCapacity(this.topMethodCount + 1);
-        this.topMethodSigIDs![this.topMethodCount++] = id;
-    }
-
-    /** @internal Inserts an instance method SigID at the given index (default append). */
-    private insertTopMethodSigID(id: number, index: number): void {
-        if (index < 0 || index >= this.topMethodCount) {
-            this.addTopMethodSigID(id);
+    /** @internal Appends the SigID under the method name in the static index. */
+    private appendStaticMethodNameEntry(name: string, id: number): void {
+        const ids = this.staticMethodNameIndex?.get(name);
+        if (ids !== undefined) {
+            ids.push(id);
             return;
         }
-        this.ensureTopMethodCapacity(this.topMethodCount + 1);
-        const arr = this.topMethodSigIDs!;
-        for (let i = this.topMethodCount; i > index; i--) {
-            arr[i] = arr[i - 1];
-        }
-        arr[index] = id;
-        this.topMethodCount++;
+        (this.staticMethodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
     }
 
-    /** @internal Removes an instance method SigID from the index (swap-remove). */
-    private removeTopMethodSigID(id: number): void {
-        const arr = this.topMethodSigIDs;
-        if (!arr) {
-            return;
-        }
-        const count = this.topMethodCount;
-        for (let i = 0; i < count; i++) {
-            if (arr[i] === id) {
-                arr[i] = arr[--this.topMethodCount];
-                return;
-            }
-        }
+    /**
+     * @internal Sets the instance method name entry to a single SigID. Overwrites any
+     * previous same-name entry; set() on an existing key preserves its insertion position
+     * (non-overload same-name replacement keeps the first-occurrence order).
+     */
+    private setMethodNameEntry(name: string, id: number): void {
+        (this.methodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
     }
 
-    /** @internal Removes all instance methods whose name matches (exact or nested-origin prefix). Returns the first removed index, or -1. */
-    private removeMethodsByName(name: string): number {
-        const arr = this.topMethodSigIDs;
-        if (!arr) {
-            return -1;
-        }
-        const reg = this.registry;
-        let firstIndex = -1;
-        let i = 0;
-        while (i < this.topMethodCount) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && ArkClass.methodMatchesName(m, name)) {
-                if (firstIndex === -1) {
-                    firstIndex = i;
-                }
-                arr[i] = arr[--this.topMethodCount];
-            } else {
-                i++;
-            }
-        }
-        return firstIndex;
+    /**
+     * @internal Sets the static method name entry to a single SigID. See {@link setMethodNameEntry}.
+     */
+    private setStaticMethodNameEntry(name: string, id: number): void {
+        (this.staticMethodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
     }
 
-    /** @internal For overload-supported languages: replace the SigID of the same-signature instance method. Returns true if replaced. */
+    /**
+     * @internal For overload-supported languages: replace the SigID of the same-signature
+     * instance method in place. Returns true if replaced.
+     */
     private replaceTopMethodSigIDByMatch(newMethod: ArkMethod): boolean {
-        const arr = this.topMethodSigIDs;
-        if (!arr) {
+        const index = this.methodNameIndex;
+        if (!index) {
             return false;
         }
         const reg = this.registry;
         const newSig = newMethod.getSignature();
-        for (let i = 0; i < this.topMethodCount; i++) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && m.getSignature().isMatch(newSig)) {
-                arr[i] = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0] ?? arr[i];
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // --- Static method SigID index ---
-
-    /** @internal Returns the SigIDs of direct static methods, or null if none exist. */
-    public getTopStaticMethodSigIDs(): Int32Array | null {
-        return this.topStaticMethodSigIDs?.subarray(0, this.topStaticMethodCount) ?? null;
-    }
-
-    /** @internal Returns the number of direct static methods. */
-    public getTopStaticMethodCount(): number {
-        return this.topStaticMethodCount;
-    }
-
-    /** @internal Checks whether a method with the given SigID is a direct static method. */
-    public hasTopStaticMethodWithID(id: number): boolean {
-        const arr = this.topStaticMethodSigIDs;
-        if (!arr) {
+        const newID = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0];
+        if (newID === undefined) {
             return false;
         }
-        const count = this.topStaticMethodCount;
-        for (let i = 0; i < count; i++) {
-            if (arr[i] === id) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** @internal Ensures the static method Int32Array has at least minCapacity slots. */
-    private ensureTopStaticMethodCapacity(minCapacity: number): void {
-        if (!this.topStaticMethodSigIDs) {
-            this.topStaticMethodSigIDs = new Int32Array(Math.max(minCapacity, 8));
-            return;
-        }
-        if (this.topStaticMethodSigIDs.length < minCapacity) {
-            const newCapacity = Math.max(minCapacity, this.topStaticMethodSigIDs.length * 2);
-            const newArray = new Int32Array(newCapacity);
-            newArray.set(this.topStaticMethodSigIDs.subarray(0, this.topStaticMethodCount));
-            this.topStaticMethodSigIDs = newArray;
-        }
-    }
-
-    /** @internal Appends a static method SigID to the index. */
-    private addTopStaticMethodSigID(id: number): void {
-        this.ensureTopStaticMethodCapacity(this.topStaticMethodCount + 1);
-        this.topStaticMethodSigIDs![this.topStaticMethodCount++] = id;
-    }
-
-    /** @internal Inserts a static method SigID at the given index (default append). */
-    private insertTopStaticMethodSigID(id: number, index: number): void {
-        if (index < 0 || index >= this.topStaticMethodCount) {
-            this.addTopStaticMethodSigID(id);
-            return;
-        }
-        this.ensureTopStaticMethodCapacity(this.topStaticMethodCount + 1);
-        const arr = this.topStaticMethodSigIDs!;
-        for (let i = this.topStaticMethodCount; i > index; i--) {
-            arr[i] = arr[i - 1];
-        }
-        arr[index] = id;
-        this.topStaticMethodCount++;
-    }
-
-    /** @internal Removes a static method SigID from the index (swap-remove). */
-    private removeTopStaticMethodSigID(id: number): void {
-        const arr = this.topStaticMethodSigIDs;
-        if (!arr) {
-            return;
-        }
-        const count = this.topStaticMethodCount;
-        for (let i = 0; i < count; i++) {
-            if (arr[i] === id) {
-                arr[i] = arr[--this.topStaticMethodCount];
-                return;
-            }
-        }
-    }
-
-    /** @internal Removes all static methods whose name matches (exact or nested-origin prefix). Returns the first removed index, or -1. */
-    private removeStaticMethodsByName(name: string): number {
-        const arr = this.topStaticMethodSigIDs;
-        if (!arr) {
-            return -1;
-        }
-        const reg = this.registry;
-        let firstIndex = -1;
-        let i = 0;
-        while (i < this.topStaticMethodCount) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && ArkClass.methodMatchesName(m, name)) {
-                if (firstIndex === -1) {
-                    firstIndex = i;
+        for (const ids of index.values()) {
+            for (let i = 0; i < ids.length; i++) {
+                const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                if (m && m.getSignature().isMatch(newSig)) {
+                    ids[i] = newID;
+                    return true;
                 }
-                arr[i] = arr[--this.topStaticMethodCount];
-            } else {
-                i++;
             }
         }
-        return firstIndex;
+        return false;
     }
 
-    /** @internal For overload-supported languages: replace the SigID of the same-signature static method. Returns true if replaced. */
+    /**
+     * @internal For overload-supported languages: replace the SigID of the same-signature
+     * static method in place. Returns true if replaced.
+     */
     private replaceTopStaticMethodSigIDByMatch(newMethod: ArkMethod): boolean {
-        const arr = this.topStaticMethodSigIDs;
-        if (!arr) {
+        const index = this.staticMethodNameIndex;
+        if (!index) {
             return false;
         }
         const reg = this.registry;
         const newSig = newMethod.getSignature();
-        for (let i = 0; i < this.topStaticMethodCount; i++) {
-            const m = reg.methodSigCanonicalizer.getModel(arr[i]);
-            if (m && m.getSignature().isMatch(newSig)) {
-                arr[i] = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0] ?? arr[i];
+        const newID = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0];
+        if (newID === undefined) {
+            return false;
+        }
+        for (const ids of index.values()) {
+            for (let i = 0; i < ids.length; i++) {
+                const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                if (m && m.getSignature().isMatch(newSig)) {
+                    ids[i] = newID;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** @internal Removes the SigID of one instance method from the index (exact ID match). Returns true if it was held. */
+    private removeTopMethodSigID(id: number): boolean {
+        const index = this.methodNameIndex;
+        if (!index) {
+            return false;
+        }
+        for (const [name, ids] of index) {
+            const i = ids.indexOf(id);
+            if (i >= 0) {
+                if (ids.length === 1) {
+                    index.delete(name);
+                } else {
+                    ids.splice(i, 1);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Removes the SigID of one static method from the index (exact ID match). Returns true if it was held. */
+    private removeTopStaticMethodSigID(id: number): boolean {
+        const index = this.staticMethodNameIndex;
+        if (!index) {
+            return false;
+        }
+        for (const [name, ids] of index) {
+            const i = ids.indexOf(id);
+            if (i >= 0) {
+                if (ids.length === 1) {
+                    index.delete(name);
+                } else {
+                    ids.splice(i, 1);
+                }
                 return true;
             }
         }
@@ -1464,15 +1453,9 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         const id = method.getMethodSigID() ?? method.getDeclareSigIDs()?.[0] ?? -1;
         let rtn: boolean = false;
         if (method.isStatic()) {
-            rtn = this.hasTopStaticMethodWithID(id);
-            if (rtn) {
-                this.removeTopStaticMethodSigID(id);
-            }
+            rtn = this.removeTopStaticMethodSigID(id);
         } else {
-            rtn = this.hasTopMethodWithID(id);
-            if (rtn) {
-                this.removeTopMethodSigID(id);
-            }
+            rtn = this.removeTopMethodSigID(id);
         }
         rtn &&= SignatureCanonicalizerRegistry.removeMethod(method);
         return rtn;
@@ -1500,16 +1483,20 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public clearAllReferences(): void {
         const reg = this.registry;
-        const arr = this.topMethodSigIDs;
-        if (arr) {
-            for (let i = 0; i < this.topMethodCount; i++) {
-                reg.methodSigCanonicalizer.getModel(arr[i])?.clearAllReferences();
+        const index = this.methodNameIndex;
+        if (index) {
+            for (const ids of index.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    reg.methodSigCanonicalizer.getModel(ids[i])?.clearAllReferences();
+                }
             }
         }
-        const sArr = this.topStaticMethodSigIDs;
-        if (sArr) {
-            for (let i = 0; i < this.topStaticMethodCount; i++) {
-                reg.methodSigCanonicalizer.getModel(sArr[i])?.clearAllReferences();
+        const staticIndex = this.staticMethodNameIndex;
+        if (staticIndex) {
+            for (const ids of staticIndex.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    reg.methodSigCanonicalizer.getModel(ids[i])?.clearAllReferences();
+                }
             }
         }
         for (const fld of this.getFields()) {
@@ -1523,10 +1510,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (staticInit) {
             staticInit.clearAllReferences();
         }
-        this.topMethodSigIDs = undefined;
-        this.topMethodCount = 0;
-        this.topStaticMethodSigIDs = undefined;
-        this.topStaticMethodCount = 0;
+        this.methodNameIndex = undefined;
+        this.staticMethodNameIndex = undefined;
         this.topFieldSigIDs = undefined;
         this.topFieldCount = 0;
         this.topStaticFieldSigIDs = undefined;

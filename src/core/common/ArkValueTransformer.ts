@@ -19,7 +19,6 @@ import { FullPosition } from '../base/Position';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import {
     AbstractBinopExpr,
-    AbstractInvokeExpr,
     ArkAwaitExpr,
     ArkCastExpr,
     ArkConditionExpr,
@@ -576,7 +575,9 @@ export class ArkValueTransformer {
         componentExpressionPosition: FullPosition,
         createArgsPositionsAllFlat: FullPosition[]
     ): ValueAndStmts {
-        const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_CREATE_FUNCTION);
+        // 组件 create stub 签名 per-(name, method) 缓存——原每语句
+        // new 一行 temp（pop 侧已有同款缓存的对照实证）。
+        const createMethodSignature = ModelUtils.getOrCreateComponentMethodSig(componentName, COMPONENT_CREATE_FUNCTION);
         const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, createArgs);
         const createInvokeExprPositions = [componentExpressionPosition, ...createArgsPositionsAllFlat];
         const {
@@ -593,10 +594,8 @@ export class ArkValueTransformer {
 
     /** @internal Emit an If.branch invocation for the given branch index. */
     public generateBuilderIfBranch(index: number, position: FullPosition = FullPosition.DEFAULT): Stmt {
-        const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-            COMPONENT_IF,
-            COMPONENT_BRANCH_FUNCTION
-        );
+        // If.branch stub per-key 缓存
+        const branchMethodSignature = ModelUtils.getOrCreateComponentMethodSig(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
         const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [ValueUtil.getOrCreateNumberConst(index)]);
         const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
         branchInvokeStmt.setOperandOriginalPositions([position, FullPosition.DEFAULT]);
@@ -611,10 +610,13 @@ export class ArkValueTransformer {
             if (cls instanceof ArkClass) {
                 const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
                 if (commonSignature) {
+                    // U+（display 归一化）：AliasClassSignature 构造即 intern formal +
+                    // 双注册 origin ArkClass model（display 由 formal canonical 自持）。
                     const classSignature = new AliasClassSignature(componentName, commonSignature.getDeclaringClassSignature());
-                    // Object path (not the SigID overload): an AliasClassSignature would be folded
-                    // into the origin class's canonical instance by getId, losing the display name.
                     popMethodSignature = new MethodSignature(classSignature, commonSignature.getMethodSubSignature());
+                    // methodSig 侧同款 intern + 双注册——expr 的 route() formal 命中持
+                    // SigID，scene.getMethod 经 getModel 直命中 CommonMethod.pop。
+                    internAliasMethodSignature(popMethodSignature, commonSignature);
                 }
             }
             popMethodSignature =
@@ -1012,26 +1014,38 @@ export class ArkValueTransformer {
         callExpression: ts.CallExpression | ts.TaggedTemplateExpression
     ): ValueAndStmts {
         const stmts = [...currStmts];
+        const invokeExprPosition = FullPosition.buildFromNode(callExpression, this.sourceFile);
+
+        // P1（round26）：属性访问 callee（`X.m()` 形态）专用路径——"先造后拆"
+        // 的消除。原路径：propertyAccessExpressionToValue 先构造 fieldRef（temp
+        // field 登记一行）→ handleFieldRefInvoke 拆解取 base+方法名 → 原 ref
+        // 丢弃（从不进 IR）。专用路径直接从 base+方法名派生 invoke，跳过 ref
+        // 构造与登记；base 物化与签名派生逐字段照搬原两函数（IR 产物等价）。
+        // round27 扩展：入口先剥括号（`(obj.m)()` ≡ `obj.m()`——ECMAScript
+        // 括号不改变 this 绑定）；elementAccess callee（`obj[key]()`）同款
+        // 专用路径（dynamic 分支不再构造中间 fieldRef；Array/String 分支复刻
+        // handleArrayRefInvoke 含 stmts.pop() quirk）。堵完后 callee 侧
+        // fieldRef 先造后拆口子清零——handleFieldRefInvoke/handleArrayRefInvoke
+        // 随之删除；残余 fieldRef callee（理论不可达）掉 handleDefaultInvoke
+        // 物化兜底（行为可见不静默）。
+        let calleeNode: ts.LeftHandSideExpression = functionNameNode;
+        while (ts.isParenthesizedExpression(calleeNode)) {
+            calleeNode = calleeNode.expression as ts.LeftHandSideExpression;
+        }
+        if (ts.isPropertyAccessExpression(calleeNode)) {
+            return this.propertyAccessCalleeToInvoke(calleeNode, args, invokeExprPosition, stmts);
+        }
+        if (ts.isElementAccessExpression(calleeNode)) {
+            return this.elementAccessCalleeToInvoke(calleeNode, args, invokeExprPosition, stmts);
+        }
+
         const { value: calleeValue, valueOriginalPositions: calleePositions, stmts: calleeStmts } = this.tsNodeToValueAndStmts(functionNameNode);
         stmts.push(...calleeStmts);
 
-        const invokeExprPosition = FullPosition.buildFromNode(callExpression, this.sourceFile);
-
-        let result: ValueAndStmts;
-        if (calleeValue instanceof AbstractFieldRef) {
-            result = this.handleFieldRefInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
-        } else if (calleeValue instanceof Local) {
-            result = this.handleLocalInvoke(calleeValue, callExpression, args, invokeExprPosition, calleePositions, stmts);
-        } else if (calleeValue instanceof ArkArrayRef && ts.isElementAccessExpression(functionNameNode)) {
-            result = this.handleArrayRefInvoke(calleeValue, functionNameNode as ts.ElementAccessExpression, args,
-                invokeExprPosition, calleePositions, stmts);
-        } else {
-            result = this.handleDefaultInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
+        if (calleeValue instanceof Local) {
+            return this.handleLocalInvoke(calleeValue, callExpression, args, invokeExprPosition, calleePositions, stmts);
         }
-        if (result.value instanceof AbstractInvokeExpr) {
-            result.value.setInvokeFullPosition(this.buildInvokeFullPosition(functionNameNode, callExpression));
-        }
-        return result;
+        return this.handleDefaultInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
     }
 
     private buildInvokeFullPosition(
@@ -1068,8 +1082,31 @@ export class ArkValueTransformer {
         return expr;
     }
 
-    private handleFieldRefInvoke(
-        calleeValue: AbstractFieldRef,
+    /**
+     * P1（round26）：属性访问 callee（`X.m()` / `this.m()` / `super.m()` /
+     * `Class.staticM()` / `Object.keys()`）专用转换——不构造中间 fieldRef
+     * （原"先造后拆"路径的 ref 从不进 IR，temp field 登记纯开销，大型应用
+     * 实测百万级）。base 物化（propertyAccessExpressionToValue 同款）与
+     * methodSignature 派生（handleFieldRefInvoke 同款三分支）逐字段照搬：
+     * - OBJECT 特判：locals.delete 副作用 + OBJECT_CLASS_SIGNATURE + static
+     *   invoke（positions 不含 basePositions——照搬原 static 分支）；
+     * - base Local+ClassType：base 类型的 ClassSignature（对象重载——unclear
+     *   走 temp、clear 走 formal 由构造器内处理，与原路径一致）；
+     * - base 类型不明：ClassSignature.DEFAULT 对象重载（等价原路径 fieldSig
+     *   declaringSigID=0 → getDeclaringSignature 三级查回 DEFAULT → class
+     *   分支；**非** ID 重载——两重载的 declaring 字段值/ID 不同）。
+     *
+     * round28 教训存档（M2a/M2b 实例缓存三轮全部回退，勿再尝试）：method 签名
+     * 身份 = declaringClass + name + **参数列表 + 返回类型**——`(base, name)` 键
+     * 不足以判定同一签名（createAVPlayer 重载 / SensorId 枚举字面量按值选重载
+     * 的实证）；且共享 temp 行的归宿被第一解析者垄断（retireWithReplacement
+     * 全局定向 + 跟随者三级查物化跟随，见 Builtin.TO_STRING 注释），键丢身份且
+     * 归宿 per-use 时共享在语义上就是错的。普通 method stub 一律每次 new；
+     * 白名单族（组件 create/pop/slice——键即完整身份、归宿与 per-use 无关）
+     * 见 ModelUtils.componentMethodSigCache / Builtin arrayStub。
+     */
+    private propertyAccessCalleeToInvoke(
+        propertyAccessExpression: ts.PropertyAccessExpression,
         args: {
             realGenericTypes: Type[] | undefined;
             argValues: Value[];
@@ -1077,32 +1114,174 @@ export class ArkValueTransformer {
             spreadFlags?: boolean[];
         },
         invokeExprPosition: FullPosition,
-        calleePositions: FullPosition[],
         currStmts: Stmt[]
     ): ValueAndStmts {
-        let methodSignature: MethodSignature;
-        const declareSignature = calleeValue.getFieldSignature().getDeclaringSignature();
-        if (declareSignature instanceof ClassSignature) {
-            // Object path: an unclear declaring signature is routed to the temp canonicalizer
-            // inside the constructor — no formal interning without a model.
-            methodSignature = new MethodSignature(declareSignature, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(calleeValue.getFieldName()));
-        } else {
-            methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(calleeValue.getFieldName());
+        // base 转换 + 物化——照搬 propertyAccessExpressionToValue。
+        const stmts = [...currStmts];
+        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
+        baseStmts.forEach(stmt => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(baseValue)) {
+            ({
+                value: baseValue,
+                valueOriginalPositions: basePositions,
+                stmts: baseStmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            baseStmts.forEach(stmt => stmts.push(stmt));
         }
+        if (!(baseValue instanceof Local)) {
+            ({
+                value: baseValue,
+                valueOriginalPositions: basePositions,
+                stmts: baseStmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            baseStmts.forEach(stmt => stmts.push(stmt));
+        }
+        const methodName = cloneText(propertyAccessExpression.name.getText(this.sourceFile));
 
+        // methodSignature 派生 + invoke 组装——照搬 handleFieldRefInvoke。
+        // round28-r3：M2a/M2b 缓存已回退（教训见方法注释），每次 new。
+        // round29：this.foo() callee 归一化——条件全满足时直连本类 impl sig
+        //（formal canonical，构造时 route formal 命中 → 零 temp 注册，每方法
+        // 0 行，比 M1 per-key 更彻底）。r3 边界的 this 例外论证：
+        // ① 零 temp → 不进归宿垄断射程（r3 三亚型全免疫）；② impl sig 身份完整
+        //（declaringClass + 参数 + 返回类型全 formal）；③ 推导期 preInfer 短路
+        // = 期望行为（签名即终态，无事可推——args 推导由 StmtInference.inferValue
+        // 的 uses 先序递归兜底）；④ 泛型方法 returnType 含 GenericType →
+        // isUnclearType=true → preInfer 继续 → setMethodSignature(impl 同实例)
+        // route 同 ID 幂等 + realGenericTypes 正常设置。
+        // 守卫：类型同一（this 类型 = 声明类，编译期确定——super/跨类自动比对不上
+        // 降级）；本类名字索引唯一命中（getMethodsWithName 只查 instance 索引，
+        // static 方法天然查不到 → this.staticFoo() 自动降级原路径走推导升级，
+        // 行为不变；同名多个如 getter/setter 对也降级）；非重载（declare ≤ 1，
+        // 重载选择依赖实参匹配——SensorId 教训）；impl sig 已设置（构建时序防御）。
+        // %dflt 不分流（已定案）：%dflt 上下文的 this 调用零测试样本且 ESM 顶层
+        // this 语义非法，接受理论性偏差（instanceinvoke + impl sig 亦是可解释 IR）。
+        let methodSignature: MethodSignature;
         let invokeExpr: Value;
         const invokeExprPositions: FullPosition[] = [invokeExprPosition];
-        if (calleeValue instanceof ArkInstanceFieldRef) {
-            invokeExpr = new ArkInstanceInvokeExpr(calleeValue.getBase(), methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
-            invokeExprPositions.push(...calleePositions.slice(1));
-        } else {
+        if (baseValue instanceof Local && baseValue.getName() === Builtin.OBJECT) {
+            // Object.xxx() 特判（照搬 propertyAccessExpressionToValue：含 locals.delete 副作用）。
+            this.locals.delete(baseValue.getName());
+            methodSignature = new MethodSignature(Builtin.OBJECT_CLASS_SIGNATURE, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
             invokeExpr = new ArkStaticInvokeExpr(methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+        } else {
+            let declareSignature: ClassSignature;
+            if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
+                const baseType = baseValue.getType() as ClassType;
+                const sameNameMethods =
+                    baseType.getClassSigID() === this.declaringClass.getClassSigID() ? this.declaringClass.getMethodsWithName(methodName) : [];
+                if (
+                    sameNameMethods.length === 1 &&
+                    sameNameMethods[0].getDeclareSigIDs() === undefined &&
+                    sameNameMethods[0].getImplementationSignature() !== null
+                ) {
+                    methodSignature = sameNameMethods[0].getSignature();
+                } else {
+                    // getClassSignature() (not getClassSigID()): the class may still be unclear and live
+                    // in the temp canonicalizer; the object overload interns it properly.
+                    declareSignature = baseType.getClassSignature();
+                    methodSignature = new MethodSignature(declareSignature, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
+                }
+            } else {
+                declareSignature = ClassSignature.DEFAULT;
+                methodSignature = new MethodSignature(declareSignature, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
+            }
+            invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+            invokeExprPositions.push(...basePositions);
         }
         invokeExprPositions.push(...args.argPositions);
         return {
             value: invokeExpr,
             valueOriginalPositions: invokeExprPositions,
-            stmts: currStmts,
+            stmts: stmts,
+        };
+    }
+
+    // round27：handleFieldRefInvoke 已删除——callee 侧 fieldRef 先造后拆口子
+    // 由 propertyAccessCalleeToInvoke / elementAccessCalleeToInvoke 直接消除
+    // （行为等价复刻），全库无残余调用方。
+
+    /**
+     * P1 扩展（round27）：元素访问 callee（`obj[key]()` 形态）专用转换——
+     * base/argument 转换与物化照搬 elementAccessExpressionToValueAndStmts
+     * 前半，按 base 类型分流（不再构造中间 fieldRef / ArkArrayRef 再拆解）：
+     * - Array/String：复刻 handleArrayRefInvoke——方法名用**源码 argument
+     *   文本**（cloneText），argument 物化语句经 stmts.pop() 丢弃（原 quirk
+     *   照搬：物化产物不再被引用），instance invoke；
+     * - 其他（dynamic）：复刻原 handleFieldRefInvoke 的 instance 分支——方法名
+     *   = 物化后 argumentValue.toString()（quirk 照搬：物化后可能是 temp 名），
+     *   MethodSignature 为 ClassSignature.DEFAULT 对象重载（等价原路径
+     *   fieldSig declaringSigID=0 → 三级查回 DEFAULT → class 分支）。
+     */
+    private elementAccessCalleeToInvoke(
+        elementAccessExpression: ts.ElementAccessExpression,
+        args: {
+            realGenericTypes: Type[] | undefined;
+            argValues: Value[];
+            argPositions: FullPosition[];
+            spreadFlags?: boolean[];
+        },
+        invokeExprPosition: FullPosition,
+        currStmts: Stmt[]
+    ): ValueAndStmts {
+        // base 转换 + 物化——照搬 elementAccessExpressionToValueAndStmts。
+        const stmts = [...currStmts];
+        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
+        baseStmts.forEach(stmt => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(baseValue)) {
+            ({
+                value: baseValue,
+                valueOriginalPositions: basePositions,
+                stmts: baseStmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            baseStmts.forEach(stmt => stmts.push(stmt));
+        }
+        if (!(baseValue instanceof Local)) {
+            ({
+                value: baseValue,
+                valueOriginalPositions: basePositions,
+                stmts: baseStmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            baseStmts.forEach(stmt => stmts.push(stmt));
+        }
+        // argument 转换 + 物化——照搬同函数后半。
+        let {
+            value: argumentValue,
+            valueOriginalPositions: arguPositions,
+            stmts: argumentStmts,
+        } = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
+        argumentStmts.forEach(stmt => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(argumentValue)) {
+            ({
+                value: argumentValue,
+                valueOriginalPositions: arguPositions,
+                stmts: argumentStmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(argumentValue, arguPositions));
+            argumentStmts.forEach(stmt => stmts.push(stmt));
+        }
+
+        const baseType = baseValue.getType();
+        let methodSignature: MethodSignature;
+        const invokeExprPositions: FullPosition[] = [invokeExprPosition];
+        if (baseType instanceof ArrayType || baseType instanceof StringType) {
+            // Array/String 分支——复刻 handleArrayRefInvoke（含 stmts.pop() quirk：
+            // 方法名用源码文本，argument 物化 stmt 丢弃）。
+            methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(
+                cloneText(elementAccessExpression.argumentExpression.getText(this.sourceFile))
+            );
+            stmts.pop();
+            invokeExprPositions.push(basePositions[0]);
+        } else {
+            // dynamic 分支——复刻原 handleFieldRefInvoke instance 路径。
+            methodSignature = new MethodSignature(ClassSignature.DEFAULT, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(argumentValue.toString()));
+            invokeExprPositions.push(...basePositions, ...arguPositions);
+        }
+        const invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+        invokeExprPositions.push(...args.argPositions);
+        return {
+            value: invokeExpr,
+            valueOriginalPositions: invokeExprPositions,
+            stmts: stmts,
         };
     }
 
@@ -1159,30 +1338,8 @@ export class ArkValueTransformer {
         return (calleeName === COMPONENT_FOR_EACH || calleeName === COMPONENT_LAZY_FOR_EACH) && ts.isCallExpression(callExpression);
     }
 
-    private handleArrayRefInvoke(
-        calleeValue: ArkArrayRef,
-        functionNameNode: ts.ElementAccessExpression,
-        args: {
-            realGenericTypes: Type[] | undefined;
-            argValues: Value[];
-            argPositions: FullPosition[];
-            spreadFlags?: boolean[];
-        },
-        invokeExprPosition: FullPosition,
-        calleePositions: FullPosition[],
-        currStmts: Stmt[]
-    ): ValueAndStmts {
-        const stmts = [...currStmts];
-        const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(cloneText(functionNameNode.argumentExpression.getText()));
-        stmts.pop();
-        const invokeExpr = new ArkInstanceInvokeExpr(calleeValue.getBase(), methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
-        const invokeExprPositions: FullPosition[] = [invokeExprPosition, calleePositions.slice(1)[0], ...args.argPositions];
-        return {
-            value: invokeExpr,
-            valueOriginalPositions: invokeExprPositions,
-            stmts: stmts,
-        };
-    }
+    // round27：handleArrayRefInvoke 已删除——Array/String 分支由
+    // elementAccessCalleeToInvoke 复刻（含 stmts.pop() quirk），无残余调用方。
 
     private handleDefaultInvoke(
         calleeValue: Value,
@@ -1923,10 +2080,9 @@ export class ArkValueTransformer {
                     targetLocal = ts.isBindingElement(element) ? this.addNewLocal(elementName) : this.getOrCreateLocal(elementName);
                 }
 
-                const sliceMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(Builtin.SLICE);
-                // Object path: the Array stub is unclear and is routed to the temp
-                // canonicalizer inside the constructor — no formal interning without a model.
-                const sliceMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, sliceMethodSubSignature);
+                // round28 M1：slice stub per-name 实例缓存（stub-only——保持原
+                // "不查 SDK 直接造 stub"语义，值构造逐字段一致；原每次 new 一行 temp）。
+                const sliceMethodSignature = Builtin.getOrCreateArrayStubMethodSignature(Builtin.SLICE);
                 const sliceInvokeExpr = new ArkInstanceInvokeExpr(arrayTempLocal, sliceMethodSignature, [ValueUtil.getOrCreateNumberConst(i)]);
                 const sliceInvokeExprPositions = [wholePosition, targetLocalPosition];
                 const assignStmt = new ArkAssignStmt(targetLocal, sliceInvokeExpr);

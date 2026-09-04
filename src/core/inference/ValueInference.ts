@@ -335,6 +335,18 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
+        if (result === value) {
+            // round28-r3 批 3（isStatic 形态升级防御）：签名已解析为 static 但 expr
+            // 停留 instance 形态的残余在此收敛——正常升级依赖 inferInvokeExpr 族返回
+            // 替换 expr（invokeMatchedMethod 的 isStatic 分支），物化跟随/推导短路
+            // 等场景可能就地 set 了 static 签名却未换形态（OperandOriginalPositions
+            // 实证）。base 为 super 时保持 instance（super.staticM() 的 postInfer
+            // base 替换语义优先，staticinvoke 丢弃 receiver 虽语义等价但保守排除）。
+            const sig = value.getMethodSignature();
+            if (sig.getMethodSubSignature().isStatic() && value.getBase().getName() !== SUPER_NAME) {
+                return new ArkStaticInvokeExpr(sig, value.getArgs(), value.getRealGenericTypes(), value.getSpreadFlags());
+            }
+        }
         return !result || result === value ? undefined : result;
     }
 
@@ -721,7 +733,11 @@ export class LocalInference extends ValueInference<Local> {
     }
 
     public preInfer(value: Local): boolean {
-        return TypeInference.isUnclearType(value.getType());
+        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
+        // "unclear"): a local whose type is still null/undefined has not received a real
+        // type yet — treat it as needing inference, like unclear types.
+        const type = value.getType();
+        return TypeInference.isUnclearType(type) || type instanceof UndefinedType || type instanceof NullType;
     }
 
     public infer(value: Local, stmt: Stmt): Value | undefined {

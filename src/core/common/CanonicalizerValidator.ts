@@ -14,11 +14,16 @@
  */
 
 import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
-import { FileSignature, NamespaceSignature, ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
+import { FileSignature, NamespaceSignature, ClassSignature, FieldSignature, MethodSignature, AliasClassSignature } from '../model/ArkSignature';
 import { ArkFile } from '../model/ArkFile';
 import { ArkNamespace } from '../model/ArkNamespace';
 import { ArkClass } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
+import { AliasType, ArrayType, ClassType, EnumValueType, FunctionType, IntersectionType, LexicalEnvType, TupleType, Type, UnionType } from '../base/Type';
+import { AbstractInvokeExpr } from '../base/Expr';
+import { AbstractFieldRef, GlobalRef } from '../base/Ref';
+import { TempSignatureCanonicalizer } from './TempSignatureCanonicalizer';
+import { Canonicalizable } from './SignatureCanonicalizer';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CanonicalizerValidator');
@@ -274,10 +279,12 @@ export class CanonicalizerValidator {
                     violations.push(`[namespace] N7b: ID ${id} (${sig.toString()}) is not in parent ${parentSigID}'s top-namespace list`);
                 }
             } else {
-                const fileModel: ArkFile | undefined = reg.fileSigCanonicalizer.getModel(sig.getDeclaringFileSigId());
+                const fileModel: ArkFile | undefined = reg.fileSigCanonicalizer.getModel(sig.getDeclaringFileSigID());
                 if (fileModel === undefined) {
                     // N7c
-                    violations.push(`[namespace] N7c: top-level ID ${id} (${sig.toString()}) has declaring file SigID ${sig.getDeclaringFileSigId()} with no model`);
+                    violations.push(
+                        `[namespace] N7c: top-level ID ${id} (${sig.toString()}) has declaring file SigID ${sig.getDeclaringFileSigID()} with no model`
+                    );
                 } else if (!fileModel.hasTopNamespaceWithID(id)) {
                     // N7c
                     violations.push(`[namespace] N7c: top-level ID ${id} (${sig.toString()}) is not in its declaring file's top-namespace list`);
@@ -324,9 +331,10 @@ export class CanonicalizerValidator {
      *
      * C5   签名值唯一性：任意两个不同 ID 不得持有 equals() 相等的签名（守卫
      *      hash/equals 契约与 DEFAULT 值域坍缩；原理同 file R5）。
-     *      注：AliasClassSignature 的 aliasName 不参与 equals——别名值 intern
-     *      折叠到 origin 同一 ID（现状设计），不产生重复条目；若未来别名纳入
-     *      equals（别名折叠根治项），C5 自动开始守护别名独立 ID 语义。
+     *      注：U+（display 归一化）后 AliasClassSignature 的 aliasName **参与**
+     *      equals/hash——alias 是独立 formal 条目（同 aliasName+同 origin 维度
+     *      折叠、异名/与 origin 互不相等），本规则即守护该独立 ID 语义（两个
+     *      alias ID 值相等 = 契约破坏）。
      *
      * C6   model 挂载唯一性：同一 ArkClass 实例不得挂载于多个 ID。
      *
@@ -388,22 +396,32 @@ export class CanonicalizerValidator {
                 continue;
             }
 
+            // U+（display 归一化）：alias 条目（AliasClassSignature 一等 formal 签名）
+            // 按设计双注册 origin 的 ArkClass model——C4 的回指（model.getClassSigID()
+            // 指向 origin ID）、C6 的多 ID 挂载（origin model 同时挂 origin/alias ID）、
+            // C7 的挂载链（父 ns/顶层 file 的 top-class 列表只含 origin ID）均为合法
+            // 共享形态（round12 declare 全槽同构）；origin 条目自身的 C4/C6/C7 检查
+            // 照常执行，模型一致性由其守护。
+            const isAliasEntry = sig instanceof AliasClassSignature;
+
             // C4
             const back = model.getClassSigID();
-            if (back !== id) {
+            if (!isAliasEntry && back !== id) {
                 violations.push(`[class] C4: model at ID ${id} (${sig.toString()}) back-points to ${back}`);
             }
 
             // C6
-            if (seenModels.has(model)) {
-                violations.push(`[class] C6: model at ID ${id} (${sig.toString()}) is mounted at more than one ID`);
-            } else {
-                seenModels.add(model);
+            if (!isAliasEntry) {
+                if (seenModels.has(model)) {
+                    violations.push(`[class] C6: model at ID ${id} (${sig.toString()}) is mounted at more than one ID`);
+                } else {
+                    seenModels.add(model);
+                }
             }
 
-            // C7a/C7b/C7c（仅存活条目）
+            // C7a/C7b/C7c（仅存活条目；alias 条目豁免——挂载链以 origin 条目为准）
             const parentSigID = sig.getDeclaringNamespaceSigID();
-            if (parentSigID !== undefined) {
+            if (!isAliasEntry && parentSigID !== undefined) {
                 const parentModel = reg.namespaceSigCanonicalizer.getModel(parentSigID);
                 if (parentModel === undefined) {
                     // C7a
@@ -412,11 +430,13 @@ export class CanonicalizerValidator {
                     // C7b
                     violations.push(`[class] C7b: ID ${id} (${sig.toString()}) is not in parent namespace ${parentSigID}'s top-class list`);
                 }
-            } else {
+            } else if (!isAliasEntry) {
                 const fileModel: ArkFile | undefined = reg.fileSigCanonicalizer.getModel(sig.getDeclaringFileSigID());
                 if (fileModel === undefined) {
                     // C7c
-                    violations.push(`[class] C7c: top-level ID ${id} (${sig.toString()}) has declaring file SigID ${sig.getDeclaringFileSigID()} with no model`);
+                    violations.push(
+                        `[class] C7c: top-level ID ${id} (${sig.toString()}) has declaring file SigID ${sig.getDeclaringFileSigID()} with no model`
+                    );
                 } else if (!fileModel.hasTopClassWithID(id)) {
                     // C7c
                     violations.push(`[class] C7c: top-level ID ${id} (${sig.toString()}) is not in its declaring file's top-class list`);
@@ -486,8 +506,9 @@ export class CanonicalizerValidator {
      *           数组的既有不一致形态，联合判定免误报。
      *      注记：model 侧不存在 namespace 声明的 ArkField（ns 声明签名仅在
      *      引用侧，无 F7 的 ns 分支）；查询走 sig.getDeclaringClassSigID()
-     *      formal 直查（不经 declaringSignatureDisplay——AliasClassSignature
-     *      折叠形态 identity 已折到 origin SigID，display 仅影响展示）。
+     *      formal 直查（不经 declaringSignatureDisplay——U+ 后 declaringClass
+     *      为 AliasClassSignature 时 SigID 是独立的 alias ID，formal 直查命中
+     *      alias 条目，display 仅影响展示）。
      *
      * 执行语义：所有规则全量执行、任何违规不中断；违规逐条收集（规则号 + ID +
      * 签名描述），一次性汇总报告。全部规则均为 error 级。
@@ -567,14 +588,10 @@ export class CanonicalizerValidator {
             if (classModel === undefined) {
                 // F7a（含 sigDeclClassID 为 undefined/-1 的非法 model 侧形态：
                 // model 侧 field 一律 class 声明，ns/unclear 声明不该出现。）
-                violations.push(
-                    `[field] F7a: ID ${id} (${sig.toString()}) has declaring class SigID ${sigDeclClassID} with no model`
-                );
+                violations.push(`[field] F7a: ID ${id} (${sig.toString()}) has declaring class SigID ${sigDeclClassID} with no model`);
             } else if (!classModel.hasTopFieldWithID(id) && !classModel.hasTopStaticFieldWithID(id)) {
                 // F7b（联合判定，见函数头注记）
-                violations.push(
-                    `[field] F7b: ID ${id} (${sig.toString()}) is in neither of declaring class ${sigDeclClassID}'s field indexes`
-                );
+                violations.push(`[field] F7b: ID ${id} (${sig.toString()}) is in neither of declaring class ${sigDeclClassID}'s field indexes`);
             }
         }
 
@@ -673,13 +690,17 @@ export class CanonicalizerValidator {
             if (cls === undefined) {
                 continue;
             }
-            for (const id of cls.getTopMethodSigIDs() ?? []) {
-                indexHeld.add(id);
-                indexEntries.push({ clsID, id });
+            for (const ids of cls.getMethodNameIndex()?.values() ?? []) {
+                for (const id of ids) {
+                    indexHeld.add(id);
+                    indexEntries.push({ clsID, id });
+                }
             }
-            for (const id of cls.getTopStaticMethodSigIDs() ?? []) {
-                indexHeld.add(id);
-                indexEntries.push({ clsID, id });
+            for (const ids of cls.getStaticMethodNameIndex()?.values() ?? []) {
+                for (const id of ids) {
+                    indexHeld.add(id);
+                    indexEntries.push({ clsID, id });
+                }
             }
         }
 
@@ -713,14 +734,21 @@ export class CanonicalizerValidator {
             // M4（三方持有）
             const selfID = model.getMethodSigID();
             const declareHeld = (model.getDeclareSigIDs() ?? []).includes(id);
-            if (id !== selfID && !declareHeld && !indexHeld.has(id)) {
+            // U+（display 归一化）：alias 条目（declaringClass 为 AliasClassSignature
+            // 的一等 formal 签名）按设计双注册 origin model——model 由 origin 条目
+            // （selfID）持有，alias 条目本身不进 self/declare/index 任何一方，属
+            // 合法共享形态（round12 declare 全槽同构）。
+            const sigDeclClassForAlias = sig.getDeclaringClassSigID();
+            const isAliasEntry = sigDeclClassForAlias > 0 && reg.classSigCanonicalizer.get(sigDeclClassForAlias) instanceof AliasClassSignature;
+            if (!isAliasEntry && id !== selfID && !declareHeld && !indexHeld.has(id)) {
                 violations.push(`[method] M4: model at ID ${id} (${sig.toString()}) is held by no one (not self/declare/index)`);
             }
 
-            // M4b
+            // M4b（alias 条目跳过：sig 的 declaringClassSigID 是 alias ID，与 origin
+            // model 的 declaringClassID 必然不同——双注册的设计内形态）
             const modelDeclClassID = model.getDeclaringClassID();
             const sigDeclClassID = sig.getDeclaringClassSigID();
-            if (modelDeclClassID !== sigDeclClassID) {
+            if (!isAliasEntry && modelDeclClassID !== sigDeclClassID) {
                 violations.push(
                     `[method] M4b: model at ID ${id} (${sig.toString()}) has declaringClassID ${modelDeclClassID} ` +
                         `but the signature declares ${sigDeclClassID}`
@@ -757,6 +785,202 @@ export class CanonicalizerValidator {
         return violations;
     }
 
+    // ---------------------------------------------------------------------
+    // Temp weak-registry spaces validation
+    // ---------------------------------------------------------------------
+
+    /**
+     * 校验三个 temp 弱注册空间（class/method/field）的结构不变量，规则如下：
+     *
+     * T1  非陈旧性：非空 slot 的值不得已存在于 formal 空间。temp 注册的前提是
+     *     formal miss；若后来同值签名进入 formal（真实模型注册），该 slot 即
+     *     过期——消费方已可从 formal 解析，成为"可迁移未迁移"的陈旧残留
+     *     （持有者下次重路由 formal 命中时经 retireWithReplacement 置空）。
+     *     （注意：不做"全部 unclear"强断言——ClassType/FunctionType/Ref 等注册源
+     *     的条件是 formal miss，clear-but-unregistered 条目为设计内合法形态。）
+     *
+     * T2  register 幂等守护：槽位 ID ↔ 实例自带 symbol ID 双向一致。register 按
+     *     对象恒等幂等分配 ID（同实例复用、新实例新 ID），同一实例出现在两个
+     *     槽位（或实例自带 ID 与槽位不符）意味着 symbol 标记被破坏。
+     *
+     * T3  持有者 ID 有效性（B 轮三版索引表语义）：持有结构上声明的 temp SigID
+     *     必须指向非空 slot（未迁移）或有替换记录的已置空 slot（已迁移，惰性
+     *     物化痕迹态 formalID≥0 && tempSigID≠undefined 亦经此规则覆盖）。
+     *     两者皆无 = stale（Registry clear/dispose 后的残留）或从未注册的 ID
+     *     （构造 bug）。持有结构（判据一律用注册标记字段 getTempSigID /
+     *     getDeclaringClassTempSigID）：
+     *     - tempClass：ClassType（getTempSigID）、FieldSignature/MethodSignature
+     *       的 declaringClassTempSigID
+     *     - tempMethod：FunctionType/LexicalEnvType/AbstractInvokeExpr（getTempSigID）
+     *     - tempField：EnumValueType、AbstractFieldRef 即 ArkInstanceFieldRef/
+     *       ArkStaticFieldRef（getTempSigID）
+     *
+     * T4  持有可达性——**已退役**（B 轮，round20）：三版索引表 slot 强持有下，
+     *     "存活但无持有者"的 GC 驱动判定失去意义（slot 本身就是持有者，全保留
+     *     是设计决策——推导中间垃圾钉活到 dispose 属知情权衡，见 §26.3）。
+     *     若 C 轮引入 prune，再按需新建对应审计规则。
+     *
+     * 执行语义：所有规则全量执行、任何违规不中断；全部为 error 级。
+     *
+     * @returns 全部违规描述（空数组 = 三个空间干净）。
+     */
+    public static validateTempSpaces(): string[] {
+        return this.runTempSpaceValidation();
+    }
+
+    private static runTempSpaceValidation(): string[] {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const violations: string[] = [];
+        violations.push(...this.validateTempSpaceEntries('class', reg.tempClassSigCanonicalizer, reg.classSigCanonicalizer));
+        violations.push(...this.validateTempSpaceEntries('method', reg.tempMethodSigCanonicalizer, reg.methodSigCanonicalizer));
+        violations.push(...this.validateTempSpaceEntries('field', reg.tempFieldSigCanonicalizer, reg.fieldSigCanonicalizer));
+        this.checkTempHolderIDs(violations);
+        return violations;
+    }
+
+    /** T1 + T2：单空间的条目级校验。 */
+    private static validateTempSpaceEntries<S extends Canonicalizable>(
+        space: string,
+        temp: TempSignatureCanonicalizer<S>,
+        formal: { getExistingId(sig: S): number }
+    ): string[] {
+        const violations: string[] = [];
+        for (const id of temp.registeredIds()) {
+            const sig = temp.get(id);
+            if (sig === undefined) {
+                continue;
+            }
+            // T1: the value must not have landed in formal after the temp registration.
+            const formalId = formal.getExistingId(sig);
+            if (formalId !== -1) {
+                violations.push(`[temp-${space}] T1: live entry ${id} (${sig.toString()}) also exists in formal (ID ${formalId}) — stale temp registration`);
+            }
+            // T2: register idempotency — the instance's self-carried temp ID must equal its slot.
+            const selfId = temp.getExistingTempId(sig);
+            if (selfId !== id) {
+                violations.push(
+                    `[temp-${space}] T2: slot ${id} (${sig.toString()}) holds an instance whose self-carried temp ID is ${selfId === -1 ? 'unregistered' : selfId} — register idempotency broken`
+                );
+            }
+        }
+        return violations;
+    }
+
+    /**
+     * 模型树遍历（registry models 枚举，含 SDK）：执行 T3 持有者 ID 有效性校验
+     * （B 轮三版索引表语义——锚删除后持有者只剩 ID，校验对象从"锚实例注册一致"
+     * 改为"声明 ID 指向非空 slot 或有替换记录"）。
+     */
+    private static checkTempHolderIDs(violations: string[]): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+
+        const checkTempID = (space: string, tempSigID: number | undefined, holderDesc: string): void => {
+            if (tempSigID === undefined) {
+                return;
+            }
+            const temp =
+                space === 'class' ? reg.tempClassSigCanonicalizer : space === 'method' ? reg.tempMethodSigCanonicalizer : reg.tempFieldSigCanonicalizer;
+            const slotLive = temp.get(tempSigID) !== undefined;
+            const hasReplacement = temp.getReplacement(tempSigID) !== -1;
+            if (!slotLive && !hasReplacement) {
+                violations.push(
+                    `[temp-${space}] T3: ${holderDesc} declares temp SigID ${tempSigID} that is neither a live slot nor has a replacement record — stale or unregistered ID`
+                );
+            }
+        };
+
+        const visitedTypes = new Set<Type>();
+        const visitType = (type: Type | undefined | null, holderDesc: string): void => {
+            if (type === undefined || type === null || visitedTypes.has(type)) {
+                return;
+            }
+            visitedTypes.add(type);
+            if (type instanceof ClassType) {
+                checkTempID('class', type.getTempSigID(), `${holderDesc} (ClassType)`);
+                for (const gt of type.getRealGenericTypes() ?? []) {
+                    visitType(gt, holderDesc);
+                }
+            } else if (type instanceof FunctionType) {
+                checkTempID('method', type.getTempSigID(), `${holderDesc} (FunctionType)`);
+                for (const gt of type.getRealGenericTypes() ?? []) {
+                    visitType(gt, holderDesc);
+                }
+            } else if (type instanceof LexicalEnvType) {
+                checkTempID('method', type.getTempSigID(), `${holderDesc} (LexicalEnvType)`);
+                for (const closure of type.getClosures()) {
+                    visitType(closure.getType(), holderDesc);
+                }
+            } else if (type instanceof EnumValueType) {
+                checkTempID('field', type.getTempSigID(), `${holderDesc} (EnumValueType)`);
+            } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
+                for (const t of type.getTypes()) {
+                    visitType(t, holderDesc);
+                }
+            } else if (type instanceof ArrayType) {
+                visitType(type.getBaseType(), holderDesc);
+            } else if (type instanceof AliasType) {
+                visitType(type.getOriginalType(), holderDesc);
+            }
+        };
+
+        const visitValue = (value: unknown, holderDesc: string): void => {
+            if (value instanceof AbstractInvokeExpr) {
+                checkTempID('method', value.getTempSigID(), `${holderDesc} (invoke expr)`);
+                for (const arg of value.getArgs()) {
+                    visitValue(arg, holderDesc);
+                }
+                visitType(value.getType(), holderDesc);
+            } else if (value instanceof AbstractFieldRef) {
+                checkTempID('field', value.getTempSigID(), `${holderDesc} (field ref)`);
+                visitType(value.getType(), holderDesc);
+            } else if (value instanceof GlobalRef) {
+                visitValue(value.getRef(), holderDesc);
+            }
+        };
+
+        for (const cls of reg.classSigCanonicalizer.getModels()) {
+            if (cls === undefined) {
+                continue;
+            }
+            const classDesc = `class ${cls.getName()}`;
+            for (const rt of cls.getRealTypes() ?? []) {
+                visitType(rt, classDesc);
+            }
+            for (const method of cls.getMethods()) {
+                const methodSig = method.getSignature();
+                const methodDesc = `${classDesc} method ${method.getName()}`;
+                checkTempID('class', methodSig.getDeclaringClassTempSigID(), `${methodDesc} (MethodSignature declaring)`);
+                visitType(methodSig.getMethodSubSignature().getReturnType(), methodDesc);
+                for (const param of methodSig.getMethodSubSignature().getParameters()) {
+                    visitType(param.getType(), methodDesc);
+                }
+                const body = method.getBody();
+                if (body !== undefined) {
+                    for (const local of body.getLocals().values()) {
+                        visitType(local.getType(), methodDesc);
+                    }
+                    const usedGlobals = body.getUsedGlobals();
+                    if (usedGlobals !== undefined) {
+                        for (const gv of usedGlobals.values()) {
+                            visitValue(gv, methodDesc);
+                        }
+                    }
+                    for (const stmt of body.getCfg().getStmts()) {
+                        for (const v of stmt.getDefAndUses()) {
+                            visitValue(v, methodDesc);
+                        }
+                    }
+                }
+            }
+            for (const field of cls.getFields()) {
+                const fieldSig = field.getSignature();
+                const fieldDesc = `${classDesc} field ${field.getName()}`;
+                checkTempID('class', fieldSig.getDeclaringClassTempSigID(), `${fieldDesc} (FieldSignature declaring)`);
+                visitType(fieldSig.getType(), fieldDesc);
+            }
+        }
+    }
+
     /**
      * 校验全部已注册空间，输出一份合并汇总（完整全貌，绝不截断）。
      * @returns 全部空间干净时返回 true。
@@ -768,6 +992,7 @@ export class CanonicalizerValidator {
             ...this.validateClassSpace(),
             ...this.validateFieldSpace(),
             ...this.validateMethodSpace(),
+            ...this.validateTempSpaces(),
         ];
         if (violations.length > 0) {
             logger.error(`Canonicalizer validation failed with ${violations.length} violation(s):\n  - ${violations.join('\n  - ')}`);

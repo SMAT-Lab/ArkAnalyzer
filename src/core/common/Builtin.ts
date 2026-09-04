@@ -74,6 +74,13 @@ export class Builtin {
         return stub;
     }
 
+    /** @internal Snapshot of the cached unclear stubs — the validator's reachability baseline
+     * for the temp class space (stubs are legitimately held by this cache; they are producers,
+     * not holders with a temp registration mark, so they are exempt from anchor checks). */
+    public static getStubCacheEntries(): ClassSignature[] {
+        return Array.from(this.stubCache.values());
+    }
+
     public static get OBJECT_CLASS_SIGNATURE(): ClassSignature {
         return this.getBuiltinClassSignature(this.OBJECT);
     }
@@ -105,17 +112,60 @@ export class Builtin {
 
     /**
      * The stub method signature for `toString` on Object. Each access returns a fresh
-     * MethodSignature over the shared Object stub (avoids the shared mutable singleton).
+     * MethodSignature over the shared Object stub.
+     *
+     * round28 教训存档（三轮归因演进，勿再尝试单例化）：
+     * - 首轮单例化 → ArkIRTransformer literal/closure + JsonPrinter 三处
+     *   String/Number.toString 互换，归因"mutate 污染面"后回退；
+     * - r2 复查归因"stale declaringClassTempSigID"并挂 dispose 清理链恢复——
+     *   实测仍互换（literal 用例单跑复现，同 Registry 生命周期内，排除 stale）；
+     * - r3 实证定案：**共享 temp 行的归宿被第一解析者垄断**——route() 幂等注册
+     *   使多个 placeholder 的 toString expr 汇聚同一 temp 行，第一解析者
+     *   setMethodSignature 触发 retireWithReplacement(T, F) 全局定向，跟随者
+     *   getMethodSignature() 三级查物化跟随 F。而 toString 的真实归宿取决于
+     *   **各 expr 自己的 base 类型**（string→String.toString / number→
+     *   Number.toString），共享实例在语义上就是错的。COW/挂 dispose 均无法防御
+     *   （这不是 mutate，是 temp 表替换记录语义）。每次 new = 每行独立 = 各自
+     *   正确归宿，这是该 stub 的正确形态。
      */
     public static get TO_STRING_METHOD_SIGNATURE(): MethodSignature {
         return new MethodSignature(this.OBJECT_CLASS_SIGNATURE, new MethodSubSignature(this.TO_STRING, [], StringType.getInstance(), false));
+    }
+
+    private static arrayStubMethodSignatures = new Map<string, MethodSignature>();
+
+    /**
+     * @internal round28：Array stub 方法签名缓存清理（ModelUtils.dispose 调用——
+     * MethodSignature 的 declaringClassTempSigID 构造时固化，跨 Registry 复用会
+     * stale；toString 恒每次 new、iterator/next 恒每循环 new，均无缓存可清）。
+     * slice stub 与 componentMethodSigCache 为白名单族（键含完整身份、归宿
+     * per-use 无关），挂清理链后实证保留。
+     */
+    public static clearStubMethodSigCaches(): void {
+        this.arrayStubMethodSignatures.clear();
+    }
+
+    /**
+     * Array stub 方法签名（不查 SDK——`(Array stub, name)` 恒 stub 值）的
+     * per-name 实例缓存（round28 M1）。与 {@link buildArrayMethodSignature}
+     * 的 miss 分支同款构造与缓存，供"必须 stub 值"的调用方（数组解构 rest 的
+     * slice 等）复用——原每次 new 一行 temp。
+     */
+    public static getOrCreateArrayStubMethodSignature(methodName: string): MethodSignature {
+        let sig = this.arrayStubMethodSignatures.get(methodName);
+        if (sig === undefined) {
+            sig = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
+            this.arrayStubMethodSignatures.set(methodName, sig);
+        }
+        return sig;
     }
 
     public static buildArrayMethodSignature(methodName: string, scene: Scene): MethodSignature {
         let methodSignature = this.getBuiltInMethodSignature(Builtin.ARRAY, methodName, scene);
         if (!methodSignature) {
             // Object path over the Array stub: routes the unclear declaring class to temp.
-            methodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
+            // round28 M1：miss 分支的 stub 实例走 per-name 缓存。
+            methodSignature = this.getOrCreateArrayStubMethodSignature(methodName);
         }
         return methodSignature;
     }

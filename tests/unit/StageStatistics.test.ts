@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 import path from 'path';
 import { Scene, SceneConfig } from '../../src';
 import { StageName } from '../../src/statistics/StageStatistics';
+import { StageStatisticsReporter } from '../../src/statistics/StageStatisticsReporter';
 
 describe('StageStatistics integration Test', () => {
     it('builder sub-stages are collected when enableStatistics is on', () => {
@@ -30,12 +31,15 @@ describe('StageStatistics integration Test', () => {
         const data = scene.getStageStatistics();
         expect(data).toBeDefined();
         const names = data!.stages.map(s => s.name.split('#')[0]);
-        // SceneBuilder 迁移后的四个细分构建阶段 + 总阶段。
+        // SceneBuilder 迁移后的细分构建阶段 + 总阶段。
         expect(names).toContain(StageName.Builder);
         expect(names).toContain(StageName.BuilderParseConfigs);
         expect(names).toContain(StageName.BuilderSdk);
         expect(names).toContain(StageName.BuilderFiles);
         expect(names).toContain(StageName.BuilderBodies);
+        // SDK 子阶段（round21：file build 与类型推导拆分）。
+        expect(names).toContain(StageName.BuilderSdkFiles);
+        expect(names).toContain(StageName.BuilderSdkInfer);
         // 推断阶段（新架构无 InferTypesInit——零排序遍历）。
         expect(names).toContain(StageName.InferTypes);
         expect(names).toContain(StageName.InferTypesFinalize);
@@ -46,6 +50,41 @@ describe('StageStatistics integration Test', () => {
             expect(stage.memAfter.rssMB).toBeGreaterThanOrEqual(0);
             expect(stage.memPeak.rssMB).toBeGreaterThanOrEqual(stage.memBefore.rssMB);
         }
+        // 层级关系：细分阶段的 parent 指向其外层阶段（唯一名）。
+        const byName = new Map(data!.stages.map(s => [s.name, s]));
+        expect(byName.get(StageName.BuilderParseConfigs)?.parent).toBe(StageName.Builder);
+        expect(byName.get(StageName.BuilderSdk)?.parent).toBe(StageName.Builder);
+        expect(byName.get(StageName.BuilderFiles)?.parent).toBe(StageName.Builder);
+        expect(byName.get(StageName.BuilderBodies)?.parent).toBe(StageName.Builder);
+        expect(byName.get(StageName.BuilderSdkFiles)?.parent).toBe(StageName.BuilderSdk);
+        expect(byName.get(StageName.BuilderSdkInfer)?.parent).toBe(StageName.BuilderSdk);
+        // 签名空间快照：两个时点（post-build / post-infer），数据非负且自洽。
+        const labels = data!.signatureSnapshots.map(s => s.label);
+        expect(labels).toContain('post-build');
+        expect(labels).toContain('post-infer');
+        for (const snap of data!.signatureSnapshots) {
+            for (const count of Object.values(snap.formal)) {
+                expect(count).toBeGreaterThanOrEqual(0);
+            }
+            for (const space of [snap.temp.class, snap.temp.method, snap.temp.field]) {
+                expect(space.liveCount).toBeGreaterThanOrEqual(0);
+                expect(space.totalRegistered).toBe(space.liveCount + space.retiredCount);
+            }
+            // pta/Container 场景含 ohos SDK：formal class/method 空间非空。
+            expect(snap.formal.class).toBeGreaterThan(0);
+            expect(snap.formal.method).toBeGreaterThan(0);
+        }
+        // 报告文本：层级缩进 + Signature section。
+        const reportText = StageStatisticsReporter.exportToText(StageStatisticsReporter.generateReport(data!));
+        expect(reportText).toContain('Stage Statistics');
+        expect(reportText).toContain('Signature Statistics');
+        expect(reportText).toContain('[post-build]');
+        expect(reportText).toContain('[post-infer]');
+        // SDK 子阶段行比外层缩进两级（builder 顶层 -> builderSdk 一级 -> 子阶段两级）。
+        const lines = reportText.split('\n');
+        const sdkSubLine = lines.find(l => l.includes(`[${StageName.BuilderSdkFiles}]`));
+        expect(sdkSubLine).toBeDefined();
+        expect(sdkSubLine!.startsWith('    [')).toBe(true);
         // 总时长与全局内存快照有效。
         expect(data!.totalDurationMs).toBeGreaterThan(0);
         expect(data!.globalMemBefore.rssMB).toBeGreaterThan(0);

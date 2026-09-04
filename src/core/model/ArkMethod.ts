@@ -506,7 +506,11 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
         // Unreachable in normal flows: a method always has an implementation or declaration
         // signature set before use. Log loudly so violations surface immediately.
-        logger.error(`Method '${this.getName()}' has neither an implementation nor a declaration signature; returning DEFAULT.`);
+        // 注意：此处不得调用 this.getName()——getName() 走 getSignature()，无签名时
+        // 两者互递归栈溢出（实测致 C++ 类构建中断，applyArkFile 的 try-catch 吞掉
+        // 异常后该 TU 后续全部节点静默丢失）。方法名不可得正是此分支的前提，
+        // 打印 SigID 上下文即可定位。
+        logger.error(`A method (SigID=${this.getMethodSigID()}) has neither an implementation nor a declaration signature; returning DEFAULT.`);
         return MethodSignature.DEFAULT;
     }
 
@@ -610,16 +614,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                     return;
                 }
                 if (existingHasBody && thisHasBody) {
-                    logger.error(
-                        `Duplicate method implementations for signature ${this.getSignature().toString()}: ` +
-                            `existing '${existing.getName()}' and new '${this.getName()}'; the latter wins.`
-                    );
+                    logger.error(`Duplicate method (SigID=${this.getMethodSigID()}), the latter wins.`);
                 }
             } else {
-                logger.error(
-                    `Implementation signature ${this.getSignature().toString()} is set twice: ` +
-                        `existing '${existing.getName()}' and new '${this.getName()}'; the latter wins.`
-                );
+                logger.error(`Implementation signature (SigID=${this.getMethodSigID()}) is set twice, the latter wins.`);
             }
         }
         canonicalizer.setModel(id, this);

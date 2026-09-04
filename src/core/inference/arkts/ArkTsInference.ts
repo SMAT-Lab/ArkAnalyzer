@@ -24,7 +24,7 @@ import { InferenceBuilder } from '../InferenceBuilder';
 import { Bind, FieldRefInference, InferLanguage, InstanceInvokeExprInference, LocalInference, ValueInference } from '../ValueInference';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../base/Stmt';
 import { Value } from '../../base/Value';
-import { AnyType, ClassType, FunctionType, GenericType, Type } from '../../base/Type';
+import { AnyType, ClassType, FunctionType, GenericType, NullType, Type, UndefinedType } from '../../base/Type';
 import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, GlobalRef } from '../../base/Ref';
 import { Local } from '../../base/Local';
 import { AbcMethodInference } from '../abc/AbcInference';
@@ -99,7 +99,12 @@ export class ArkTsStmtInference extends StmtInference {
         // An unclear ClassType with fully-resolved real type args still carries information
         // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
         const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
-        if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || isUnclearWithRealArgs) {
+        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
+        // "unclear"): a null/undefined right operand carries no information — never let it
+        // overwrite the left operand (protects e.g. SDK declare-var locals whose builder-time
+        // annotated types would otherwise be clobbered by declaration-initializer placeholders).
+        const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;
+        if ((!TypeInference.isUnclearType(rightType) && !isPlaceholderRight) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;

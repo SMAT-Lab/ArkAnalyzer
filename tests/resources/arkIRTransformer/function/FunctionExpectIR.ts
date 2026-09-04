@@ -442,7 +442,9 @@ export const BasicOuterMethod_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'staticinvoke <@%unk/%unk: %unk.nestedMethod()>()'
+                        // Scope-precise resolution (B2): the bare callee nestedMethod resolves
+                        // to the composed-name nested method, consistent with the ref type above.
+                        text: 'staticinvoke <@function/ClosureParamsTest.ts: BasicTest.%nestedMethod$basicMethod()>()'
                     }
                 ]
             }
@@ -455,7 +457,7 @@ export const BasicOuterMethod_Expect_IR = {
                 text: 'outer = 2',
             },
             {
-                text: 'staticinvoke <@%unk/%unk: %unk.nestedMethod()>()',
+                text: 'staticinvoke <@function/ClosureParamsTest.ts: BasicTest.%nestedMethod$basicMethod()>()',
             },
             {
                 text: 'return',

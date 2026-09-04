@@ -48,8 +48,9 @@ import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
 import { Canonicalizer } from './utils/Canonicalizer';
 import { ModuleDepGraph } from './core/graph/ModuleDepGraph';
-import { SignatureCanonicalizerRegistry } from './core/common/SignatureCanonicalizerRegistry';
+import { SignatureCanonicalizerRegistry, TempSpaceStats } from './core/common/SignatureCanonicalizerRegistry';
 import { CanonicalizerValidator } from './core/common/CanonicalizerValidator';
+import { ArkSignatureBuilder } from './core/model/builder/ArkSignatureBuilder';
 import { StageName, StageStatistics, StageStatisticsData } from './statistics/StageStatistics';
 import { StageStatisticsReporter } from './statistics/StageStatisticsReporter';
 
@@ -205,6 +206,8 @@ export class Scene {
         this.stageStatistics?.finish();
         this.stageStatistics = undefined;
         SignatureCanonicalizerRegistry.dispose();
+        // 组件名 stub 缓存随 Registry 同点清理（缓存实例的 temp symbol 属旧空间）。
+        ArkSignatureBuilder.clearComponentStubCache();
     }
 
     /** @internal Get the formal FileSignature canonicalizer. */
@@ -261,6 +264,8 @@ export class Scene {
         SignatureCanonicalizerRegistry.dispose();
         // Force re-creation of Registry for next use
         SignatureCanonicalizerRegistry.getInstance();
+        // 组件名 stub 缓存随 Registry 同点清理（缓存实例的 temp symbol 属旧空间）。
+        ArkSignatureBuilder.clearComponentStubCache();
     }
 
     public getStage(): SceneBuildStage {
@@ -305,6 +310,8 @@ export class Scene {
         // 完整构建结束：释放构建期上下文（工作态随 GC 回收）。
         this.releaseSceneBuilder();
         this.stageStatistics?.endStage(StageName.Builder);
+        // 签名空间快照（时点 1）：构建完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-build');
     }
 
     public buildSceneFromFiles(sceneConfig: SceneConfig): void {
@@ -316,6 +323,8 @@ export class Scene {
         // 完整构建结束：释放构建期上下文（工作态随 GC 回收）。
         this.releaseSceneBuilder();
         this.stageStatistics?.endStage(StageName.Builder);
+        // 签名空间快照（时点 1）：构建完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-build');
     }
 
     /**
@@ -751,23 +760,21 @@ export class Scene {
         return this.projectSdkMap;
     }
 
+    /**
+     * Returns the namespace according to the input namespace signature.
+     *
+     * 全局注册表值查（签名 → ID → model，O(1)）：不做“挂在文件树上”的归属校验——
+     * 正常 builder 流程中挂树（addNamespace）与注册 model（setSignature）成对发生，
+     * 两者仅在不一致态下有差异。与 getClass 的 project 快路径同构。
+     * @param namespaceSignature - signature of the namespace to be obtained.
+     * @returns A namespace, or null when the signature was never interned.
+     */
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
         const id = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);
         if (id === -1) {
             return null;
         }
         return this.registry.namespaceSigCanonicalizer.getModel(id) ?? null;
-    }
-
-    private getNamespaceBySignature(signature: NamespaceSignature): ArkNamespace | null {
-        const parentSignature = signature.getDeclaringNamespaceSignature();
-        if (parentSignature) {
-            const parentNamespace = this.getNamespaceBySignature(parentSignature);
-            return parentNamespace?.getNamespace(signature) || null;
-        } else {
-            const arkFile = this.getFile(signature.getDeclaringFileSigId());
-            return arkFile?.getNamespace(signature) || null;
-        }
     }
 
     /**
@@ -800,26 +807,22 @@ export class Scene {
 
     /**
      * Returns the class according to the input class signature.
+     *
+     * 全局注册表值查（签名 → ID → model，无条件）：model 注册面全覆盖（ArkClass.
+     * setSignature 为一切类构建主路径，含 SDK；addArkClass 挂树时补注册），原
+     * isProject 守卫 + ns/file 树 fallback 是注册面补全前的历史遗迹——树路径终点
+     * 与本值查相同（classSigCanonicalizer.getModel），归属校验只能砍不能加。删除后
+     * 唯一行为变化：签名已注册 model 但未挂树的类（builder 不一致态/手工构造）从
+     * null 变为返回实体（宽松化，与消费方"按签名找类"语义一致）。
      * @param classSignature - signature of the class to be obtained.
-     * @returns A class.
+     * @returns A class, or null when the signature was never interned.
      */
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        const isProject = this.projectName === classSignature.getDeclaringFileSignature().getProjectName();
-        let arkClass;
-        if (isProject) {
-            arkClass = this.registry.classSigCanonicalizer.getModel(this.registry.classSigCanonicalizer.getExistingId(classSignature));
+        const id = this.registry.classSigCanonicalizer.getExistingId(classSignature);
+        if (id === -1) {
+            return null;
         }
-        if (arkClass) {
-            return arkClass;
-        }
-        const namespaceSignature = classSignature.getDeclaringNamespaceSignature();
-        if (namespaceSignature) {
-            arkClass = this.getNamespaceBySignature(namespaceSignature)?.getClass(classSignature) || null;
-        } else {
-            const arkFile = this.getFile(classSignature.getDeclaringFileSigID());
-            arkClass = arkFile?.getClass(classSignature);
-        }
-        return arkClass || null;
+        return this.registry.classSigCanonicalizer.getModel(id) ?? null;
     }
 
     public getCustomComponent(name: string): ClassSignature | undefined {
@@ -900,7 +903,6 @@ export class Scene {
      * - View tree: the view tree of the method.
      * - ...
      *
-     * @param methodSignature - the signature of method.
      * @returns The method associated with the method signature.
      * @example
      * 1. get method from getMethod.
@@ -1068,48 +1070,44 @@ export class Scene {
         ValueUtil.dispose();
         clearCxxTypeStringCache();
         this.stageStatistics?.endStage(StageName.InferTypesFinalize);
+        // 签名空间快照（时点 2）：推导完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-infer');
     }
 
     /**
      * @internal
      * Check completeness of temp signature migration after type inference.
      *
-     * temp 空间为弱注册表（WeakRef 语义，见 TempSignatureCanonicalizer）：
-     * - live（存活）：含 pending-dead 的上界——对象已被推断回写换下（持有链断）
-     *   但 WeakRef 条目尚未被 V8 清空（清空发生在 GC 后的 job 边界）。此同步
-     *   检查点的读数因此高估真未解析量；含 Builtin stub 池等常驻基线；
-     * - dead（死槽）：条目已被清空的数——此同步时点通常为 0（见上）。
-     * 精确读数：`await settleTempSignatureStats()`（--expose-gc 进程下促使
-     * 条目清理后返回）。live > 0 时打 warning（非错误，未解析签名保持原状）。
+     * temp 空间为索引表（slot 强持有，见 TempSignatureCanonicalizer）：
+     * - live（未迁移）：非空 slot 的签名数——含未成功推导的活签名、推导中间
+     *   垃圾（持有者已死未 retire，全保留语义钉活到 dispose）与 Builtin stub
+     *   池等常驻基线；
+     * - retired（已迁移）：持有者显式重路由 formal 时置空的量（其中 replaced
+     *   子集有 formal 归宿记录，供共享持有者三级查 fallback）。
+     * 读数同步即精确（B 轮后无弱表 pending-dead 窗口）。live > 0 时打 warning
+     * （非错误，未解析签名保持原状）。
      */
     private checkTempSignatureCompleteness(): void {
         const stats = SignatureCanonicalizerRegistry.getTempSpacesStats();
         const liveTotal = stats.class.liveCount + stats.method.liveCount + stats.field.liveCount;
         if (liveTotal > 0) {
             const brief = {
-                class: { live: stats.class.liveCount, dead: stats.class.deadSlots },
-                method: { live: stats.method.liveCount, dead: stats.method.deadSlots },
-                field: { live: stats.field.liveCount, dead: stats.field.deadSlots },
+                class: { live: stats.class.liveCount, retired: stats.class.retiredCount },
+                method: { live: stats.method.liveCount, retired: stats.method.retiredCount },
+                field: { live: stats.field.liveCount, retired: stats.field.retiredCount },
             };
-            logger.warn(
-                `Unresolved signatures still alive after type inference (upper bound incl. pending-dead; exact stats: await settleTempSignatureStats()): ${JSON.stringify(brief)}`
-            );
+            logger.warn(`Unresolved signatures still alive after type inference (index-table exact stats): ${JSON.stringify(brief)}`);
         }
     }
 
     /**
-     * 促使 temp 弱注册空间完成条目清理并返回精确统计（异步）。
-     *
-     * 行为分层（见 SignatureCanonicalizerRegistry.settleTempSpaces）：
-     * - 进程未以 --expose-gc 启动：立即返回瞬时统计（live 为上界）；
-     * - --expose-gc 进程（CLI/诊断工具自选）：多轮 gc × 跨 job 边界促使死条目
-     *   清空后返回精确统计（真未解析量）。
+     * 返回 temp 索引表空间的精确统计（B 轮后同步即精确，async 签名保留为兼容）。
      * 适合在 inferTypes 完成后、生成报告前调用。
      */
     public async settleTempSignatureStats(): Promise<{
-        class: { liveCount: number; totalRegistered: number; deadSlots: number };
-        method: { liveCount: number; totalRegistered: number; deadSlots: number };
-        field: { liveCount: number; totalRegistered: number; deadSlots: number };
+        class: TempSpaceStats;
+        method: TempSpaceStats;
+        field: TempSpaceStats;
     }> {
         return SignatureCanonicalizerRegistry.settleTempSpaces();
     }

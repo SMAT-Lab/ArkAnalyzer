@@ -37,6 +37,19 @@ import { TempSignatureCanonicalizer } from './TempSignatureCanonicalizer';
  * **Lifecycle**: `Scene.dispose()` / `Scene.clear()` should call `dispose()`.
  * After dispose, `getInstance()` auto-rebuilds and re-initializes DEFAULT signatures.
  */
+
+/** 单个 temp 索引表空间的统计快照（字段语义见 TempSignatureCanonicalizer.getStats）。 */
+export interface TempSpaceStats {
+    /** 未迁移（非空 slot）的签名数——含 Builtin stub 池等常驻基线与推导中间垃圾。 */
+    liveCount: number;
+    /** 历史注册总量（= nextId，永不复用）。 */
+    totalRegistered: number;
+    /** 已迁移（retire 置空）总量。三数自洽：totalRegistered = liveCount + retiredCount。 */
+    retiredCount: number;
+    /** 有 formal 归宿记录的迁移数（≤ retiredCount）。 */
+    replacedCount: number;
+}
+
 export class SignatureCanonicalizerRegistry {
     // --- Formal canonicalizers (value-semantic dedup + model storage) ---
 
@@ -52,12 +65,14 @@ export class SignatureCanonicalizerRegistry {
         ArkMethod
     >();
 
-    // --- Temp canonicalizers (reference-semantic + refcount) ---
+    // --- Temp canonicalizers (index-table semantics, see TempSignatureCanonicalizer) ---
+    // Note: no tempFile/tempNamespace spaces — both were permanently empty. FileSignature
+    // is the identity root (never temp-held), and no production path ever registered a
+    // namespace into the temp space (namespace-declaring FieldSignatures go through the
+    // SigID overloads; the unclear-ns value-constructor branch only marks SigID = -1).
 
-    public readonly tempFileSigCanonicalizer: TempSignatureCanonicalizer<FileSignature> = new TempSignatureCanonicalizer<FileSignature>();
     public readonly tempClassSigCanonicalizer: TempSignatureCanonicalizer<ClassSignature> = new TempSignatureCanonicalizer<ClassSignature>();
     public readonly tempMethodSigCanonicalizer: TempSignatureCanonicalizer<MethodSignature> = new TempSignatureCanonicalizer<MethodSignature>();
-    public readonly tempNamespaceSigCanonicalizer: TempSignatureCanonicalizer<NamespaceSignature> = new TempSignatureCanonicalizer<NamespaceSignature>();
     public readonly tempFieldSigCanonicalizer: TempSignatureCanonicalizer<FieldSignature> = new TempSignatureCanonicalizer<FieldSignature>();
 
     // --- Maps that cannot be replaced by canonicalizer ---
@@ -259,10 +274,8 @@ export class SignatureCanonicalizerRegistry {
             reg.namespaceSigCanonicalizer.clear();
             reg.fieldSigCanonicalizer.clear();
             reg.methodSigCanonicalizer.clear();
-            reg.tempFileSigCanonicalizer.clear();
             reg.tempClassSigCanonicalizer.clear();
             reg.tempMethodSigCanonicalizer.clear();
-            reg.tempNamespaceSigCanonicalizer.clear();
             reg.tempFieldSigCanonicalizer.clear();
             reg.customComponentMap.clear();
             reg.sdkGlobalMap.clear();
@@ -270,11 +283,11 @@ export class SignatureCanonicalizerRegistry {
         }
     }
 
-    /** 三个 temp 弱注册空间的统计快照（live 含 pending-dead 上界语义，见 settleTempSpaces）。 */
+    /** 单个 temp 索引表空间的统计快照（字段语义见 TempSignatureCanonicalizer.getStats）。 */
     public static getTempSpacesStats(): {
-        class: { liveCount: number; totalRegistered: number; deadSlots: number };
-        method: { liveCount: number; totalRegistered: number; deadSlots: number };
-        field: { liveCount: number; totalRegistered: number; deadSlots: number };
+        class: TempSpaceStats;
+        method: TempSpaceStats;
+        field: TempSpaceStats;
     } {
         const reg = this.getInstance();
         return {
@@ -285,36 +298,20 @@ export class SignatureCanonicalizerRegistry {
     }
 
     /**
-     * 促使 temp 弱注册空间完成条目清理并返回精确统计（异步）。
+     * 返回 temp 索引表空间的精确统计。
      *
-     * 背景（机制实证）：死 stub 的堆内存在首次 major GC 即释放（WeakRef 不阻止
-     * 回收）；但 WeakRef 条目清空发生在 GC 之后的 **job 边界**（V8 ClearKeptObjects）
-     * ——同步连调 gc() 不跨 job 边界时读数恒为 live（pending-dead 不可见）。
-     *
-     * 行为分层（best-effort，产品逻辑零硬依赖）：
-     * - gc 不可用（进程未以 --expose-gc 启动）：立即返回瞬时统计——live 为上界
-     *   （含 pending-dead），功能完整、永不阻塞；
-     * - gc 可用（--expose-gc 进程，如 CLI/诊断工具自选）：执行多轮
-     *   `gc() → 跨 job 边界`促使死条目清空，返回精确统计。
+     * B 轮（三版索引表）后统计**同步即精确**（slot 强持有、增量计数，无弱表的
+     * KeepDuringJob pending-dead 窗口）——历史上的 gc × job 边界轮次（促使
+     * FinalizationRegistry 清理死条目）已随弱表机制退役。async 签名保留仅为
+     * 调用方兼容（await 无成本）；适合在 inferTypes 完成后、生成报告前调用。
      *
      * @returns 三空间统计（结构与 {@link getTempSpacesStats} 相同）。
      */
     public static async settleTempSpaces(): Promise<{
-        class: { liveCount: number; totalRegistered: number; deadSlots: number };
-        method: { liveCount: number; totalRegistered: number; deadSlots: number };
-        field: { liveCount: number; totalRegistered: number; deadSlots: number };
+        class: TempSpaceStats;
+        method: TempSpaceStats;
+        field: TempSpaceStats;
     }> {
-        const gc = (globalThis as unknown as { gc?: () => void }).gc;
-        if (typeof gc === 'function') {
-            // 3 轮 gc × 跨 job 边界（setImmediate 让当前同步栈退出、V8 执行
-            // ClearKeptObjects——机制验证的最小充分轮数）。
-            // 注意必须是 macrotask 边界（setImmediate）：microtask 边界
-            // （await Promise.resolve()）实证不足以触发条目清空。
-            for (let i = 0; i < 3; i++) {
-                gc();
-                await new Promise<void>(resolve => setImmediate(resolve));
-            }
-        }
         return this.getTempSpacesStats();
     }
 
@@ -539,9 +536,9 @@ export class SignatureCanonicalizerRegistry {
 
     // --- Static shortcut methods for temp canonicalizers ---
 
-    // 注：temp 空间为弱注册表（GC 收敛，无显式 release），register/release/query
-    // 静态包装已随 refcount 模型退役删除；持有者（Type/Signature 对象）直接经
-    // getInstance() 使用各 tempXxxSigCanonicalizer。
+    // 注：temp 空间为索引表（三版：slot 强持有 + retire 显式迁移 + 替换记录，
+    // 见 TempSignatureCanonicalizer）；持有者直接经 getInstance() 使用各
+    // tempXxxSigCanonicalizer（register/get/getReplacement/retire）。
 
     // --- Instance helper methods ---
 

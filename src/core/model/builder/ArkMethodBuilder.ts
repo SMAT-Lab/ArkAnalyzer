@@ -584,6 +584,10 @@ export function replaceSuper2Constructor(constructor: ArkMethod): void {
         return;
     }
 
+    // round28 M3（替换埋葬）：旧 super invoke expr 被整体替换且无后续持有者——
+    // 其 (UNKNOWN, super) stub 的 temp 行在此显式 retire（原每显式 super() 构造
+    // 调用留 1 行钉活到 dispose）。
+    superInvokeStmt.getInvokeExpr().retireTemp();
     const newInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), superInvokeStmt.getInvokeExpr().getArgs());
     superInvokeStmt.replaceInvokeExpr(newInvokeExpr);
     return;

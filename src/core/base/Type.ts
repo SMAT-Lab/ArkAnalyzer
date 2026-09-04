@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import {
     NEVER_KEYWORD,
     NULL_KEYWORD,
     NUMBER_KEYWORD,
+    PROMISE,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
     UNKNOWN_KEYWORD,
@@ -81,6 +82,35 @@ export abstract class Type {
     }
 
     protected abstract getTypeString(visited?: Set<Type>): string;
+
+    /**
+     * Whether this type is unresolvable / not yet settled, i.e. type inference cannot
+     * extract a concrete structure from it. Polymorphic counterpart of the historical
+     * `TypeInference.isUnclearType` instanceof chain; each subclass owns its own criteria
+     * (unclear reference, unknown, null, undefined, generic, unclear-declared class,
+     * containers propagating the check into their items).
+     *
+     * Cycle-safe: recursion through container types shares one visited set.
+     * Semantically final: subclasses must override {@link isUnclearWithVisited} instead —
+     * overriding this entry would break visited-set sharing across container recursion.
+     */
+    public isUnclear(): boolean {
+        return this.isUnclearWithVisited(new Set<Type>());
+    }
+
+    /**
+     * @internal Cycle-safe variant of {@link isUnclear}. ABSTRACT by design: every
+     * subclass must state its own semantics explicitly:
+     * - concrete leaf types (numbers, strings, ...): `return false;`
+     * - inherently unclear leaves (unknown, unclear reference, generic): `return true;`
+     * - container types (union/array/class-generics/...): recurse into children with the
+     *   same visited set (register self first, cycle-safe).
+     * A container is unclear iff any child is unclear. Placeholder signalling that the
+     * inference engine formerly derived from null/undefined being "unclear" is now
+     * explicit at the consumer sites (LocalInference.preInfer, ModelInference
+     * updateValueType/transferRight2Left, ArkTsInference.transferRight2Left).
+     */
+    public abstract isUnclearWithVisited(visited: Set<Type>): boolean;
 }
 
 /**
@@ -96,6 +126,10 @@ export class AnyType extends Type {
 
     private constructor() {
         super();
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -116,6 +150,10 @@ export class UnknownType extends Type {
 
     private constructor() {
         super();
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -153,6 +191,10 @@ export class UnclearReferenceType extends Type {
         return this.genericTypes;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.genericTypes.length > 0) {
@@ -176,6 +218,12 @@ export abstract class PrimitiveType extends Type {
 
     public getName(): string {
         return this.name;
+    }
+
+    // Transit implementation: concrete primitives are never unclear; only the inherently
+    // unclear leaves (see NullType/UndefinedType notes) override isUnclearWithVisited.
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -253,6 +301,11 @@ export class NullType extends PrimitiveType {
     private constructor() {
         super(NULL_KEYWORD);
     }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // UNIFY-EXP: null as concrete
+        return false;
+    }
 }
 
 /**
@@ -268,6 +321,11 @@ export class UndefinedType extends PrimitiveType {
 
     private constructor() {
         super(UNDEFINED_KEYWORD);
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // UNIFY-EXP: undefined as concrete
+        return false;
     }
 }
 
@@ -325,6 +383,15 @@ export class UnionType extends Type {
         this.currType = newType;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics: a union is unclear iff any member is unclear.
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const typesString: string[] = [];
         this.getTypes().forEach(t => {
@@ -371,6 +438,15 @@ export class IntersectionType extends Type {
         return this.types;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics (see UnionType).
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const typesString: string[] = [];
         this.getTypes().forEach(t => {
@@ -399,6 +475,10 @@ export class VoidType extends Type {
         super();
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return VOID_KEYWORD;
     }
@@ -419,6 +499,10 @@ export class NeverType extends Type {
         super();
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return NEVER_KEYWORD;
     }
@@ -433,11 +517,10 @@ export class FunctionType extends Type {
     private realGenericTypes?: Type[];
 
     /**
-     * @internal temp 兜底时的锚点：强引用 MethodSignature 实例（弱注册表语义，
-     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
+     * B 轮（索引表）后是唯一的 temp 侧状态——取回走 slot（惰性物化经替换记录
+     * 直达 formal，tempSigID 保留作痕迹）。
      */
-    private tempMethodSignature?: MethodSignature;
-    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
     private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
@@ -448,15 +531,13 @@ export class FunctionType extends Type {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
         // 与 ClassType 同构的路由：formal 只读命中（不写 formal 空间，防无 model
-        // 空洞）→ 未命中（unclear）→ temp 弱注册 + 本对象锚定。
+        // 空洞）→ 未命中（unclear）→ temp 索引表登记（slot 强持有传入实例）。
         const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
         if (existingId !== -1) {
             this.methodSigID = existingId;
-            this.tempMethodSignature = undefined;
             this.tempSigID = undefined;
         } else {
             this.methodSigID = -1;
-            this.tempMethodSignature = methodSignature;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
         }
         this.realGenericTypes = realGenericTypes;
@@ -467,12 +548,24 @@ export class FunctionType extends Type {
     }
 
     public getMethodSignature(): MethodSignature {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.methodSigID >= 0) {
-            return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.get(this.methodSigID)!;
+            return reg.methodSigCanonicalizer.get(this.methodSigID)!;
         }
-        if (this.tempMethodSignature !== undefined) {
-            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
-            return this.tempMethodSignature;
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempMethodSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempMethodSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.methodSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.methodSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('FunctionType has no signature');
     }
@@ -489,6 +582,23 @@ export class FunctionType extends Type {
 
     public getRealGenericTypes(): Type[] | undefined {
         return this.realGenericTypes;
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // 恒为 false，三层理由：
+        // 1. 语义层：FunctionType 表示函数类型本身（结构描述：参数列表+返回类型），
+        //    不是对函数实体的引用——"引用可解析性"的判定职责由 ClassType 承担。
+        //    "该签名对应哪个真实方法"的解析在消费点有专门机制（canonicalizer 值
+        //    查找 + fallback 遍历），从不依赖本判定。
+        // 2. 结构层：ClassType 的检查项（%unk stub 文件、PROMISE 无泛型）各对应
+        //    一种真实残缺形态（temp 兜底、未定型泛型）；而 MethodSignature 永远是
+        //    完整值——即使声明方 unclear，签名作为值（名字+参数+返回类型）仍然
+        //    完整，构造时总能 intern。函数类型没有"残缺形态"需要暴露。
+        // 3. 实证层：泛型实参传播版（Fn<Unclear> 判 true）曾在语义统一工程中实施，
+        //    被全量回归否决（keyof-typeof 推导链退化：Fn<T> 声明处的形式泛参被
+        //    误判为未解析）后回退。函数内容的不确定性（参数/返回/泛型实参）由
+        //    消费点按需处理，类型层传播已被实证会破坏推导链。
+        return false;
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -533,12 +643,11 @@ export class ClassType extends Type {
     private realGenericTypes?: Type[];
 
     /**
-     * @internal temp 兜底时的锚点：强引用签名实例，保证弱注册表中该 tempSigID
-     * 对应的 WeakRef 在本 ClassType 存活期间有效（最后一个持有者死亡后签名才可
-     * 被 GC 回收）。formal 路径下为 undefined。
+     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
+     * B 轮（索引表）后是**唯一**的 temp 侧状态——存活/取回职责由 slot 承载
+     * （slot[id] === 构造时传入实例）。惰性物化后保留作"曾 temp"审计痕迹
+     * （formalID ≥ 0 && tempSigID ≠ undefined = 已迁移痕迹态）。
      */
-    private tempClassSignature?: ClassSignature;
-    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
     private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
@@ -559,14 +668,12 @@ export class ClassType extends Type {
         const existingId = reg.classSigCanonicalizer.getExistingId(classSignature);
         if (existingId !== -1) {
             this.classSigID = existingId;
-            this.tempClassSignature = undefined;
         } else {
-            // temp 兜底（不区分 isUnclear）：弱注册表登记（同实例复用 ID，新实例
-            // 新 ID），本对象以 tempClassSignature 锚定该实例。clear 未注册签名
-            // 与 unclear stub 统一走此路径；解析（真实类后到注册后）由消费方的
-            // 值查找（getArkClassBySig 等）完成。
+            // temp 兜底（不区分 isUnclear）：索引表登记（同实例复用 ID，新实例
+            // 新 ID），slot 强持有传入实例（取回逐字节等价于历史锚定）。clear 未
+            // 注册签名与 unclear stub 统一走此路径；解析（真实类后到注册后）由
+            // 消费方的值查找（getArkClassBySig 等）完成。
             this.classSigID = -1;
-            this.tempClassSignature = classSignature;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
         }
         this.realGenericTypes = realGenericTypes;
@@ -577,13 +684,25 @@ export class ClassType extends Type {
     }
 
     public getClassSignature(): ClassSignature {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.classSigID >= 0) {
-            return SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.get(this.classSigID)!;
+            return reg.classSigCanonicalizer.get(this.classSigID)!;
         }
-        if (this.tempClassSignature !== undefined) {
-            // 锚点直返：本对象强引用的实例（弱注册表语义下 get(tempSigID) 可能因
-            // 其他持有者全部死亡而查不回，锚点是唯一可靠的取回路径）。
-            return this.tempClassSignature;
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempClassSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移（slot 置空）→ 替换记录直达 formal（"下一处直接
+            // 使用 formal ID"）；tempSigID 保留作"曾 temp"审计痕迹。
+            const formalId = reg.tempClassSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.classSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.classSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('ClassType has no signature');
     }
@@ -591,16 +710,18 @@ export class ClassType extends Type {
     public setClassSignature(newClassSignature: ClassSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         // 与构造器同构的路由：formal 只读命中 → 直接使用；未命中（无论 unclear
-        // 还是 clear 未注册）→ temp 弱注册 + 本对象换锚。旧引用无需显式释放——
-        // 弱注册表由 GC 收敛（本对象丢弃旧锚点后，若无其他持有者则旧签名可回收）。
+        // 还是 clear 未注册）→ temp 索引表登记。
         const existingId = reg.classSigCanonicalizer.getExistingId(newClassSignature);
         if (existingId !== -1) {
+            // B 轮（索引表）：旧 temp 注册的显式迁移——置空 slot + 记录 formal
+            // 归宿（共享该 temp 签名的其他持有者经替换记录直达 formal）。
+            if (this.tempSigID !== undefined) {
+                reg.tempClassSigCanonicalizer.retireWithReplacement(this.tempSigID, existingId);
+            }
             this.classSigID = existingId;
-            this.tempClassSignature = undefined;
             this.tempSigID = undefined;
         } else {
             this.classSigID = -1;
-            this.tempClassSignature = newClassSignature;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
         }
     }
@@ -623,7 +744,24 @@ export class ClassType extends Type {
         this.realGenericTypes = types;
     }
 
-    protected getTypeString(visited: Set<Type> = new Set<Type>): string {
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // The class reference's own resolvability only. Generic type arguments do NOT
+        // propagate: Foo<T> (formal parameter) / Foo<Whatever> — the referenced class
+        // itself is resolved (kept from the historical top-level semantics; the
+        // "Foo<Unclear> propagates" variant regressed keyof/typeof-optional inference —
+        // see tasks.md B5 unification work).
+        const classSignature = this.getClassSignature();
+        // ID 快判：%unk 文件 ⟺ FileSigID 0。FileSignature.DEFAULT 是 internDefaults()
+        // 固化的 formal sigID 0（唯一 fileName='%unk' 的来源），故字段级数字比较与旧的
+        // "fileName includes '%unk'" 语义等价，且省去 fileSigCanonicalizer Map 查找
+        // 与字符串比较（temp 兜底锚点与 formal 签名走同一构造器，字段值同构）。
+        if (classSignature.getDeclaringFileSigID() === 0) {
+            return true;
+        }
+        return classSignature.getClassName() === PROMISE && !this.getRealGenericTypes();
+    }
+
+    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let temp = this.getClassSignature().toString();
         if (this.realGenericTypes && this.realGenericTypes.length > 0) {
             temp += `<${this.realGenericTypes.map(t => t.toStringWithVisited(visited)).join(',')}>`;
@@ -684,6 +822,15 @@ export class ArrayType extends Type {
         return this.readonlyFlag;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics: the array is unclear iff its base type is unclear.
+        return this.getBaseType().isUnclearWithVisited(visited);
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const strs: string[] = [];
         if (this.getReadonlyFlag()) {
@@ -739,6 +886,15 @@ export class TupleType extends Type {
 
     public getReadonlyFlag(): boolean | undefined {
         return this.readonlyFlag;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics (see UnionType).
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -802,6 +958,15 @@ export class AliasType extends Type implements ArkExport {
 
     public getOriginalType(): Type {
         return this.originalType;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // The alias propagates the unclear semantics of its original type.
+        return this.getOriginalType().isUnclearWithVisited(visited);
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -922,6 +1087,10 @@ export class GenericType extends Type {
         return this.index ?? 0;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.constraint) {
@@ -944,6 +1113,11 @@ export abstract class AnnotationType extends Type {
 
     public getOriginType(): string {
         return this.originType;
+    }
+
+    // Transit implementation: annotation types are concrete leaf types
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -988,25 +1162,21 @@ export class LexicalEnvType extends Type {
     private closures: Local[];
 
     /**
-     * @internal temp 兜底时的锚点：强引用 MethodSignature 实例（弱注册表语义，
-     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
+     * B 轮（索引表）后是唯一的 temp 侧状态（取回/物化语义见 FunctionType）。
      */
-    private tempNestedMethod?: MethodSignature;
-    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
     private tempSigID?: number;
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与 ClassType 同构的路由：formal 只读命中 → temp 弱注册 + 锚定。
+        // 与 ClassType 同构的路由：formal 只读命中 → temp 索引表登记。
         const existingId = reg.methodSigCanonicalizer.getExistingId(nestedMethod);
         if (existingId !== -1) {
             this.nestedMethodSigID = existingId;
-            this.tempNestedMethod = undefined;
             this.tempSigID = undefined;
         } else {
             this.nestedMethodSigID = -1;
-            this.tempNestedMethod = nestedMethod;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
         }
         this.closures = closures ?? [];
@@ -1017,12 +1187,24 @@ export class LexicalEnvType extends Type {
     }
 
     public getNestedMethod(): MethodSignature {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.nestedMethodSigID >= 0) {
-            return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.get(this.nestedMethodSigID)!;
+            return reg.methodSigCanonicalizer.get(this.nestedMethodSigID)!;
         }
-        if (this.tempNestedMethod !== undefined) {
-            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
-            return this.tempNestedMethod;
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempMethodSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempMethodSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.methodSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.nestedMethodSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('LexicalEnvType has no signature');
     }
@@ -1045,6 +1227,10 @@ export class LexicalEnvType extends Type {
         this.closures.push(closure);
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return `[${this.getClosures().join(', ')}]`;
     }
@@ -1055,25 +1241,21 @@ export class EnumValueType extends Type {
     private constant?: Constant;
 
     /**
-     * @internal temp 兜底时的锚点：强引用 FieldSignature 实例（弱注册表语义，
-     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
+     * B 轮（索引表）后是唯一的 temp 侧状态（取回/物化语义见 FunctionType）。
      */
-    private tempFieldSignature?: FieldSignature;
-    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
     private tempSigID?: number;
 
     constructor(signature: FieldSignature, constant?: Constant) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与 ClassType 同构的路由：formal 只读命中 → temp 弱注册 + 锚定。
+        // 与 ClassType 同构的路由：formal 只读命中 → temp 索引表登记。
         const existingId = reg.fieldSigCanonicalizer.getExistingId(signature);
         if (existingId !== -1) {
             this.fieldSigID = existingId;
-            this.tempFieldSignature = undefined;
             this.tempSigID = undefined;
         } else {
             this.fieldSigID = -1;
-            this.tempFieldSignature = signature;
             this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
         }
         this.constant = constant;
@@ -1084,12 +1266,24 @@ export class EnumValueType extends Type {
     }
 
     public getFieldSignature(): FieldSignature {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.fieldSigID >= 0) {
-            return SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(this.fieldSigID)!;
+            return reg.fieldSigCanonicalizer.get(this.fieldSigID)!;
         }
-        if (this.tempFieldSignature !== undefined) {
-            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
-            return this.tempFieldSignature;
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempFieldSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempFieldSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.fieldSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.fieldSigID = formalId;
+                    return formalSig;
+                }
+            }
         }
         throw new Error('EnumValueType has no signature');
     }
@@ -1106,6 +1300,10 @@ export class EnumValueType extends Type {
 
     public getConstant(): Constant | undefined {
         return this.constant;
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
