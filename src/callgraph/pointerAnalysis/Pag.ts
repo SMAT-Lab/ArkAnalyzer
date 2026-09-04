@@ -28,7 +28,7 @@ import { MethodSignature } from '../../core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { GLOBAL_THIS_NAME } from '../../core/common/TSConst';
 import { ExportInfo } from '../../core/model/ArkExport';
-import { ARRAY_FIELD_SIGNATURE, BuiltApiType, getBuiltInApiType, IsCollectionClass, MAP_FIELD_SIGNATURE, SET_FIELD_SIGNATURE } from './PTAUtils';
+import { BuiltApiType, getBuiltInApiType, getContainerFieldSignature, IsCollectionClass } from './PTAUtils';
 import { IPtsCollection } from './PtsDS';
 import { PointerAnalysisConfig } from './PointerAnalysisConfig';
 import { CONTAINER_ELEMENT_CID } from './context/Context';
@@ -830,25 +830,14 @@ export class Pag extends BaseExplicitGraph {
             // check if Array Ref real node has been created or not, if not: create a real Array Ref node
             let existedNode = baseNode.getElementNode();
             let fieldNode!: PagNode;
-            let fieldRef!: ArkInstanceFieldRef;
             if (existedNode) {
                 return this.getNode(existedNode) as PagInstanceFieldNode;
             }
-
-            switch (className) {
-                case 'Array':
-                    fieldRef = new ArkInstanceFieldRef(base, ARRAY_FIELD_SIGNATURE);
-                    break;
-                case 'Set':
-                    fieldRef = new ArkInstanceFieldRef(base, SET_FIELD_SIGNATURE);
-                    break;
-                case 'Map':
-                    fieldRef = new ArkInstanceFieldRef(base, MAP_FIELD_SIGNATURE);
-                    break;
-                default:
-                    logger.error(`Error clone array field node ${className}`);
-                    return undefined;
+            if (className !== 'Array' && className !== 'Set' && className !== 'Map') {
+                logger.error(`Error clone array field node ${className}`);
+                return undefined;
             }
+            const fieldRef = new ArkInstanceFieldRef(base, getContainerFieldSignature(className));
 
             // Use special container element context ID (CONTAINER_ELEMENT_CID = -2)
             // This allows:

@@ -22,7 +22,7 @@ import { ArkModel, Inference, InferenceFlow, InferenceManager } from './Inferenc
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ExportInfo } from '../model/ArkExport';
 import { ImportInfo } from '../model/ArkImport';
-import { fileSignatureCompare, NamespaceSignature } from '../model/ArkSignature';
+import { NamespaceSignature } from '../model/ArkSignature';
 import { findArkExport, findExportInfoInfile, ModelUtils } from '../common/ModelUtils';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassType, FunctionType, GenericType, Type, VoidType } from '../base/Type';
@@ -108,7 +108,7 @@ export abstract class ImportInfoInference extends ArkModelInference {
             logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
             return null;
         }
-        if (fileSignatureCompare(file.getFileSignature(), fromInfo.getDeclaringArkFile().getFileSignature())) {
+        if (file.getFileSigID() === fromInfo.getDeclaringArkFile().getFileSigID()) {
             for (let exportInfo of file.getExportInfos()) {
                 if (exportInfo.getOriginName() === fromInfo.getOriginName()) {
                     exportInfo.setArkExport(file.getDefaultClass());
@@ -353,7 +353,8 @@ export class StmtInference extends ArkModelInference {
      */
     public infer(stmt: Stmt): Type | undefined {
         const defType = stmt.getDef()?.getType();
-        stmt.getDefAndUses().forEach(value => this.inferValue(value, stmt));
+        const values = stmt.getDefAndUses();
+        values.forEach(value => this.inferValue(value, stmt));
         return defType;
     }
 

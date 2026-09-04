@@ -159,7 +159,7 @@ export class CallGraph extends BaseExplicitGraph {
         let id: NodeID = this.nodeNum;
         let cgNode = new CallGraphNode(id, method, kind);
         // check if sdk method
-        cgNode.setSdkMethod(this.scene.hasSdkFile(method.getDeclaringClassSignature().getDeclaringFileSignature()));
+        cgNode.setSdkMethod(this.scene.hasSdkFile(method.getDeclaringClassSignature().getDeclaringFileSigID()));
 
         this.addNode(cgNode);
         this.methodToCGNodeMap.set(method.toString(), cgNode.getID());

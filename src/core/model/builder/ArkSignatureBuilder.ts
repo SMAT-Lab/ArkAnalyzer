@@ -13,19 +13,21 @@
  * limitations under the License.
  */
 
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature, MethodSubSignature } from '../ArkSignature';
+import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../ArkSignature';
 import { UnknownType } from '../../base/Type';
 
 export class ArkSignatureBuilder {
     public static buildMethodSignatureFromClassNameAndMethodName(className: string, methodName: string, staticFlag: boolean = false): MethodSignature {
         const classSignature = this.buildClassSignatureFromClassName(className);
         const methodSubSignature = this.buildMethodSubSignatureFromMethodName(methodName, staticFlag);
+        // Object path: the stub class signature (unclear) is routed to the temp canonicalizer
+        // inside the constructor — no formal interning without a model.
         return new MethodSignature(classSignature, methodSubSignature);
     }
 
     public static buildMethodSignatureFromMethodName(methodName: string, staticFlag: boolean = false): MethodSignature {
         const methodSubSignature = this.buildMethodSubSignatureFromMethodName(methodName, staticFlag);
-        return new MethodSignature(ClassSignature.DEFAULT, methodSubSignature);
+        return new MethodSignature(0, methodSubSignature);
     }
 
     public static buildMethodSubSignatureFromMethodName(methodName: string, staticFlag: boolean = false): MethodSubSignature {
@@ -33,10 +35,10 @@ export class ArkSignatureBuilder {
     }
 
     public static buildClassSignatureFromClassName(className: string): ClassSignature {
-        return new ClassSignature(className, FileSignature.DEFAULT);
+        return new ClassSignature(className, 0);
     }
 
     public static buildFieldSignatureFromFieldName(fieldName: string, staticFlag: boolean = false): FieldSignature {
-        return new FieldSignature(fieldName, ClassSignature.DEFAULT, UnknownType.getInstance(), staticFlag);
+        return new FieldSignature(fieldName, 0, UnknownType.getInstance(), staticFlag);
     }
 }

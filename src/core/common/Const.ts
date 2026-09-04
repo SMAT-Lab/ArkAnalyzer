@@ -42,9 +42,9 @@ export const CONSTRUCT_SIGNATURE_NAME = 'construct-signature'; // method name fo
 export const UNKNOWN_PROJECT_NAME = NAME_PREFIX + UNKNOWN_NAME;
 export const UNKNOWN_FILE_NAME = NAME_PREFIX + UNKNOWN_NAME;
 export const UNKNOWN_NAMESPACE_NAME = NAME_PREFIX + UNKNOWN_NAME;
-export const UNKNOWN_CLASS_NAME = ''; // temp for being compatible with existing type inference
-export const UNKNOWN_FIELD_NAME = ''; // temp for being compatible with existing type inference
-export const UNKNOWN_METHOD_NAME = ''; // temp for being compatible with existing type inference
+export const UNKNOWN_CLASS_NAME = NAME_PREFIX + UNKNOWN_NAME;
+export const UNKNOWN_FIELD_NAME = NAME_PREFIX + UNKNOWN_NAME;
+export const UNKNOWN_METHOD_NAME = NAME_PREFIX + UNKNOWN_NAME;
 
 // IR const
 export const TEMP_LOCAL_PREFIX = NAME_PREFIX;

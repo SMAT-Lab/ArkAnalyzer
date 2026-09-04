@@ -36,6 +36,7 @@ import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../model/ArkBaseModel';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { cloneText } from '../../common/StringUtils';
+import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CfgBuilder');
 
@@ -1357,7 +1358,7 @@ export class CfgBuilder {
         }
         if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType && !this.declaringMethod.getAsteriskToken()) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
+                const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
                 } else {

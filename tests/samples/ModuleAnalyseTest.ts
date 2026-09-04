@@ -307,7 +307,7 @@ class ModuleAnalyseTest {
 
         this.diagnoseUnresolvedImport(importsA, sceneA);
 
-        const fileB = sceneB.getFile(target.getFileSignature());
+        const fileB = sceneB.getFile(target.getFileSigID());
         if (fileB) {
             const importsB = fileB.getImportInfos();
             let nullB = 0;

@@ -132,7 +132,7 @@ function buildExportAssignment(node: ts.ExportAssignment, sourceFile: ts.SourceF
         .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false));
 
     if (ts.isNewExpression(node.expression) && ts.isClassExpression(node.expression.expression)) {
-        let cls: ArkClass = new ArkClass();
+        let cls: ArkClass = new ArkClass(arkFile.getFileSigID());
         buildNormalArkClassFromArkFile(node.expression.expression, arkFile, cls, sourceFile);
     }
 

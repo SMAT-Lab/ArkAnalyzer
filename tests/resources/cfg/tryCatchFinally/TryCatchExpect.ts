@@ -48,7 +48,7 @@ export const TRY_CATCH_EXPECT_CASE1 = {
             id: 3,
             stmts: [
                 'e = caughtexception: unknown',
-                "instanceinvoke console.<@%unk/%unk: .log()>('i === 0')"
+                "instanceinvoke console.<@%unk/%unk: %unk.log()>('i === 0')"
             ],
             preds: [],
             succes: [4],

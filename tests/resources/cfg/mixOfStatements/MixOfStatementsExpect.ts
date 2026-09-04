@@ -38,7 +38,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE1 = {
             id: 2,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: .log()>(e)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(e)',
             ],
             preds: [],
             succes: [3],
@@ -114,7 +114,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE2 = {
             id: 3,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: .log()>(e)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(e)',
             ],
             preds: [],
             succes: [4],
@@ -157,7 +157,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             id: 2,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: .log()>(\'outer catch\', e)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'outer catch\', e)',
             ],
             preds: [],
             succes: [3],
@@ -186,7 +186,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             id: 5,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner catch\', e)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner catch\', e)',
             ],
             preds: [],
             succes: [6],
@@ -274,7 +274,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             id: 4,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: .log()>(e)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(e)',
             ],
             preds: [],
             succes: [6],

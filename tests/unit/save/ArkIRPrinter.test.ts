@@ -34,7 +34,7 @@ const CASE1_EXPECT = `class %dflt {
     label2:
       %1 = myPerson.<@save/basic.ts: Person.age>
       newAge = %1 + i
-      instanceinvoke logger.<@%unk/%unk: .info()>(newAge)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(newAge)
       i = i + 1
       goto label1
 
@@ -68,7 +68,7 @@ const CASE1_EXPECT = `class %dflt {
       %4 = sampleData[i]
       %5 = instanceinvoke %4.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       %6 = %5 + ' 是偶数'
-      instanceinvoke logger.<@%unk/%unk: .info()>(%6)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%6)
       goto label5
 
     label5:
@@ -82,7 +82,7 @@ const CASE1_EXPECT = `class %dflt {
     label7:
       %11 = instanceinvoke count.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       %12 = '当前计数: ' + %11
-      instanceinvoke logger.<@%unk/%unk: .info()>(%12)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%12)
       count = count + 1
       goto label6
 
@@ -103,7 +103,7 @@ const CASE1_EXPECT = `class %dflt {
     label10:
       %13 = instanceinvoke j.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       %14 = '当前内层循环计数: ' + %13
-      instanceinvoke logger.<@%unk/%unk: .info()>(%14)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%14)
       goto label16
 
     label17:
@@ -116,9 +116,9 @@ const CASE1_EXPECT = `class %dflt {
     label12:
       %15 = instanceinvoke k.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       %16 = '外层循环计数: ' + %15
-      instanceinvoke logger.<@%unk/%unk: .info()>(%16)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%16)
       %17 = 'Department name: ' + k
-      instanceinvoke logger.<@%unk/%unk: .info()>(%17)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%17)
       if k === 1 goto label14 label18
 
     label14:
@@ -133,7 +133,7 @@ const CASE1_EXPECT = `class %dflt {
       %7 = sampleData[i]
       %8 = instanceinvoke %7.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       %9 = %8 + ' 是奇数'
-      instanceinvoke logger.<@%unk/%unk: .info()>(%9)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(%9)
       goto label5
 
     label13:
@@ -204,10 +204,10 @@ const CASE1_EXPECT = `class %dflt {
       %1[1] = 100
       %0.<@save/basic.ts: %AC11$%dflt-deleteTest.b> = %1
       x = %0
-      bbb = x.<@save/basic.ts: %AC11$%dflt-deleteTest.b>
-      %2 = delete x.<@save/basic.ts: %AC11$%dflt-deleteTest.a>
+      bbb = x.<@save/basic.ts: %AC10.b>
+      %2 = delete x.<@save/basic.ts: %AC10.a>
       %3 = delete bbb[0]
-      instanceinvoke logger.<@%unk/%unk: .info()>(x)
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>(x)
       %4 = delete x
       return
   }
@@ -249,8 +249,8 @@ const CASE1_EXPECT = `class %dflt {
       %5.<@save/basic.ts: %AC7$%dflt-%dflt.enableCallStack> = false
       %4.<@save/basic.ts: %AC6$%dflt-%dflt.default> = %5
       %0.<@save/basic.ts: %AC2$%dflt-%dflt.categories> = %4
-      staticinvoke <@%unk/%unk: .configure()>(%0)
-      logger = staticinvoke <@%unk/%unk: .getLogger()>()
+      staticinvoke <@%unk/%unk: %unk.configure()>(%0)
+      logger = staticinvoke <@%unk/%unk: %unk.getLogger()>()
       someClass = %AC8$%dflt-%dflt
       %7 = new @save/basic.ts: %AC8$%dflt-%dflt
       %7 = instanceinvoke %7.<@save/basic.ts: %AC8$%dflt-%dflt.constructor(Type)>('Hello, world')
@@ -536,7 +536,7 @@ class Person {
   static wooooof(): void {
     label0:
       this = this: @save/basic.ts: Person
-      instanceinvoke logger.<@%unk/%unk: .info()>('not a person sound')
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>('not a person sound')
       return
   }
 }
@@ -678,14 +678,14 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
   alert(): void {
     label0:
       this = this: @save/basic.ts: SecurityDoor
-      instanceinvoke logger.<@%unk/%unk: .info()>('SecurityDoor alert')
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>('SecurityDoor alert')
       return
   }
 
   alert2(): void {
     label0:
       this = this: @save/basic.ts: SecurityDoor
-      instanceinvoke logger.<@%unk/%unk: .info()>('SecurityDoor alert2')
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>('SecurityDoor alert2')
       return
   }
 
@@ -704,7 +704,7 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
   public fooo(): void {
     label0:
       this = this: @save/basic.ts: SecurityDoor
-      instanceinvoke logger.<@%unk/%unk: .info()>('This is fooo!')
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>('This is fooo!')
       return
   }
 
@@ -717,7 +717,7 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
       instanceinvoke this.<@save/basic.ts: SecurityDoor.%instInit()>()
       this.<@save/basic.ts: SecurityDoor.x> = x
       this.<@save/basic.ts: SecurityDoor.y> = y
-      instanceinvoke logger.<@%unk/%unk: .info()>('This is a constrctor!')
+      instanceinvoke logger.<@%unk/%unk: %unk.info()>('This is a constrctor!')
       return this
   }
 }

@@ -169,7 +169,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
 | 方法 | 说明 |
 |------|------|
-| `addArkClass(c, originName?)` | 加入；与 [ArkClass.addMethod](./ArkClass.md#4-主要接口) 类似，嵌套类会同时按 originName 索引一份 |
+| `addArkClass(c, originName?)` | 加入 |
 | `getClass(sig): ArkClass \| null` / `getClassWithName(name)` | 直接成员类查询 |
 | `getClasses(): ArkClass[]` | 直接成员类列表 |
 | `getAllClassesUnderThisNamespace(): ArkClass[]` | 递归取所有后代类（含子命名空间） |

@@ -28,6 +28,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { Local } from '../../core/base/Local';
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME } from '../../core/common/Const';
 import { SdkUtils } from '../../core/common/SdkUtils';
+import { SignatureCanonicalizerRegistry } from '../../core/common/SignatureCanonicalizerRegistry';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { Value } from '../../core/base/Value';
 import { ArkInstanceFieldRef, ArkParameterRef, ClosureFieldRef } from '../../core/base/Ref';
@@ -1208,7 +1209,7 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         this.builtinArrayClassResolved = true;
         // Built-in Array is not in scene.getClasses(); use the SDK global export
         // (lib.es5 Array) so the signature matches virtual-dispatch declareClass.
-        const globalArray = this.scene.getSdkGlobal(BUILTIN_ARRAY_CLASS_NAME);
+        const globalArray = SignatureCanonicalizerRegistry.getSdkGlobal(BUILTIN_ARRAY_CLASS_NAME);
         if (globalArray instanceof ArkClass) {
             const classSig = globalArray.getSignature();
             if (classSig.getDeclaringFileSignature().getProjectName() === SdkUtils.BUILT_IN_NAME) {

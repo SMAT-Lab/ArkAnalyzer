@@ -810,44 +810,44 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [null, null],
         },
         {
-            text: 'instanceinvoke a1.<@%unk/%unk: .call1()>()',
+            text: 'instanceinvoke a1.<@%unk/%unk: %unk.call1()>()',
             operandOriginalPositions: [[17, 1, 17, 11], [17, 1, 17, 3]],
         },
         {
-            text: 'a2 = instanceinvoke a3.<@%unk/%unk: .call2()>()',
+            text: 'a2 = instanceinvoke a3.<@%unk/%unk: %unk.call2()>()',
             operandOriginalPositions: [[18, 5, 18, 7], [18, 10, 18, 20], [18, 10, 18, 12]],
         },
         {
-            text: 'a4 = instanceinvoke a3.<@%unk/%unk: .call3()>(para1, para2)',
+            text: 'a4 = instanceinvoke a3.<@%unk/%unk: %unk.call3()>(para1, para2)',
             operandOriginalPositions: [[19, 5, 19, 7], [19, 10, 19, 32], [19, 10, 19, 12], [19, 19, 19, 24],
             [19, 26, 19, 31]],
         },
         {
-            text: '%0 = a3.<@%unk/%unk: .field1>',
+            text: '%0 = a3.<@%unk/%unk: %unk.field1>',
             operandOriginalPositions: [[20, 10, 20, 19], [20, 10, 20, 19], [20, 10, 20, 12]],
         },
         {
-            text: 'instanceinvoke a4.<@%unk/%unk: .call4()>(%0)',
+            text: 'instanceinvoke a4.<@%unk/%unk: %unk.call4()>(%0)',
             operandOriginalPositions: [[20, 1, 20, 20], [20, 1, 20, 3], [20, 10, 20, 19]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .call10()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.call10()>()',
             operandOriginalPositions: [[23, 1, 23, 9]],
         },
         {
-            text: 'a20 = staticinvoke <@%unk/%unk: .call20()>()',
+            text: 'a20 = staticinvoke <@%unk/%unk: %unk.call20()>()',
             operandOriginalPositions: [[24, 5, 24, 8], [24, 11, 24, 19]],
         },
         {
-            text: 'a40 = staticinvoke <@%unk/%unk: .call30()>(para10, para20)',
+            text: 'a40 = staticinvoke <@%unk/%unk: %unk.call30()>(para10, para20)',
             operandOriginalPositions: [[25, 5, 25, 8], [25, 11, 25, 33], [25, 18, 25, 24], [25, 26, 25, 32]],
         },
         {
-            text: '%1 = staticinvoke <@%unk/%unk: .call200()>()',
+            text: '%1 = staticinvoke <@%unk/%unk: %unk.call200()>()',
             operandOriginalPositions: [[28, 12, 28, 21], [28, 12, 28, 21]],
         },
         {
-            text: 'a200 = instanceinvoke %1.<@%unk/%unk: .call300()>(para100, para200)',
+            text: 'a200 = instanceinvoke %1.<@%unk/%unk: %unk.call300()>(para100, para200)',
             operandOriginalPositions: [[28, 5, 28, 9], [28, 12, 28, 47], [28, 12, 28, 21], [28, 30, 28, 37],
             [28, 39, 28, 46]],
         },
@@ -1462,8 +1462,7 @@ export const INCREMENT_EXPECT_IR = `incrementExpression(): void {
     obj1 = %3
     %6 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x>
     %7 = %6.<@expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression.y>
-    %8 = %7[0]
-    %7[0] = %8 + 5
+    %7[0] = %7[0] + 5
     return
 }
 `;

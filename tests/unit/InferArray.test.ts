@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, beforeEach, describe, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
@@ -32,7 +32,7 @@ import {
     NumberType,
     Scene,
     SceneConfig,
-    StringType
+    StringType,
 } from '../../src';
 import Logger, { LOG_LEVEL, LOG_MODULE_TYPE } from '../../src/utils/logger';
 import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
@@ -40,18 +40,19 @@ import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 import { SdkUtils } from '../../src/core/common/SdkUtils';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
+import { buildScene } from './common';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
 Logger.configure(logPath, LOG_LEVEL.DEBUG, LOG_LEVEL.DEBUG);
 
-describe("Infer Array Test", () => {
+describe('Infer Array Test', () => {
+    let projectScene: Scene;
 
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, "../resources/inferType"));
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypes();
+    beforeAll((): void => {
+        projectScene = buildScene(path.join(__dirname, '../resources/inferType'));
+    });
 
     it('normal case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -63,7 +64,7 @@ describe("Infer Array Test", () => {
         assert.isTrue((stmt as ArkAssignStmt).getRightOp() instanceof ArkNewArrayExpr);
         assert.isTrue((stmt as ArkAssignStmt).getRightOp().getType() instanceof ArrayType);
         assert.isTrue((stmt as ArkAssignStmt).getLeftOp().getType() instanceof ArrayType);
-    })
+    });
 
     it('array case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -74,7 +75,7 @@ describe("Infer Array Test", () => {
         const type = (stmt as ArkAssignStmt).getLeftOp().getType();
         assert.isTrue(type instanceof ArrayType);
         assert.isTrue((type as ArrayType).getBaseType() instanceof NumberType);
-    })
+    });
 
     it('array Expr case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -89,7 +90,7 @@ describe("Infer Array Test", () => {
             assert.equal(stmts[4].toString(), '%3 = newarray (string|@inferType/inferSample.ts: Sample)[2]');
             assert.equal(stmts[5].toString(), '%4 = newarray (any)[0]');
         }
-    })
+    });
 
     it('array Literal case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -105,7 +106,7 @@ describe("Infer Array Test", () => {
             assert.equal(stmts[19].toString(), '%5 = newarray (any)[0]');
             assert.equal(stmts[23].toString(), '%7 = newarray (number|string|@inferType/inferSample.ts: Sample)[3]');
         }
-    })
+    });
 
     it('testInstanceofArray', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -113,7 +114,7 @@ describe("Infer Array Test", () => {
         const stmts = file?.getDefaultClass()?.getMethodWithName('testArrayInstacnceOf')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         assert.equal(stmts?.[6].toString(), '%1 = a instanceof @built-in/lib.es5.d.ts: Array<T>');
-    })
+    });
 
     it('fieldRef to ArrayRef case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -126,7 +127,7 @@ describe("Infer Array Test", () => {
             assert.equal(stmts[12].toString(), 's = %4[a]');
             assert.equal(stmts[14].toString(), 'n = %5[3]');
         }
-    })
+    });
 
     it('global ref case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -134,8 +135,7 @@ describe("Infer Array Test", () => {
         const method = file?.getDefaultClass().getMethodWithName('test1');
         const type = method?.getBody()?.getUsedGlobals()?.get('out')?.getType();
         assert.isTrue(type instanceof NumberType);
-
-    })
+    });
 
     it('demo case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'demo.ts');
@@ -145,7 +145,7 @@ describe("Infer Array Test", () => {
         assert.isDefined(stmt);
         assert.isTrue((stmt as ArkAssignStmt).getLeftOp().getType() instanceof NumberType);
         assert.isTrue((stmt as ArkAssignStmt).getRightOp() instanceof ArkStaticFieldRef);
-    })
+    });
 
     it('embed namespace case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'demo.ts');
@@ -155,7 +155,7 @@ describe("Infer Array Test", () => {
         const stmt = stmts?.[stmts?.length - 2];
         assert.isDefined(stmt);
         assert.equal(stmt!.toString(), 'staticinvoke <@inferType/demo.ts: outer.inner.TestClass.[static]request()>()');
-    })
+    });
 
     it('field case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Field.ts');
@@ -166,7 +166,7 @@ describe("Infer Array Test", () => {
         assert.isTrue((stmt as ArkAssignStmt).getLeftOp().getType() instanceof ClassType);
         assert.isTrue((stmt as ArkAssignStmt).getRightOp() instanceof ArkInstanceFieldRef);
         assert.equal(file?.getClassWithName('C1')?.getFieldWithName('s')?.getType(), StringType.getInstance());
-    })
+    });
 
     it('field type case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -177,7 +177,7 @@ describe("Infer Array Test", () => {
             assert.equal(arkField.getType().toString(), '(number|string)[]');
             assert.equal(fields[1].getType(), StringType.getInstance());
         }
-    })
+    });
 
     it('embed class case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -187,7 +187,7 @@ describe("Infer Array Test", () => {
         if (embedClassType) {
             assert.equal(embedClassType.toString(), '@inferType/inferSample.ts: Test$%dflt-foo');
         }
-    })
+    });
 
     it('global local ref case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
@@ -198,53 +198,62 @@ describe("Infer Array Test", () => {
             assert.equal(usedGlobals.get('fileGV')?.getType(), NumberType.getInstance());
             assert.equal(usedGlobals.get('counter')?.getType(), NumberType.getInstance());
         }
-    })
+    });
 
     it('supperClass Test case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const classB = projectScene.getFile(fileId)?.getClassWithName('ClassB');
         assert.isDefined(classB?.getSuperClass());
         assert.isTrue(classB?.getFieldWithName('field1')?.getType() instanceof AliasType);
-    })
+    });
 
     it('alias type Test case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const aliasType = projectScene.getFile(fileId)?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName('TestType');
         assert.isTrue(aliasType?.getOriginalType() instanceof AliasType);
-        assert.equal((aliasType?.getOriginalType() as AliasType).getOriginalType().toString(), '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>');
-    })
+        assert.equal(
+            (aliasType?.getOriginalType() as AliasType).getOriginalType().toString(),
+            '@inferType/Target.ets: MySpace.%AC0<@inferType/Target.ets: MySpace.ClassTarget>'
+        );
+    });
 
     it('constructor case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'demo.ts');
         const file = projectScene.getFile(fileId);
-        const returnType = file?.getClassWithName('Test')?.getMethodWithName('constructor')
-            ?.getReturnType();
+        const returnType = file?.getClassWithName('Test')?.getMethodWithName('constructor')?.getReturnType();
         assert.isTrue(returnType instanceof ClassType);
         assert.equal((returnType as ClassType).getClassSignature().toString(), '@inferType/demo.ts: Test');
-    })
+    });
 
     it('all case', () => {
         projectScene.getMethods().forEach(m => {
-            m.getCfg()?.getStmts().forEach(s => {
-                const text = s.toString();
-                if (text.includes('Unknown')) {
-                    logger.log(text + ' warning ' + m.getSignature().toString());
-                }
-            })
-        })
-    })
+            m.getCfg()
+                ?.getStmts()
+                .forEach(s => {
+                    const text = s.toString();
+                    if (text.includes('Unknown')) {
+                        logger.log(text + ' warning ' + m.getSignature().toString());
+                    }
+                });
+        });
+    });
 
     it('methodsMap refresh', () => {
         let flag = false;
         projectScene.getMethods().forEach(m => {
-            if (m.getSignature().toString().includes('SCBTransitionManager.registerUnlockTransitionController(@inferType/test1.ets: SCBUnlockTransitionController')) {
+            if (
+                m
+                    .getSignature()
+                    .toString()
+                    .includes('SCBTransitionManager.registerUnlockTransitionController(@inferType/test1.ets: SCBUnlockTransitionController')
+            ) {
                 if (projectScene.getMethod(m.getSignature()) !== null) {
                     flag = true;
                 }
             }
-        })
+        });
         assert.isTrue(flag);
-    })
+    });
 
     it('union array case', () => {
         let flag = false;
@@ -255,9 +264,9 @@ describe("Infer Array Test", () => {
                     flag = true;
                 }
             }
-        })
+        });
         assert.isTrue(flag);
-    })
+    });
 
     it('field to ArrayRef case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Field.ts');
@@ -267,39 +276,38 @@ describe("Infer Array Test", () => {
         if (stmts) {
             assert.equal(stmts[2].toString(), '%3 = %1[%2]');
         }
-    })
+    });
 
     it('instance of case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'demo.ts');
         const file = projectScene.getFile(fileId);
-        const stmts = file?.getDefaultClass()?.getMethodWithName('responseType')
-            ?.getCfg()?.getStmts();
+        const stmts = file?.getDefaultClass()?.getMethodWithName('responseType')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         if (stmts) {
             assert.equal(stmts[2].toString(), '%0 = d instanceof @inferType/demo.ts: Test');
             assert.equal(stmts[3].toString(), 'if %0 != false');
         }
-    })
+    });
 
     it('any type case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
         const file = projectScene.getFile(fileId);
         const arkExport = file?.getImportInfoBy('myNamespaceA')?.getLazyExportInfo()?.getArkExport();
         assert.isDefined((arkExport as ArkNamespace).getExportInfoBy('a')?.getArkExport());
-    })
+    });
 
     it('import symbol form export *', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'exportAll/main/Index.ets');
         const file = projectScene.getFile(fileId);
         const arkExport = file?.getImportInfoBy('Ineterface2')?.getLazyExportInfo()?.getArkExport();
         assert.isTrue(arkExport instanceof ArkClass);
-    })
+    });
 
     it('check export info not null', () => {
         projectScene.getFiles().forEach(file => {
             file.getExportInfos().forEach(e => assert.isNotNull(e.getArkExport()));
-        })
-    })
+        });
+    });
 
     it('ptr union type 2 function case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Field.ts');
@@ -307,61 +315,90 @@ describe("Infer Array Test", () => {
         const method = file?.getClassWithName('TestPTA')?.getMethodWithName('goo');
         const stmt = method?.getCfg()?.getStmts()[1];
         assert.equal(stmt?.toString(), 'ptrinvoke this.onClick2<@inferType/Field.ts: TestPTA.%AM1(number)>(2)');
-    })
+    });
+});
 
-})
+describe('function Test', () => {
+    let scene: Scene;
 
-describe("function Test", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.getSdksObj().push({ moduleName: "", name: "etsSdk", path: path.join(__dirname, "../resources/Sdk") })
-    config.buildFromProjectDir(path.join(__dirname, "../resources/inferType"));
-    let scene: Scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+        config.buildFromProjectDir(path.join(__dirname, '../resources/inferType'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
+
     it('generic case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
-        const actual = file?.getClassWithName('SCBSceneSessionManager')
-            ?.getFieldWithName('property1')?.getSignature().getType().toString();
+        const actual = file?.getClassWithName('SCBSceneSessionManager')?.getFieldWithName('property1')?.getSignature().getType().toString();
         assert.equal(actual, '@etsSdk/arkts/@arkts.collections.d.ets: collections.Array<number>');
-    })
+    });
 
     it('overload case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
-        const actual = file?.getDefaultClass()?.getMethodWithName('demoCallBack')
-            ?.getCfg()?.getStmts();
-        assert.equal((actual?.[1] as ArkInvokeStmt).getInvokeExpr().getMethodSignature().toString(),
-            '@etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.createAVPlayer(@etsSdk/api/@ohos.base.d.ts: AsyncCallback<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer,void>)');
-        assert.equal((actual?.[2] as ArkAssignStmt).getInvokeExpr()?.getMethodSignature().toString(),
-            '@etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.createAVPlayer()');
-    })
+        const actual = file?.getDefaultClass()?.getMethodWithName('demoCallBack')?.getCfg()?.getStmts();
+        assert.equal(
+            (actual?.[1] as ArkInvokeStmt).getInvokeExpr().getMethodSignature().toString(),
+            '@etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.createAVPlayer(@etsSdk/api/@ohos.base.d.ts: AsyncCallback<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer,void>)'
+        );
+        assert.equal(
+            (actual?.[2] as ArkAssignStmt).getInvokeExpr()?.getMethodSignature().toString(),
+            '@etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.createAVPlayer()'
+        );
+    });
 
     it('callback case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
-        const actual = file?.getDefaultClass()?.getMethodWithName('%AM0$demoCallBack')
-            ?.getCfg()?.getStmts().find(s => s instanceof ArkInvokeStmt)?.toString();
-        assert.equal(actual, 'instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on(\'audioInterrupt\', @etsSdk/api/@ohos.base.d.ts: Callback<audio.InterruptEvent>)>(\'audioInterrupt\', %AM1$%AM0$demoCallBack)');
-    })
+        const actual = file
+            ?.getDefaultClass()
+            ?.getMethodWithName('%AM0$demoCallBack')
+            ?.getCfg()
+            ?.getStmts()
+            .find(s => s instanceof ArkInvokeStmt)
+            ?.toString();
+        assert.equal(
+            actual,
+            "instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on('audioInterrupt', @etsSdk/api/@ohos.base.d.ts: Callback<audio.InterruptEvent>)>('audioInterrupt', %AM1$%AM0$demoCallBack)"
+        );
+    });
 
     it('promise case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
-        const actual2 = file?.getDefaultClass()?.getMethodWithName('%AM3$demoCallBack')
-            ?.getCfg()?.getStmts().find(s => s instanceof ArkInvokeStmt)?.toString();
-        assert.equal(actual2, 'instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on(\'audioInterrupt\', @etsSdk/api/@ohos.base.d.ts: Callback<audio.InterruptEvent>)>(mode, %AM4$%AM3$demoCallBack)');
-    })
+        const actual2 = file
+            ?.getDefaultClass()
+            ?.getMethodWithName('%AM3$demoCallBack')
+            ?.getCfg()
+            ?.getStmts()
+            .find(s => s instanceof ArkInvokeStmt)
+            ?.toString();
+        assert.equal(
+            actual2,
+            "instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on('audioInterrupt', @etsSdk/api/@ohos.base.d.ts: Callback<audio.InterruptEvent>)>(mode, %AM4$%AM3$demoCallBack)"
+        );
+    });
 
     it('enum value type case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
         const stmts = file?.getDefaultClass()?.getMethodWithName('testEnumValue')?.getCfg()?.getStmts();
         if (stmts) {
-            assert.equal(stmts[3].toString(), 'staticinvoke <@etsSdk/api/@ohos.sensor.d.ts: sensor.%dflt.off(@etsSdk/api/@ohos.sensor.d.ts: sensor.SensorId.[static]GRAVITY, @etsSdk/api/@ohos.base.d.ts: Callback<@etsSdk/api/@ohos.sensor.d.ts: sensor.GravityResponse>)>(%1)');
-            assert.equal(stmts[4].toString(), 'staticinvoke <@etsSdk/api/@ohos.sensor.d.ts: sensor.%dflt.off(@etsSdk/api/@ohos.sensor.d.ts: sensor.SensorId.[static]AMBIENT_LIGHT, @etsSdk/api/@ohos.base.d.ts: Callback<@etsSdk/api/@ohos.sensor.d.ts: sensor.LightResponse>)>(5)');
+            assert.equal(
+                stmts[3].toString(),
+                'staticinvoke <@etsSdk/api/@ohos.sensor.d.ts: sensor.%dflt.off(@etsSdk/api/@ohos.sensor.d.ts: sensor.SensorId.[static]GRAVITY, @etsSdk/api/@ohos.base.d.ts: Callback<@etsSdk/api/@ohos.sensor.d.ts: sensor.GravityResponse>)>(%1)'
+            );
+            assert.equal(
+                stmts[4].toString(),
+                'staticinvoke <@etsSdk/api/@ohos.sensor.d.ts: sensor.%dflt.off(@etsSdk/api/@ohos.sensor.d.ts: sensor.SensorId.[static]AMBIENT_LIGHT, @etsSdk/api/@ohos.base.d.ts: Callback<@etsSdk/api/@ohos.sensor.d.ts: sensor.LightResponse>)>(5)'
+            );
         }
-    })
+    });
 
     it('function name same with param type', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
@@ -370,58 +407,58 @@ describe("function Test", () => {
         if (parameter) {
             assert.equal(parameter.getType().toString(), '@etsSdk/api/@internal/component/ets/enums.d.ts: ResponseType');
         }
-    })
+    });
 
     it('sdk import', () => {
         const fileId = new FileSignature('etsSdk', 'api/@internal/ets/lifecycle.d.ts');
         const file = scene.getFile(fileId);
         assert.isNotNull(file?.getImportInfoBy('AsyncCallback')?.getLazyExportInfo());
-    })
+    });
 
     it('match override case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
-        const stmts = file?.getDefaultClass()?.getMethodWithName('%AM5$matchOverride')
-            ?.getCfg()?.getStmts();
+        const stmts = file?.getDefaultClass()?.getMethodWithName('%AM5$matchOverride')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         if (stmts) {
-            assert.equal(stmts[4].toString(), 'instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on(\'stateChange\', @etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.[static]%dflt()#OnAVPlayerStateChangeHandle)>(%0, %AM6$%AM5$matchOverride)');
+            assert.equal(
+                stmts[4].toString(),
+                "instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on('stateChange', @etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.[static]%dflt()#OnAVPlayerStateChangeHandle)>(%0, %AM6$%AM5$matchOverride)"
+            );
         }
-    })
+    });
 
     it('testArrayFrom', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
         const locals = file?.getDefaultClass()?.getMethodWithName('testArrayFrom')?.getBody()?.getLocals();
-        assert.isDefined(locals)
+        assert.isDefined(locals);
         assert.isTrue(locals?.get('arr1')?.getType() instanceof ArrayType);
         assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
-    })
+    });
 
     it('testMap', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
         const stmts = file?.getDefaultClass()?.getMethodWithName('testMap')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
-        assert.equal(stmts?.[11].toString(), 'instanceinvoke %3.<@built-in/lib.es2015.collection.d.ts: Map.set(K, V)>(\'e\', animatorData5)');
-    })
+        assert.equal(stmts?.[11].toString(), "instanceinvoke %3.<@built-in/lib.es2015.collection.d.ts: Map.set(K, V)>('e', animatorData5)");
+    });
 
     it('testParamGenericWithConstraint', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
-        const stmts = file?.getDefaultClass()?.getMethodWithName('genericFunction')
-            ?.getCfg()?.getStmts();
+        const stmts = file?.getDefaultClass()?.getMethodWithName('genericFunction')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         if (stmts) {
             assert.equal(stmts[2].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: TestInterface.callf()>()');
         }
-    })
+    });
 
     it('testMoreType', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'CorrectType.ts');
         const file = scene.getFile(fileId);
-        const stmts = file?.getDefaultClass()?.getMethodWithName('test1')
-            ?.getCfg()?.getStmts();
+        const stmts = file?.getDefaultClass()?.getMethodWithName('test1')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         if (stmts) {
             assert.equal(stmts[4].toString(), 'instanceinvoke cat.<@inferType/CorrectType.ts: Cat.makeSound()>()');
@@ -430,18 +467,17 @@ describe("function Test", () => {
         if (stmts1) {
             assert.equal(stmts1[2].toString(), 'instanceinvoke %0.<@inferType/CorrectType.ts: Cat.makeSound()>()');
         }
-    })
+    });
 
     it('testGenericWithDefaultSpread', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
-        const stmts = file?.getDefaultClass()?.getMethodWithName('test2')
-            ?.getCfg()?.getStmts();
+        const stmts = file?.getDefaultClass()?.getMethodWithName('test2')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         if (stmts) {
             assert.equal(stmts[3].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: Config2.ffff()>()');
         }
-    })
+    });
 
     const BaseChangeInferIR = `class BaseChangeInfer {
   %instInit(): void {
@@ -494,7 +530,7 @@ describe("function Test", () => {
     label0:
       str = parameter0: bigint
       this = this: @inferType/inferSample.ts: BaseChangeInfer
-      instanceinvoke str.<@built-in/lib.es2020.bigint.d.ts: BigInt.toLocaleString(Intl.LocalesArgument, @built-in/lib.es2020.bigint.d.ts: BigIntToLocaleStringOptions)>()
+      instanceinvoke str.<@built-in/lib.es2020.bigint.d.ts: BigInt.toLocaleString(@built-in/lib.es2020.intl.d.ts: Intl.%dflt.[static]%dflt()#LocalesArgument, @built-in/lib.es2020.bigint.d.ts: BigIntToLocaleStringOptions)>()
       %0 = Symbol.<@built-in/lib.es2015.symbol.wellknown.d.ts: SymbolConstructor.toStringTag>
       %1 = str.<@built-in/lib.es2020.bigint.d.ts: BigInt.%0>
       return
@@ -522,7 +558,7 @@ describe("function Test", () => {
       ptrinvoke callback<@inferType/inferSample.ts: BaseChangeInfer.%AM0()>()
       %1 = d.<@built-in/lib.es5.d.ts: Function.length>
       %2 = ptrinvoke d<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>()
-      instanceinvoke %2.<@%unk/%unk: .toString()>()
+      instanceinvoke %2.<@%unk/%unk: %unk.toString()>()
       return
   }
 
@@ -540,7 +576,7 @@ describe("function Test", () => {
       return
   }
 }
-`
+`;
     it('testBaseTypeTransfer', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
@@ -549,27 +585,32 @@ describe("function Test", () => {
         const printer = new ArkIRClassPrinter(cls!);
         const s1 = printer.dump();
         assert.equal(s1, BaseChangeInferIR);
-    })
+    });
 
     it('test ns local', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
         const stmt = file?.getClassWithName('NameSpaceLocalTest')?.getMethodWithName('foo')?.getCfg()?.getStmts()[2];
-        assert.equal(stmt?.toString(), '%0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Intl.%AC1.construct-signature(string|string[], @built-in/lib.es5.d.ts: Intl.NumberFormatOptions)>(\'123\')');
-    })
+        assert.equal(
+            stmt?.toString(),
+            "%0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Intl.%AC1.construct-signature(string|string[], @built-in/lib.es5.d.ts: Intl.NumberFormatOptions)>('123')"
+        );
+    });
 
     it('test array cat', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
         const stmt = file?.getClassWithName('ArrayCatTest')?.getMethodWithName('goo')?.getCfg()?.getStmts()[3];
         assert.equal(stmt?.toString(), 'arr33 = instanceinvoke arr11.<@built-in/lib.es5.d.ts: Array.concat(@built-in/lib.es5.d.ts: ConcatArray<T>[])>(arr22)');
-    })
+    });
 
     describe('generic init erase keeps built-in signatures', () => {
-        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        // 惰性求值：父作用域的 scene 在 beforeAll 才初始化，describe body 顶层（collect
+        // 阶段同步执行）不可访问——fileId 构造下移到使用处。
         const clsName = 'GenericInitEraseTest';
 
         function getMethodStmts(methodName: string) {
+            const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
             const file = scene.getFile(fileId);
             const method = file?.getClassWithName(clsName)?.getMethodWithName(methodName);
             assert.isDefined(method, `missing method ${methodName}`);
@@ -629,7 +670,7 @@ describe("function Test", () => {
         });
 
         it('WeakMap with class key = new WeakMap(); get then push', () => {
-            const file = scene.getFile(fileId);
+            const file = scene.getFile(new FileSignature(scene.getProjectName(), 'inferSample.ts'));
             const field = file?.getClassWithName(clsName)?.getFieldWithName('weakMap');
             const fieldType = field?.getType() as ClassType;
             assert.isDefined(fieldType?.getRealGenericTypes());
@@ -639,7 +680,7 @@ describe("function Test", () => {
         });
 
         it('type alias declared Map<string, Function[]> = new Map(); get then push', () => {
-            const file = scene.getFile(fileId);
+            const file = scene.getFile(new FileSignature(scene.getProjectName(), 'inferSample.ts'));
             const field = file?.getClassWithName(clsName)?.getFieldWithName('callbackAliasMap');
             assert.isTrue(field?.getType() instanceof AliasType);
             const ir = findInvoke(getMethodStmts('callbackAliasPush'), '.push(');
@@ -671,8 +712,8 @@ describe("function Test", () => {
         const file = scene.getFile(fileId);
         const method = file?.getClassWithName('TestCallback')?.getMethodWithName('foo');
         const stmt = method?.getCfg()?.getStmts()[1];
-        assert.equal(stmt?.toString(), 'ptrinvoke this.myCallback<@etsSdk/api/@ohos.base.d.ts: Callback.create(T)>(\'abc\')');
-    })
+        assert.equal(stmt?.toString(), "ptrinvoke this.myCallback<@etsSdk/api/@ohos.base.d.ts: Callback.create(T)>('abc')");
+    });
 
     it('import type', () => {
         const fileId = new FileSignature('etsSdk', 'api/@ohos.multimedia.media.d.ts');
@@ -680,7 +721,7 @@ describe("function Test", () => {
         const image = file?.getImportInfoBy('image');
         assert.isDefined(image);
         assert.isTrue(image?.containsModifier(ModifierType.TYPE));
-    })
+    });
 
     it('test change ptr', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
@@ -691,7 +732,7 @@ describe("function Test", () => {
         assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(222)');
         const stmt3 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[5];
         assert.equal(stmt3?.toString(), 'ptrinvoke this.fieldC<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(333)');
-    })
+    });
 
     it('ArkUI extend function', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'ArktsExtend.ets');
@@ -825,7 +866,7 @@ struct GlobalFancy {
   }
 }
 object %AC3$GlobalFancy-build {
-  space: string|number
+  space: number
 
   %instInit(): void {
     label0:
@@ -965,7 +1006,7 @@ struct AnimatablePropertyText {
 }
 object %AC5$AnimatablePropertyText-build {
   duration: number
-  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve
+  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
 
   %instInit(): void {
     label0:
@@ -1004,98 +1045,140 @@ object %AC5$AnimatablePropertyText-build {
             const printer = new ArkIRMethodPrinter(method, '');
             const s1 = printer.dump();
             assert.equal(s1, expectMethodIR);
-            method.getCfg()?.getStmts().filter(s => s instanceof ArkInvokeStmt).forEach(s => assert.isDefined(s.getCfg()));
+            method
+                .getCfg()
+                ?.getStmts()
+                .filter(s => s instanceof ArkInvokeStmt)
+                .forEach(s => assert.isDefined(s.getCfg()));
         } else {
             assert.fail('not found test method');
         }
     });
 
     it('infer method return type  case', () => {
-        const returnType = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
-            .getMethodWithName('foo')?.getReturnType();
+        const returnType = scene
+            .getFiles()
+            .find(file => file.getName().endsWith('test1.ets'))
+            ?.getNamespaceWithName('MethodReturnType')
+            ?.getDefaultClass()
+            .getMethodWithName('foo')
+            ?.getReturnType();
         assert.isDefined(returnType);
         assert.equal(returnType!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
-        const returnType2 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
-            .getMethodWithName('goo')?.getReturnType();
+        const returnType2 = scene
+            .getFiles()
+            .find(file => file.getName().endsWith('test1.ets'))
+            ?.getNamespaceWithName('MethodReturnType')
+            ?.getDefaultClass()
+            .getMethodWithName('goo')
+            ?.getReturnType();
         assert.isDefined(returnType2);
         assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
-        const returnType3 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
-            .getMethodWithName('zoo')?.getReturnType();
+        const returnType3 = scene
+            .getFiles()
+            .find(file => file.getName().endsWith('test1.ets'))
+            ?.getNamespaceWithName('MethodReturnType')
+            ?.getDefaultClass()
+            .getMethodWithName('zoo')
+            ?.getReturnType();
         assert.isDefined(returnType3);
         assert.equal(returnType3!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
     });
-})
+});
 
-describe("for Test without sdk", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, "../resources/cfg/loop"));
-    config.getOptions().enableBuiltIn = false;
-    let scene: Scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+describe('for Test without sdk', () => {
+    let scene: Scene;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/cfg/loop'));
+        config.getOptions().enableBuiltIn = false;
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
+
     it('for case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
         const file = scene.getFile(fileId);
-        const item = file?.getDefaultClass()?.getMethodWithName('testFor')
-            ?.getBody()?.getLocals().get('item');
+        const item = file?.getDefaultClass()?.getMethodWithName('testFor')?.getBody()?.getLocals().get('item');
         assert.isDefined(item);
         if (item) {
             assert.equal(item.getType().toString(), 'number');
         }
-        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
-            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@ES2015/BuiltinClass: IteratorResult.value>')
-    })
+        assert.equal(
+            file?.getDefaultClass()?.getMethodWithName('testFor')?.getCfg()?.getStmts()?.[10].toString(),
+            '%4 = %2.<@%unk/%unk: IteratorResult.value>'
+        );
+    });
 
     it('while case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
         const file = scene.getFile(fileId);
-        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')
-            ?.getBody()?.getLocals().get('item');
+        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')?.getBody()?.getLocals().get('item');
         assert.isDefined(item);
         if (item) {
             assert.equal(item.getType().toString(), 'number');
         }
-        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
-            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@ES2015/BuiltinClass: IteratorResult.value>')
-    })
+        assert.equal(
+            file?.getDefaultClass()?.getMethodWithName('testFor')?.getCfg()?.getStmts()?.[10].toString(),
+            '%4 = %2.<@%unk/%unk: IteratorResult.value>'
+        );
+    });
+});
 
-})
+describe('for Test with sdk', () => {
+    let scene: Scene;
 
-describe("for Test with sdk", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, "../resources/cfg/loop"));
-    config.getOptions().enableBuiltIn = true;
-    let scene: Scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/cfg/loop'));
+        config.getOptions().enableBuiltIn = true;
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
+
     it('for case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
         const file = scene.getFile(fileId);
-        const item = file?.getDefaultClass()?.getMethodWithName('testFor')
-            ?.getBody()?.getLocals().get('item');
+        const item = file?.getDefaultClass()?.getMethodWithName('testFor')?.getBody()?.getLocals().get('item');
         assert.isDefined(item);
         if (item) {
             assert.equal(item.getType().toString(), 'number');
         }
-        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
-            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>')
-    })
+        assert.equal(
+            file?.getDefaultClass()?.getMethodWithName('testFor')?.getCfg()?.getStmts()?.[10].toString(),
+            '%4 = %2.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>'
+        );
+    });
 
     it('while case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
         const file = scene.getFile(fileId);
-        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')
-            ?.getBody()?.getLocals().get('item');
+        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')?.getBody()?.getLocals().get('item');
         assert.isDefined(item);
         if (item) {
             assert.equal(item.getType().toString(), 'number');
         }
-        assert.equal(file?.getDefaultClass()?.getMethodWithName('testWhile')
-            ?.getCfg()?.getStmts()?.[11].toString(), 'item = next.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>')
-    })
-})
+        assert.equal(
+            file?.getDefaultClass()?.getMethodWithName('testWhile')?.getCfg()?.getStmts()?.[11].toString(),
+            'item = next.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>'
+        );
+    });
+});
 
-describe("Test built in version", () => {
+describe('Test built in version', () => {
+    // 隔离前置用例的全局 registry 残留：合跑时前面 describe 加载的 built-in ES
+    // 文件（如 lib.es2021.promise.d.ts）会驻留在全局单例中，被 version 2017
+    // 场景的 SDK 推断/mergeGlobalAPI 循环误收编，导致 Promise.any 意外可见。
+    // 每个用例构建前清空，保证干净开局（本 describe 各用例均独立完整构建，
+    // 清空不改变用例语义）。
+    beforeEach(() => {
+        SignatureCanonicalizerRegistry.dispose();
+    });
 
     it('version 2017 case', () => {
         let config: SceneConfig = new SceneConfig();
@@ -1104,8 +1187,10 @@ describe("Test built in version", () => {
         let scene: Scene = new Scene();
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
-        assert.isNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
-    })
+        // 多值探测语义：'any' 声明在 lib.es2021.promise 的 PromiseConstructor 上，
+        // ES2017 引用集不含该文件——全实体探测均 miss。
+        assert.isFalse(SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses('Promise').some(c => c.getMethodWithName('any') !== null));
+    });
 
     it('version 2021 case', () => {
         let config: SceneConfig = new SceneConfig();
@@ -1114,20 +1199,23 @@ describe("Test built in version", () => {
         let scene: Scene = new Scene();
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
-        assert.isNotNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
-    })
+        // ES2021 引用集含 lib.es2021.promise——探测到 any（成员签名归属真实声明文件）。
+        const anyOwner = SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses('Promise').find(c => c.getMethodWithName('any') !== null);
+        assert.isNotNull(anyOwner);
+        assert.equal(anyOwner!.getDeclaringArkFile().getName(), 'lib.es2021.promise.d.ts');
+    });
 
     it('built in path case', () => {
         let config: SceneConfig = new SceneConfig();
         config.getSdksObj().push({
-            moduleName: "",
+            moduleName: '',
             name: SdkUtils.BUILT_IN_NAME,
-            path: path.resolve('./node_modules/ohos-typescript/lib')
-        })
+            path: path.resolve('./node_modules/ohos-typescript/lib'),
+        });
         config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest');
         config.getOptions().enableBuiltIn = true;
         let scene: Scene = new Scene();
         scene.buildSceneFromProjectDir(config);
         assert.isTrue(scene.getOptions().sdkGlobalFolders?.some(x => x.includes(path.sep)));
-    })
-})
+    });
+});

@@ -14,7 +14,7 @@
  */
 
 import { ArkFile, Language } from '../../../core/model/ArkFile';
-import { FileSignature } from '../../../core/model/ArkSignature';
+import { ClassSignature, FileSignature } from '../../../core/model/ArkSignature';
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../../core/model/ArkExport';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { getFileAbsPath } from '../../../utils/FileUtils';
@@ -27,8 +27,8 @@ import { Local } from '../../../core/base/Local';
 import { StringConstant } from '../../../core/base/Constant';
 import {
     ANONYMOUS_NAMESPACE_PREFIX,
-    DEFAULT_ARK_CLASS_NAME,
     INSTANCE_INIT_METHOD_NAME,
+    NAME_DELIMITER,
     STATIC_INIT_METHOD_NAME,
     TEMP_LOCAL_PREFIX,
 } from '../../../core/common/Const';
@@ -40,6 +40,7 @@ import { TypeInference } from '../../../core/common/TypeInference';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { Scene } from '../../../Scene';
 import { ReferenceType } from '../base/Type';
+import { SignatureCanonicalizerRegistry } from '../../../core/common/SignatureCanonicalizerRegistry';
 
 // Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
@@ -421,7 +422,7 @@ export class CxxModelUtils {
         let declClass: ArkClass | undefined | null;
         if (clsDeclareSignature) {
             declClass = arkClass.getDeclaringArkFile().getScene().getFile(
-                clsDeclareSignature.getDeclaringFileSignature())?.getClass(clsDeclareSignature);
+                clsDeclareSignature.getDeclaringFileSigID())?.getClass(clsDeclareSignature);
         }
         const heritageClasses = arkClass.getAllHeritageClasses();
         if (declClass) {
@@ -437,7 +438,7 @@ export class CxxModelUtils {
                 return property;
             }
         }
-        const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal('Object');
+        const objectClass = SignatureCanonicalizerRegistry.getSdkGlobal('Object');
         if (objectClass instanceof ArkClass && arkClass !== objectClass) {
             return this.findPropertyInClass(name, objectClass);
         }
@@ -458,7 +459,7 @@ export class CxxModelUtils {
     public static getStaticMethodWithName(methodName: string, thisClass: ArkClass): ArkMethod | null {
         const thisNamespace = thisClass.getDeclaringArkNamespace();
         if (thisNamespace) {
-            const defaultClass = thisNamespace.getClassWithName(DEFAULT_ARK_CLASS_NAME);
+            const defaultClass = thisNamespace.getDefaultClass();
             if (defaultClass) {
                 const method = defaultClass.getMethodWithName(methodName);
                 if (method) {
@@ -514,6 +515,80 @@ export class CxxModelUtils {
         return undefined;
     }
 
+    /**
+     * Resolve a nested class / local class referenced by its short (unqualified) name.
+     *
+     * C++ name lookup makes nested classes visible by their bare name inside the
+     * enclosing class, but the analyzer stores them under a composed top-level name
+     * (`Inner$Outer`, multi-level chains like `I$I2$Outer`, method-local classes as
+     * `L$Cls.m`). Instead of fuzzy prefix matching on the container's class list,
+     * this walks the enclosing-name chain of the context class and resolves each
+     * candidate by an exact ClassSignature lookup (O(1) per candidate).
+     *
+     * Candidate order follows C++ scoping (innermost first), so a same-name nested
+     * class correctly shadows an outer/top-level class.
+     * @param shortName - the bare source name of the nested class
+     * @param ctxClass - the class where the reference occurs (scope context)
+     * @param ctxMethod - optional; the method where the reference occurs. When present,
+     *        classes declared inside the method body (`L$Cls.m`) are also considered.
+     * @returns The matching ArkClass, or null when no candidate resolves.
+     */
+    public static findClassByShortName(shortName: string, ctxClass: ArkClass, ctxMethod?: ArkMethod): ArkClass | null {
+        if (!shortName || shortName.includes(NAME_DELIMITER)) {
+            return null;
+        }
+        // Enclosing-name chain: 'I2$Outer' -> ['I2$Outer', 'Outer']; top-level 'Outer' -> ['Outer'].
+        const enclosingChain: string[] = [];
+        let scopeName: string | undefined = ctxClass.getName();
+        while (scopeName && scopeName.length > 0 && !scopeName.startsWith('%')) {
+            enclosingChain.push(scopeName);
+            const idx = scopeName.indexOf(NAME_DELIMITER);
+            if (idx <= 0) {
+                break;
+            }
+            scopeName = scopeName.substring(idx + 1);
+        }
+        if (enclosingChain.length === 0) {
+            return null;
+        }
+        const file = ctxClass.getDeclaringArkFile();
+        const ns = ctxClass.getDeclaringArkNamespace();
+        const fileID = ns ? ns.getDeclaringFileID() : file.getFileSigID();
+        const nsSigID = ns ? ns.getNamespaceSigID() : undefined;
+        const tryCandidates = (candidates: string[]): ArkClass | null => {
+            for (const candidate of candidates) {
+                const cls = ns
+                    ? ns.getClass(new ClassSignature(candidate, fileID, nsSigID))
+                    : file.getClass(new ClassSignature(candidate, fileID));
+                if (cls) {
+                    return cls;
+                }
+            }
+            return null;
+        };
+        // 1. Nested classes inside the enclosing chain (innermost scope first).
+        const nestedCandidates: string[] = [];
+        for (const enclosing of enclosingChain) {
+            nestedCandidates.push(shortName + NAME_DELIMITER + enclosing);
+        }
+        const nested = tryCandidates(nestedCandidates);
+        if (nested) {
+            return nested;
+        }
+        // 2. Method-local classes (composed with '.' as the method separator).
+        if (ctxMethod) {
+            const methodLocalCandidates: string[] = [];
+            for (const enclosing of enclosingChain) {
+                methodLocalCandidates.push(shortName + NAME_DELIMITER + enclosing + '.' + ctxMethod.getName());
+            }
+            const local = tryCandidates(methodLocalCandidates);
+            if (local) {
+                return local;
+            }
+        }
+        return null;
+    }
+
     public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
         // find symbol from enum value
         if (arkClass.getCategory() === ClassCategory.ENUM) {
@@ -521,6 +596,12 @@ export class CxxModelUtils {
             if (field) {
                 return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
             }
+        }
+        // Nested classes are visible by their bare name inside the enclosing class scope;
+        // resolve them first (inner scope shadows outer) before the container-level search.
+        const nestedByShortName = this.findClassByShortName(symbolName, arkClass);
+        if (nestedByShortName) {
+            return nestedByShortName;
         }
         // look up symbol from inner to outer
         let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();

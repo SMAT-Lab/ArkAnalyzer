@@ -25,7 +25,7 @@ import {
 import { Constant } from '../base/Constant';
 import { ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt } from '../base/Stmt';
 import { ClassType, NumberType, Type } from '../base/Type';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -42,7 +42,7 @@ import { DUMMY_CLASS, DUMMY_FILE, DUMMY_METHOD } from './Const';
 import { ArkThisRef } from '../base/Ref';
 import { COMPONENT } from './EtsConst';
 import { FullPosition } from '../base/Position';
-import { CallGraph, CallGraphNode } from '../../callgraph/model/CallGraph';
+import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
 const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbility', 'UIAbility', 'BackupExtensionAbility'];
@@ -100,7 +100,7 @@ export class DummyMainCreater {
     private pairedMethodGroups: Map<number, ArkMethod[]> = new Map();
     // every declaring class of method in entryMethods have its instance local which is used to be the base of instance invoke expr
     private classLocalMap: Map<ArkClass, Local> = new Map();
-    private dummyMain: ArkMethod = new ArkMethod();
+    private dummyMain: ArkMethod | undefined;
     private scene: Scene;
     private tempLocalIndex: number = 0;
     private tempBlockIndex: number = 0;
@@ -130,7 +130,7 @@ export class DummyMainCreater {
         this.entryMethods = methods;
     }
 
-    public createDummyMain(): void {
+    public createDummyMain(): ArkMethod {
         // The first choice is to use the existing dummy class and add the new created dummy method into it.
         // Then it can create more than one dummy methods with different names by using this creation api several times.
         // step1: find out or create the dummy file
@@ -144,25 +144,23 @@ export class DummyMainCreater {
         }
 
         // step2: find out or create dummy class
-        let dummyMainClass = dummyMainFile.getClassWithName(DUMMY_CLASS);
+        const dummyMainClassSignature = new ClassSignature(DUMMY_CLASS, dummyMainFile.getFileSigID());
+        let dummyMainClass = dummyMainFile.getClass(dummyMainClassSignature);
         if (!dummyMainClass) {
-            dummyMainClass = new ArkClass();
-            dummyMainClass.setDeclaringArkFile(dummyMainFile);
-            const dummyMainClassSignature = new ClassSignature(DUMMY_CLASS, dummyMainFileSignature);
+            dummyMainClass = new ArkClass(dummyMainFile.getFileSigID());
             dummyMainClass.setSignature(dummyMainClassSignature);
             dummyMainFile.addArkClass(dummyMainClass);
         }
 
         // step3: create dummy method
-        this.dummyMain.setDeclaringArkClass(dummyMainClass);
         const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(this.dummyMethodName ?? DUMMY_METHOD);
-        const methodSignature = new MethodSignature(this.dummyMain.getDeclaringArkClass().getSignature(), methodSubSignature);
-        this.dummyMain.setImplementationSignature(methodSignature);
+        const methodSignature = new MethodSignature(dummyMainClass.getClassSigID(), methodSubSignature);
+        this.dummyMain = new ArkMethod(dummyMainClass.getClassSigID(), methodSignature);
         this.dummyMain.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
         this.dummyMain.setIsGeneratedFlag(true);
         checkAndUpdateMethod(this.dummyMain, dummyMainClass);
         dummyMainClass.addMethod(this.dummyMain);
-        this.scene.addToMethodsMap(this.dummyMain);
+        SignatureCanonicalizerRegistry.registerMethod(this.dummyMain);
 
         // step4: create instance local for each class
         for (const cls of this.entryClasses) {
@@ -184,6 +182,7 @@ export class DummyMainCreater {
         dummyCfg.setDeclaringMethod(this.dummyMain);
         this.createDummyMainCfg();
         this.addCfg2Stmt();
+        return this.dummyMain;
     }
 
     private addStaticInit(firstBlock: BasicBlock): void {
@@ -334,7 +333,7 @@ export class DummyMainCreater {
     }
 
     private createDummyMainCfg(): void {
-        const dummyCfg = this.dummyMain.getCfg()!;
+        const dummyCfg = this.dummyMain!.getCfg()!;
 
         // step1: create the first block which includes:
         // 1. all static invoke of static init methods
@@ -342,9 +341,9 @@ export class DummyMainCreater {
         // 3. all instance invoke of instance init methods
         // 4. all start lifecycle methods in sequence
         const firstBlock = new BasicBlock(this.tempBlockIndex++);
-        const dummyClassType = new ClassType(this.dummyMain.getDeclaringArkClass().getSignature());
+        const dummyClassType = new ClassType(this.dummyMain!.getDeclaringArkClass().getSignature());
         const localThis = new Local(THIS_NAME, dummyClassType);
-        this.dummyMain.getBody()?.addLocal(THIS_NAME, localThis);
+        this.dummyMain!.getBody()?.addLocal(THIS_NAME, localThis);
         const startingStmt = new ArkAssignStmt(localThis, new ArkThisRef(dummyClassType));
         firstBlock.addStmt(startingStmt);
         localThis.setDeclaringStmt(startingStmt);
@@ -357,7 +356,7 @@ export class DummyMainCreater {
         this.addStartMethods(firstBlock);
 
         const countLocal = new Local('count', NumberType.getInstance());
-        this.dummyMain.getBody()!.addLocal(countLocal.getName(), countLocal);
+        this.dummyMain!.getBody()!.addLocal(countLocal.getName(), countLocal);
 
         const zero = ValueUtil.getOrCreateNumberConst(0);
         const countAssignStmt = new ArkAssignStmt(countLocal, zero);
@@ -417,7 +416,7 @@ export class DummyMainCreater {
     }
 
     private addCfg2Stmt(): void {
-        const cfg = this.dummyMain.getCfg();
+        const cfg = this.dummyMain!.getCfg();
         if (!cfg) {
             return;
         }
@@ -428,8 +427,8 @@ export class DummyMainCreater {
         }
     }
 
-    public getDummyMain(): ArkMethod {
-        return this.dummyMain;
+    public getDummyMain(): ArkMethod | null {
+        return this.dummyMain ?? null;
     }
 
     private getEntryMethodsFromComponents(): void {
@@ -486,131 +485,5 @@ export class DummyMainCreater {
                     this.classifyMethod(mtd);
                 }
             });
-    }
-
-    /**
-     * Analysis the coverage of files, methods, stmts when starting from the dummy main method according to the given call graph.
-     * @param callGraph - the call graph create within ArkAnalyzer
-     * @param generated - whether to include the generated methods
-     */
-    public analysisCoverage(callGraph: CallGraph, generated: boolean = true): Coverage {
-        const analysis: CoverageAnalysis = new CoverageAnalysis(this.scene, this.dummyMain, callGraph, generated);
-        return analysis.calculateCoverage();
-    }
-}
-
-interface Coverage {
-    filesCoverage: number;
-    methodsCoverage: number;
-    stmtsCoverage: number;
-    totalFiles: number;
-    totalMethods: number;
-    totalStmts: number;
-    visitedFiles: number;
-    visitedMethods: number;
-    visitedStmts: number;
-}
-
-class CoverageAnalysis {
-    private visitedFiles: Set<ArkFile> = new Set();
-    private visitedMethods: Set<ArkMethod> = new Set();
-    private visitedStmts: Set<Stmt> = new Set();
-    private totalFiles: Set<ArkFile>;
-    private totalMethods: Set<ArkMethod>;
-    private totalStmts: Set<Stmt>;
-    private scene: Scene;
-    private entry: ArkMethod;
-    private callGraph: CallGraph;
-
-    constructor(scene: Scene, entry: ArkMethod, callGraph: CallGraph, generated: boolean = true) {
-        this.scene = scene;
-        this.callGraph = callGraph;
-        this.entry = entry;
-        this.totalFiles = new Set(scene.getFiles());
-        this.totalMethods = new Set();
-        this.totalFiles.forEach(file => {
-            file.getClasses().forEach(cls => {
-                cls.getMethods(generated).forEach(method => {
-                    this.totalMethods.add(method);
-                });
-            });
-        });
-        // if entry method is dummy main, then it is also generated, but still need to include it
-        this.totalMethods.add(entry);
-
-        this.totalStmts = new Set();
-        this.totalMethods.forEach(method => {
-            method
-                .getCfg()
-                ?.getStmts()
-                .forEach(stmt => {
-                    this.totalStmts.add(stmt);
-                });
-        });
-    }
-
-    public addVisitedFile(file: ArkFile): void {
-        this.visitedFiles.add(file);
-    }
-
-    public addVisitedMethod(method: ArkMethod): void {
-        this.visitedMethods.add(method);
-    }
-
-    public addVisitedStmt(stmt: Stmt): void {
-        this.visitedStmts.add(stmt);
-    }
-
-    public calculateCoverage(): Coverage {
-        this.goThroughMethod(this.entry);
-
-        return {
-            filesCoverage: this.visitedFiles.size / this.totalFiles.size,
-            methodsCoverage: this.visitedMethods.size / this.totalMethods.size,
-            stmtsCoverage: this.visitedStmts.size / this.totalStmts.size,
-            totalFiles: this.totalFiles.size,
-            totalMethods: this.totalMethods.size,
-            totalStmts: this.totalStmts.size,
-            visitedFiles: this.visitedFiles.size,
-            visitedMethods: this.visitedMethods.size,
-            visitedStmts: this.visitedStmts.size,
-        };
-    }
-
-    /**
-     * Scan all invoke stmts of the given method, and go through all callee methods of this given method recursively.
-     * @param method
-     * @private
-     */
-    private goThroughMethod(method: ArkMethod): void {
-        const file = method.getDeclaringArkFile();
-        if (!this.totalFiles.has(file) || !this.totalMethods.has(method) || this.visitedMethods.has(method)) {
-            return;
-        }
-        this.addVisitedMethod(method);
-        this.addVisitedFile(file);
-        const stmts = method.getCfg()?.getStmts();
-        if (!stmts) {
-            return;
-        }
-
-        stmts.forEach(stmt => {
-            this.addVisitedStmt(stmt);
-        });
-
-        const node = this.callGraph.getCallGraphNodeByMethod(method.getSignature());
-        const outgoingEdges = node.getOutgoingEdges();
-        if (!outgoingEdges) {
-            return;
-        }
-
-        for (const outEdge of outgoingEdges) {
-            const calleeSig = (outEdge.getDstNode() as CallGraphNode).getMethod();
-            const callee = this.scene.getMethod(calleeSig);
-            if (!callee) {
-                continue;
-            }
-            this.goThroughMethod(callee);
-        }
     }
 }

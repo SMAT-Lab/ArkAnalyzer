@@ -32,6 +32,7 @@ import {
 import { assert, beforeAll, describe, it } from 'vitest';
 import path from 'path';
 import { Sdk } from '../../src/Config';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
 const SDK_DIR = path.join(__dirname, '../../tests/resources/Sdk');
 const sdk: Sdk = {
@@ -41,6 +42,7 @@ const sdk: Sdk = {
 };
 
 function buildScene(projectPath: string): Scene {
+    SignatureCanonicalizerRegistry.dispose();
     let config: SceneConfig = new SceneConfig();
     config.buildConfig(projectPath, projectPath, [sdk]);
     config.buildFromProjectDir(projectPath);
@@ -114,8 +116,7 @@ describe('DummyMainTest1: Basic UIAbility and Component', () => {
     beforeAll(() => {
         const scene = buildScene('tests/resources/dummyMain/normal');
         const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        const dummyMain = creater.getDummyMain();
+        const dummyMain = creater.createDummyMain();
         cfg = dummyMain.getCfg()!;
     });
 
@@ -193,8 +194,7 @@ describe('DummyMainTest2: UIAbility with Child UIAbility', () => {
     beforeAll(() => {
         const scene = buildScene('tests/resources/dummyMain/child');
         const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        const dummyMain = creater.getDummyMain();
+        const dummyMain = creater.createDummyMain();
         cfg = dummyMain.getCfg()!;
     });
 
@@ -281,8 +281,7 @@ describe('DummyMainTest3: UIAbility Lifecycle Call with Args', () => {
     beforeAll(() => {
         const scene = buildScene('tests/resources/dummyMain/param');
         const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        const dummyMain = creater.getDummyMain();
+        const dummyMain = creater.createDummyMain();
         cfg = dummyMain.getCfg()!;
     });
 
@@ -368,8 +367,7 @@ describe('DummyMainTest5: Static Lifecycle Method', () => {
     beforeAll(() => {
         const scene = buildScene('tests/resources/dummyMain/static');
         const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        const dummyMain = creater.getDummyMain();
+        const dummyMain = creater.createDummyMain();
         cfg = dummyMain.getCfg()!;
     });
 

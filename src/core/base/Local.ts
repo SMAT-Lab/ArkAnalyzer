@@ -18,9 +18,8 @@ import { ClassType, FunctionType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkExport, ExportType } from '../model/ArkExport';
-import { ClassSignature, LocalSignature, MethodSignature } from '../model/ArkSignature';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { NAME_PREFIX, UNKNOWN_METHOD_NAME } from '../common/Const';
+import { LocalSignature, MethodSignature } from '../model/ArkSignature';
+import { NAME_PREFIX } from '../common/Const';
 import { ModifierType } from '../model/ArkBaseModel';
 import { ArkMethod } from '../model/ArkMethod';
 import { ModelUtils } from '../common/ModelUtils';
@@ -200,7 +199,7 @@ export class Local implements Value, ArkExport {
             this.signature ??
             new LocalSignature(
                 this.name,
-                new MethodSignature(ClassSignature.DEFAULT, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(UNKNOWN_METHOD_NAME))
+                MethodSignature.DEFAULT
             )
         );
     }

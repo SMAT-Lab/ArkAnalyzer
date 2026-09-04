@@ -32,7 +32,7 @@ export const LOOP_RETURN_EXPECT_CASE1 = {
         {
             id: 1,
             stmts: [
-                '%1 = arr.<@%unk/%unk: .length>',
+                '%1 = arr.<@%unk/%unk: %unk.length>',
                 'if i < %1',
             ],
             preds: [0],

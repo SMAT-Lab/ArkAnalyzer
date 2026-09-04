@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, describe, expect, it, beforeAll } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
 import { Language } from '../../../../src/core/model/ArkFile';
-import { ArkClass, Scene } from '../../../../src';
+import { ArkClass, ArkFile, Scene } from '../../../../src';
+import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 
 function checkLanguageOfModelWithinClass(cls: ArkClass, expectedLanguage: Language): void {
     assert.equal(cls.getLanguage(), expectedLanguage);
@@ -30,38 +31,43 @@ function checkLanguageOfModelWithinClass(cls: ArkClass, expectedLanguage: Langua
 }
 
 function checkLanguageOfModelWithinFile(scene: Scene, fileName: string, expectedLanguage: Language): void {
-    const file = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+    const file = scene.getFiles().find(file => file.getName().endsWith(fileName));
     assert.isDefined(file);
     assert.equal(file!.getLanguage(), expectedLanguage);
-    file!.getNamespaces().forEach((namespace) => {
+    file!.getNamespaces().forEach(namespace => {
         assert.equal(namespace.getLanguage(), expectedLanguage);
-        namespace.getClasses().forEach((cls) => {
+        namespace.getClasses().forEach(cls => {
             checkLanguageOfModelWithinClass(cls, expectedLanguage);
         });
     });
-    file!.getClasses().forEach((cls) => {
+    file!.getClasses().forEach(cls => {
         checkLanguageOfModelWithinClass(cls, expectedLanguage);
     });
-    file!.getExportInfos().forEach((exportInfo) => {
+    file!.getExportInfos().forEach(exportInfo => {
         assert.equal(exportInfo.getLanguage(), expectedLanguage);
     });
-    file!.getImportInfos().forEach((importInfo) => {
+    file!.getImportInfos().forEach(importInfo => {
         assert.equal(importInfo.getLanguage(), expectedLanguage);
     });
 }
 
 describe('File Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/file'));
+    let scene: Scene;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        scene = buildScene(path.join(__dirname, '../../../resources/model/file'));
+    });
 
     it('unhandled file', async () => {
         const expectUnhandledFileNames = ['CompilationErrorFile.ts'];
-        const unhandledFileNames = scene.getUnhandledFilePaths().map((filePath) => path.basename(filePath));
+        const unhandledFileNames = scene.getUnhandledFilePaths().map(filePath => path.basename(filePath));
         expect(unhandledFileNames).toEqual(expectUnhandledFileNames);
     });
 
     it('handled files', async () => {
-        const expectHandledFileNames = ['ArkTS1_1File.ets', 'ArkTS1_2File.ets', 'NormalFile.ts'];
-        const handledFileNames = scene.getFiles().map((f) => path.basename(f.getFilePath()));
+        const expectHandledFileNames = ['ArkTS1_1File.ets', 'ArkTS1_2File.ets', 'CompilationErrorFile.ts', 'NormalFile.ts'];
+        const handledFileNames = scene.getFiles().map(f => path.basename(f.getFilePath()));
         expect(handledFileNames).toEqual(expectHandledFileNames);
     });
 
@@ -75,8 +81,14 @@ describe('File Test', () => {
 });
 
 describe('ArkFile Source Code Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+    let scene: Scene;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'method.ts');
+    });
 
     it('test getCode for method.ts', async () => {
         assert.isDefined(arkFile);

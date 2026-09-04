@@ -21,7 +21,7 @@ export const CLOSURE_EXPECT_CASE1 = {
                 'closure = parameter0: @closure/ClosureSample.ts: %dflt.%AM0(number)',
                 'this = this: @closure/ClosureSample.ts: %dflt',
                 'n2 = 2',
-                'ptrinvoke closure<@%unk/%unk: .closure()>(n2)',
+                'ptrinvoke closure<@%unk/%unk: %unk.closure()>(n2)',
                 'return'
             ],
             preds: [],
@@ -56,7 +56,7 @@ export const CLOSURE_EXPECT_CASE3 = {
                 'n = parameter0: number',
                 'this = this: @closure/ClosureSample.ts: %dflt',
                 'n1 = 1',
-                'staticinvoke <@%unk/%unk: .callClosure()>(%AM1$case1)',
+                'staticinvoke <@%unk/%unk: %unk.callClosure()>(%AM1$case1)',
                 'return n1'
             ],
             preds: [],

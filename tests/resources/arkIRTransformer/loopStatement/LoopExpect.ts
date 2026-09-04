@@ -105,7 +105,7 @@ export const FOR_STATEMENT_EXPECT_CASE3 = {
         {
             id: 2,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: .log()>(\'case3\')',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'case3\')',
 
             ],
             preds: [1],
@@ -145,7 +145,7 @@ export const FOR_STATEMENT_EXPECT_CASE4 = {
         {
             id: 2,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: .log()>(\'case4\')',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'case4\')',
                 'i = i + 1',
 
             ],
@@ -233,7 +233,7 @@ export const FOR_STATEMENT_EXPECT_CASE6 = {
         {
             id: 3,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: .log()>(\'case6\')',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'case6\')',
 
             ],
             preds: [2],

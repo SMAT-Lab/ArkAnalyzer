@@ -39,7 +39,7 @@ import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';
 import { ArkMethod } from '../model/ArkMethod';
 import { EMPTY_STRING, ValueUtil } from '../common/ValueUtil';
-import { CALL_SIGNATURE_NAME, NAME_PREFIX, UNKNOWN_CLASS_NAME } from '../common/Const';
+import { CALL_SIGNATURE_NAME, CONSTRUCT_SIGNATURE_NAME, NAME_PREFIX, UNKNOWN_CLASS_NAME } from '../common/Const';
 import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../common/TSConst';
 import {
     AbstractInvokeExpr,
@@ -65,6 +65,7 @@ import { ClassSignature } from '../model/ArkSignature';
 import { Builtin } from '../common/Builtin';
 import { Language } from '../model/ArkFile';
 import { IRInference as CxxIRInference } from '../../frontend/cppFrontend/common/IRInference';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -292,12 +293,15 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
         const baseSignature = value.getFieldSignature().getDeclaringSignature();
         const baseName = baseSignature instanceof ClassSignature ? baseSignature.getClassName() : baseSignature.getNamespaceName();
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        const baseType = TypeInference.inferBaseType(baseName, arkMethod.getDeclaringArkClass());
-        if (!baseType) {
-            return undefined;
+        // Multi-candidate probing: same-name global entities are probed in order until
+        // the member resolves (candidate [0] equals the legacy single-value result).
+        for (const baseType of TypeInference.inferBaseTypes(baseName, arkMethod.getDeclaringArkClass())) {
+            const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
+            if (result) {
+                return result === value ? undefined : result;
+            }
         }
-        const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
-        return !result || result === value ? undefined : result;
+        return undefined;
     }
 }
 
@@ -360,7 +364,7 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
         const scene = arkMethod.getDeclaringArkFile().getScene();
         if (baseType instanceof ArrayType || baseType instanceof TupleType) {
-            const arrayInterface = scene.getSdkGlobal(Builtin.ARRAY);
+            const arrayInterface = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
             const realTypes = baseType instanceof ArrayType ? [baseType.getBaseType()] : undefined;
             if (arrayInterface instanceof ArkClass) {
                 baseType = new ClassType(arrayInterface.getSignature(), realTypes);
@@ -376,7 +380,8 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         } else if (baseType instanceof AnnotationNamespaceType) {
             const namespace = scene.getNamespace(baseType.getNamespaceSignature());
             if (namespace) {
-                const foundMethod = ModelUtils.findPropertyInNamespace(methodName, namespace);
+                // 多实体探测：跨文件同名 ns（Intl 系）的后续文件实体持有该文件声明的成员
+                const foundMethod = ModelUtils.findPropertyInNamespaces(methodName, namespace);
                 if (foundMethod instanceof ArkMethod) {
                     let signature = foundMethod.matchMethodSignature(expr.getArgs());
                     TypeInference.inferSignatureReturnType(signature, foundMethod);
@@ -419,12 +424,22 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
             }
             return undefined;
         }
-        const baseType = this.getBaseType(expr, arkMethod);
-        const result = baseType ? IRInference.inferInstanceMember(baseType, expr, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) :
-            (arkMethod.getDeclaringArkFile().getLanguage() === Language.CXX ?
-                CxxIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr) :
-                IRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr));
-        return !result || result === expr ? undefined : result;
+        // Multi-candidate probing: same-name global entities are probed in order until
+        // the invoke resolves (candidate [0] equals the legacy single-value result);
+        // the by-name fallback chain runs only when no candidate exists at all.
+        const baseTypes = this.getBaseTypes(expr, arkMethod);
+        if (baseTypes.length > 0) {
+            for (const baseType of baseTypes) {
+                const result = IRInference.inferInstanceMember(baseType, expr, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
+                if (result) {
+                    return result === expr ? undefined : result;
+                }
+            }
+            return undefined;
+        }
+        return arkMethod.getDeclaringArkFile().getLanguage() === Language.CXX
+            ? CxxIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr)
+            : IRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
     }
 
     protected getBaseType(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): Type | null {
@@ -433,6 +448,15 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
             return TypeInference.inferBaseType(className, arkMethod.getDeclaringArkClass());
         }
         return null;
+    }
+
+    /** Multi-candidate variant of {@link getBaseType} (same-name global entities expanded). */
+    protected getBaseTypes(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): Type[] {
+        const className = expr.getMethodSignature().getDeclaringClassSignature().getClassName();
+        if (className && className !== UNKNOWN_CLASS_NAME) {
+            return TypeInference.inferBaseTypes(className, arkMethod.getDeclaringArkClass());
+        }
+        return [];
     }
 }
 
@@ -488,7 +512,15 @@ export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         let type: Type | undefined | null = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
         if (TypeInference.isUnclearType(type)) {
-            type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+            // Deterministic local-class resolution along the method scope chain before
+            // the file-level fuzzy name search.
+            const localClass = ModelUtils.findLocalClassInMethodChain(className, arkMethod);
+            if (localClass) {
+                type = new ClassType(localClass.getSignature());
+            }
+        }
+        if (TypeInference.isUnclearType(type)) {
+            type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass(), arkMethod);
         }
         if (type instanceof AliasType) {
             const originType = TypeInference.replaceAliasType(type);
@@ -499,7 +531,25 @@ export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
             }
         }
         if (type && type instanceof ClassType) {
-            value.getClassType().setClassSignature(type.getClassSignature());
+            // 构造器对象升级：type 解析为构造器持有类（ns 内 declare const 的 %AC
+            // 字面量类——如 Intl.NumberFormat，或顶层 Constructor interface）时，
+            // `new` 的实例类型 = construct-signature（或 call）返回类型——对齐
+            // Expr.ArkNewExpr.inferType 的 constructorSignature 升级链。顶层场景
+            // 原靠后续赋值传播兜底（%0 初始 unclear 可覆盖）；ns 内 %AC 场景类型
+            // 构建期已明确，narrowing 哲学下传播不覆盖，必须在此显式升级。
+            const scene = arkMethod.getDeclaringArkFile().getScene();
+            let instanceType: ClassType = type;
+            const typeClass = scene.getClass(type.getClassSignature());
+            if (typeClass) {
+                const ctorReturn = typeClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType() ?? typeClass.getMethodWithName(CALL_SIGNATURE_NAME)?.getReturnType();
+                if (ctorReturn) {
+                    const replaced = TypeInference.replaceAliasType(ctorReturn);
+                    if (replaced instanceof ClassType) {
+                        instanceType = replaced;
+                    }
+                }
+            }
+            value.getClassType().setClassSignature(instanceType.getClassSignature());
             TypeInference.inferRealGenericTypes(value.getClassType().getRealGenericTypes(), arkMethod.getDeclaringArkClass());
         }
         return undefined;

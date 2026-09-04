@@ -25,9 +25,8 @@ import { buildGenericType } from '../../../../core/model/builder/builderUtils';
 import { CxxAstNode, AstKind } from '../../utils/ArkCxxAstNode';
 
 export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNode, cls: ArkClass): ArkField {
-    let field = new ArkField();
+    let field = new ArkField(cls.getClassSigID());
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setDeclaringArkClass(cls);
     field.setOriginFullPosition(FullPosition.cxxBuildFromNode(member, sourceFile));
 
     let fieldName = member.name;
@@ -41,7 +40,7 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
-    field.setSignature(new FieldSignature(fieldName, cls.getSignature(), fieldType, field.isStatic()));
+    field.setSignature(new FieldSignature(fieldName, cls.getClassSigID(), fieldType, field.isStatic()));
 
     IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
     cls.addField(field);

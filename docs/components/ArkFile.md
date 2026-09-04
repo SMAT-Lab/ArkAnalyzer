@@ -191,20 +191,20 @@ export class FileSignature {
 
 ### 类与命名空间
 
-| 方法 | 说明 |
-|------|------|
-| `getDefaultClass(): ArkClass` / `setDefaultClass(c)` | 默认类 `%dflt` |
-| `addArkClass(c, originName?)` | 加入；嵌套类按 originName 索引一份 |
-| `getClassWithName(name): ArkClass \| null` | 按名查；**先查顶层**，再递归命名空间 |
-| `getClass(sig): ArkClass \| null` | 按签名查 |
-| `getClasses(): ArkClass[]` | 直接成员类（不含命名空间内） |
-| `removeArkClass(c): boolean` | 同步从 Scene 中删除 |
-| `addNamespace(ns)` | 加入直接子命名空间 |
-| `getNamespaceWithName(name) / getNamespace(sig)` | 直接子命名空间查询 |
-| `getNamespaces(): ArkNamespace[]` | 直接子命名空间列表 |
+| 方法 | 说明               |
+|------|------------------|
+| `getDefaultClass(): ArkClass` / `setDefaultClass(c)` | 默认类 `%dflt`      |
+| `addArkClass(c, originName?)` | 加入               |
+| `getClassWithName(name): ArkClass \| null` | 按名查，先查顶层，再递归命名空间 |
+| `getClass(sig): ArkClass \| null` | 按签名查             |
+| `getClasses(): ArkClass[]` | 直接成员类（不含命名空间内）   |
+| `removeArkClass(c): boolean` | 同步从 Scene 中删除    |
+| `addNamespace(ns)` | 加入直接子命名空间        |
+| `getNamespaceWithName(name) / getNamespace(sig)` | 直接子命名空间查询        |
+| `getNamespaces(): ArkNamespace[]` | 直接子命名空间列表        |
 | `getAllNamespacesUnderThisFile(): ArkNamespace[]` | 递归取所有后代命名空间（含嵌套） |
-| `removeNamespace(ns): boolean` | 同步从 Scene 中删除 |
-| `getAnonymousClassNumber(): number` / `getAnonymousNamespaceNumber(): number` | 自增计数器 |
+| `removeNamespace(ns): boolean` | 同步从 Scene 中删除    |
+| `getAnonymousClassNumber(): number` / `getAnonymousNamespaceNumber(): number` | 自增计数器            |
 
 ### import / export
 

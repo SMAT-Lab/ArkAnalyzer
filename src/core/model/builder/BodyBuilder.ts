@@ -21,6 +21,7 @@ import * as ts from 'ohos-typescript';
 import { Local } from '../../base/Local';
 import { MethodParameter } from './ArkMethodBuilder';
 import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../base/Type';
@@ -379,7 +380,7 @@ export class BodyBuilder {
         if (callGlobal !== undefined && callGlobal instanceof GlobalRef && callGlobal.getRef() === null) {
             const fieldSignature = new FieldSignature(
                 nestedMethodName,
-                nestedMethod.getDeclaringArkClass().getSignature(),
+                nestedMethod.getDeclaringArkClass().getClassSigID(),
                 new FunctionType(nestedMethod.getSignature())
             );
             callGlobal.setRef(new ArkStaticFieldRef(fieldSignature));
@@ -399,17 +400,44 @@ export class BodyBuilder {
             return;
         }
 
+        // A declare entry can be value-equal to the implementation signature (they then share
+        // one canonical instance). Injecting it here AND in the impl path below would unshift
+        // the closure param twice onto the same shared params array — skip it and let the impl
+        // path handle the shared instance exactly once.
+        const implSigID = nestedMethod.getMethodSigID();
+        const canonicalizer = SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer;
         const declareSignatures = nestedMethod.getDeclareSignatures();
         declareSignatures?.forEach((signature, index) => {
+            if (implSigID !== undefined && canonicalizer.getExistingId(signature) === implSigID) {
+                return;
+            }
             nestedMethod.setDeclareSignatureWithIndex(this.createNewSignatureWithClosures(closuresLocal, signature), index);
         });
 
+        const oldSigID = nestedMethod.getMethodSigID();
         const implementSignature = nestedMethod.getImplementationSignature();
         if (implementSignature !== null) {
             nestedMethod.setImplementationSignature(this.createNewSignatureWithClosures(closuresLocal, implementSignature));
+            // Rebuilding the signature interns a new MethodSigID. Direct children reference the
+            // outer method by its (now stale) SigID, so re-point them to the new one.
+            const newSigID = nestedMethod.getMethodSigID();
+            if (newSigID !== oldSigID) {
+                this.syncChildrenOuterMethodSigID(nestedMethod, oldSigID, newSigID);
+            }
         }
 
         this.addClosureParamsAssignStmts(closuresLocal, nestedMethod);
+    }
+
+    private syncChildrenOuterMethodSigID(parent: ArkMethod, oldSigID: number | undefined, newSigID: number | undefined): void {
+        if (oldSigID === undefined || oldSigID <= 0 || newSigID === undefined) {
+            return;
+        }
+        for (const method of parent.getDeclaringArkClass().getMethods()) {
+            if (method !== parent && method.getOuterMethodSigID() === oldSigID) {
+                method.setOuterMethodSigID(newSigID);
+            }
+        }
     }
 
     private updateOuterMethodWithClosures(outerMethod: ArkMethod, nestedMethod: ArkMethod, closuresLocal: Local): void {
@@ -463,7 +491,7 @@ export class BodyBuilder {
         }
         const fieldSignature = new FieldSignature(
             methodSignature.getMethodSubSignature().getMethodName(),
-            methodSignature.getDeclaringClassSignature(),
+            methodSignature.getDeclaringClassSigID(),
             new ClosureType(lexicalEnv, methodSignature)
         );
         globalRef.setRef(new ArkStaticFieldRef(fieldSignature));
@@ -533,7 +561,7 @@ export class BodyBuilder {
         closuresParam.setType(closuresLocal.getType());
         params.unshift(closuresParam);
         let newSubSignature = new MethodSubSignature(oldSubSignature.getMethodName(), params, oldSubSignature.getReturnType(), oldSubSignature.isStatic());
-        return new MethodSignature(oldSignature.getDeclaringClassSignature(), newSubSignature);
+        return new MethodSignature(oldSignature.getDeclaringClassSigID(), newSubSignature);
     }
 
     private updateSignatureAndArgsInArkInvokeExpr(stmt: ArkInvokeStmt | ArkAssignStmt, methodSignature: MethodSignature, closuresLocal: Local): void {

@@ -13,13 +13,21 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, describe, it, afterEach } from 'vitest';
 import path from 'path';
 import { SceneConfig } from '../../src/Config';
 import { Scene } from '../../src/Scene';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
 describe('MethodBodyBuild Config Test', () => {
     const testFile = path.join(__dirname, '../resources/inferType/Target.ets');
+
+    // 各用例独立重建同一文件：全局 registry 按签名值跨用例共享，旧实例（含已构建的
+    // method body）会经同名 namespace 合并语义泄漏进后续用例的断言域。逐用例 dispose
+    // 隔离，保证每个 it 从干净 registry 开始。
+    afterEach(() => {
+        SignatureCanonicalizerRegistry.dispose();
+    });
 
     it('should build method body when enableMethodBodyBuild is undefined (default)', () => {
         const config: SceneConfig = new SceneConfig();

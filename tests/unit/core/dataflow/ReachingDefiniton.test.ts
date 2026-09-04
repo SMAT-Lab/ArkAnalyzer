@@ -39,6 +39,7 @@ import {
     TRY_CATCH_EXPECT_CASE3
 } from '../../../resources/reachingDef/tryCatch/TryCatchExpect';
 import { testReachingDef } from '../../common';
+import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 
 describe('ReachingDefTest', () => {
     it('case1: conditional operator', () => {
@@ -76,6 +77,7 @@ describe('ReachingDefTest', () => {
 const REACHING_DEF_ROOT = path.resolve(__dirname, '../../../resources/reachingDef');
 
 function buildScene(folderName: string): Scene {
+    SignatureCanonicalizerRegistry.dispose();
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(REACHING_DEF_ROOT, folderName));
     let scene = new Scene();

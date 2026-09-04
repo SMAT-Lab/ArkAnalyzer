@@ -22,17 +22,12 @@ import { describe, it, expect } from 'vitest';
 import { BigIntConstant } from '../../src/core/base/Constant';
 import { BooleanType } from '../../src/core/base/Type';
 import { MethodParameter } from '../../src/core/model/builder/ArkMethodBuilder';
-import {
-    MethodSubSignature,
-    methodSubSignatureCompare,
-    ClassSignature,
-    FileSignature,
-    FieldSignature
-} from '../../src/core/model/ArkSignature';
+import { MethodSubSignature, methodSubSignatureCompare, ClassSignature, FileSignature, FieldSignature } from '../../src/core/model/ArkSignature';
 import { ArkField, FieldCategory } from '../../src/core/model/ArkField';
 import { ArkClass, ClassCategory } from '../../src/core/model/ArkClass';
 import { ArkFile, Language } from '../../src/core/model/ArkFile';
 import { ArkNamespace } from '../../src/core/model/ArkNamespace';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 import { ArkBody } from '../../src/core/model/ArkBody';
 import { Local } from '../../src/core/base/Local';
 import { NamespaceSignature } from '../../src/core/model/ArkSignature';
@@ -40,7 +35,6 @@ import { Cfg } from '../../src/core/graph/Cfg';
 import { FullPosition } from '../../src/core/base/Position';
 
 describe('ArkAnalyzer Core Bug Reproduction', () => {
-
     // Bug 1: BigIntConstant missing 'n' suffix
     it('Bug 1: BigIntConstant cannot distinguish from normal numbers', () => {
         const bi = new BigIntConstant(BigInt(123));
@@ -55,7 +49,6 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const instanceSig = new MethodSubSignature('foo', params, retType, false);
         expect(methodSubSignatureCompare(staticSig, instanceSig)).toBe(false);
     });
-
 
     // Bug 4: setLocals appends instead of replacing
     it('Bug 4: setLocals incorrectly appends instead of replacing', () => {
@@ -74,11 +67,12 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
     // Bug 5: Interface field incorrectly judged as non-public
     it('Bug 5: Interface field incorrectly judged as non-public', () => {
         const file = new ArkFile(Language.TYPESCRIPT);
-        const cls = new ArkClass();
+        const fileSig = new FileSignature('test', 'iface-field.ts');
+        file.setFileSignature(fileSig);
+        const cls = new ArkClass(file.getFileSigID());
         cls.setCategory(ClassCategory.INTERFACE);
-        cls.setDeclaringArkFile(file);
-        const field = new ArkField();
-        field.setDeclaringArkClass(cls);
+        cls.setSignature(new ClassSignature('IfaceHost', fileSig, null));
+        const field = new ArkField(cls.getClassSigID());
         field.setCategory(FieldCategory.PROPERTY_DECLARATION);
         // Interface members are public by default, but current implementation returns false
         expect(field.isPublic()).toBe(true);
@@ -90,44 +84,55 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const fileSig = new FileSignature('test', 'test.ts');
         file.setFileSignature(fileSig);
         const cls1Sig = new ClassSignature('Class1', fileSig);
-        const cls1 = new ArkClass();
+        const cls1 = new ArkClass(file.getFileSigID());
         cls1.setSignature(cls1Sig);
-        cls1.setDeclaringArkFile(file);
         const cls2Sig = new ClassSignature('Class2', fileSig);
-        const cls2 = new ArkClass();
+        const cls2 = new ArkClass(file.getFileSigID());
         cls2.setSignature(cls2Sig);
-        const staticField = new ArkField();
+        const staticField = new ArkField(cls2.getClassSigID());
         const fieldSig = new FieldSignature(
-            'staticVar', cls2Sig, BooleanType.getInstance(), true
+            'staticVar',
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(cls2Sig),
+            BooleanType.getInstance(),
+            true
         );
         staticField.setSignature(fieldSig);
         staticField.addModifier(16); // ModifierType.STATIC
         cls2.addField(staticField);
-        // Construct classMap: fileSig -> [cls1, cls2]
-        const classMap = new Map();
-        classMap.set(fileSig, [cls1, cls2]);
 
         // cls1 has no static fields, should return empty
-        const fields = cls1.getStaticFields(classMap);
+        const fields = cls1.getStaticFields();
         expect(fields.length).toBe(0); // Failure means returning fields of other classes
     });
 
-
     // Bug 7: Namespace with same name overwritten
     it('Bug 7: Namespace with same name overwritten (Fail proves bug exists)', () => {
+        const file = new ArkFile(Language.TYPESCRIPT);
         const fileSig = new FileSignature('test', 'test.ts');
-        const ns1 = new ArkNamespace();
-        const nsSig1 = new NamespaceSignature('sub', fileSig);
-        ns1.setSignature(nsSig1);
+        file.setFileSignature(fileSig);
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        // Regular construction: the parent namespace is interned (top-level under the
+        // file) and the children's signatures declare the parent as their scope —
+        // the signature ownership is the single source of truth for name lookups.
+        const parent = new ArkNamespace(file.getFileSigID(), undefined, new NamespaceSignature('parent', fileSigID));
+        parent.setOriginFullPositions([FullPosition.DEFAULT]);
+        file.addNamespace(parent);
+
+        const ns1 = new ArkNamespace(
+            file.getFileSigID(),
+            parent.getNamespaceSigID(),
+            new NamespaceSignature('sub', file.getFileSigID(), parent.getNamespaceSigID())
+        );
         ns1.setOriginFullPositions([FullPosition.DEFAULT]);
 
-        const ns2 = new ArkNamespace();
-        const nsSig2 = new NamespaceSignature('sub', fileSig);
-        ns2.setSignature(nsSig2);
+        const ns2 = new ArkNamespace(
+            file.getFileSigID(),
+            parent.getNamespaceSigID(),
+            new NamespaceSignature('sub', file.getFileSigID(), parent.getNamespaceSigID())
+        );
         ns2.setOriginFullPositions([FullPosition.DEFAULT]);
 
-        const parent = new ArkNamespace();
-        parent.setOriginFullPositions([FullPosition.DEFAULT]);
         parent.addNamespace(ns1);
         parent.addNamespace(ns2);
 
@@ -145,21 +150,22 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const file = new ArkFile(Language.TYPESCRIPT);
         const fileSig = new FileSignature('test', 'test.ts');
         file.setFileSignature(fileSig);
-        const ns = new ArkNamespace();
-        const nsSig = new NamespaceSignature('MySpace', fileSig);
-        ns.setSignature(nsSig);
-        ns.setDeclaringArkFile(file);
+        const ns = new ArkNamespace(
+            file.getFileSigID(),
+            undefined,
+            new NamespaceSignature('MySpace', SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig))
+        );
         ns.setOriginFullPositions([FullPosition.DEFAULT]);
-        const clsSig = new ClassSignature('InnerClass', fileSig);
+        // The class signature must declare the namespace as its scope — the signature
+        // ownership is the single source of truth for name lookups.
+        const clsSig = new ClassSignature('InnerClass', file.getFileSigID(), ns.getNamespaceSigID());
         const cls = new ArkClass();
         cls.setSignature(clsSig);
         ns.addArkClass(cls);
         file.addNamespace(ns);
 
         // Expect to find class inside namespace via getClassWithName
-        // Refer to getExportInfoBy supporting 'A.B.C' nested lookup
-        // Current implementation only searches top-level classes Map, returns null
+        // (file-level lookup recurses into namespaces)
         expect(file.getClassWithName('InnerClass')).not.toBeNull(); // Failure proves cannot find
     });
-
 });

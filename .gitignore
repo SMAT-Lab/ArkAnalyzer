@@ -44,3 +44,4 @@ tools/
 
 # Agent related files
 .claude/settings.json
+opencode.json

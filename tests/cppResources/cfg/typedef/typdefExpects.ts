@@ -23,7 +23,7 @@ export const TYPEDEF_EXPECT_CASE1 = {
                 '%0 = new @%unk/%unk: std::map<string,std::vector<int>>',
                 'instanceinvoke %0.<@%unk/%unk: std::map.constructor()>()',
                 'myMap = %0',
-                "instanceinvoke myMap['key'].<@%unk/%unk: .push_back()>(1)",
+                "instanceinvoke myMap['key'].<@%unk/%unk: %unk.push_back()>(1)",
                 'return 0'
             ],
             preds: [],

@@ -16,10 +16,12 @@
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
 import {
-    addSystemComponent, BUILDIN_SYSTEM_COMPONENT,
+    addSystemComponent,
+    BUILDIN_SYSTEM_COMPONENT,
     COMMON_METHOD,
     COMPONENT_ATTRIBUTE,
-    COMPONENT_POP_FUNCTION, DEFAULT_COMPONENTS,
+    COMPONENT_POP_FUNCTION,
+    DEFAULT_COMPONENTS,
     SCOPE_PREFIX,
 } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
@@ -37,6 +39,7 @@ import { Sdk } from '../../Config';
 import ts from 'ohos-typescript';
 import fs from 'fs';
 import { Scene } from '../../Scene';
+import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
 
@@ -49,12 +52,9 @@ export class SdkUtils {
         ['ES2021', 'lib.es2021.d.ts'],
     ]);
 
-    private static sdkImportMap: Map<string, ArkFile> = new Map<string, ArkFile>();
+    private static sdkImportMap: Map<string, number> = new Map<string, number>();
     public static BUILT_IN_NAME = 'built-in';
-    private static BUILT_IN_PATHS = [
-        'lib/node_modules/ohos-typescript/lib',
-        'node_modules/ohos-typescript/lib',
-    ];
+    private static BUILT_IN_PATHS = ['lib/node_modules/ohos-typescript/lib', 'node_modules/ohos-typescript/lib'];
 
     public static setEsVersion(buildProfile: any): void {
         const products = buildProfile?.app?.products;
@@ -128,28 +128,72 @@ export class SdkUtils {
 
     public static buildSdkImportMap(file: ArkFile): void {
         const fileName = path.basename(file.getName());
+        const fileSigID = file.getFileSigID();
         if (fileName.startsWith(SCOPE_PREFIX)) {
-            this.sdkImportMap.set(fileName.replace(/\.d\.e?ts$/, ''), file);
+            this.sdkImportMap.set(fileName.replace(/\.d\.e?ts$/, ''), fileSigID);
         } else if (file.getName().startsWith('api')) {
-            this.sdkImportMap.set(file.getName().replace(/^api[/\\]|\.d\.e?ts$/g, ''), file);
+            this.sdkImportMap.set(file.getName().replace(/^api[/\\]|\.d\.e?ts$/g, ''), fileSigID);
         }
     }
 
     public static getImportSdkFile(from: string): ArkFile | undefined {
-        return this.sdkImportMap.get(from);
+        const fileSigID = this.sdkImportMap.get(from);
+        if (fileSigID === undefined) {
+            return undefined;
+        }
+        return SignatureCanonicalizerRegistry.getInstance().getArkFileById(fileSigID);
     }
 
     private static isGlobalPath(file: ArkFile): boolean {
-        return !!file.getScene().getOptions().sdkGlobalFolders?.find(x => {
-            if (path.isAbsolute(x)) {
-                return file.getFilePath().startsWith(x);
-            } else {
-                return file.getFilePath().includes(path.sep + x + path.sep);
-            }
-        });
+        return !!file
+            .getScene()
+            .getOptions()
+            .sdkGlobalFolders?.find(x => {
+                if (path.isAbsolute(x)) {
+                    return file.getFilePath().startsWith(x);
+                } else {
+                    return file.getFilePath().includes(path.sep + x + path.sep);
+                }
+            });
     }
 
-    public static loadGlobalAPI(file: ArkFile, globalMap: Map<string, ArkExport>): void {
+    // --- 多值登记 helpers（单值视图兼容语义） ---
+    // globalMap 为多值主存（名字 → 实体列表，登记序）。单值视图 = 列表 [0]：
+    // appendGlobal 保持首实体不变（旧 first-win 语义）；promoteGlobal 移至头部
+    //（旧 override 覆盖语义）。
+
+    /** @internal 取名字下的首实体（单值视图语义）。 */
+    private static getFirstGlobal(globalMap: Map<string, ArkExport[]>, name: string): ArkExport | undefined {
+        return globalMap.get(name)?.[0];
+    }
+
+    /** @internal first-win 登记：append 到列表尾部（首实体不变）。 */
+    private static appendGlobal(globalMap: Map<string, ArkExport[]>, name: string, entity: ArkExport): void {
+        const list = globalMap.get(name);
+        if (!list) {
+            globalMap.set(name, [entity]);
+            return;
+        }
+        if (!list.includes(entity)) {
+            list.push(entity);
+        }
+    }
+
+    /** @internal override 登记：移到列表头部（等价旧单值覆盖语义）。 */
+    private static promoteGlobal(globalMap: Map<string, ArkExport[]>, name: string, entity: ArkExport): void {
+        const list = globalMap.get(name);
+        if (!list) {
+            globalMap.set(name, [entity]);
+            return;
+        }
+        const idx = list.indexOf(entity);
+        if (idx >= 0) {
+            list.splice(idx, 1);
+        }
+        list.unshift(entity);
+    }
+
+    public static loadGlobalAPI(file: ArkFile, globalMap: Map<string, ArkExport[]>): void {
         if (!this.isGlobalPath(file)) {
             return;
         }
@@ -163,14 +207,15 @@ export class SdkUtils {
                     .forEach(mtd => this.loadAPI(mtd, globalMap));
             }
         });
-        file.getDefaultClass().getDefaultArkMethod()
+        file.getDefaultClass()
+            .getDefaultArkMethod()
             ?.getBody()
             ?.getAliasTypeMap()
             ?.forEach(a => this.loadAPI(a[0], globalMap, true));
         file.getNamespaces().forEach(ns => this.loadAPI(ns, globalMap));
     }
 
-    public static mergeGlobalAPI(file: ArkFile, globalMap: Map<string, ArkExport>): void {
+    public static mergeGlobalAPI(file: ArkFile, globalMap: Map<string, ArkExport[]>): void {
         if (!this.isGlobalPath(file)) {
             return;
         }
@@ -179,38 +224,28 @@ export class SdkUtils {
                 this.loadClass(globalMap, cls);
             }
         });
-        file.getNamespaces().forEach(ns => {
-            const oldNs = globalMap.get(ns.getName());
-            if (oldNs instanceof ArkNamespace && oldNs !== ns) {
-                SdkUtils.copyNamespace(ns, oldNs);
-            }
-        });
+        // 跨文件同名 namespace 不再合并（copyNamespace 退役）：ns 实体已在阶段 1
+        // 多值登记（各文件的实体共存），成员可见性由探测层承担——
+        // ModelUtils.findPropertyInNamespaces 逐实体探测（%dflt locals / ns 内类 /
+        // 嵌套 ns / export），成员签名归属真实声明文件。
     }
 
-    private static copyNamespace(ns: ArkNamespace, oldNs: ArkNamespace): void {
-        ns.getClasses().forEach(cls => {
-            const oldCls = oldNs.getClassWithName(cls.getName());
-            if (oldCls) {
-                this.copyMembers(cls, oldCls);
-            } else {
-                oldNs.addArkClass(cls);
-            }
-        });
-    }
-
-    public static loadAPI(api: ArkExport, globalMap: Map<string, ArkExport>, override: boolean = false): void {
-        const old = globalMap.get(api.getName());
+    public static loadAPI(api: ArkExport, globalMap: Map<string, ArkExport[]>, override: boolean = false): void {
+        const old = this.getFirstGlobal(globalMap, api.getName());
         if (!old) {
-            globalMap.set(api.getName(), api);
+            this.appendGlobal(globalMap, api.getName(), api);
         } else if (override) {
             logger.trace(`${old.getSignature()} is override`);
-            globalMap.set(api.getName(), api);
+            this.promoteGlobal(globalMap, api.getName(), api);
         } else {
+            // first-win（单值视图保持首实体），但后续同名实体仍多值登记（append 尾部）
+            //——同名多声明（跨文件 interface 增补等）的成员探测依赖完整实体列表。
             logger.trace(`duplicated api: ${api.getSignature()}`);
+            this.appendGlobal(globalMap, api.getName(), api);
         }
     }
 
-    public static postInferredSdk(file: ArkFile, globalMap: Map<string, ArkExport>): void {
+    public static postInferredSdk(file: ArkFile, globalMap: Map<string, ArkExport[]>): void {
         if (!this.isGlobalPath(file)) {
             return;
         }
@@ -226,41 +261,52 @@ export class SdkUtils {
             });
     }
 
-    private static loadClass(globalMap: Map<string, ArkExport>, cls: ArkClass): void {
-        const old = globalMap.get(cls.getName());
+    private static loadClass(globalMap: Map<string, ArkExport[]>, cls: ArkClass): void {
+        const old = this.getFirstGlobal(globalMap, cls.getName());
         if (cls === old) {
             return;
         } else if (old instanceof ArkClass && old.getDeclaringArkFile().getProjectName() === cls.getDeclaringArkFile().getProjectName()) {
             if (old.getCategory() === ClassCategory.CLASS || old.getCategory() === ClassCategory.INTERFACE) {
-                this.copyMembers(cls, old);
+                // 同名 interface 跨文件增补（TS 语义为同一实体）：不再 copyMembers 灌
+                // 入首实体——各文件的实体共存在多值列表（阶段1已登记），成员留在
+                // 声明类，探测层逐实体查找（成员签名归属真实声明文件）。
+                return;
             } else {
-                this.copyMembers(old, cls);
-                globalMap.delete(cls.getName());
-                this.loadAPI(cls, globalMap, true);
+                // 类别冲突（旧 enum 等 vs 新 interface/class）：不再 copyMembers(old, cls)
+                //——两实体共存多值（cls 提升为单值视图，与旧 delete+override 语义
+                // 一致），成员探测并集可见。
+                this.promoteGlobal(globalMap, cls.getName(), cls);
             }
         } else {
             this.loadAPI(cls, globalMap, true);
         }
     }
 
-    private static loadGlobalLocal(local: Local, defaultArkMethod: ArkMethod, globalMap: Map<string, ArkExport>): void {
+    private static loadGlobalLocal(local: Local, defaultArkMethod: ArkMethod, globalMap: Map<string, ArkExport[]>): void {
         const name = local.getName();
         local.setSignature(new LocalSignature(name, defaultArkMethod.getSignature()));
         const scene = defaultArkMethod.getDeclaringArkFile().getScene();
         if (scene.getOptions().isScanAbc) {
-            const instance = globalMap.get(name + 'Interface');
-            const attr = globalMap.get(name + COMPONENT_ATTRIBUTE);
+            const instance = this.getFirstGlobal(globalMap, name + 'Interface');
+            const attr = this.getFirstGlobal(globalMap, name + COMPONENT_ATTRIBUTE);
             if (attr instanceof ArkClass && instance instanceof ArkClass) {
-                this.copyMembers(instance, attr);
-                globalMap.set(name, attr);
+                // abc 场景不再 copyMembers 合并（挂载分裂来源）：attr 提升为单值视图
+                //（与旧 set 语义一致），成员留在各自声明类，由探测层逐实体查找。
+                this.promoteGlobal(globalMap, name, attr);
                 return;
             }
         }
-        const old = globalMap.get(name);
+        const old = this.getFirstGlobal(globalMap, name);
         if (old instanceof ArkClass && local.getType() instanceof ClassType) {
-            const localConstructor = globalMap.get((local.getType() as ClassType).getClassSignature().getClassName());
+            const localConstructor = this.getFirstGlobal(globalMap, (local.getType() as ClassType).getClassSignature().getClassName());
             if (localConstructor instanceof ArkClass) {
-                this.copyMembers(localConstructor, old);
+                // var 侧不再 copyMembers 灌入 interface（TS 语义本就是两个声明）：
+                // local（类型即 XConstructor）登记为多值候选——探测层经它命中构造器
+                // 侧实体，成员签名自然归属真实声明类。
+                //（曾设 canonical 主定义实体表——"var 声明同文件 interface"规则——
+                // 实测 Promise 例外（var 文件无 interface 主体）且多数场景 canonical
+                // == 首实体，防御价值不抵一张表，已删。）
+                this.appendGlobal(globalMap, name, local);
             } else {
                 this.loadAPI(local, globalMap, true);
             }
@@ -274,10 +320,19 @@ export class SdkUtils {
             const dist = method.isStatic() ? to.getStaticMethodWithName(method.getName()) : to.getMethodWithName(method.getName());
             const distSignatures = dist?.getDeclareSignatures();
             if (distSignatures) {
-                method.getDeclareSignatures()?.forEach(x => distSignatures.push(x));
+                // getDeclareSignatures() returns a rebuilt copy — write the merged list back explicitly.
+                const merged = [...distSignatures];
+                method.getDeclareSignatures()?.forEach(x => merged.push(x));
+                dist!.setDeclareSignatures(merged);
             } else if (method.getName() === DEFAULT_ARK_METHOD_NAME && dist) {
-                method.getBody()?.getLocals().forEach(local => dist.getBody()?.getLocals().set(local.getName(), local));
-                method.getBody()?.getAliasTypeMap()?.forEach(type => dist.getBody()?.getAliasTypeMap()?.set(type[0].getName(), type));
+                method
+                    .getBody()
+                    ?.getLocals()
+                    .forEach(local => dist.getBody()?.getLocals().set(local.getName(), local));
+                method
+                    .getBody()
+                    ?.getAliasTypeMap()
+                    ?.forEach(type => dist.getBody()?.getAliasTypeMap()?.set(type[0].getName(), type));
             } else {
                 to.addMethod(method);
             }
@@ -291,7 +346,7 @@ export class SdkUtils {
     }
 
     public static computeGlobalThis(leftOp: AbstractFieldRef, arkMethod: ArkMethod): void {
-        const globalThis = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(GLOBAL_THIS_NAME);
+        const globalThis = SignatureCanonicalizerRegistry.getSdkGlobal(GLOBAL_THIS_NAME);
         if (globalThis instanceof ArkNamespace) {
             const exportInfo = new ExportInfo.Builder()
                 .exportClauseName(leftOp.getFieldName())
@@ -302,12 +357,10 @@ export class SdkUtils {
     }
 
     public static extendArkUI(scene: Scene): void {
-        const cls = scene.getSdkGlobal(COMMON_METHOD);
+        const cls = SignatureCanonicalizerRegistry.getSdkGlobal(COMMON_METHOD);
         if (cls instanceof ArkClass) {
-            const mtd = new ArkMethod();
-            mtd.setDeclaringArkClass(cls);
             const methodSubSignature = new MethodSubSignature(COMPONENT_POP_FUNCTION, [], VoidType.getInstance(), false);
-            mtd.setDeclareSignatures(new MethodSignature(cls.getSignature(), methodSubSignature));
+            const mtd = new ArkMethod(cls.getClassSigID(), undefined, new MethodSignature(cls.getClassSigID(), methodSubSignature));
             mtd.setIsGeneratedFlag(true);
             cls.addMethod(mtd);
         }
@@ -322,8 +375,7 @@ export class SdkUtils {
         if (!fs.existsSync(componentsDir)) {
             return;
         }
-        const componentFiles = fs.readdirSync(componentsDir)
-            .filter(file => file.endsWith('.json'));
+        const componentFiles = fs.readdirSync(componentsDir).filter(file => file.endsWith('.json'));
         const componentNames: string[] = [];
         componentFiles.forEach(file => {
             const filePath = path.join(componentsDir, file);

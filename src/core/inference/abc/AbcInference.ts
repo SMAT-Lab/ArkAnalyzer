@@ -17,13 +17,7 @@ import { ImportInfoInference, MethodInference, StmtInference } from '../ModelInf
 import { ImportInfo } from '../../model/ArkImport';
 import { ModelUtils } from '../../common/ModelUtils';
 import { ArkMethod } from '../../model/ArkMethod';
-import {
-    AliasTypeSignature,
-    ClassSignature,
-    FieldSignature,
-    FileSignature,
-    MethodSignature
-} from '../../model/ArkSignature';
+import { AliasTypeSignature, ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../model/ArkSignature';
 import { InferenceBuilder } from '../InferenceBuilder';
 import { SdkUtils } from '../../common/SdkUtils';
 import { Bind, FieldRefInference, InferLanguage, InstanceInvokeExprInference, ValueInference } from '../ValueInference';
@@ -32,13 +26,7 @@ import { TypeInference } from '../../common/TypeInference';
 import { Value } from '../../base/Value';
 import { ClassType, GenericType, Type, UnknownType } from '../../base/Type';
 import { Local } from '../../base/Local';
-import {
-    AbstractFieldRef,
-    ArkCaughtExceptionRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    GlobalRef
-} from '../../base/Ref';
+import { AbstractFieldRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, GlobalRef } from '../../base/Ref';
 import { ANONYMOUS_CLASS_PREFIX } from '../../common/Const';
 import path from 'path';
 import { ArkField } from '../../model/ArkField';
@@ -46,7 +34,7 @@ import { AbstractInvokeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkClass } from '../../model/ArkClass';
 import { BUSINESS_ERROR, OHOS_BASE_FILE } from '../../common/EtsConst';
-
+import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 
 class AbcImportInference extends ImportInfoInference {
     /**
@@ -72,11 +60,8 @@ class AbcImportInference extends ImportInfoInference {
     }
 }
 
-
 export class AbcMethodInference extends MethodInference {
-
     public preInfer(arkMethod: ArkMethod): void {
-
         const implSignature = arkMethod.getImplementationSignature();
         if (implSignature) {
             this.inferArkUIComponentLifeCycleMethod(arkMethod, implSignature);
@@ -116,11 +101,9 @@ export class AbcMethodInference extends MethodInference {
 }
 
 class AbcStmtInference extends StmtInference {
-
     constructor(valueInferences: ValueInference<Value>[]) {
         super(valueInferences);
     }
-
 
     public static updateUnionType(target: Value, srcType: Type, method: ArkMethod): Stmt[] | undefined {
         if (target instanceof Local) {
@@ -178,8 +161,10 @@ class AbcStmtInference extends StmtInference {
             if (target instanceof Local) {
                 target.setType(srcType);
                 return target.getUsedStmts();
-            } else if (target instanceof AbstractFieldRef && projectName === target.getFieldSignature().getDeclaringSignature()
-                .getDeclaringFileSignature().getProjectName()) {
+            } else if (
+                target instanceof AbstractFieldRef &&
+                projectName === target.getFieldSignature().getDeclaringSignature().getDeclaringFileSignature().getProjectName()
+            ) {
                 target.getFieldSignature().setType(srcType);
             } else if (target instanceof ArkParameterRef) {
                 target.setType(srcType);
@@ -187,11 +172,9 @@ class AbcStmtInference extends StmtInference {
         }
         return undefined;
     }
-
 }
 
 export class AbcInferenceBuilder extends InferenceBuilder {
-
     public buildImportInfoInference(): ImportInfoInference {
         return new AbcImportInference();
     }
@@ -237,9 +220,8 @@ export class AbcFieldRefInference extends FieldRefInference {
             if (signature instanceof ClassSignature && signature.getDeclaringFileSignature().getProjectName() === scene.getProjectName()) {
                 const cls = scene.getClass(signature);
                 if (cls) {
-                    const field = new ArkField();
-                    field.setDeclaringArkClass(cls);
-                    const fieldSignature = new FieldSignature(value.getFieldSignature().getFieldName(), cls.getSignature(), UnknownType.getInstance());
+                    const field = new ArkField(cls.getClassSigID());
+                    const fieldSignature = new FieldSignature(value.getFieldSignature().getFieldName(), cls.getClassSigID(), UnknownType.getInstance());
                     field.setSignature(fieldSignature);
                     cls.addField(field);
                     value.setFieldSignature(fieldSignature);
@@ -278,12 +260,16 @@ export class AbcInstanceInvokeExprInference extends InstanceInvokeExprInference 
     private processExtendFunc(value: ArkInstanceInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr | null {
         if (value.getBase().getName() === AbcInstanceInvokeExprInference.CONTEXT) {
             const scene = arkMethod.getDeclaringArkFile().getScene();
-            const signature = scene.getSdkGlobal(AbcInstanceInvokeExprInference.CONTEXT)?.getSignature();
+            const signature = SignatureCanonicalizerRegistry.getSdkGlobal(AbcInstanceInvokeExprInference.CONTEXT)?.getSignature();
             if (signature instanceof AliasTypeSignature) {
                 const cls = scene.getMethod(signature.getDeclaringMethodSignature())?.getDeclaringArkClass();
                 if (cls) {
-                    return IRInference.inferInstanceMember(new ClassType(cls.getSignature(), cls.getGenericsTypes()),
-                        value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
+                    return IRInference.inferInstanceMember(
+                        new ClassType(cls.getSignature(), cls.getGenericsTypes()),
+                        value,
+                        arkMethod,
+                        InstanceInvokeExprInference.inferInvokeExpr
+                    );
                 }
             }
         }
@@ -306,7 +292,21 @@ export class AbcExceptionRefInference extends ValueInference<ArkCaughtExceptionR
     public infer(value: ArkCaughtExceptionRef, stmt: Stmt): Value | undefined {
         if (!AbcExceptionRefInference.ERROR_TYPE) {
             const scene = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getScene();
-            const err = scene.getSdkArkFiles().find(e => e.getName().endsWith(OHOS_BASE_FILE))?.getClassWithName(BUSINESS_ERROR);
+            const errFile = scene.getSdkArkFiles().find(e => e.getName().endsWith(OHOS_BASE_FILE));
+            // 签名直查：file 顶层 → 各 namespace（与 getClassWithName 的递归顺序一致），
+            // 免线性扫描与前缀模糊匹配
+            let err: ArkClass | null = null;
+            if (errFile) {
+                err = errFile.getClass(new ClassSignature(BUSINESS_ERROR, errFile.getFileSigID()));
+                if (!err) {
+                    for (const ns of errFile.getAllNamespacesUnderThisFile()) {
+                        err = ns.getClass(new ClassSignature(BUSINESS_ERROR, ns.getDeclaringFileID(), ns.getNamespaceSigID()));
+                        if (err) {
+                            break;
+                        }
+                    }
+                }
+            }
             if (err instanceof ArkClass) {
                 AbcExceptionRefInference.ERROR_TYPE = new ClassType(err.getSignature(), err.getGenericsTypes());
                 value.setType(AbcExceptionRefInference.ERROR_TYPE);

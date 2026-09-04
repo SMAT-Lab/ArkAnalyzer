@@ -21,14 +21,7 @@ import { TypeInference } from '../../common/TypeInference';
 import { ArkMethod } from '../../model/ArkMethod';
 import { MethodSignature } from '../../model/ArkSignature';
 import { InferenceBuilder } from '../InferenceBuilder';
-import {
-    Bind,
-    FieldRefInference,
-    InferLanguage,
-    InstanceInvokeExprInference,
-    LocalInference,
-    ValueInference
-} from '../ValueInference';
+import { Bind, FieldRefInference, InferLanguage, InstanceInvokeExprInference, LocalInference, ValueInference } from '../ValueInference';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../base/Stmt';
 import { Value } from '../../base/Value';
 import { AnyType, ClassType, FunctionType, GenericType, Type } from '../../base/Type';
@@ -56,7 +49,8 @@ class ArkTsClassInference extends ClassInference {
     public preInfer(arkClass: ArkClass): void {
         super.preInfer(arkClass);
         TypeInference.inferGenericType(arkClass.getGenericsTypes(), arkClass);
-        arkClass.getFields()
+        arkClass
+            .getFields()
             .filter(p => TypeInference.isUnclearType(p.getType()))
             .forEach(f => {
                 const newType = TypeInference.inferUnclearedType(f.getType(), arkClass);
@@ -68,7 +62,6 @@ class ArkTsClassInference extends ClassInference {
 }
 
 class ArkTsMethodInference extends MethodInference {
-
     public preInfer(arkMethod: ArkMethod): void {
         TypeInference.inferGenericType(arkMethod.getGenericTypes(), arkMethod.getDeclaringArkClass());
         arkMethod.getDeclareSignatures()?.forEach(x => this.inferMethodSignature(x, arkMethod));
@@ -79,13 +72,14 @@ class ArkTsMethodInference extends MethodInference {
     }
 
     private inferMethodSignature(ms: MethodSignature, arkMethod: ArkMethod): void {
-        ms.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
+        ms.getMethodSubSignature()
+            .getParameters()
+            .forEach(p => TypeInference.inferParameterType(p, arkMethod));
         TypeInference.inferSignatureReturnType(ms, arkMethod);
     }
 }
 
 export class ArkTsStmtInference extends StmtInference {
-
     constructor(valueInferences: ValueInference<Value>[]) {
         super(valueInferences);
     }
@@ -102,7 +96,10 @@ export class ArkTsStmtInference extends StmtInference {
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
         const projectName = method.getDeclaringArkFile().getProjectName();
-        if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || TypeInference.isDummyClassType(rightType)) {
+        // An unclear ClassType with fully-resolved real type args still carries information
+        // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
+        const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
+        if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;
@@ -144,12 +141,9 @@ export class ArkTsStmtInference extends StmtInference {
         }
         return undefined;
     }
-
 }
 
-
 export class ArkTsInferenceBuilder extends InferenceBuilder {
-
     public buildImportInfoInference(): ImportInfoInference {
         return new ArkTsImportInference();
     }
@@ -169,12 +163,9 @@ export class ArkTsInferenceBuilder extends InferenceBuilder {
     }
 }
 
-export class ArkTs2InferenceBuilder extends ArkTsInferenceBuilder {
-
-}
+export class ArkTs2InferenceBuilder extends ArkTsInferenceBuilder {}
 
 export class JsInferenceBuilder extends InferenceBuilder {
-
     public buildImportInfoInference(): ImportInfoInference {
         return new ArkTsImportInference();
     }
@@ -188,7 +179,6 @@ export class JsInferenceBuilder extends InferenceBuilder {
         return new ArkTsStmtInference(valueInferences);
     }
 }
-
 
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTSFieldRefInference extends FieldRefInference {
@@ -207,14 +197,15 @@ export class ArkTSFieldRefInference extends FieldRefInference {
      * @returns {boolean} True if the value is an anonymous class 'this' field reference
      */
     private isAnonClassThisRef(stmtDef: Value, arkMethod: ArkMethod): boolean {
-        return (arkMethod.getName() === INSTANCE_INIT_METHOD_NAME || arkMethod.getName() === CONSTRUCTOR_NAME) &&
+        return (
+            (arkMethod.getName() === INSTANCE_INIT_METHOD_NAME || arkMethod.getName() === CONSTRUCTOR_NAME) &&
             stmtDef instanceof ArkInstanceFieldRef &&
             stmtDef.getBase().getName() === THIS_NAME &&
             arkMethod.getDeclaringArkClass().isAnonymousClass() &&
-            stmtDef.getFieldName().indexOf('.') === -1;
+            stmtDef.getFieldName().indexOf('.') === -1
+        );
     }
 }
-
 
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInference {
@@ -242,8 +233,8 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
      * @param methodName
      */
     private processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
-        const annoMethod = arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ??
-            arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
+        const annoMethod =
+            arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ?? arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
         if (annoMethod && annoMethod.hasDecorator(COMPONENT_EXTEND_DECORATOR)) {
             expr.setMethodSignature(annoMethod.getSignature());
             return expr;
@@ -251,7 +242,6 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
         return null;
     }
 }
-
 
 @Bind(InferLanguage.ARK_TS1_1)
 export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
@@ -305,7 +295,6 @@ export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
     }
 }
 
-
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTSLocalInference extends LocalInference {
     public getValueName(): string {
@@ -314,8 +303,7 @@ export class ArkTSLocalInference extends LocalInference {
 
     public preInfer(value: Local): boolean {
         const type = value.getType();
-        if (value.getName() === THIS_NAME && type instanceof ClassType &&
-            type.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
+        if (value.getName() === THIS_NAME && type instanceof ClassType && type.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
             return true;
         } else if (type instanceof FunctionType) {
             return true;
@@ -336,7 +324,10 @@ export class ArkTSLocalInference extends LocalInference {
             return undefined;
         } else if (type instanceof FunctionType) {
             const methodSignature = type.getMethodSignature();
-            methodSignature.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
+            methodSignature
+                .getMethodSubSignature()
+                .getParameters()
+                .forEach(p => TypeInference.inferParameterType(p, arkMethod));
             TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
             return undefined;
         } else {

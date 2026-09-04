@@ -16,6 +16,7 @@
 import { TypeInference } from '../common/TypeInference';
 import { BasicBlock } from '../graph/BasicBlock';
 import { MethodSignature } from '../model/ArkSignature';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { Local } from './Local';
 import {
     AliasType,
@@ -79,7 +80,24 @@ export abstract class AbstractExpr implements Value {
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
-    private methodSignature: MethodSignature;
+    /**
+     * @internal formal MethodSigID。-1 = 未注册（temp-held）。
+     * 构造/setMethodSignature 时即时解析（原为惰性查询——返回值语义不变：
+     * 命中时同 ID、未注册时 -1）。route() 在构造器内首行赋值。
+     */
+    private methodSigID!: number;
+    /**
+     * @internal temp MethodSigID（弱注册表）。undefined = formal 路径。
+     */
+    private tempMethodSigID?: number;
+    /**
+     * @internal 锚定的签名实例（构造/setMethodSignature 时传入）：
+     * - 两路径共用的值视图（display 缓存载体——AliasClassSignature 别名只在
+     *   传入实例上，formal 命中不替换为 canonical）；
+     * - temp 路径兼作弱注册表的存活锚点（最后一个持有者死亡后签名才可被 GC
+     *   回收）。
+     */
+    private tempMethodSignature?: MethodSignature;
     private args: Value[];
     private realGenericTypes?: Type[];
     private spreadFlags?: boolean[]; // flags to indicate whether the argument is spread, which is undefined  when no spread argument exists.
@@ -88,10 +106,46 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super();
-        this.methodSignature = methodSignature;
         this.args = args;
         this.realGenericTypes = realGenericTypes;
         this.spreadFlags = spreadFlags;
+        this.route(methodSignature);
+    }
+
+    /**
+     * 两分路由（构造与 setMethodSignature 共用）：
+     *
+     * ① formal 只读命中（getExistingId，不写 formal 空间——防无 model 空洞）
+     *    → 持 formal ID（身份视图）。值视图仍**锚定传入实例**：display 缓存
+     *    （如 AliasClassSignature 别名——ForEach/Column 的 pop 调用点）只在传入
+     *    实例上，返回 canonical 会丢 display 导致 ViewTree 归属错位（实测回归：
+     *    pop 的 declaring class 全部折叠为 CommonMethod）。这与旧实现（持传入
+     *    实例 + 惰性 ID 查询）的读语义一致——formal 命中不改变读视图。
+     *    注意：fieldRef 的单向精度栅栏在 method 空间**不可达**——
+     *    MethodSignature.equals 含 returnType（仅返回类型不同的重载合法分 ID），
+     *    "unclear canonical 被 clear incoming 值命中" 前提永不成立（值不相等必
+     *    miss formal 走 temp，二者是不同方法）。canonical returnType 的精化由
+     *    TypeInference.inferSignatureReturnType 既有路径承担。
+     *
+     * ② 未命中（stub / 占位 / 推断中间态）→ temp 路由：锚定传入实例 +
+     *    tempMethodSigCanonicalizer 弱注册（同实例幂等复用 ID）。
+     *
+     * 注意：不做泛型双视图——invoke expr 的泛型实例化由自有的 realGenericTypes
+     * 字段承担（getType() 读取时动态替换），签名自身保持定义点形态（V/T），
+     * 与 formal 中的方法模型签名天然同值。
+     */
+    private route(methodSignature: MethodSignature): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
+        // 两种路径都锚定传入实例（值视图，display 载体）；差异仅在身份视图与 temp 注册。
+        this.tempMethodSignature = methodSignature;
+        if (existingId !== -1) {
+            this.methodSigID = existingId;
+            this.tempMethodSigID = undefined;
+        } else {
+            this.methodSigID = -1;
+            this.tempMethodSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+        }
     }
 
     /**
@@ -120,12 +174,36 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
      strs.push('>(');
      ```
      */
+    /**
+     * 返回 invoke expr 持有的签名实例（构造/setMethodSignature 时锚定的传入实例）。
+     * display 缓存（AliasClassSignature 别名）保留在传入实例上——formal 命中时
+     * 不替换为 canonical（canonical 无 display，会丢失 ViewTree 等消费方的归属
+     * 信息）。ID 仅用于身份（getMethodSigID）与查询。
+     */
     public getMethodSignature(): MethodSignature {
-        return this.methodSignature;
+        if (this.tempMethodSignature !== undefined) {
+            return this.tempMethodSignature;
+        }
+        throw new Error('AbstractInvokeExpr has no signature');
     }
 
+    /**
+     * 替换签名（推断解析后的真实方法签名回写，如 inferInstanceInvokeExpr 的
+     * matchMethodSignature 产物）。两分路由同构造；旧 temp 引用无需显式释放
+     * （弱注册表由 GC 收敛——本对象丢弃旧锚点后，若无其他持有者则旧签名可回收）。
+     */
     public setMethodSignature(newMethodSignature: MethodSignature): void {
-        this.methodSignature = newMethodSignature;
+        this.route(newMethodSignature);
+    }
+
+    /** @internal Get the formal MethodSigID. Returns -1 if not interned (temp-held). */
+    public getMethodSigID(): number {
+        return this.methodSigID;
+    }
+
+    /** @internal Get the temp MethodSigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempMethodSigID;
     }
 
     /**
@@ -168,7 +246,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        const type = this.methodSignature.getType();
+        const type = this.getMethodSignature().getType();
         if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realGenericTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realGenericTypes);
         }
@@ -313,7 +391,6 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     private funPtr: Local | AbstractFieldRef;
 
-
     constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.funPtr = ptr;
@@ -367,9 +444,10 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         }
         const fileName = sig.getDeclaringClassSignature().getDeclaringFileSignature().getFileName().toLowerCase();
         const isCxxFile = isCxxLikeFileName(fileName);
-        const ptrDeclFileName = this.funPtr instanceof Local ?
-            this.funPtr.getDeclaringStmt()?.getCfg()?.getDeclaringMethod()?.getDeclaringArkFile().getName().toLowerCase() ?? '' :
-            '';
+        const ptrDeclFileName =
+            this.funPtr instanceof Local
+                ? (this.funPtr.getDeclaringStmt()?.getCfg()?.getDeclaringMethod()?.getDeclaringArkFile().getName().toLowerCase() ?? '')
+                : '';
         const isCxxPtrDecl = isCxxLikeFileName(ptrDeclFileName);
         const isUnknownCxxLike = sigFileName === UNKNOWN_FILE_NAME && isCxxPtrDecl;
         let ptrName: string = '';
@@ -443,7 +521,15 @@ export class ArkNewExpr extends AbstractExpr {
             const className = classSignature.getClassName();
             let type: Type | null | undefined = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
             if (TypeInference.isUnclearType(type)) {
-                type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+                // Deterministic local-class resolution along the method scope chain before
+                // the file-level fuzzy name search.
+                const localClass = ModelUtils.findLocalClassInMethodChain(className, arkMethod);
+                if (localClass) {
+                    type = new ClassType(localClass.getSignature());
+                }
+            }
+            if (TypeInference.isUnclearType(type)) {
+                type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass(), arkMethod);
             }
             // If the type is an alias type, replace with the original type
             if (type instanceof AliasType) {
@@ -464,12 +550,18 @@ export class ArkNewExpr extends AbstractExpr {
     }
 
     private constructorSignature(type: ClassType, arkMethod: ArkMethod): ClassType | undefined {
-        const classConstructor = arkMethod.getDeclaringArkFile().getScene().getClass(type.getClassSignature());
+        const scene = arkMethod.getDeclaringArkFile().getScene();
+        const classConstructor = scene.getClass(type.getClassSignature());
         if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
-            const type = classConstructor.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType();
-            if (type) {
-                const returnType = TypeInference.replaceAliasType(type);
-                return returnType instanceof ClassType ? returnType : undefined;
+            // interface 的 construct-signature 可能在 var 侧构造器类上（如
+            // interface Object 的构造签名在 ObjectConstructor）——多实体探测
+            const candidates = [classConstructor, ...SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses(classConstructor.getName())];
+            for (const candidate of candidates) {
+                const returnType = candidate.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType();
+                if (returnType) {
+                    const replaced = TypeInference.replaceAliasType(returnType);
+                    return replaced instanceof ClassType ? replaced : undefined;
+                }
             }
         }
         return undefined;
@@ -1240,7 +1332,7 @@ export class AliasTypeExpr extends AbstractExpr {
     }
 
     public setOriginalType(type: Type): Type {
-        return this.originalType = type;
+        return (this.originalType = type);
     }
 
     public getType(): Type {
@@ -1311,6 +1403,13 @@ export class AliasTypeExpr extends AbstractExpr {
             return `${typeOf}${typeObject.getSignature().toString()}<${this.getRealGenericTypes()!.join(',')}>`;
         }
         if (typeObject instanceof Type) {
+            // Prefer the inferred original type when available: unresolved stub types (e.g.
+            // builtin Object stubs living in the temp canonicalizer) are replaced by the real
+            // signatures during type inference, and the display should reflect that.
+            const inferred = this.getOriginalType();
+            if (inferred && inferred !== typeObject) {
+                return `${typeOf}${inferred.toString()}`;
+            }
             return `${typeOf}${typeObject.toString()}`;
         }
         if (typeObject instanceof ImportInfo) {

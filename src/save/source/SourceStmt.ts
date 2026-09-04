@@ -541,7 +541,7 @@ export class SourceWhileStmt extends SourceStmt {
             return false;
         }
 
-        if (done.getFieldSignature().toString() !== '@ES2015/BuiltinClass: IteratorResult.done') {
+        if (done.getFieldSignature().toString() !== '@%unk/%unk: IteratorResult.done') {
             return false;
         }
 

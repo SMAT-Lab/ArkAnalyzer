@@ -376,7 +376,10 @@ export function buildGenericType(type: Type, arkInstance: ArkMethod | ArkField |
 
 export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile, method: ArkMethod): Type {
     if (node.kind === ts.SyntaxKind.ThisType) {
-        return new ClassType(method.getDeclaringArkClass().getSignature(), method.getDeclaringArkClass().getGenericsTypes());
+        return new ClassType(
+            method.getDeclaringArkClass().getSignature(),
+            method.getDeclaringArkClass().getGenericsTypes()
+        );
     } else if (node) {
         return tsNode2Type(node, sourceFile, method);
     } else {
@@ -420,7 +423,6 @@ export function tsNode2Type(
     } else if (ts.isLiteralTypeNode(typeNode)) {
         return ArkValueTransformer.resolveLiteralTypeNode(typeNode, sourceFile);
     } else if (ts.isTypeLiteralNode(typeNode)) {
-        let cls: ArkClass = new ArkClass();
         let declaringClass: ArkClass;
 
         if (arkInstance instanceof ArkMethod) {
@@ -430,17 +432,11 @@ export function tsNode2Type(
         } else {
             declaringClass = arkInstance;
         }
-        if (declaringClass.getDeclaringArkNamespace()) {
-            cls.setDeclaringArkNamespace(declaringClass.getDeclaringArkNamespace());
-            cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
-        } else {
-            cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
-        }
+        let cls: ArkClass = new ArkClass(declaringClass.getDeclaringFileID(), declaringClass.getDeclaringArkNamespace()?.getNamespaceSigID());
         buildNormalArkClassFromArkMethod(typeNode, cls, sourceFile);
 
         return new ClassType(cls.getSignature());
     } else if (ts.isFunctionTypeNode(typeNode)) {
-        let mtd: ArkMethod = new ArkMethod();
         let cls: ArkClass;
         if (arkInstance instanceof ArkMethod) {
             cls = arkInstance.getDeclaringArkClass();
@@ -449,6 +445,7 @@ export function tsNode2Type(
         } else {
             cls = arkInstance.getDeclaringArkClass();
         }
+        let mtd: ArkMethod = new ArkMethod(cls.getClassSigID());
         buildArkMethodFromArkClass(typeNode, cls, mtd, sourceFile);
         return new FunctionType(mtd.getSignature());
     } else if (ts.isTypeParameterDeclaration(typeNode)) {
@@ -569,19 +566,31 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
                     arkInstance.getBody()?.getLocals().get(THIS_NAME) ??
                     new Local(
                         THIS_NAME,
-                        new ClassType(arkInstance.getDeclaringArkClass().getSignature(), arkInstance.getDeclaringArkClass().getGenericsTypes())
+                        new ClassType(
+                            arkInstance.getDeclaringArkClass().getSignature(),
+                            arkInstance.getDeclaringArkClass().getGenericsTypes()
+                        )
                     );
                 opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             } else if (arkInstance instanceof ArkClass) {
                 const fieldSignature =
                     arkInstance.getFieldWithName(fieldName)?.getSignature() ?? ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
-                const baseLocal = new Local(THIS_NAME, new ClassType(arkInstance.getSignature(), arkInstance.getGenericsTypes()));
+                const baseLocal = new Local(
+                    THIS_NAME,
+                    new ClassType(
+                        arkInstance.getSignature(),
+                        arkInstance.getGenericsTypes()
+                    )
+                );
                 opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             } else {
                 const fieldSignature = arkInstance.getSignature();
                 const baseLocal = new Local(
                     THIS_NAME,
-                    new ClassType(arkInstance.getDeclaringArkClass().getSignature(), arkInstance.getDeclaringArkClass().getGenericsTypes())
+                    new ClassType(
+                        arkInstance.getDeclaringArkClass().getSignature(),
+                        arkInstance.getDeclaringArkClass().getGenericsTypes()
+                    )
                 );
                 opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             }

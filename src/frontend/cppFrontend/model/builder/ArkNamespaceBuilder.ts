@@ -30,38 +30,21 @@ import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 
 function buildDefaultArkClass(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
-    const defaultArkClassSignature = new ClassSignature(
-        DEFAULT_ARK_CLASS_NAME,
-        cls.getDeclaringArkFile().getFileSignature(),
-        cls.getDeclaringArkNamespace()?.getSignature() || null
-    );
+    const defaultArkClassSignature = new ClassSignature(DEFAULT_ARK_CLASS_NAME, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(defaultArkClassSignature);
 
     genDefaultArkMethod(cls, sourceFile, node);
 }
 
 function genDefaultArkMethod(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
-    let defaultMethod = new ArkMethod();
+    let defaultMethod = new ArkMethod(cls.getClassSigID());
     buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
 }
 
-export function buildDefaultArkClassFromArkNamespace(
-    arkNamespace: ArkNamespace,
-    defaultClass: ArkClass,
-    nsNode: CxxAstNode,
-    sourceFile: CxxAstNode
-): void {
-    defaultClass.setDeclaringArkNamespace(arkNamespace);
-    defaultClass.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
-    buildDefaultArkClass(defaultClass, sourceFile, nsNode);
-}
-
-
 export function genDefaultArkClass(ns: ArkNamespace, node: CxxAstNode, sourceFile: CxxAstNode): void {
-    let defaultClass = new ArkClass();
-
-    buildDefaultArkClassFromArkNamespace(ns, defaultClass, node, sourceFile);
+    let defaultClass = new ArkClass(ns.getDeclaringFileID(), ns.getNamespaceSigID());
+    buildDefaultArkClass(defaultClass, sourceFile, node);
     ns.setDefaultClass(defaultClass);
     ns.addArkClass(defaultClass);
 }
@@ -71,19 +54,8 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     ns.setModifiers(buildModifiers(node));
     ns.setDecorators(buildDecorators(node, sourceFile));
 
-    if (declaringInstance instanceof ArkFile) {
-        ns.setDeclaringArkFile(declaringInstance);
-    } else {
-        ns.setDeclaringArkNamespace(declaringInstance);
-        ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
-    }
-    ns.setDeclaringInstance(declaringInstance);
     const namespaceName = genNamespaceName(node.name ? node.name : '', declaringInstance);
-    const namespaceSignature = new NamespaceSignature(
-        namespaceName,
-        ns.getDeclaringArkFile().getFileSignature(),
-        ns.getDeclaringArkNamespace()?.getSignature() || null
-    );
+    const namespaceSignature = new NamespaceSignature(namespaceName, ns.getDeclaringFileID(), ns.getDeclaringArkNamespace()?.getNamespaceSigID());
     ns.setSignature(namespaceSignature);
 
     // set line and column
@@ -129,16 +101,14 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
     statements.forEach((child: CxxAstNode) => {
         switch (child.kind) {
             case AstKind.NamespaceDecl: {
-                let childNs: ArkNamespace = new ArkNamespace();
-                childNs.setDeclaringArkNamespace(namespace);
-                childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
+                let childNs: ArkNamespace = new ArkNamespace(namespace.getDeclaringFileID(), namespace.getNamespaceSigID());
                 buildArkNamespace(child, namespace, childNs, sourceFile);
                 namespace.addNamespace(childNs);
                 return;
             }
             case AstKind.CXXRecordDecl:
             case AstKind.ClassTemplateDecl: {
-                let cls: ArkClass = new ArkClass();
+                let cls: ArkClass = new ArkClass(namespace.getDeclaringFileID(), namespace.getNamespaceSigID());
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
                 return;
             }
@@ -151,8 +121,9 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             case AstKind.FunctionTemplateDecl:
             case AstKind.FunctionDecl:
             case AstKind.FriendDecl: {
-                let mthd: ArkMethod = new ArkMethod();
-                buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
+                const defaultClass = namespace.getDefaultClass();
+                let mthd: ArkMethod = new ArkMethod(defaultClass.getClassSigID());
+                buildArkMethodFromArkClass(child, defaultClass, mthd, sourceFile);
                 return;
             }
             case AstKind.UsingDecl:
@@ -172,16 +143,15 @@ function buildArkMethodForClassMethodInNamespace(methodNode: CxxAstNode, namespa
         logger.trace('Declaration class not found', methodNode);
         return;
     }
-    let arkClass = namespace.getClassWithName(className);
+    // 签名 get-or-create：拼归属签名直查（对齐 ArkFileBuilder file 级精确匹配先例），
+    // 消除原按名搜索查 'Foo' 误命中 'Foo$Bar' 的前缀错配
+    const classSignature = new ClassSignature(className, namespace.getDeclaringFileID(), namespace.getNamespaceSigID());
+    let arkClass = namespace.getClass(classSignature);
     if (!arkClass) {
-        arkClass = new ArkClass();
-        arkClass.setDeclaringArkNamespace(namespace);
-        arkClass.setDeclaringArkFile(namespace.getDeclaringArkFile());
-        const classSignature = new ClassSignature(
-            className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
+        arkClass = new ArkClass(namespace.getDeclaringFileID(), namespace.getNamespaceSigID());
         arkClass.setSignature(classSignature);
-        namespace.addArkClass(arkClass, className);
+        namespace.addArkClass(arkClass);
     }
-    let mtd: ArkMethod = new ArkMethod();
+    let mtd: ArkMethod = new ArkMethod(arkClass.getClassSigID());
     buildArkMethodFromArkClass(methodNode, arkClass, mtd, sourceFile);
 }

@@ -27,7 +27,7 @@ const SourceBasicTest_CASE1_EXPECT = `class Person {
   growOld: () => void  = (): void => {
     this.age = this.age + 1;
   };
-  public getAge() {
+  public getAge(): number {
     return this.age;
   }
   static wooooof(): void {
@@ -66,8 +66,8 @@ const SourceBasicTest_CASE3_EXPECT = `export function listParameters(u: number, 
 }
 `;
 
-const SourceBasicTest_CASE4_EXPECT = `configure({appenders: {console: {type: 'console', layout: {type: 'pattern', pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m'}}}, categories: {default: {appenders: ['console'], level: 'info', enableCallStack: false}}});
-const logger = getLogger();
+const SourceBasicTest_CASE4_EXPECT = `%unk.configure({appenders: {console: {type: 'console', layout: {type: 'pattern', pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m'}}}, categories: {default: {appenders: ['console'], level: 'info', enableCallStack: false}}});
+const logger = %unk.getLogger();
 const someClass = class <Type> {
   content: Type;
   constructor(value: Type) {
@@ -76,12 +76,12 @@ const someClass = class <Type> {
   }
 };
 const m: someClass = new someClass('Hello, world');
-const iterator = await yieldTest();
+const iterator = await %unk.yieldTest();
 export let x = 1;
 export const soo = 123;
-forLoopTest();
-controlTest();
-deleteTest();
+%unk.forLoopTest();
+%unk.controlTest();
+%unk.deleteTest();
 `;
 
 const SourceBasicTest_CASE5_EXPECT = `class ExtendedAdder extends Adder {
@@ -184,16 +184,16 @@ const SourceBasicTest_CASE10_EXPECT = `function controlTest(): void {
 `;
 
 describe('SourceBasicTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+    let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
     config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
 
-    let arkfile = scene.getFiles().find((value) => {
+    let arkfile = scene.getFiles().find(value => {
         return value.getName().endsWith('basic.ts');
     });
 
-    let defaultClass = arkfile?.getClasses().find((value) => {
+    let defaultClass = arkfile?.getClasses().find(value => {
         return value.isDefaultArkClass();
     });
 
@@ -307,14 +307,14 @@ describe('SourceBasicTest', () => {
     });
 
     it('case10: controlTest', () => {
-      let method = defaultClass?.getMethodWithName('controlTest');
-      if (!method) {
-          assert.isDefined(method);
-          return;
-      }
+        let method = defaultClass?.getMethodWithName('controlTest');
+        if (!method) {
+            assert.isDefined(method);
+            return;
+        }
 
-      let printer = new SourceMethodPrinter(method);
-      let source = printer.dump();
-      expect(source).eq(SourceBasicTest_CASE10_EXPECT);
+        let printer = new SourceMethodPrinter(method);
+        let source = printer.dump();
+        expect(source).eq(SourceBasicTest_CASE10_EXPECT);
     });
 });

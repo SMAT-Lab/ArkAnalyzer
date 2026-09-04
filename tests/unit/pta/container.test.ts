@@ -74,7 +74,7 @@ describe('ContainerAddTest', () => {
         let setLocal = setMethod[0]?.getBody()?.getLocals().get('ele')!;
         let relatedNodes = pta.getRelatedNodes(setLocal);
         assert(
-            Array.from(relatedNodes).some(element => element.toString() === 'set.<@container/lib.es2015.collection.d.ts: Set.field>')
+            Array.from(relatedNodes).some(element => element.toString() === 'set.<@%unk/%unk: Set.field>')
         );
     });
 
@@ -83,7 +83,7 @@ describe('ContainerAddTest', () => {
         let resultLocal = mapMethod[0]?.getBody()?.getLocals().get('v')!;
         let relatedNodes = pta.getRelatedNodes(mapLocal);
         assert(
-            Array.from(relatedNodes).some(element => element.toString() === 'map.<@container/lib.es2015.collection.d.ts: Map.field>')
+            Array.from(relatedNodes).some(element => element.toString() === 'map.<@%unk/%unk: Map.field>')
         );
 
         assert(

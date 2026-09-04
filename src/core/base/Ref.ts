@@ -15,8 +15,9 @@
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { FieldSignature } from '../model/ArkSignature';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { Local } from './Local';
-import { ArrayType, ClassType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
+import { ArrayType, ClassType, GenericType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../model/ArkMethod';
@@ -125,11 +126,78 @@ export class ArkArrayRef extends AbstractRef {
 }
 
 export abstract class AbstractFieldRef extends AbstractRef {
-    private fieldSignature: FieldSignature;
+    /**
+     * @internal formal FieldSigID。-1 = 完全未注册（纯 temp-held）。
+     * 泛型双视图形态下为定义点字段的 formal ID（≥0），此时值视图在 temp——
+     * 见 {@link #tempFieldSignature} 注释。
+     */
+    private fieldSigID!: number;
+    /**
+     * @internal temp FieldSigID（弱注册表）。undefined = 纯 formal 路径。
+     */
+    private tempFieldSigID?: number;
+    /**
+     * @internal 锚定的签名实例（构造/setFieldSignature 时传入）：
+     * - temp 路径（未命中 / 泛型双视图）：值视图 + 弱注册表的存活锚点
+     *   （最后一个持有者死亡后签名才可被 GC 回收）；
+     * - formal 路径：undefined——getFieldSignature() 返回 canonical 实例
+     *   （活视图，见 route 注释的栅栏说明）。
+     */
+    private tempFieldSignature?: FieldSignature;
 
     constructor(fieldSignature: FieldSignature) {
         super();
-        this.fieldSignature = fieldSignature;
+        this.route(fieldSignature);
+    }
+
+    /**
+     * 三分路由（构造与 setFieldSignature 共用）：
+     *
+     * ① 未命中 → temp 路由：锚定传入实例 + 弱注册（同实例幂等复用 ID）。
+     *
+     * ② 命中且 canonical.type 为 GenericType（定义点带泛型参数的字段）
+     *    → 泛型双视图路由：formal 中的签名是**定义点视角**（type = 泛型参数 T，
+     *    不携带使用点的实例化类型），使用点构造的签名（携带实例化 type）不能套用
+     *    formal 持有——锚定传入实例走 temp（保留 per-use 实例化，多调用点不同
+     *    实例化互不干扰），fieldSigID 仍保留定义点 formal ID（身份视图：供
+     *    getFieldSigID 按字段身份查询）。
+     *
+     * ③ 命中且非泛型 → formal 路由：持 formal ID，getFieldSignature() 返回
+     *    canonical 实例（活视图——推断对 canonical 的类型精化实时可见）。
+     *    构造/setFieldSignature 时执行**单向精度栅栏**：canonical.type 为
+     *    unclear（Unknown/UnclearRef/Null/Undefined/GenericType/unclear
+     *    ClassType）且传入 type 为 clear 时，将传入 type 写入 canonical
+     *    （精确化写穿，与 repairFieldType 等既有 canonical setType 模式同性质
+     *    ——只写 type 不碰身份/model）；其余情形（clear→unclear 倒退、
+     *    clear→不同 clear 竞争）一律不更新。
+     */
+    private route(fieldSignature: FieldSignature): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const existingId = reg.fieldSigCanonicalizer.getExistingId(fieldSignature);
+        if (existingId !== -1) {
+            const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+            if (canonical.getType() instanceof GenericType) {
+                // ② 泛型双视图：值视图走 temp（per-use 实例化），身份视图保留 formal ID。
+                this.fieldSigID = existingId;
+                this.tempFieldSignature = fieldSignature;
+                this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
+                return;
+            }
+            // ③ formal + 单向精度栅栏。
+            const canonicalType = canonical.getType();
+            const incomingType = fieldSignature.getType();
+            if (TypeInference.isUnclearType(canonicalType) && !TypeInference.isUnclearType(incomingType)) {
+                canonical.setType(incomingType);
+            }
+            this.fieldSigID = existingId;
+            this.tempFieldSignature = undefined;
+            this.tempFieldSigID = undefined;
+        } else {
+            // ① temp 路由。
+            this.fieldSigID = -1;
+            this.tempFieldSignature = fieldSignature;
+            this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
+        }
     }
 
     /**
@@ -137,7 +205,7 @@ export abstract class AbstractFieldRef extends AbstractRef {
      * @returns The the field name.
      */
     public getFieldName(): string {
-        return this.fieldSignature.getFieldName();
+        return this.getFieldSignature().getFieldName();
     }
 
     /**
@@ -147,27 +215,53 @@ export abstract class AbstractFieldRef extends AbstractRef {
      * @example
      * 1. Compare two Fields
 
-     ```typescript
-     const fieldSignature = new FieldSignature();
-     fieldSignature.setFieldName(...);
-     const fieldRef = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
-     ...
-     if (fieldRef.getFieldSignature().getFieldName() ===
-     targetField.getFieldSignature().getFieldName()) {
-     ...
-     }
-     ```
+  ```typescript
+  const fieldSignature = new FieldSignature('name', classSigID, unknownType, false);
+  const fieldRef = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
+  ...
+  if (fieldRef.getFieldSignature().getFieldName() ===
+  targetField.getFieldSignature().getFieldName()) {
+  ...
+  }
+  ```
+     */
+    /**
+     * 返回 fieldRef 的值视图签名：
+     * - formal 路径：canonical 实例（活视图）；
+     * - temp / 泛型双视图路径：锚定的传入实例（使用点实例化形态）。
      */
     public getFieldSignature(): FieldSignature {
-        return this.fieldSignature;
+        if (this.tempFieldSignature !== undefined) {
+            return this.tempFieldSignature;
+        }
+        const sig = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(this.fieldSigID);
+        if (sig !== undefined) {
+            return sig;
+        }
+        throw new Error('AbstractFieldRef has no signature');
     }
 
+    /**
+     * 替换签名（推断解析后的真实字段签名回写）。三分路由同构造；旧 temp 引用
+     * 无需显式释放（弱注册表由 GC 收敛——本对象丢弃旧锚点后，若无其他持有者
+     * 则旧签名可回收）。
+     */
     public setFieldSignature(newFieldSignature: FieldSignature): void {
-        this.fieldSignature = newFieldSignature;
+        this.route(newFieldSignature);
+    }
+
+    /** @internal Get the formal FieldSigID（身份视图；泛型双视图下为定义点字段 ID）。-1 = 纯 temp-held。 */
+    public getFieldSigID(): number {
+        return this.fieldSigID;
+    }
+
+    /** @internal Get the temp FieldSigID for the unresolved-signature registration（值视图在 temp 时非空）。 */
+    public getTempSigID(): number | undefined {
+        return this.tempFieldSigID;
     }
 
     public getType(): Type {
-        return this.fieldSignature.getType();
+        return this.getFieldSignature().getType();
     }
 }
 

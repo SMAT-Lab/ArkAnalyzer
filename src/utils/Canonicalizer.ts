@@ -19,7 +19,7 @@ const MAX_TABLE_CAPACITY = 0x40000000;
 
 type CanonicalizerStrategy = 'uninitialized' | 'objectIdentity' | 'numberWithEquality' | 'stringIdentity';
 
-interface CanonicalizerStats {
+export interface CanonicalizerStats {
     strategy: CanonicalizerStrategy;
     size: number;
     bucketCount: number;

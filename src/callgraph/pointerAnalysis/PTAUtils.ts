@@ -14,7 +14,8 @@
  */
 
 import { UnclearReferenceType } from '../../core/base/Type';
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { Builtin } from '../../core/common/Builtin';
 
 export function IsCollectionClass(classSignature: ClassSignature): boolean {
     if (classSignature.toString().endsWith('lib.es2015.collection.d.ts: Set') || classSignature.toString().endsWith('lib.es2015.collection.d.ts: Map')) {
@@ -38,23 +39,18 @@ export enum BuiltApiType {
     NotBuiltIn,
 }
 
-export const ARRAY_FIELD_SIGNATURE = new FieldSignature(
-    'field',
-    new ClassSignature('Array', new FileSignature('container', 'lib.es5.d.ts')),
-    new UnclearReferenceType('')
-);
+// PTA 私有抽象字段签名：标识"容器对象的全部元素"（字段名 'field' 是虚构的，真实 SDK 类并无此字段）。
+// declaring class 使用 Builtin unclear stub（temp 空间），不向 formal file/class canonicalizer 写入任何条目。
+const containerFieldSignatureCache: Map<string, FieldSignature> = new Map();
 
-export const SET_FIELD_SIGNATURE = new FieldSignature(
-    'field',
-    new ClassSignature('Set', new FileSignature('container', 'lib.es2015.collection.d.ts')),
-    new UnclearReferenceType('')
-);
-
-export const MAP_FIELD_SIGNATURE = new FieldSignature(
-    'field',
-    new ClassSignature('Map', new FileSignature('container', 'lib.es2015.collection.d.ts')),
-    new UnclearReferenceType('')
-);
+export function getContainerFieldSignature(className: string): FieldSignature {
+    let sig = containerFieldSignatureCache.get(className);
+    if (sig === undefined) {
+        sig = new FieldSignature('field', Builtin.getBuiltinClassSignature(className), new UnclearReferenceType(''));
+        containerFieldSignatureCache.set(className, sig);
+    }
+    return sig;
+}
 
 /**
  * register container built-in API patterns, these APIs will not be recognized as SDK APIs
@@ -78,9 +74,9 @@ const BUILTIN_API_PATTERNS = new Map<string, BuiltApiType>([
 
 const FUNCTION_METHOD_REGEX = /lib\.es5\.d\.ts: Function\.(call|apply|bind)\(/;
 const FUNCTION_METHOD_MAP: { [key: string]: BuiltApiType } = {
-    'call': BuiltApiType.FunctionCall,
-    'apply': BuiltApiType.FunctionApply,
-    'bind': BuiltApiType.FunctionBind
+    call: BuiltApiType.FunctionCall,
+    apply: BuiltApiType.FunctionApply,
+    bind: BuiltApiType.FunctionBind,
 };
 
 export function getBuiltInApiType(method: MethodSignature): BuiltApiType {

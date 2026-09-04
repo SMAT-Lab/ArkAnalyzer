@@ -17,7 +17,6 @@ import ts from 'ohos-typescript';
 import { ArkField, FieldCategory } from '../ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
 import { buildDecorators, buildGenericType, buildModifiers, handlePropertyAccessExpression, tsNode2Type } from './builderUtils';
 import { cloneText } from '../../common/StringUtils';
 import { FieldSignature } from '../ArkSignature';
@@ -35,9 +34,8 @@ export function buildProperty2ArkField(
     sourceFile: ts.SourceFile,
     cls: ArkClass
 ): ArkField {
-    let field = new ArkField();
+    let field = new ArkField(cls.getClassSigID());
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setDeclaringArkClass(cls);
     field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
     let fieldName = cloneText(member.getText(sourceFile));
@@ -77,7 +75,7 @@ export function buildProperty2ArkField(
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
-    field.setSignature(new FieldSignature(fieldName, cls.getSignature(), fieldType, field.isStatic()));
+    field.setSignature(new FieldSignature(fieldName, cls.getClassSigID(), fieldType, field.isStatic()));
 
     if (ts.isPropertyDeclaration(member) && member.exclamationToken) {
         field.setExclamationToken(true);
@@ -88,9 +86,8 @@ export function buildProperty2ArkField(
 }
 
 export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile, cls: ArkClass): void {
-    const field = new ArkField();
+    const field = new ArkField(cls.getClassSigID());
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setDeclaringArkClass(cls);
 
     field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
@@ -101,41 +98,13 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
 
     const fieldName = '[' + cloneText(member.parameters[0].getText(sourceFile)) + ']';
     const fieldType = buildGenericType(tsNode2Type(member.type, sourceFile, field), field);
-    const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, true);
+    // staticFlag 与 addField 分流基准（field.isStatic()，读 modifier）保持一致——
+    // index-signature 是实例成员（obj[key] 访问）。历史硬编码 true 导致签名 flag 与
+    // isStatic() 分裂（addField 分流进 instance 数组而签名 flag=true），按名线性扫
+    // 时代被容忍，签名值直查（getFieldWithName）下必 miss。
+    const fieldSignature = new FieldSignature(fieldName, cls.getClassSigID(), fieldType, field.isStatic());
     field.setSignature(fieldSignature);
     IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
-    cls.addField(field);
-}
-
-export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mthd: ArkMethod, sourceFile: ts.SourceFile): void {
-    let cls = mthd.getDeclaringArkClass();
-    let field = new ArkField();
-    field.setDeclaringArkClass(cls);
-
-    field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
-    field.setOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
-
-    let fieldName = cloneText(member.getText(sourceFile));
-    if (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name)) {
-        fieldName = cloneText(member.name.text);
-    } else if (ts.isComputedPropertyName(member.name)) {
-        if (ts.isIdentifier(member.name.expression)) {
-            let propertyName = cloneText(member.name.expression.text);
-            fieldName = propertyName;
-        } else if (ts.isPropertyAccessExpression(member.name.expression)) {
-            fieldName = handlePropertyAccessExpression(member.name.expression);
-        } else if (ts.isLiteralExpression(member.name.expression)) {
-            fieldName = cloneText(member.name.expression.text);
-        } else {
-            logger.warn('Other type of computed property name found!');
-        }
-    } else {
-        logger.warn('Please contact developers to support new type of GetAccessor name!');
-    }
-
-    const fieldType = mthd.getReturnType();
-    const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, false);
-    field.setSignature(fieldSignature);
     cls.addField(field);
 }
 

@@ -36,7 +36,7 @@ export const Class_With_Static_Init_Block_Expect = {
                     text: 'this = this: @class/ClassWithStaticInitBlock.ts: Case1',
                 },
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(\'static block\')',
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'static block\')',
                 },
                 {
                     text: 'return',
@@ -69,7 +69,7 @@ export const Class_With_Static_Init_Block_Expect = {
                     text: 'this = this: @class/ClassWithStaticInitBlock.ts: Case2',
                 },
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(\'static block1\')',
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'static block1\')',
                 },
                 {
                     text: 'return',
@@ -83,7 +83,7 @@ export const Class_With_Static_Init_Block_Expect = {
                     text: 'this = this: @class/ClassWithStaticInitBlock.ts: Case2',
                 },
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(\'static block2\')',
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'static block2\')',
                 },
                 {
                     text: 'return',
@@ -119,7 +119,7 @@ export const Class_With_Static_Init_Block_Expect = {
                     text: 'this = this: @class/ClassWithStaticInitBlock.ts: Case3',
                 },
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(\'static block1\')',
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'static block1\')',
                 },
                 {
                     text: 'return',
@@ -133,7 +133,7 @@ export const Class_With_Static_Init_Block_Expect = {
                     text: 'this = this: @class/ClassWithStaticInitBlock.ts: Case3',
                 },
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(\'static block2\')',
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'static block2\')',
                 },
                 {
                     text: 'return',
@@ -167,7 +167,7 @@ export const ClassWithGeneratedConstructor = `class ClassWithNoConstructor {
     label0:
       a = parameter0: string
       this = this: @class/ClassWithConstructor.ts: ClassWithNoConstructor
-      instanceinvoke console.<@%unk/%unk: .log()>('no constructor')
+      instanceinvoke console.<@%unk/%unk: %unk.log()>('no constructor')
       return
   }
 }
@@ -297,7 +297,7 @@ export const ClassWithParamProperty = `class ClassWithParamProperty {
 
     label2:
       this.<@class/ClassWithConstructor.ts: ClassWithParamProperty.d> = d
-      instanceinvoke console.<@%unk/%unk: .log()>('this is constructor method')
+      instanceinvoke console.<@%unk/%unk: %unk.log()>('this is constructor method')
       return this
   }
 }
@@ -444,7 +444,7 @@ export const New_Class_In_Default_Method = `%dflt(): void {
     %0 = instanceinvoke %0.<@class/class.ts: TestClass.constructor()>()
     testInstance = %0
     %1 = instanceinvoke testInstance.<@class/class.ts: TestClass.testMethod(number)>(123)
-    instanceinvoke console.<@%unk/%unk: .log()>(%1)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(%1)
     return
 }
 `;
@@ -456,7 +456,7 @@ export const New_Class_In_Function = `test(): void {
     %0 = instanceinvoke %0.<@class/class.ts: TestClass.constructor()>()
     testInstance = %0
     %1 = instanceinvoke testInstance.<@class/class.ts: TestClass.testMethod(string)>('abc')
-    instanceinvoke console.<@%unk/%unk: .log()>(%1)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(%1)
     return
 }
 `;
@@ -539,7 +539,7 @@ export const ClassHConstructorIR = `constructor(): @class/ClassWithHeritage.ts: 
   label0:
     this = this: @class/ClassWithHeritage.ts: H
     instanceinvoke this.<@class/ClassWithHeritage.ts: H.%instInit()>()
-    staticinvoke <@%unk/%unk: .super()>()
+    staticinvoke <@%unk/%unk: %unk.super()>()
     return this
 }
 `;

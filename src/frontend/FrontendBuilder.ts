@@ -16,7 +16,8 @@
 import path from 'path';
 
 import { Language } from '../core/model/ArkFile';
-import { ModuleScene, Scene, SceneBuildStage } from '../Scene';
+import { Scene } from '../Scene';
+import { SceneBuildStage } from './SceneBuildStage';
 import { ArktsFrontend } from './arktsFrontend/ArktsFrontend';
 import { CppFrontend } from './cppFrontend/CppFrontend';
 import { ArkFile } from '../core/model/ArkFile';
@@ -51,52 +52,6 @@ export interface FrontendParseResult {
  * vs the C++ builder.
  */
 export class FrontendBuilder {
-    private static partitionFilePaths(scene: Scene, filePaths: string[]): { cppFiles: string[]; arktsFiles: string[] } {
-        const cppFiles: string[] = [];
-        const arktsFiles: string[] = [];
-        for (const filePath of filePaths) {
-            if (FileUtils.getFileLanguage(filePath, scene.getFileLanguages()) === Language.CXX) {
-                cppFiles.push(filePath);
-            } else {
-                arktsFiles.push(filePath);
-            }
-        }
-        return { cppFiles, arktsFiles };
-    }
-
-    private static collectFailedFilePaths(scene: Scene, failedFiles: { filePath: string; reason: unknown }[]): void {
-        for (const failed of failedFiles) {
-            logger.error('Error parsing file:', failed.filePath, failed.reason);
-            scene.addUnhandledFilePath(failed.filePath);
-        }
-    }
-
-    public static buildFilesIntoArkFiles(scene: Scene, filePaths: string[]): void {
-        const { cppFiles, arktsFiles } = this.partitionFilePaths(scene, filePaths);
-        const arktsFrontend = new ArktsFrontend();
-        const cppFrontend = new CppFrontend();
-        const arktsResult = arktsFrontend.buildProjectFiles(scene, arktsFiles);
-        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles);
-        arktsResult.arkFiles.forEach(file => scene.setFile(file));
-        cppResult.arkFiles.forEach(file => scene.setFile(file));
-        this.collectFailedFilePaths(scene, [...arktsResult.failedFiles, ...cppResult.failedFiles]);
-    }
-
-    public static buildModuleFilesIntoArkFiles(moduleScene: ModuleScene, filePaths: string[]): void {
-        const scene = moduleScene.getProjectScene();
-        const { cppFiles, arktsFiles } = this.partitionFilePaths(scene, filePaths);
-        const arktsFrontend = new ArktsFrontend();
-        const cppFrontend = new CppFrontend();
-        const arktsResult = arktsFrontend.buildProjectFiles(scene, arktsFiles);
-        const cppResult = cppFrontend.buildProjectFiles(scene, cppFiles);
-        [...arktsResult.arkFiles, ...cppResult.arkFiles].forEach(file => {
-            file.setModuleScene(moduleScene);
-            moduleScene.addArkFile(file);
-            scene.setFile(file);
-        });
-        this.collectFailedFilePaths(scene, [...arktsResult.failedFiles, ...cppResult.failedFiles]);
-    }
-
     /**
      * Builds a single project file into a pre-allocated {@link ArkFile} (the former `if (CXX) … else …` in `Scene`).
      */

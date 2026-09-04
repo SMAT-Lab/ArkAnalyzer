@@ -233,9 +233,9 @@ export const GOTO_EXPECT_CASE13 = {
         { id: 1, stmts: ['a = a + 1'], preds: [0, 2], succes: [2] },
         {
             id: 2, stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'i: \')',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, a)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'i: \')',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, a)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
                 'if a >= 2',
             ], preds: [1], succes: [3, 1],
         },
@@ -256,9 +256,9 @@ export const GOTO_EXPECT_CASE14 = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'i: \')',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, i)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'i: \')',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, i)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
             ],
             preds: [0, 2],
             succes: [2],
@@ -272,8 +272,8 @@ export const GOTO_EXPECT_CASE14 = {
         {
             id: 3,
             stmts: [
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'goto end\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'goto end\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
                 'return',
             ],
             preds: [2],

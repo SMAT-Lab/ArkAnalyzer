@@ -19,7 +19,7 @@ export const BINGING_EXPECT_BASICUSAGE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = staticinvoke <@%unk/%unk: .make_pair()>(1, 2)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.make_pair()>(1, 2)',
                 'x = %0[0]',
                 'y = %0[1]',
                 '%1 = new @%unk/%unk: std::pair<int,int>',
@@ -41,7 +41,7 @@ export const BINGING_EXPECT_REFERENCE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                'pair = staticinvoke <@%unk/%unk: .make_pair()>(10, 20)',
+                'pair = staticinvoke <@%unk/%unk: %unk.make_pair()>(10, 20)',
                 '%0 = pair',
                 'x = %0[0]',
                 'y = %0[1]',
@@ -62,7 +62,7 @@ export const BINGING_EXPECT_TUPLEUSAGE = {
                 'this = this: @structBinding/structBinding.cpp: %dflt',
                 '%0 = new @%unk/%unk: double',
                 'instanceinvoke %0.<@%unk/%unk: double.constructor()>(95.5)',
-                '%1 = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, %0)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.make_tuple()>(\'Alice\', 25, %0)',
                 'name = %1[0]',
                 'age = %1[1]',
                 'score = %1[2]',
@@ -118,7 +118,7 @@ export const BINGING_EXPECT_MAP = {
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map.constructor()>(%4)',
                 'scores = %0',
-                '%5 = instanceinvoke scores.<@%unk/%unk: .iterator()>()',
+                '%5 = instanceinvoke scores.<@%unk/%unk: %unk.iterator()>()',
                 '%5 = scores.<@%unk/%unk: std::map.begin>',
             ],
             preds: [],
@@ -136,10 +136,10 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 2,
             stmts: [
-                '%7 = %5.<@CXX/std/BuiltinClass: IterableIterator.*>',
+                '%7 = %5.<@%unk/%unk: IterableIterator.*>',
                 'item = <unknown>%7',
-                'staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Overall object access\')',
-                '%5 = instanceinvoke %5.<@%unk/%unk: .iterator++()>()',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Overall object access\')',
+                '%5 = instanceinvoke %5.<@%unk/%unk: %unk.iterator++()>()',
             ],
             preds: [1],
             succes: [1],
@@ -154,11 +154,11 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 4,
             stmts: [
-                '%10 = %8.<@CXX/std/BuiltinClass: operator*.*>',
+                '%10 = %8.<@%unk/%unk: operator*.*>',
                 'name = %10[0]',
                 'score = %10[1]',
-                'staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Structured binding access\')',
-                '%8 = instanceinvoke %8.<@%unk/%unk: .iterator++()>()',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Structured binding access\')',
+                '%8 = instanceinvoke %8.<@%unk/%unk: %unk.iterator++()>()',
             ],
             preds: [3],
             succes: [3],
@@ -167,7 +167,7 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 6,
             stmts: [
-                '%8 = instanceinvoke scores.<@%unk/%unk: .iterator()>()',
+                '%8 = instanceinvoke scores.<@%unk/%unk: %unk.iterator()>()',
                 '%8 = scores.<@%unk/%unk: std::map.begin>',
             ],
             preds: [1],
@@ -202,7 +202,7 @@ export const BINGING_EXPECT_CONSTREFERENCE = {
                 'this = this: @structBinding/structBinding.cpp: %dflt',
                 '%0 = new @%unk/%unk: double',
                 'instanceinvoke %0.<@%unk/%unk: double.constructor()>(3.14)',
-                'complex_data = staticinvoke <@%unk/%unk: .make_tuple()>(\'test\', 42, %0)',
+                'complex_data = staticinvoke <@%unk/%unk: %unk.make_tuple()>(\'test\', 42, %0)',
                 '%1 = complex_data',
                 'str = %1[0]',
                 'num = %1[1]',

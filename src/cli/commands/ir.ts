@@ -18,6 +18,7 @@ import { Scene } from '../../Scene';
 import { buildSceneConfigFromProject } from '../../Config';
 import { ScenePrinter } from '../../save/PrinterBuilder';
 import { ArkAnalyzerError, ArkErrorCode } from '../../core/common/ArkError';
+import { SignatureCanonicalizerRegistry } from '../../core/common/SignatureCanonicalizerRegistry';
 
 export interface IrCommandOptions {
     project: string;
@@ -25,10 +26,11 @@ export interface IrCommandOptions {
     format?: 'json' | 'text' | 'dot';
     inferTypes: boolean;
     ohosSdkHome?: string;
+    stats?: boolean;
 }
 
 export function dumpProjectToReadableIR(options: IrCommandOptions): { output: string; fileCount: number; formatUsed: string } {
-    const config = buildSceneConfigFromProject(options.project, options.ohosSdkHome);
+    const config = buildSceneConfigFromProject(options.project, options.ohosSdkHome, options.stats ? { enableStatistics: true } : undefined);
 
     const scene = new Scene();
     scene.buildSceneFromProjectDir(config);
@@ -36,7 +38,7 @@ export function dumpProjectToReadableIR(options: IrCommandOptions): { output: st
         scene.inferTypes();
     }
 
-    const fileCount = scene.getFiles().length;
+    const fileCount = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.size();
     const printer = new ScenePrinter(scene, options.output);
     const rawFormat = options.format ?? 'text';
     let formatUsed = rawFormat;
@@ -75,7 +77,8 @@ export function register(program: Command): void {
         .option('-f, --format <type>', 'Output format: json | text | dot', 'text')
         .option('--ohos-sdk-home <path>', 'OHOS SDK home. Fallback to env OHOS_SDK_HOME')
         .option('--no-infer-types', 'Skip Scene.inferTypes() for speed')
-        .action((input: string, opts: { output: string; format: string; inferTypes: boolean; ohosSdkHome?: string }) => {
+        .option('--stats', 'Enable stage statistics collection and output report')
+        .action((input: string, opts: { output: string; format: string; inferTypes: boolean; ohosSdkHome?: string; stats?: boolean }) => {
             const requestedFormat = (opts.format ?? 'json').toLowerCase();
             if (!['json', 'text', 'dot'].includes(requestedFormat)) {
                 throw new ArkAnalyzerError({
@@ -89,6 +92,7 @@ export function register(program: Command): void {
                 format: requestedFormat as 'json' | 'text' | 'dot',
                 inferTypes: opts.inferTypes !== false,
                 ohosSdkHome: opts.ohosSdkHome,
+                stats: opts.stats,
             });
             const output = {
                 input,

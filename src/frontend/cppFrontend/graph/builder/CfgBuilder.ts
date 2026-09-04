@@ -35,6 +35,7 @@ import { AstKind, CxxNodeFlag, CxxAstNode, CxxTranslationUnit } from '../../util
 import { hasNodeFlag } from '../../utils/cppUtils';
 import { CxxLoopBuilder } from './LoopBuilder';
 import { CxxIfBuilder } from './IfBuilder';
+import { SignatureCanonicalizerRegistry } from '../../../../core/common/SignatureCanonicalizerRegistry';
 
 export class BlockBuilder {
     id: number;
@@ -1527,7 +1528,7 @@ export class CfgBuilder {
         }
         if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType && !this.declaringMethod.getAsteriskToken()) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
+                const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
                 } else {

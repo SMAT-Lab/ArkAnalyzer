@@ -21,6 +21,10 @@ import { Type } from '../base/Type';
 import { ArkBaseModel, BaseModelTag, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { Language } from './ArkFile';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkField');
 
 export enum FieldCategory {
     PROPERTY_DECLARATION = 0,
@@ -44,23 +48,46 @@ export const FIELD_CATEGORY_SHIFT = CLASS_SPECIFIC_TAG_SHIFT;
  * Mask for extracting field category from ArkField tags field.
  * Covers 4 bits for up to 16 field category values.
  */
-export const FIELD_CATEGORY_MASK = 0xF << FIELD_CATEGORY_SHIFT;
+export const FIELD_CATEGORY_MASK = 0xf << FIELD_CATEGORY_SHIFT;
 
 /**
  * @category core/model
  */
 export class ArkField extends ArkBaseModel {
-    private declaringClass!: ArkClass;
+    /** @internal Formal ClassSigID for the declaring class. -1 = not yet interned. */
+    private declaringClassID: number = -1;
 
-    private fieldSignature!: FieldSignature;
+    /** @internal Formal FieldSigID of this field. -1 = not yet set. */
+    private fieldSigID: number = -1;
+
     /** The full position (start/end line/col) of this field in the source file. */
     private originFullPosition!: FullPosition;
     private sourceCode?: string;
 
     private initializer: Stmt[] = [];
 
-    constructor() {
+    /**
+     * @deprecated Construct with the declaring class ID and (optionally) the signature
+     * object instead.
+     */
+    constructor();
+    /**
+     * Build directly from the declaring class ID and (optionally) the field signature.
+     * `setSignature` is the registration point: it interns the signature, assigns the
+     * FieldSigID, and registers this field as the model.
+     * @param declaringClassID - Formal ClassSigID of the declaring class.
+     * @param fieldSig - The signature object; not yet registered — registration happens
+     *        inside via setSignature.
+     */
+    constructor(declaringClassID: number, fieldSig?: FieldSignature);
+    constructor(declaringClassID?: number, fieldSig?: FieldSignature) {
         super();
+        if (declaringClassID !== undefined) {
+            this.declaringClassID = declaringClassID;
+        }
+        if (fieldSig) {
+            this.setSignature(fieldSig);
+        }
     }
 
     /**
@@ -71,11 +98,27 @@ export class ArkField extends ArkBaseModel {
     }
 
     public getDeclaringArkClass(): ArkClass {
-        return this.declaringClass;
+        if (this.declaringClassID !== -1) {
+            return SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getModel(this.declaringClassID)!;
+        }
+        return undefined as unknown as ArkClass;
     }
 
+    /**
+     * Sets the declaring class of the field.
+     * Internally only the formal ClassSigID is stored; the class itself is
+     * resolved back via the class signature canonicalizer.
+     * @param declaringClass - The declaring class of the field.
+     * @deprecated Use the ID-injecting constructor
+     * {@link constructor(declaringClassID, fieldSig)}.
+     */
     public setDeclaringArkClass(declaringClass: ArkClass): void {
-        this.declaringClass = declaringClass;
+        this.declaringClassID = declaringClass.getClassSigID();
+    }
+
+    /** @internal Get the formal ClassSigID of the declaring class. Returns -1 if not interned. */
+    public getDeclaringClassID(): number {
+        return this.declaringClassID;
     }
 
     /**
@@ -99,9 +142,7 @@ export class ArkField extends ArkBaseModel {
      * @deprecated Source text is now stored on ArkFile only. This method has no effect.
      * @param _code - The source code (ignored).
      */
-    public setCode(_code: string): void {
-        
-    }
+    public setCode(_code: string): void {}
 
     /**
      * Clears the cached source text, forcing re-extraction on next getCode call.
@@ -119,19 +160,48 @@ export class ArkField extends ArkBaseModel {
     }
 
     public getName(): string {
-        return this.fieldSignature.getFieldName();
+        return this.getSignature().getFieldName();
     }
 
     public getType(): Type {
-        return this.fieldSignature.getType();
+        return this.getSignature().getType();
     }
 
     public getSignature(): FieldSignature {
-        return this.fieldSignature;
+        if (this.fieldSigID !== -1) {
+            const sig = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(this.fieldSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+        }
+        // Unreachable in normal flows: a field always gets its signature set before use.
+        // Log loudly so violations surface immediately.
+        logger.error(`Field has no interned signature (fieldSigID=${this.fieldSigID}); returning DEFAULT.`);
+        return FieldSignature.DEFAULT;
     }
 
+    /**
+     * Set the field signature.
+     * Internally only the formal FieldSigID is stored; the signature itself is
+     * resolved back via the field signature canonicalizer (canonical instance).
+     * @param fieldSig - the field signature.
+     */
     public setSignature(fieldSig: FieldSignature): void {
-        this.fieldSignature = fieldSig;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const existing = reg.fieldSigCanonicalizer.getExistingId(fieldSig);
+        this.fieldSigID = reg.fieldSigCanonicalizer.getId(fieldSig);
+        // 与 ArkClass.setSignature 对等的保护：签名值已被别的 ArkField 持有时不覆盖
+        // 全局 model——防止"后 setSignature 者顶替"写穿（如推断期把声明侧签名 set 到
+        // 匿名类字段上会顶替声明类字段的 model）。正常 builder 首建（existing < 0）
+        // 走注册。
+        if (existing < 0) {
+            SignatureCanonicalizerRegistry.registerField(this);
+        }
+    }
+
+    /** @internal Get the formal FieldSigID of this field. */
+    public getFieldSigID(): number {
+        return this.fieldSigID;
     }
 
     /**
@@ -175,12 +245,7 @@ export class ArkField extends ArkBaseModel {
      * @param position - The LineColPosition to set.
      */
     public setOriginPosition(position: LineColPosition): void {
-        this.originFullPosition = new FullPosition(
-            position.getLineNo(),
-            position.getColNo(),
-            position.getLineNo(),
-            position.getColNo()
-        );
+        this.originFullPosition = new FullPosition(position.getLineNo(), position.getColNo(), position.getLineNo(), position.getColNo());
     }
 
     /**
@@ -208,7 +273,7 @@ export class ArkField extends ArkBaseModel {
     }
 
     public validate(): ArkError {
-        return this.validateFields(['declaringClass', 'fieldSignature']);
+        return this.validateFields(['declaringClassID', 'fieldSigID']);
     }
 
     // For class field, it is default public if there is not any access modify
@@ -228,7 +293,7 @@ export class ArkField extends ArkBaseModel {
 
     public clearAllReferences(): void {
         this.initializer = [];
-        this.declaringClass = undefined as unknown as ArkClass;
+        this.declaringClassID = -1;
         this.clearSourceCode();
     }
 }

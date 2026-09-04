@@ -13,28 +13,38 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi, beforeAll } from 'vitest';
 import { SceneConfig } from '../../src/Config';
 import { Scene } from '../../src/Scene';
 import { ArkClass } from '../../src';
 import * as fileBuilder from '../../src/core/model/builder/ArkFileBuilder';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
 describe('build scene by files Test', () => {
+    let scene: Scene;
 
-    const filesPath: string[] = ['./'];
-    const projectDir = './tests/resources/dependency/exampleProject/MyApplication4Files';
-    const projectName = 'MyApplication4Files';
-    const sceneConfig: SceneConfig = new SceneConfig();
-    sceneConfig.buildFromProjectFiles(projectName, projectDir, filesPath);
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        const filesPath: string[] = ['./'];
+        const projectDir = './tests/resources/dependency/exampleProject/MyApplication4Files';
+        const projectName = 'MyApplication4Files';
+        const sceneConfig: SceneConfig = new SceneConfig();
+        sceneConfig.buildFromProjectFiles(projectName, projectDir, filesPath);
 
-    const scene: Scene = new Scene();
-    scene.buildSceneFromFiles(sceneConfig);
-    scene.inferTypes();
+        scene = new Scene();
+        scene.buildSceneFromFiles(sceneConfig);
+        scene.inferTypes();
+    });
+
     it('check files num', () => {
-        assert.equal(scene.getFiles().length, 21);
+        // 19 = 项目目录内文件。旧值 21 含 2 个 tsconfig paths 指向的越界兄弟目录
+        // （../DependencyTest*）文件——越界文件签名畸形（fileName 为 ../ 相对路径），
+        // 现已被 getDependencyFilesDeeply 的项目目录范围守卫排除（与目录扫描语义对齐）。
+        assert.equal(scene.getFiles().length, 19);
         assert.equal(scene.getModuleSceneMap().size, 6);
-        assert.equal(scene.getClasses().length, 34);
-        assert.equal(scene.getMethods().length, 74);
+        // 34 → 30：随越界文件排除，其类/方法不再计入（少 2 文件的 default class 与用户类）。
+        assert.equal(scene.getClasses().length, 30);
+        assert.equal(scene.getMethods().length, 66);
         assert.equal(scene.getModuleSceneMap().size, 6);
         assert.equal(scene.getModuleSceneMap().get('lib1')?.getModuleFilesMap().size, 2);
         assert.equal(scene.getModuleSceneMap().get('libbase')?.getModuleFilesMap().size, 4);
@@ -49,6 +59,10 @@ describe('build scene by files Test', () => {
         assert.equal(scene.getOverRides().get('@ohos/model2'), 'file:./libs/model2.har');
         assert.equal(JSON.stringify(scene.getGlobalModule2PathMapping()!), JSON.stringify(globalModule2PathMapping_expect_result));
         assert.equal(scene.getbaseUrl(), './');
+        // API 兼容性：根 oh-package.json5 内容构建后可查（快照回填，构建期上下文已释放）。
+        const ohPkgContent = scene.getOhPkgContent();
+        assert.equal((ohPkgContent.dependencies as { [k: string]: string })['@MyLib'], './lib1');
+        assert.equal(ohPkgContent.modelVersion, '5.0.0');
     });
 
     it('check import', () => {
@@ -60,20 +74,27 @@ describe('build scene by files Test', () => {
 });
 
 describe('build scene by files With Circular Dependency', () => {
-    const filesPath: string[] = ['./'];
-    const projectDir = './tests/resources/dependency/exampleProject/CircularDependency';
-    const projectName = 'CircularDependency';
-    const sceneConfig: SceneConfig = new SceneConfig();
-    sceneConfig.buildFromProjectFiles(projectName, projectDir, filesPath);
-    sceneConfig.getOptions().enableBuiltIn = false;
+    let scene: Scene;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let spy: any;
 
-    const scene: Scene = new Scene();
-    const spy = vi.spyOn(fileBuilder, 'buildArkFileFromFile');
-    scene.buildSceneFromFiles(sceneConfig);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        spy = vi.spyOn(fileBuilder, 'buildArkFileFromFile');
+        const filesPath: string[] = ['./'];
+        const projectDir = './tests/resources/dependency/exampleProject/CircularDependency';
+        const projectName = 'CircularDependency';
+        const sceneConfig: SceneConfig = new SceneConfig();
+        sceneConfig.buildFromProjectFiles(projectName, projectDir, filesPath);
+        sceneConfig.getOptions().enableBuiltIn = false;
+
+        scene = new Scene();
+        scene.buildSceneFromFiles(sceneConfig);
+        scene.inferTypes();
+    });
 
     it('check circular dependencies', () => {
-        const expectedFilesKey = ['file3.ts', 'file2.ts', 'file1.ts'];
+        const expectedFilesKey = ['file1.ts', 'file2.ts', 'file3.ts'];
         const files = scene.getFiles();
         assert.equal(files.length, expectedFilesKey.length);
         files.forEach((file, index) => {
@@ -84,21 +105,8 @@ describe('build scene by files With Circular Dependency', () => {
 });
 
 export const globalModule2PathMapping_expect_result = {
-    '@DependencyTest/': [
-        '../DependencyTest/',
-        '../DependencyTest1/'
-    ],
-    '@DependencyTest/*': [
-        '../DependencyTest/*',
-        '../DependencyTest1/*'
-    ],
-    'DependencyTest/': [
-        '../DependencyTest/',
-        '../DependencyTest1/'
-    ],
-    'DependencyTest/*': [
-        '../DependencyTest/*',
-        '../DependencyTest1/*'
-    ]
+    '@DependencyTest/': ['../DependencyTest/', '../DependencyTest1/'],
+    '@DependencyTest/*': ['../DependencyTest/*', '../DependencyTest1/*'],
+    'DependencyTest/': ['../DependencyTest/', '../DependencyTest1/'],
+    'DependencyTest/*': ['../DependencyTest/*', '../DependencyTest1/*'],
 };
-

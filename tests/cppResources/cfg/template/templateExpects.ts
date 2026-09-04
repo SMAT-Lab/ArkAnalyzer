@@ -59,8 +59,8 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'a = parameter0: T1',
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
-                "%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, 'two different parm')",
-                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                "%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, 'two different parm')",
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, endl)',
                 'return'
             ],
             preds: [],
@@ -72,7 +72,7 @@ export const TEMPLATE_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @template/template.cpp: %dflt', 'd = 2.718', '%0 = &d', 'staticinvoke <@%unk/%unk: .DestroyPtr()>(%0)', 'return 0'],
+            stmts: ['this = this: @template/template.cpp: %dflt', 'd = 2.718', '%0 = &d', 'staticinvoke <@%unk/%unk: %unk.DestroyPtr()>(%0)', 'return 0'],
             preds: [],
             succes: [],
         },
@@ -98,7 +98,7 @@ export const TEMPLATE_EXPECT_CASE6 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @template/template.cpp: %dflt', 'z = staticinvoke <@%unk/%unk: .Sum()>(1, 2, 3, 4, 5, 6)', 'return 0'],
+            stmts: ['this = this: @template/template.cpp: %dflt', 'z = staticinvoke <@%unk/%unk: %unk.Sum()>(1, 2, 3, 4, 5, 6)', 'return 0'],
             preds: [],
             succes: [],
         },
@@ -136,7 +136,7 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                     stmts: [
                         'this = this: @template/template.cpp: MyContainer',
                         '%0 = this.<@template/template.cpp: MyContainer.data1>',
-                        'staticinvoke <@%unk/%unk: .cout()>(%0)',
+                        'staticinvoke <@%unk/%unk: %unk.cout()>(%0)',
                         'return',
                     ],
                     preds: [],

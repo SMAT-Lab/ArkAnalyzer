@@ -30,6 +30,7 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 
 /**
  * @category core/base/type
@@ -428,8 +429,16 @@ export class NeverType extends Type {
  * @category core/base/type
  */
 export class FunctionType extends Type {
-    private methodSignature: MethodSignature;
+    private methodSigID: number;
     private realGenericTypes?: Type[];
+
+    /**
+     * @internal temp 兜底时的锚点：强引用 MethodSignature 实例（弱注册表语义，
+     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     */
+    private tempMethodSignature?: MethodSignature;
+    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
+    private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
         return true;
@@ -437,12 +446,45 @@ export class FunctionType extends Type {
 
     constructor(methodSignature: MethodSignature, realGenericTypes?: Type[]) {
         super();
-        this.methodSignature = methodSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 与 ClassType 同构的路由：formal 只读命中（不写 formal 空间，防无 model
+        // 空洞）→ 未命中（unclear）→ temp 弱注册 + 本对象锚定。
+        const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
+        if (existingId !== -1) {
+            this.methodSigID = existingId;
+            this.tempMethodSignature = undefined;
+            this.tempSigID = undefined;
+        } else {
+            this.methodSigID = -1;
+            this.tempMethodSignature = methodSignature;
+            this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+        }
         this.realGenericTypes = realGenericTypes;
     }
 
+    public get methodSignature(): MethodSignature {
+        return this.getMethodSignature();
+    }
+
     public getMethodSignature(): MethodSignature {
-        return this.methodSignature;
+        if (this.methodSigID >= 0) {
+            return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.get(this.methodSigID)!;
+        }
+        if (this.tempMethodSignature !== undefined) {
+            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
+            return this.tempMethodSignature;
+        }
+        throw new Error('FunctionType has no signature');
+    }
+
+    /** @internal Get the formal MethodSigID. */
+    public getMethodSigID(): number {
+        return this.methodSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getRealGenericTypes(): Type[] | undefined {
@@ -450,10 +492,11 @@ export class FunctionType extends Type {
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
-        const sig = this.methodSignature.getMethodSubSignature();
-        const classStr = this.methodSignature.getDeclaringClassSignature().toString();
-        const paramStrs = sig.getParameterTypes()
-            .map(t => t ? t.toStringWithVisited(visited) : UnknownType.getInstance().toString())
+        const sig = this.getMethodSignature().getMethodSubSignature();
+        const classStr = this.getMethodSignature().getDeclaringClassSignature().toString();
+        const paramStrs = sig
+            .getParameterTypes()
+            .map(t => (t ? t.toStringWithVisited(visited) : UnknownType.getInstance().toString()))
             .join(', ');
         const methodPart = (sig.isStatic() ? '[static]' : '') + sig.getMethodName() + '(' + paramStrs + ')';
         return classStr + '.' + methodPart;
@@ -486,29 +529,90 @@ export class ClosureType extends FunctionType {
  * @category core/base/type
  */
 export class ClassType extends Type {
-    private classSignature: ClassSignature;
+    private classSigID: number;
     private realGenericTypes?: Type[];
+
+    /**
+     * @internal temp 兜底时的锚点：强引用签名实例，保证弱注册表中该 tempSigID
+     * 对应的 WeakRef 在本 ClassType 存活期间有效（最后一个持有者死亡后签名才可
+     * 被 GC 回收）。formal 路径下为 undefined。
+     */
+    private tempClassSignature?: ClassSignature;
+    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
+    private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
         return true;
     }
 
     protected getDisplayNameForCycle(): string {
-        return this.classSignature.toString();
+        return this.getClassSignature().toString();
     }
 
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
-        this.classSignature = classSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // formal 只读命中：值查找（getExistingId），命中即用——ClassType 不写
+        // formal 空间（原盲写 getId 是无 model 空洞的根源：clear 但未注册的签名
+        // 值一旦进入 formal，后到的真实 ArkClass.setSignature 会因 existing≥0
+        // 跳过注册，形成永久洞 + getClass 查询失效）。
+        const existingId = reg.classSigCanonicalizer.getExistingId(classSignature);
+        if (existingId !== -1) {
+            this.classSigID = existingId;
+            this.tempClassSignature = undefined;
+        } else {
+            // temp 兜底（不区分 isUnclear）：弱注册表登记（同实例复用 ID，新实例
+            // 新 ID），本对象以 tempClassSignature 锚定该实例。clear 未注册签名
+            // 与 unclear stub 统一走此路径；解析（真实类后到注册后）由消费方的
+            // 值查找（getArkClassBySig 等）完成。
+            this.classSigID = -1;
+            this.tempClassSignature = classSignature;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
+        }
         this.realGenericTypes = realGenericTypes;
     }
 
+    public get classSignature(): ClassSignature {
+        return this.getClassSignature();
+    }
+
     public getClassSignature(): ClassSignature {
-        return this.classSignature;
+        if (this.classSigID >= 0) {
+            return SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.get(this.classSigID)!;
+        }
+        if (this.tempClassSignature !== undefined) {
+            // 锚点直返：本对象强引用的实例（弱注册表语义下 get(tempSigID) 可能因
+            // 其他持有者全部死亡而查不回，锚点是唯一可靠的取回路径）。
+            return this.tempClassSignature;
+        }
+        throw new Error('ClassType has no signature');
     }
 
     public setClassSignature(newClassSignature: ClassSignature): void {
-        this.classSignature = newClassSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 与构造器同构的路由：formal 只读命中 → 直接使用；未命中（无论 unclear
+        // 还是 clear 未注册）→ temp 弱注册 + 本对象换锚。旧引用无需显式释放——
+        // 弱注册表由 GC 收敛（本对象丢弃旧锚点后，若无其他持有者则旧签名可回收）。
+        const existingId = reg.classSigCanonicalizer.getExistingId(newClassSignature);
+        if (existingId !== -1) {
+            this.classSigID = existingId;
+            this.tempClassSignature = undefined;
+            this.tempSigID = undefined;
+        } else {
+            this.classSigID = -1;
+            this.tempClassSignature = newClassSignature;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
+        }
+    }
+
+    /** @internal Get the formal ClassSigID. */
+    public getClassSigID(): number {
+        return this.classSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getRealGenericTypes(): Type[] | undefined {
@@ -519,8 +623,8 @@ export class ClassType extends Type {
         this.realGenericTypes = types;
     }
 
-    protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
-        let temp = this.classSignature.toString();
+    protected getTypeString(visited: Set<Type> = new Set<Type>): string {
+        let temp = this.getClassSignature().toString();
         if (this.realGenericTypes && this.realGenericTypes.length > 0) {
             temp += `<${this.realGenericTypes.map(t => t.toStringWithVisited(visited)).join(',')}>`;
         }
@@ -880,17 +984,57 @@ export class AnnotationTypeQueryType extends AnnotationType {
 }
 
 export class LexicalEnvType extends Type {
-    private nestedMethodSignature: MethodSignature;
+    private nestedMethodSigID: number;
     private closures: Local[];
+
+    /**
+     * @internal temp 兜底时的锚点：强引用 MethodSignature 实例（弱注册表语义，
+     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     */
+    private tempNestedMethod?: MethodSignature;
+    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
+    private tempSigID?: number;
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
-        this.nestedMethodSignature = nestedMethod;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 与 ClassType 同构的路由：formal 只读命中 → temp 弱注册 + 锚定。
+        const existingId = reg.methodSigCanonicalizer.getExistingId(nestedMethod);
+        if (existingId !== -1) {
+            this.nestedMethodSigID = existingId;
+            this.tempNestedMethod = undefined;
+            this.tempSigID = undefined;
+        } else {
+            this.nestedMethodSigID = -1;
+            this.tempNestedMethod = nestedMethod;
+            this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
+        }
         this.closures = closures ?? [];
     }
 
+    public get nestedMethodSignature(): MethodSignature {
+        return this.getNestedMethod();
+    }
+
     public getNestedMethod(): MethodSignature {
-        return this.nestedMethodSignature;
+        if (this.nestedMethodSigID >= 0) {
+            return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.get(this.nestedMethodSigID)!;
+        }
+        if (this.tempNestedMethod !== undefined) {
+            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
+            return this.tempNestedMethod;
+        }
+        throw new Error('LexicalEnvType has no signature');
+    }
+
+    /** @internal Get the formal MethodSigID. */
+    public getMethodSigID(): number {
+        return this.nestedMethodSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getClosures(): Local[] {
@@ -907,17 +1051,57 @@ export class LexicalEnvType extends Type {
 }
 
 export class EnumValueType extends Type {
-    private signature: FieldSignature;
+    private fieldSigID: number;
     private constant?: Constant;
+
+    /**
+     * @internal temp 兜底时的锚点：强引用 FieldSignature 实例（弱注册表语义，
+     * 见 ClassType.tempClassSignature 注释）。formal 路径下为 undefined。
+     */
+    private tempFieldSignature?: FieldSignature;
+    /** @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。 */
+    private tempSigID?: number;
 
     constructor(signature: FieldSignature, constant?: Constant) {
         super();
-        this.signature = signature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 与 ClassType 同构的路由：formal 只读命中 → temp 弱注册 + 锚定。
+        const existingId = reg.fieldSigCanonicalizer.getExistingId(signature);
+        if (existingId !== -1) {
+            this.fieldSigID = existingId;
+            this.tempFieldSignature = undefined;
+            this.tempSigID = undefined;
+        } else {
+            this.fieldSigID = -1;
+            this.tempFieldSignature = signature;
+            this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
+        }
         this.constant = constant;
     }
 
+    public get signature(): FieldSignature {
+        return this.getFieldSignature();
+    }
+
     public getFieldSignature(): FieldSignature {
-        return this.signature;
+        if (this.fieldSigID >= 0) {
+            return SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(this.fieldSigID)!;
+        }
+        if (this.tempFieldSignature !== undefined) {
+            // 锚点直返（弱注册表语义下唯一可靠的取回路径）。
+            return this.tempFieldSignature;
+        }
+        throw new Error('EnumValueType has no signature');
+    }
+
+    /** @internal Get the formal FieldSigID. */
+    public getFieldSigID(): number {
+        return this.fieldSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getConstant(): Constant | undefined {
@@ -925,6 +1109,6 @@ export class EnumValueType extends Type {
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
-        return this.signature.toString();
+        return this.getFieldSignature().toString();
     }
 }

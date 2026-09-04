@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, it } from 'vitest';
+import { beforeAll, describe, it } from 'vitest';
 import { SceneConfig } from '../../../src/Config';
 import { Scene } from '../../../src/Scene';
 import { CallGraph } from '../../../src/callgraph/model/CallGraph';
@@ -26,40 +26,58 @@ import { Local } from '../../../src/core/base/Local';
 import { Sdk } from '../../../src/Config';
 import { assert } from 'vitest';
 import { ArkAssignStmt, ArkInstanceInvokeExpr } from '../../../src';
+import { SignatureCanonicalizerRegistry } from '../../../src/core/common/SignatureCanonicalizerRegistry';
 
 let sdk: Sdk = {
     name: 'ohos',
     path: './builtIn/typescript',
-    moduleName: ''
+    moduleName: '',
 };
 
 describe('ExportNewTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/pta/ExportNew');
-    config.getSdksObj().push(sdk);
+    let scene: Scene;
+    let pag: Pag;
 
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/pta/ExportNew');
+        config.getSdksObj().push(sdk);
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+
+        let ptaConfig = PointerAnalysisConfig.create(
+            2,
+            './out',
+            true,
+            true,
+            true,
+            PtaAnalysisScale.WholeProgram,
+            PtsCollectionType.BitVector,
+            ContextType.CallSite
+        );
+        let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+    });
 
     it('case1', () => {
         let target;
-        let method = scene.getClasses().filter(arkClass => arkClass.getName() === '%dflt')
-        .flatMap(arkClass => arkClass.getMethodWithName('test1')).filter(Boolean);
-    
+        let method = scene
+            .getClasses()
+            .filter(arkClass => arkClass.getName() === '%dflt')
+            .flatMap(arkClass => arkClass.getMethodWithName('test1'))
+            .filter(Boolean);
+
         let local = (method[0]?.getBody()?.getLocals().get('lo')?.getDeclaringStmt() as ArkAssignStmt).getRightOp() as Local;
 
         for (let node of pag.getNodesIter()) {
@@ -82,9 +100,12 @@ describe('ExportNewTest', () => {
 
     it('case2', () => {
         let target;
-        let method = scene.getClasses().filter(arkClass => arkClass.getName() === '%dflt')
-        .flatMap(arkClass => arkClass.getMethodWithName('test1')).filter(Boolean);
-    
+        let method = scene
+            .getClasses()
+            .filter(arkClass => arkClass.getName() === '%dflt')
+            .flatMap(arkClass => arkClass.getMethodWithName('test1'))
+            .filter(Boolean);
+
         let local = (method[0]?.getBody()?.getLocals().get('lo2')?.getDeclaringStmt() as ArkAssignStmt).getRightOp() as Local;
 
         for (let node of pag.getNodesIter()) {
@@ -107,26 +128,39 @@ describe('ExportNewTest', () => {
 });
 
 describe('ExportNew2Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/pta/ExportNew2');
-    config.getSdksObj().push(sdk);
+    let pag: Pag;
 
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/pta/ExportNew2');
+        config.getSdksObj().push(sdk);
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+
+        let ptaConfig = PointerAnalysisConfig.create(
+            2,
+            './out',
+            true,
+            true,
+            true,
+            PtaAnalysisScale.WholeProgram,
+            PtsCollectionType.BitVector,
+            ContextType.CallSite
+        );
+        let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+    });
 
     it('case1', () => {
         let target;
@@ -149,35 +183,55 @@ describe('ExportNew2Test', () => {
 });
 
 describe('ExportNew3Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/pta/ExportNew3');
-    config.getSdksObj().push(sdk);
+    let scene: Scene;
+    let pta: PointerAnalysis;
 
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/pta/ExportNew3');
+        config.getSdksObj().push(sdk);
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        let pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+
+        let ptaConfig = PointerAnalysisConfig.create(
+            2,
+            './out',
+            true,
+            true,
+            true,
+            PtaAnalysisScale.WholeProgram,
+            PtsCollectionType.BitVector,
+            ContextType.CallSite
+        );
+        pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+    });
 
     it('case1', () => {
-        let srcMethod = scene.getClasses().filter(arkClass => arkClass.getName() === '%dflt')
+        let srcMethod = scene
+            .getClasses()
+            .filter(arkClass => arkClass.getName() === '%dflt')
             .flatMap(arkClass => arkClass.getMethodWithName('%dflt'))
             .filter(method => method !== null && method !== undefined);
-        let dstMethod_1 = scene.getClasses().filter(arkClass => arkClass.getName() === '%dflt')
+        let dstMethod_1 = scene
+            .getClasses()
+            .filter(arkClass => arkClass.getName() === '%dflt')
             .flatMap(arkClass => arkClass.getMethodWithName('main'))
             .filter(method => method !== null && method !== undefined);
-        let dstMethod_2 = scene.getClasses().filter(arkClass => arkClass.getName() === 'Vector')
+        let dstMethod_2 = scene
+            .getClasses()
+            .filter(arkClass => arkClass.getName() === 'Vector')
             .flatMap(arkClass => arkClass.getMethodWithName('editConfig'))
             .filter(method => method !== null && method !== undefined);
 
@@ -186,8 +240,6 @@ describe('ExportNew3Test', () => {
         let importValue_2 = (dstMethod_2[0]?.getCfg()?.getStmts()[1].getInvokeExpr() as ArkInstanceInvokeExpr).getBase();
 
         let relatedNodes = pta.getRelatedNodes(exportValue);
-        assert(
-            relatedNodes.has(importValue_1) && relatedNodes.has(importValue_2)
-        );
+        assert(relatedNodes.has(importValue_1) && relatedNodes.has(importValue_2));
     });
 });

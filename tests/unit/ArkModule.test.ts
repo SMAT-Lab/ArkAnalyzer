@@ -23,8 +23,9 @@ import { FileSignature } from '../../src';
 import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 import { ModuleDepGraph } from '../../src/core/graph/ModuleDepGraph';
 import { Scene } from '../../src/Scene';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
-const STUB_SCENE = {} as Scene;
+const STUB_SCENE = new Scene();
 
 /** Create a real Scene for getDependencies/getDependents tests (ArkModule queries the Scene). */
 function makeStubScene(): Scene {
@@ -112,12 +113,7 @@ describe('ArkModule tests', () => {
 
         it('supports setLoadState / getLoadState for all values', () => {
             const module = new ArkModule(STUB_SCENE);
-            for (const state of [
-                ModuleLoadState.NOT_LOADED,
-                ModuleLoadState.INDEX,
-                ModuleLoadState.SIGNATURES,
-                ModuleLoadState.BODIES,
-            ]) {
+            for (const state of [ModuleLoadState.NOT_LOADED, ModuleLoadState.INDEX, ModuleLoadState.SIGNATURES, ModuleLoadState.BODIES]) {
                 module.setLoadState(state);
                 expect(module.getLoadState()).toBe(state);
             }
@@ -155,13 +151,13 @@ describe('ArkModule tests', () => {
     });
 
     describe('file management', () => {
-        it('adds a file keyed by FileSignature.toMapKey()', () => {
+        it('adds a file keyed by FileSignature canonical ID', () => {
             const module = new ArkModule(STUB_SCENE);
             const arkFile = makeArkFile('project', 'src/main/Entry.ts');
             module.addFile(arkFile);
             const filesMap = module.getFilesMap();
             expect(filesMap.size).toBe(1);
-            const expectedKey = arkFile.getFileSignature().toMapKey();
+            const expectedKey = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(arkFile.getFileSignature());
             expect(filesMap.has(expectedKey)).toBe(true);
             expect(filesMap.get(expectedKey)).toBe(arkFile);
         });
