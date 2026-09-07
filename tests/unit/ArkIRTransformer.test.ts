@@ -451,7 +451,7 @@ describe('expression Test', () => {
             PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR);
         testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'callFuncReturned',
             PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR);
-        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, '%AM5$promiseCall',
+        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, '%AM8$promiseCall',
             PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR);
     });
 

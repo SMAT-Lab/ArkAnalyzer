@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { FullPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../base/Position';
 
 /**
  * Deep copy a string to avoid sharing the original text reference from TypeScript AST nodes.
@@ -71,4 +71,179 @@ export function extractSourceTextByFullPosition(sourceText: string | undefined, 
     }
 
     return sourceText.slice(startIdx, endIdx);
+}
+
+export function isPositiveFullPosition(pos: FullPosition | null): pos is FullPosition {
+    return pos !== null && pos.getFirstLine() > 0 && pos.getFirstCol() > 0 &&
+        pos.getLastLine() > 0 && pos.getLastCol() > 0;
+}
+
+/**
+ * Finds the start offset of callee identifier `name` that is followed (after optional
+ * grouping `)` and nested generics) by a call `(`.
+ */
+export function matchCallOpenParen(text: string | undefined, name: string): number | null {
+    if (!text || !name || text.indexOf(name) === -1) {
+        return null;
+    }
+    const escaped = name.replace(/\$/g, '\\$');
+    const ident = new RegExp(`(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])`, 'g');
+    let match = ident.exec(text);
+    while (match) {
+        if (hasCallOpenParenAfter(text, match.index + match[0].length)) {
+            return match.index;
+        }
+        match = ident.exec(text);
+    }
+    return null;
+}
+
+function hasCallOpenParenAfter(text: string, start: number): boolean {
+    let i = skipWhitespace(text, start);
+    while (i < text.length) {
+        if (text[i] === '<') {
+            const afterAngles = skipBalancedAngleBrackets(text, i);
+            if (afterAngles < 0) {
+                return false;
+            }
+            i = skipWhitespace(text, afterAngles);
+            continue;
+        }
+        if (text[i] === ')') {
+            i = skipWhitespace(text, i + 1);
+            continue;
+        }
+        return text[i] === '(';
+    }
+    return false;
+}
+
+function skipWhitespace(text: string, index: number): number {
+    while (index < text.length && /\s/.test(text[index])) {
+        index++;
+    }
+    return index;
+}
+
+function skipBalancedAngleBrackets(text: string, start: number): number {
+    let depth = 0;
+    for (let i = start; i < text.length; i++) {
+        const skipped = skipNonAngleToken(text, i);
+        if (skipped !== i) {
+            if (skipped < 0) {
+                return -1;
+            }
+            i = skipped - 1;
+            continue;
+        }
+        if (text[i] === '<') {
+            depth++;
+        } else if (text[i] === '>') {
+            depth--;
+            if (depth === 0) {
+                return i + 1;
+            }
+        }
+    }
+    return -1;
+}
+
+function skipNonAngleToken(text: string, index: number): number {
+    const ch = text[index];
+    if (ch === '"' || ch === "'") {
+        return skipQuoted(text, index);
+    }
+    if (ch === '`') {
+        return skipTemplate(text, index);
+    }
+    if (ch === '/' && text[index + 1] === '*') {
+        return skipBlockComment(text, index);
+    }
+    if (ch === '/' && text[index + 1] === '/') {
+        return skipLineComment(text, index);
+    }
+    if (ch === '=' && text[index + 1] === '>') {
+        return index + 2;
+    }
+    return index;
+}
+
+function skipQuoted(text: string, start: number): number {
+    const quote = text[start];
+    for (let i = start + 1; i < text.length; i++) {
+        if (text[i] === '\\') {
+            i++;
+            continue;
+        }
+        if (text[i] === quote) {
+            return i + 1;
+        }
+    }
+    return -1;
+}
+
+function skipBlockComment(text: string, start: number): number {
+    const end = text.indexOf('*/', start + 2);
+    return end === -1 ? -1 : end + 2;
+}
+
+function skipLineComment(text: string, start: number): number {
+    const newline = text.indexOf('\n', start);
+    return newline === -1 ? text.length : newline + 1;
+}
+
+function skipTemplate(text: string, start: number): number {
+    for (let i = start + 1; i < text.length; i++) {
+        if (text[i] === '\\') {
+            i++;
+            continue;
+        }
+        if (text[i] === '`') {
+            return i + 1;
+        }
+        if (text[i] === '$' && text[i + 1] === '{') {
+            const end = skipTemplateInterpolation(text, i + 2);
+            if (end < 0) {
+                return -1;
+            }
+            i = end - 1;
+        }
+    }
+    return -1;
+}
+
+function skipTemplateInterpolation(text: string, start: number): number {
+    let depth = 1;
+    for (let i = start; i < text.length; i++) {
+        const skipped = skipNonAngleToken(text, i);
+        if (skipped !== i) {
+            if (skipped < 0) {
+                return -1;
+            }
+            i = skipped - 1;
+            continue;
+        }
+        if (text[i] === '{') {
+            depth++;
+        } else if (text[i] === '}') {
+            depth--;
+            if (depth === 0) {
+                return i + 1;
+            }
+        }
+    }
+    return -1;
+}
+
+/**
+ * Converts an offset within `text` to an absolute line/col, given the absolute origin of `text`.
+ */
+export function offsetToAbsoluteLineCol(text: string, offset: number, originLine: number, originCol: number): LineColPosition {
+    const before = text.slice(0, offset);
+    const relLine = before.split('\n').length - 1;
+    const lastNl = before.lastIndexOf('\n');
+    const colInText = lastNl === -1 ? offset + 1 : offset - lastNl;
+    const line = originLine + relLine;
+    const col = relLine === 0 ? originCol + (colInText - 1) : colInText;
+    return new LineColPosition(line, col);
 }

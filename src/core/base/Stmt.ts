@@ -19,7 +19,7 @@ import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } fro
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
 import { Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
+import { extractSourceTextByFullPosition, isPositiveFullPosition, matchCallOpenParen, offsetToAbsoluteLineCol } from '../common/StringUtils';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
 import { IRUtils } from '../common/IRUtils';
@@ -345,10 +345,9 @@ export abstract class Stmt {
     /**
      * Returns the absolute full position of the invoke whose callee identifier is `name`
      * within this statement (best-effort).
-     * Prefers the invoke operand's AST span: locate `name` inside that fragment for the
-     * start, and use the fragment end (column to the right of `)`) as the end — same
-     * half-open convention as {@link getOriginFullPosition}. Falls back to scanning
-     * {@link getOriginalText} with parenthesis matching when operand positions are missing.
+     * Locates `name` inside the invoke operand's AST span for the start, and uses the
+     * fragment end (column to the right of `)`) as the end — same half-open convention
+     * as {@link getOriginFullPosition}.
      * @param name - Callee identifier; must match this statement's invoke method name.
      * @returns Absolute `FullPosition` of `name(...)`, or `FullPosition.DEFAULT` if not found.
      */
@@ -364,89 +363,26 @@ export abstract class Stmt {
         if (methodName !== name) {
             return FullPosition.DEFAULT;
         }
+        return this.getInvokePosFromOperandSpan(name, invoke) ?? FullPosition.DEFAULT;
+    }
 
+    /**
+     * Locate `name(...)` inside the invoke operand's AST span.
+     * Start is the callee identifier; end is the CallExpression span end (right of `)`).
+     */
+    private getInvokePosFromOperandSpan(name: string, invoke: AbstractInvokeExpr): FullPosition | null {
         const invokePos = this.getOperandOriginalPosition(invoke);
-        if (invokePos && invokePos.getFirstLine() > 0 && invokePos.getFirstCol() > 0 &&
-            invokePos.getLastLine() > 0 && invokePos.getLastCol() > 0) {
-            const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
-            const frag = extractSourceTextByFullPosition(arkFile?.getCode(), invokePos);
-            if (frag && frag.indexOf(name) !== -1) {
-                const escaped = name.replace(/\$/g, '\\$');
-                const pattern = new RegExp(
-                    `(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])\\s*(?:<[^>]*>)?\\s*\\(`
-                );
-                const match = pattern.exec(frag);
-                if (match) {
-                    const startOffset = match.index;
-                    const originLine = invokePos.getFirstLine();
-                    const originCol = invokePos.getFirstCol();
-                    const startBefore = frag.slice(0, startOffset);
-                    const startRelLine = startBefore.split('\n').length - 1;
-                    const startLastNl = startBefore.lastIndexOf('\n');
-                    const startColInText = startLastNl === -1 ? startOffset + 1 : startOffset - startLastNl;
-                    const firstLine = originLine + startRelLine;
-                    const firstCol = startRelLine === 0 ? originCol + (startColInText - 1) : startColInText;
-                    // End is the CallExpression span end (right of matching `)`); no depth scan needed.
-                    return new FullPosition(firstLine, firstCol, invokePos.getLastLine(), invokePos.getLastCol());
-                }
-            }
+        if (!isPositiveFullPosition(invokePos)) {
+            return null;
         }
-
-        // Fallback: scan the whole statement original text with parenthesis matching.
-        const text = this.getOriginalText();
-        if (!text || text.indexOf(name) === -1) {
-            return FullPosition.DEFAULT;
+        const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
+        const frag = extractSourceTextByFullPosition(arkFile?.getCode(), invokePos);
+        const startOffset = matchCallOpenParen(frag, name);
+        if (!frag || startOffset === null) {
+            return null;
         }
-        const origin = this.getOriginPositionInfo();
-        const originLine = origin.getLineNo();
-        const originCol = origin.getColNo();
-        if (originLine < 0 || originCol < 0) {
-            return FullPosition.DEFAULT;
-        }
-        const escaped = name.replace(/\$/g, '\\$');
-        const pattern = new RegExp(
-            `(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])\\s*(?:<[^>]*>)?\\s*\\(`
-        );
-        const match = pattern.exec(text);
-        if (!match) {
-            return FullPosition.DEFAULT;
-        }
-        const startOffset = match.index;
-        const openParenOffset = startOffset + match[0].length - 1;
-        let depth = 0;
-        let closeParenOffset = -1;
-        for (let i = openParenOffset; i < text.length; i++) {
-            const ch = text[i];
-            if (ch === '(') {
-                depth++;
-            } else if (ch === ')') {
-                depth--;
-                if (depth === 0) {
-                    closeParenOffset = i;
-                    break;
-                }
-            }
-        }
-        if (closeParenOffset === -1) {
-            return FullPosition.DEFAULT;
-        }
-
-        const startBefore = text.slice(0, startOffset);
-        const startRelLine = startBefore.split('\n').length - 1;
-        const startLastNl = startBefore.lastIndexOf('\n');
-        const startColInText = startLastNl === -1 ? startOffset + 1 : startOffset - startLastNl;
-        const firstLine = originLine + startRelLine;
-        const firstCol = startRelLine === 0 ? originCol + (startColInText - 1) : startColInText;
-
-        const endOffset = closeParenOffset + 1;
-        const endBefore = text.slice(0, endOffset);
-        const endRelLine = endBefore.split('\n').length - 1;
-        const endLastNl = endBefore.lastIndexOf('\n');
-        const endColInText = endLastNl === -1 ? endOffset + 1 : endOffset - endLastNl;
-        const lastLine = originLine + endRelLine;
-        const lastCol = endRelLine === 0 ? originCol + (endColInText - 1) : endColInText;
-
-        return new FullPosition(firstLine, firstCol, lastLine, lastCol);
+        const start = offsetToAbsoluteLineCol(frag, startOffset, invokePos.getFirstLine(), invokePos.getFirstCol());
+        return new FullPosition(start.getLineNo(), start.getColNo(), invokePos.getLastLine(), invokePos.getLastCol());
     }
 
     /**

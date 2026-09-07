@@ -46,6 +46,12 @@ callSpace ();
 genericCall<T>();
 callNewline
 ();
+(parenCall)();
+nestedGeneric<Bar<T>>();
+arrowGeneric<() => void>();
+strGeneric<'a>b'>();
+fnGeneric<(x: () => void) => string>();
+commentGeneric<T /* > */>();
 
 // ptr invoke expr test
 function returnFunc1(): () => void {

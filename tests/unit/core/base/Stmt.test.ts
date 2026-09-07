@@ -295,6 +295,36 @@ describe('Stmt Source Code and Position Test', () => {
             expectFullPos(findStmtByIrText('.callNewline()').getInvokeFullPosition('callNewline'), 47, 1, 48, 3);
         });
 
+        it('matches parenthesized callee (parenCall)()', () => {
+            const stmt = findStmtByOriginalText('(parenCall)();');
+            expectFullPos(stmt.getInvokeFullPosition('parenCall'), 49, 2, 49, 14);
+        });
+
+        it('matches nested generic type arguments', () => {
+            const stmt = findStmtByOriginalText('nestedGeneric<Bar<T>>();');
+            expectFullPos(stmt.getInvokeFullPosition('nestedGeneric'), 50, 1, 50, 24);
+        });
+
+        it('matches generic type arguments containing =>', () => {
+            const stmt = findStmtByOriginalText('arrowGeneric<() => void>();');
+            expectFullPos(stmt.getInvokeFullPosition('arrowGeneric'), 51, 1, 51, 27);
+        });
+
+        it('matches generic type arguments with > inside a string literal', () => {
+            const stmt = findStmtByOriginalText('strGeneric<\'a>b\'>();');
+            expectFullPos(stmt.getInvokeFullPosition('strGeneric'), 52, 1, 52, 20);
+        });
+
+        it('matches nested function types with =>', () => {
+            const stmt = findStmtByOriginalText('fnGeneric<(x: () => void) => string>();');
+            expectFullPos(stmt.getInvokeFullPosition('fnGeneric'), 53, 1, 53, 39);
+        });
+
+        it('matches generic type arguments with > inside a comment', () => {
+            const stmt = findStmtByOriginalText('commentGeneric<T /* > */>();');
+            expectFullPos(stmt.getInvokeFullPosition('commentGeneric'), 54, 1, 54, 28);
+        });
+
         it('returns DEFAULT when name is not a call', () => {
             const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
             expect(stmt.getInvokeFullPosition('para1')).toBe(FullPosition.DEFAULT);

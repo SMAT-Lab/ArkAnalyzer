@@ -896,6 +896,30 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [[47, 1, 48, 3]],
         },
         {
+            text: 'staticinvoke <@%unk/%unk: .parenCall()>()',
+            operandOriginalPositions: [[49, 1, 49, 14]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .nestedGeneric()>()',
+            operandOriginalPositions: [[50, 1, 50, 24]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .arrowGeneric()>()',
+            operandOriginalPositions: [[51, 1, 51, 27]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .strGeneric()>()',
+            operandOriginalPositions: [[52, 1, 52, 20]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .fnGeneric()>()',
+            operandOriginalPositions: [[53, 1, 53, 39]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .commentGeneric()>()',
+            operandOriginalPositions: [[54, 1, 54, 28]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],
@@ -1075,8 +1099,8 @@ class LocalModification {
 export const PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR = `returnFunc1(): @expression/CallExpressionTest.ts: %dflt.%AM0() {
   label0:
     this = this: @expression/CallExpressionTest.ts: %dflt
-    nestedReturnFunc = %AM4$returnFunc1
-    ptrinvoke nestedReturnFunc<@expression/CallExpressionTest.ts: %dflt.%AM4$returnFunc1()>()
+    nestedReturnFunc = %AM7$returnFunc1
+    ptrinvoke nestedReturnFunc<@expression/CallExpressionTest.ts: %dflt.%AM7$returnFunc1()>()
     return nestedReturnFunc
 }
 `;
@@ -1091,7 +1115,7 @@ export const PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR = `callFuncReturne
 }
 `;
 
-export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
+export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM8$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
   label0:
     resolve = parameter0: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)
     this = this: @expression/CallExpressionTest.ts: %dflt
