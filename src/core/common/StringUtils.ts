@@ -81,10 +81,24 @@ export function isPositiveFullPosition(pos: FullPosition | null): pos is FullPos
 /**
  * Finds the start offset of callee identifier `name` that is followed (after optional
  * grouping `)` and nested generics) by a call `(`.
+ * Fast path: plain `name(` with no whitespace/generics between name and `(`.
  */
 export function matchCallOpenParen(text: string | undefined, name: string): number | null {
     if (!text || !name || text.indexOf(name) === -1) {
         return null;
+    }
+    // Common case: `foo(` — avoid regex and generic/grouping scan.
+    const plainCall = name + '(';
+    let from = 0;
+    while (from < text.length) {
+        const idx = text.indexOf(plainCall, from);
+        if (idx === -1) {
+            break;
+        }
+        if (idx === 0 || !/[A-Za-z0-9_$]/.test(text[idx - 1]!)) {
+            return idx;
+        }
+        from = idx + 1;
     }
     const escaped = name.replace(/\$/g, '\\$');
     const ident = new RegExp(`(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])`, 'g');

@@ -19,10 +19,20 @@ import { matchCallOpenParen } from '../../../../src/core/common/StringUtils';
 describe('matchCallOpenParen', () => {
     it('matches a plain call', () => {
         expect(matchCallOpenParen('foo()', 'foo')).toBe(0);
+        expect(matchCallOpenParen('a1.call1()', 'call1')).toBe(3);
+    });
+
+    it('plain name( is preferred over a longer prefix identifier', () => {
+        expect(matchCallOpenParen('foofoo()', 'foo')).toBeNull();
+        expect(matchCallOpenParen('x.foo()', 'foo')).toBe(2);
     });
 
     it('matches a parenthesized callee', () => {
         expect(matchCallOpenParen('(foo)()', 'foo')).toBe(1);
+    });
+
+    it('matches call with whitespace before paren via slow path', () => {
+        expect(matchCallOpenParen('foo ()', 'foo')).toBe(0);
     });
 
     it('matches nested generics', () => {
