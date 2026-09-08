@@ -355,7 +355,14 @@ export abstract class Stmt {
         if (!name) {
             return FullPosition.DEFAULT;
         }
-        const invoke = this.getInvokeExpr();
+        let invoke: AbstractInvokeExpr | undefined;
+        if (this instanceof ArkInvokeStmt) {
+            invoke = this.getInvokeExpr();
+        } else if (this instanceof ArkAssignStmt && this.getRightOp() instanceof AbstractInvokeExpr) {
+            invoke = this.getRightOp() as AbstractInvokeExpr;
+        } else {
+            return FullPosition.DEFAULT;
+        }
         if (!invoke) {
             return FullPosition.DEFAULT;
         }
