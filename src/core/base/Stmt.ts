@@ -19,7 +19,7 @@ import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } fro
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
 import { Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
-import { extractSourceTextByFullPosition, isPositiveFullPosition, matchCallOpenParen, offsetToAbsoluteLineCol } from '../common/StringUtils';
+import { isPositiveFullPosition, matchCallOpenParen, offsetToAbsoluteLineCol } from '../common/StringUtils';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
 import { IRUtils } from '../common/IRUtils';
@@ -335,7 +335,7 @@ export abstract class Stmt {
             return undefined;
         }
         const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
-        const code = extractSourceTextByFullPosition(arkFile?.getCode(), this.originFullPosition);
+        const code = arkFile?.getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
         }
@@ -383,7 +383,7 @@ export abstract class Stmt {
             return null;
         }
         const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
-        const frag = extractSourceTextByFullPosition(arkFile?.getCode(), invokePos);
+        const frag = arkFile?.getSourceTextByFullPosition(invokePos);
         const startOffset = matchCallOpenParen(frag, name);
         if (!frag || startOffset === null) {
             return null;

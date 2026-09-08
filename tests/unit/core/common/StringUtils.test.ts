@@ -14,7 +14,19 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { matchCallOpenParen } from '../../../../src/core/common/StringUtils';
+import { buildLineStarts, extractSourceTextByFullPosition, matchCallOpenParen } from '../../../../src/core/common/StringUtils';
+import { FullPosition } from '../../../../src/core/base/Position';
+
+describe('buildLineStarts / extractSourceTextByFullPosition cache', () => {
+    it('matches one-shot extract when using precomputed lineStarts', () => {
+        const text = 'line1\nline2\r\nline3';
+        const pos = new FullPosition(2, 1, 2, 6);
+        const cached = extractSourceTextByFullPosition(text, pos, buildLineStarts(text));
+        const oneshot = extractSourceTextByFullPosition(text, pos);
+        expect(cached).toBe('line2');
+        expect(cached).toBe(oneshot);
+    });
+});
 
 describe('matchCallOpenParen', () => {
     it('matches a plain call', () => {

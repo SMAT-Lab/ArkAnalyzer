@@ -20,7 +20,6 @@ import { findExportInfo } from '../common/ModelUtils';
 import { findExportInfo as findCxxExportInfo } from '../../frontend/cppFrontend/common/ModelUtils';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 /**
  * Shift amount for import type encoding in ImportInfo tags field.
@@ -314,7 +313,7 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
         if (this.sourceCode !== undefined) {
             return this.sourceCode;
         }
-        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        const code = this.getDeclaringArkFile().getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
             return code;

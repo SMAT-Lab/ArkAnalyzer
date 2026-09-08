@@ -23,6 +23,8 @@ import { ArkNamespace } from './ArkNamespace';
 import { AliasClassSignature, ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
 import { NAME_DELIMITER } from '../common/Const';
+import { buildLineStarts, extractSourceTextByFullPosition } from '../common/StringUtils';
+import { FullPosition } from '../base/Position';
 import { ts } from '../../index';
 import { SdkUtils } from '../common/SdkUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
@@ -67,6 +69,8 @@ export class ArkFile {
     private projectDir: string = '';
     /** Cached source text of this file, lazily loaded from the file system. */
     private sourceCode?: string;
+    /** Cached line-start offsets for {@link sourceCode}; invalidated when code changes. */
+    private lineStarts?: number[];
 
     private defaultClass!: ArkClass;
 
@@ -172,6 +176,7 @@ export class ArkFile {
 
     public setCode(code: string): void {
         this.sourceCode = code;
+        this.lineStarts = undefined;
     }
 
     /**
@@ -186,6 +191,7 @@ export class ArkFile {
         try {
             const sourceText = fs.readFileSync(this.absoluteFilePath, 'utf8');
             this.sourceCode = sourceText;
+            this.lineStarts = undefined;
             return this.sourceCode;
         } catch (error) {
             logger.warn(`Failed to read file for lazy loading source text: ${error}`);
@@ -194,10 +200,29 @@ export class ArkFile {
     }
 
     /**
+     * Returns cached absolute offsets of each line start in {@link getCode}.
+     * Built once per source text and reused by position-based source extraction.
+     */
+    public getLineStarts(): number[] {
+        if (this.lineStarts === undefined) {
+            this.lineStarts = buildLineStarts(this.getCode());
+        }
+        return this.lineStarts;
+    }
+
+    /**
+     * Extracts a source slice by full position using the cached {@link getLineStarts} map.
+     */
+    public getSourceTextByFullPosition(position: FullPosition | undefined): string | undefined {
+        return extractSourceTextByFullPosition(this.getCode(), position, this.getLineStarts());
+    }
+
+    /**
      * Clears the cached source text, forcing re-read from file system on next getCode call.
      */
     public clearSourceCode(): void {
         this.sourceCode = undefined;
+        this.lineStarts = undefined;
     }
 
     public addArkClass(arkClass: ArkClass, originName?: string): void {
