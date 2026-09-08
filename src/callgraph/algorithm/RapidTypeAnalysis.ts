@@ -1002,9 +1002,8 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         calleeFuncID: FuncID,
         argIndex?: number,
     ): CallSite {
-        const normalized = argIndex !== undefined && argIndex >= 0 ? argIndex : undefined;
         const base = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, calleeFuncID, callerFuncID);
-        const cs = new CallSite(base.id, base.callStmt, base.args, base.calleeFuncID, base.callerFuncID, normalized);
+        const cs = new CallSite(base.id, base.callStmt, base.args, base.calleeFuncID, base.callerFuncID, argIndex);
         this.cg.recordCallSite(invokeStmt, cs);
         return cs;
     }
