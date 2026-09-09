@@ -159,7 +159,23 @@ function materializeProject(parent, dirName, files) {
     return dir;
 }
 
+function verifyVendoredOhosTypescript(workDir) {
+    const vendorLib = join(workDir, 'node_modules', 'arkanalyzer', 'lib', 'node_modules', 'ohos-typescript', 'lib');
+    if (!existsSync(join(vendorLib, 'typescript.js'))) {
+        throw new Error('main package: missing vendored lib/typescript.js');
+    }
+    if (!existsSync(join(vendorLib, 'lib.es2020.d.ts')) || !existsSync(join(vendorLib, 'lib.es2021.d.ts'))) {
+        throw new Error('main package: missing vendored ES lib .d.ts used by SdkUtils');
+    }
+    const dropped = ['tsserver.js', 'tsserverlibrary.js', 'tsc.js', 'typingsInstaller.js'];
+    const present = dropped.filter(name => existsSync(join(vendorLib, name)));
+    if (present.length > 0) {
+        throw new Error(`main package: unexpected toolchain files vendored: ${present.join(', ')}`);
+    }
+}
+
 function verifyMainPackage(workDir) {
+    verifyVendoredOhosTypescript(workDir);
     const projectDir = materializeProject(workDir, 'mini-arkts', {
         'sample.ets': join(fixturesDir, 'sample.ets'),
     });
