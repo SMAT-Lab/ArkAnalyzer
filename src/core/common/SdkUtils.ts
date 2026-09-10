@@ -58,30 +58,24 @@ export class SdkUtils {
 
     public static setEsVersion(buildProfile: any): void {
         const products = buildProfile?.app?.products;
-        const version = Array.isArray(products) ? this.resolveTargetESVersion(products) : DEFAULT_ES_VERSION;
-        if (version && this.esVersionMap.has(version)) {
+        let version;
+        if (Array.isArray(products)) {
+            const defaultProduct = products.find(p => p?.name === 'default');
+            const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
+            if (defaultProduct) {
+                version = accessChain.split('.').reduce((acc, key) => acc?.[key], defaultProduct);
+            }
+            // Fall back to the first product with a targetESVersion
+            if (!version) {
+                version = products.find(product => accessChain.split('.').reduce((acc, key) => acc?.[key], product));
+            }
+        }
+        if (!version) {
+            version = DEFAULT_ES_VERSION;
+        }
+        if (this.esVersionMap.has(version)) {
             this.esVersion = version;
         }
-    }
-
-    private static resolveTargetESVersion(products: any[]): string | undefined {
-        const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
-        // Prefer the "default" product to match hvigor's default build target
-        const defaultProduct = products.find(p => p?.name === 'default');
-        if (defaultProduct) {
-            const version = accessChain.split('.').reduce((acc, key) => acc?.[key], defaultProduct);
-            if (version) {
-                return version;
-            }
-        }
-        // Fall back to the first product with a targetESVersion
-        for (const product of products) {
-            const version = accessChain.split('.').reduce((acc, key) => acc?.[key], product);
-            if (version) {
-                return version;
-            }
-        }
-        return DEFAULT_ES_VERSION;
     }
 
     public static getBuiltInSdk(): Sdk {
