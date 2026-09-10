@@ -16,7 +16,7 @@
 'use strict';
 
 const ROOT_FILES = new Set(['package.json', 'LICENSE.txt', '.ohos-typescript-version']);
-const LIB_FILES = new Set(['typescript.js', 'typescript.d.ts', 'lib.d.ts', 'lib.es6.d.ts']);
+const LIB_FILES = new Set(['typescript.js', 'typescript.d.ts', 'lib.d.ts']);
 
 /**
  * Runtime files copied into lib/node_modules/ohos-typescript at pack time.
