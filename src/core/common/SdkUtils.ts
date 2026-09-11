@@ -20,7 +20,7 @@ import {
     COMMON_METHOD,
     COMPONENT_ATTRIBUTE,
     COMPONENT_POP_FUNCTION, DEFAULT_COMPONENTS,
-    SCOPE_PREFIX
+    SCOPE_PREFIX,
 } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
@@ -40,11 +40,13 @@ import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
 
+const DEFAULT_ES_VERSION = 'ES2021';
+
 export class SdkUtils {
-    private static esVersion: string = 'ES2021';
+    private static esVersion: string = DEFAULT_ES_VERSION;
     private static esVersionMap: Map<string, string> = new Map<string, string>([
         ['ES2017', 'lib.es2020.d.ts'],
-        ['ES2021', 'lib.es2021.d.ts']
+        ['ES2021', 'lib.es2021.d.ts'],
     ]);
 
     private static sdkImportMap: Map<string, ArkFile> = new Map<string, ArkFile>();
@@ -55,9 +57,23 @@ export class SdkUtils {
     ];
 
     public static setEsVersion(buildProfile: any): void {
-        const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
-        const version = accessChain.split('.').reduce((acc, key) => acc?.[key], buildProfile);
-        if (version && this.esVersionMap.has(version)) {
+        const products = buildProfile?.app?.products;
+        let version;
+        if (Array.isArray(products)) {
+            const defaultProduct = products.find(p => p?.name === 'default');
+            const accessChain = 'buildOption.arkOptions.tscConfig.targetESVersion';
+            if (defaultProduct) {
+                version = accessChain.split('.').reduce((acc, key) => acc?.[key], defaultProduct);
+            }
+            // Fall back to the first product with a targetESVersion
+            if (!version) {
+                version = products.find(product => accessChain.split('.').reduce((acc, key) => acc?.[key], product));
+            }
+        }
+        if (!version) {
+            version = DEFAULT_ES_VERSION;
+        }
+        if (this.esVersionMap.has(version)) {
             this.esVersion = version;
         }
     }
@@ -78,7 +94,7 @@ export class SdkUtils {
         return {
             moduleName: '',
             name: this.BUILT_IN_NAME,
-            path: builtInPath
+            path: builtInPath,
         };
     }
 
