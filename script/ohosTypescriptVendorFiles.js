@@ -15,19 +15,38 @@
 
 'use strict';
 
-const ROOT_FILES = new Set(['package.json', 'LICENSE.txt', '.ohos-typescript-version']);
-const LIB_FILES = new Set(['typescript.js', 'typescript.d.ts', 'lib.d.ts', 'lib.es6.d.ts']);
+const EXCLUDED_ROOT_FILES = new Set(['README.md', 'README.OpenSource', 'SECURITY.md', 'ThirdPartyNoticeText.txt']);
+
+const EXCLUDED_LIB_FILES = new Set([
+    'tsserver.js',
+    'tsserverlibrary.js',
+    'tsserverlibrary.d.ts',
+    'tsc.js',
+    'typingsInstaller.js',
+    'cancellationToken.js',
+    'watchGuard.js',
+    'typesMap.json',
+    'README.md',
+    'lib.dom.d.ts',
+    'lib.dom.iterable.d.ts',
+    'lib.webworker.d.ts',
+    'lib.webworker.iterable.d.ts',
+    'lib.webworker.importscripts.d.ts',
+    'lib.scripthost.d.ts',
+]);
 
 /**
- * Runtime files copied into lib/node_modules/ohos-typescript at pack time.
- * Keeps the compiler API (typescript.js) and ES lib .d.ts used by SdkUtils;
- * drops tsserver/tsc and DOM/webworker libs.
+ * Files skipped when copying ohos-typescript into lib/node_modules at pack time.
+ * Default is to copy; only language-service / tsc / DOM libs / locale diagnostics are excluded.
  * @param {string} relPath path relative to the ohos-typescript package root
  * @returns {boolean}
  */
-function isOhosTypescriptRuntimeFile(relPath) {
+function isOhosTypescriptExcludedFile(relPath) {
     const normalized = relPath.replace(/\\/g, '/');
-    if (ROOT_FILES.has(normalized)) {
+    if (normalized.startsWith('bin/')) {
+        return true;
+    }
+    if (EXCLUDED_ROOT_FILES.has(normalized)) {
         return true;
     }
     if (!normalized.startsWith('lib/')) {
@@ -35,12 +54,9 @@ function isOhosTypescriptRuntimeFile(relPath) {
     }
     const base = normalized.slice('lib/'.length);
     if (base.includes('/')) {
-        return false;
-    }
-    if (LIB_FILES.has(base)) {
         return true;
     }
-    return /^lib\.es.+\.d\.ts$/.test(base);
+    return EXCLUDED_LIB_FILES.has(base);
 }
 
-module.exports = { isOhosTypescriptRuntimeFile };
+module.exports = { isOhosTypescriptExcludedFile };

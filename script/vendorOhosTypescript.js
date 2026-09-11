@@ -15,7 +15,7 @@
 'use strict';
 
 const { rmDirSafe } = require('./shared/fileUtils');
-const { isOhosTypescriptRuntimeFile } = require('./ohosTypescriptVendorFiles');
+const { isOhosTypescriptExcludedFile } = require('./ohosTypescriptVendorFiles');
 
 const fs = require('fs');
 const path = require('path');
@@ -35,7 +35,7 @@ function collectRuntimeRelPaths(rootDir) {
                 walk(abs, rel);
                 continue;
             }
-            if (isOhosTypescriptRuntimeFile(rel)) {
+            if (!isOhosTypescriptExcludedFile(rel)) {
                 result.push(rel);
             }
         }

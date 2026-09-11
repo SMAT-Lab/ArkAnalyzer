@@ -19,40 +19,43 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 
 const requireScript = createRequire(__filename);
-const { isOhosTypescriptRuntimeFile } = requireScript(path.resolve(__dirname, '../../../script/ohosTypescriptVendorFiles.js')) as {
-    isOhosTypescriptRuntimeFile: (relPath: string) => boolean;
+const { isOhosTypescriptExcludedFile } = requireScript(path.resolve(__dirname, '../../../script/ohosTypescriptVendorFiles.js')) as {
+    isOhosTypescriptExcludedFile: (relPath: string) => boolean;
 };
 
-describe('ohos-typescript vendor whitelist', () => {
-    it('keeps the compiler API entry and ES lib declarations used at runtime', () => {
-        expect(isOhosTypescriptRuntimeFile('package.json')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('LICENSE.txt')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('.ohos-typescript-version')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/typescript.js')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/typescript.d.ts')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.d.ts')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.es6.d.ts')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.es2020.d.ts')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.es2021.d.ts')).toBe(true);
-        expect(isOhosTypescriptRuntimeFile('lib\\lib.es2020.bigint.d.ts')).toBe(true);
+describe('ohos-typescript vendor blacklist', () => {
+    it('does not exclude the compiler API entry, package metadata, or ES lib declarations', () => {
+        expect(isOhosTypescriptExcludedFile('package.json')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('LICENSE')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('LICENSE.txt')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('.ohos-typescript-version')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/typescript.js')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/typescript.d.ts')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/lib.d.ts')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/lib.es6.d.ts')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/lib.es2020.d.ts')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib/lib.es2021.d.ts')).toBe(false);
+        expect(isOhosTypescriptExcludedFile('lib\\lib.es2020.bigint.d.ts')).toBe(false);
     });
 
-    it('drops tsserver, tsc, and other unused toolchain files', () => {
-        expect(isOhosTypescriptRuntimeFile('lib/tsserver.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/tsserverlibrary.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/tsserverlibrary.d.ts')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/tsc.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/typingsInstaller.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/cancellationToken.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/watchGuard.js')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.dom.d.ts')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/lib.webworker.d.ts')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('lib/typesMap.json')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('README.md')).toBe(false);
-        expect(isOhosTypescriptRuntimeFile('bin/tsc')).toBe(false);
+    it('excludes tsserver, tsc, locale diagnostics, and other unused toolchain files', () => {
+        expect(isOhosTypescriptExcludedFile('lib/tsserver.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/tsserverlibrary.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/tsserverlibrary.d.ts')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/tsc.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/typingsInstaller.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/cancellationToken.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/watchGuard.js')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/lib.dom.d.ts')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/lib.webworker.d.ts')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/typesMap.json')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('lib/zh-cn/diagnosticMessages.generated.json')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('README.md')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('bin/tsc')).toBe(true);
+        expect(isOhosTypescriptExcludedFile('bin/tsserver')).toBe(true);
     });
 
-    it('keeps every lib.es*.d.ts referenced from the default ES2021 built-in chain', () => {
+    it('does not exclude any lib.es*.d.ts referenced from the default ES2021 built-in chain', () => {
         const libDir = path.resolve(__dirname, '../../../node_modules/ohos-typescript/lib');
         const entry = path.join(libDir, 'lib.es2021.d.ts');
         expect(existsSync(entry)).toBe(true);
@@ -72,7 +75,7 @@ describe('ohos-typescript vendor whitelist', () => {
         expect(needed.size).toBeGreaterThan(1);
         for (const filePath of needed) {
             const rel = path.relative(path.join(libDir, '..'), filePath).replace(/\\/g, '/');
-            expect(isOhosTypescriptRuntimeFile(rel), rel).toBe(true);
+            expect(isOhosTypescriptExcludedFile(rel), rel).toBe(false);
         }
     });
 });
