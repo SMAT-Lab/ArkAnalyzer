@@ -36,7 +36,7 @@ import {
 } from './builderUtils';
 import { cloneText } from '../../common/StringUtils';
 import { buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
-import { ArkIRTransformer } from '../../common/ArkIRTransformer';
+import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
 import { ArkInstanceFieldRef } from '../../base/Ref';
 import {
@@ -638,12 +638,13 @@ function createEnumInitValue(
 
 function setFieldInitPositionInfo(field: ArkField, stmts: Stmt[], initValue: Value): void {
     const fieldOriginPosition = field.getOriginFullPosition();
-    for (const stmt of stmts) {
+    const fieldInitStmts = stmts.filter(stmt => !(stmt instanceof DummyStmt));
+    for (const stmt of fieldInitStmts) {
         if (!stmt.getOriginFullPosition()) {
             stmt.setOriginFullPosition(fieldOriginPosition);
         }
     }
-    field.setInitializer(stmts);
+    field.setInitializer(fieldInitStmts);
     if (field.getType() instanceof UnknownType) {
         field.getSignature().setType(initValue.getType());
     }

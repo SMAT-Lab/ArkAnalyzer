@@ -372,7 +372,9 @@ export class ArkValueTransformer {
     private appendInitStmts(stmts: Stmt[], fieldInitStmts: Stmt[], initStmts: Stmt[]): void {
         initStmts.forEach(stmt => {
             stmts.push(stmt);
-            fieldInitStmts.push(stmt);
+            if (!(stmt instanceof DummyStmt)) {
+                fieldInitStmts.push(stmt);
+            }
         });
     }
 
