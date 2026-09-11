@@ -12,18 +12,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { audio } from "@kit.AudioKit";
-
-function LowerPowerConsumptionReport() {
-    let audioStreamInfo: audio.AudioStreamInfo = {
-        samplingRate: audio.AudioSamplingRate.SAMPLE_RATE_44100,
-        channels: audio.AudioChannel.CHANNEL_1,
-        sampleFormat: audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE,
-        encodingType: audio.AudioEncodingType.ENCODING_TYPE_RAW
-    };
-    let audioRendererInfo: audio.AudioRendererInfo = {
-        usage: audio.StreamUsage.STREAM_USAGE_UNKNOWN,
-        rendererFlags: 0
-    };
-}

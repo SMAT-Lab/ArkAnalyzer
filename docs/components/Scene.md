@@ -71,7 +71,7 @@ Scene
  │              ├── ArkMethod（方法 / 函数 / %dflt / %instInit / %statInit / %AM）
  │              │    └── ArkBody → CFG → BasicBlock → Stmt（→ Local / Constant / Ref / Expr）
  │              └── ArkField（字段 / 枚举成员 / 索引签名 / 参数属性 / GET 访问器）
- ├── sdkArkFilesMap（SDK 文件，与项目代码同一套模型抽象）
+ ├── SignatureCanonicalizerRegistry（全局单例：签名 SigID ↔ 模型统一存储，SDK 与项目文件同一套模型抽象）
  └── ModuleScene（鸿蒙多模块工程的子作用域，可选；buildScene4HarmonyProject 路径产物）
 ```
 
@@ -96,7 +96,6 @@ Scene
 // src/Scene.ts
 export class Scene {
     private projectName: string = '';
-    private projectFiles: string[] = [];
     private realProjectDir: string = '';
     private includeDirs: string[] = [];                                // C++ 头文件搜索路径
 
@@ -105,17 +104,18 @@ export class Scene {
     private moduleSdkMap: Map<string, Sdk[]>;                          // module → SDK 列表
     private projectSdkMap: Map<string, Sdk>;                           // 项目级 SDK
 
-    // 全局反向索引（key = signature.toString()）
-    private filesMap: Map<string, ArkFile>;
-    private namespacesMap: Map<string, ArkNamespace>;
-    private classesMap: Map<string, ArkClass>;
-    private methodsMap: Map<string, ArkMethod>;
-    private sdkArkFilesMap: Map<string, ArkFile>;                      // SDK 文件
-    private sdkGlobalMap: Map<string, ArkExport>;                      // SDK 顶层导出（如 globalThis 上的全局）
-
     private buildStage: SceneBuildStage = SceneBuildStage.BUILD_INIT;  // 当前构建阶段
     private fileLanguages: Map<string, Language>;                      // 路径 → 语言
     private options!: SceneOptions;
+
+    private activeBuilder?: SceneBuilder;                              // 构建期一次性上下文（构建结束即释放）
+
+    // --- 签名/模型存储已迁 SignatureCanonicalizerRegistry 全局单例（不再落在 Scene 上）---
+    // 5 个 SignatureModelCanonicalizer：file/class/namespace/field/method 签名 + 模型统一存储；
+    // 3 个 TempSignatureCanonicalizer：unclear 签名的 temp 索引表；
+    // customComponentMap / sdkGlobalMap：与 ID 体系配套的名字索引。
+
+    private builtFileOrder: number[] = [];                             // project 文件构建完成序（FileSigID，严格拓扑序）
 
     // --- 分模块解析（analyseByModule）相关 ---
     private sceneConfig?: SceneConfig;                                 // 保留的构建配置，供后续模块级分析查询
@@ -127,7 +127,7 @@ export class Scene {
 
     private unhandledFilePaths: Set<string>;                           // 解析失败的项目文件
     private unhandledSdkFilePaths: string[];                           // 解析失败的 SDK 文件
-    // ... oh-package.json5 / overRides / baseUrl 等鸿蒙模块字段省略
+    // ... overRides / stageStatistics 等字段省略
 }
 ```
 
@@ -139,34 +139,35 @@ export enum SceneBuildStage {
     SDK_INFERRED,      // 1 - SDK 类型推导完成
     CLASS_DONE,        // 2 - 所有类已生成（方法体未生成）
     METHOD_DONE,       // 3 - 所有方法体（含 ArkBody/CFG）生成完毕
-    CLASS_COLLECTED,   // 4 - classesMap 索引完成
-    METHOD_COLLECTED,  // 5 - methodsMap 索引完成
-    TYPE_INFERRED,     // 6 - inferTypes() 完成（推荐分析起点）
+    TYPE_INFERRED,     // 4 - inferTypes() 完成（推荐分析起点）
 }
 ```
 
 | 阶段 | 由谁推进 | 说明 |
 |------|---------|------|
-| `BUILD_INIT` → `SDK_INFERRED` | 内部 SDK 加载 | 先把 SDK 类型推导，避免污染项目 |
+| `BUILD_INIT` → `SDK_INFERRED` | 内部 SDK 加载（SceneBuilder.buildSdkStage） | 先把 SDK 类型推导，避免污染项目 |
 | `SDK_INFERRED` → `CLASS_DONE` | `buildSceneFromProjectDir` 主流程 | 类骨架 + 字段 + 方法签名（无 body） |
 | `CLASS_DONE` → `METHOD_DONE` | 主流程末段触发 `ArkMethod.buildBody()` | 方法体 + CFG 全部生成 |
-| `METHOD_DONE` → `CLASS_COLLECTED` / `METHOD_COLLECTED` | 首次调用 `getClasses()` / `getMethods()` 时懒填充 | 全局索引按需建立 |
 | `*` → `TYPE_INFERRED` | `scene.inferTypes()` | **下游分析的统一入口**；可被反复调用，但只有第一次推动阶段 |
+
+> 旧版本曾有 `CLASS_COLLECTED` / `METHOD_COLLECTED` 两个"全局索引懒填充"阶段——随 filesMap/classesMap/methodsMap 等字符串索引被 Registry 取代而删除，模型在 `setSignature` 注册点即进入 canonicalizer，无需收集阶段。
 
 `scene.buildClassDone()` 是常用快捷判断（`buildStage >= CLASS_DONE`）。
 
-### 4.3 签名与索引
+### 4.3 签名与索引（SignatureCanonicalizerRegistry）
 
-`Scene` 中所有"按签名查找"接口都把签名 `toString()` 作为 `Map` 的 key：
+Scene 上"按签名查找"的公开接口（`getFile` / `getClass` / `getMethod` / `getNamespace` 等）内部统一委托全局单例 `SignatureCanonicalizerRegistry`：签名对象经 hash + equals 值语义去重获得稠密整数 SigID，模型存储在 canonicalizer 内置的 `models` 数组中（签名 ID = 模型数组下标，查询 O(1)）：
 
-| Map | 键格式 | 备注 |
+| canonicalizer | 签名 ↔ 模型 | 说明 |
 |-----|--------|------|
-| `filesMap` | `@Pkg/relative/path.ts` | 项目内文件 |
-| `sdkArkFilesMap` | `@Sdk/...` | 三方 / SDK 文件 |
-| `namespacesMap` | `@Pkg/file: NS1.NS2` | 嵌套以 `.` 拼 |
-| `classesMap` | `@Pkg/file: ClassName` 或 `@Pkg/file: NS.ClassName` | 命名空间内类带 NS 前缀 |
-| `methodsMap` | `<@Pkg/file: ClassName.methodName(P1)>` | 与 IR 中调用语句签名一致 |
-| `customComponentMap` | 组件简单名 → `ClassSignature` | 构建 `@Component` 时写入；模块 unload 后仍保留，供 ViewTree 建叶子节点 |
+| `fileSigCanonicalizer` | `FileSignature` ↔ `ArkFile`（1:1） | ID 0 = DEFAULT 保留位 |
+| `namespaceSigCanonicalizer` | `NamespaceSignature` ↔ `ArkNamespace`（1:1） | 同上 |
+| `classSigCanonicalizer` | `ClassSignature` ↔ `ArkClass`（1:1） | 同上 |
+| `fieldSigCanonicalizer` | `FieldSignature` ↔ `ArkField`（1:1） | 同上 |
+| `methodSigCanonicalizer` | `MethodSignature` ↔ `ArkMethod`（n:1 重载） | impl + declare 槽位注册 |
+| `tempClass/Method/FieldSigCanonicalizer` | unclear 签名的 temp 索引表 | 引用语义 + 迁移替换记录 |
+
+project / SDK 文件按 FileSigID 边界切分（`[1, firstProjectFileSigID)` 为 SDK，`[firstProjectFileSigID, size)` 为 project），`getFiles()` / `getSdkArkFiles()` 按区间取模型。`customComponentMap`（组件简单名 → `ClassSignature`）与 `sdkGlobalMap`（SDK 全局符号名 → 实体列表）也挂在 Registry 上，随 `Registry.dispose()` 清理。
 
 详细签名定义见 [src/core/model/ArkSignature.ts](../../src/core/model/ArkSignature.ts) 的 `FileSignature` / `NamespaceSignature` / `ClassSignature` / `MethodSignature` / `FieldSignature`。
 
@@ -179,7 +180,7 @@ export class ModuleScene {
     private projectScene: Scene;
     private moduleName: string = '';
     private modulePath: string = '';
-    private moduleFileMap: Map<string, ArkFile>;
+    private moduleFileMap: Map<number, ArkFile>;   // key = FileSigID
     private moduleOhPkgFilePath: string = '';
     private ohPkgContent: { [k: string]: unknown } = {};
 }
@@ -289,16 +290,16 @@ export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
 | `buildScene4HarmonyProject()` | 鸿蒙工程入口：识别多 module、注入 `oh-package.json5`、加载 SDK、构建所有 `ModuleScene` |
 | `buildModuleScene(name, path, exts)` | 单独构建某个鸿蒙 module |
 | `analyseByModule(callback, config?)` | **模块级分析**：按拓扑序遍历目标模块并回调。配合 `scene.config()` 使用，详见 [§6.5](#65-模块级分析) |
-| `dispose()` | 释放静态缓存（PointerAnalysisConfig / SdkUtils / ValueUtil / ModelUtils），可在 `Scene` 实例丢弃前调用 |
-| `clear()` | 清空所有 `Map` 并重置 |
+| `dispose()` | 释放静态缓存（PointerAnalysisConfig / SdkUtils / ValueUtil / ModelUtils）与 `SignatureCanonicalizerRegistry` 全局单例，可在 `Scene` 实例丢弃前调用 |
+| `clear()` | 清空 Scene 状态并重置 Registry（清空后立即重建，保证 DEFAULT 签名可用） |
 
 ### 5.2 类型推导
 
 | 方法 | 说明 |
 |------|------|
-| `inferTypes()` | **推荐入口**。完整推导：先填好 `methodsMap`、再按 ClassSignature/MethodSignature 顺序逐方法推。把所有 `Local` / `Ref` / `Expr` 的 `UnknownType` 替换成具体类型 |
+| `inferTypes()` | **推荐入口**。完整推导：按 `builtFileOrder`（构建期形成的严格拓扑序，被依赖文件在前）遍历文件逐个推导。把所有 `Local` / `Ref` / `Expr` 的 `UnknownType` 替换成具体类型 |
 | `inferTypesOld()` | 旧版兼容入口（已弃用，仅保留少量场景） |
-| `inferSimpleTypes()` | 仅做简单局部推导（每个 stmt 内推 Local/Constant 类型，不跨方法）；速度快但精度有限 |
+| `inferSimpleTypes()` | 仅做简单局部推导（每个 stmt 内推 Local/Constant 类型，不跨方法）；已弃用，方向与 Registry 事实源化不一致 |
 
 ### 5.3 查询接口
 
@@ -314,11 +315,10 @@ export type ModuleAnalysisCallback = (module: ArkModule, scene: Scene) => void;
 | `getNamespaces(): ArkNamespace[]` | 项目所有命名空间（含嵌套，去重后） |
 | `getClass(sig): ArkClass \| null` | 单个类 |
 | `getClasses(): ArkClass[]` | 项目所有类（含命名空间内、含默认类与匿名类） |
-| `getMethod(sig, refresh?): ArkMethod \| null` | 单个方法；`refresh=true` 强制重建索引 |
+| `getMethod(sig): ArkMethod \| null` | 单个方法（O(1) canonicalizer 直查 + 声明类内遍历兜底；旧 `refresh` 参数已废弃无效） |
 | `getMethods(): ArkMethod[]` | 项目所有方法（含 generated） |
-| `addToMethodsMap(method)` | 手动注入方法（IR 转换器使用） |
-| `removeFile(f) / removeNamespace(ns) / removeClass(c) / removeMethod(m)` | 删除并解除索引 |
-| `getSdkGlobal(name): ArkExport \| null` | 在 SDK 全局命名空间里查导出（如 `globalThis` 上的内置） |
+| `removeFile(f) / removeNamespace(ns) / removeClass(c) / removeMethod(m)` | 模型删除经 `SignatureCanonicalizerRegistry.removeXxx()` 静态方法完成（Scene 上还有 `disposeModule` 封装） |
+| `getSdkGlobal(name): ArkExport \| null` | 在 SDK 全局命名空间里查导出（如 `globalThis` 上的内置；多值场景首实体，`getSdkGlobals` 取全部） |
 
 工程信息：
 

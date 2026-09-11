@@ -152,7 +152,8 @@ describe('infer order', () => {
             .map(id => reg.fileSigCanonicalizer.getModel(id))
             .filter((f): f is ArkFile => f !== undefined);
         assert.equal(arkFiles.length, scene.getFiles().length);
-        const expectedOrders = ['167090289test2.ets', '1323349145MyComponent.ets', '1947130106Index.ets'];
+        // toMapKey is the collision-free identity projection (projectName + fileName).
+        const expectedOrders = ['@exportAll/util/test2.ets: ', '@exportAll/main/MyComponent.ets: ', '@exportAll/main/Index.ets: '];
         arkFiles.forEach((file, index) => {
             assert.equal(file.getFileSignature().toMapKey(), expectedOrders[index]);
         });

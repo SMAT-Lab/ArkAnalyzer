@@ -194,7 +194,7 @@ export class FileSignature {
 | 方法 | 说明               |
 |------|------------------|
 | `getDefaultClass(): ArkClass` / `setDefaultClass(c)` | 默认类 `%dflt`      |
-| `addArkClass(c, originName?)` | 加入               |
+| `addArkClass(c)` | 加入               |
 | `getClassWithName(name): ArkClass \| null` | 按名查，先查顶层，再递归命名空间 |
 | `getClass(sig): ArkClass \| null` | 按签名查             |
 | `getClasses(): ArkClass[]` | 直接成员类（不含命名空间内）   |

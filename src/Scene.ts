@@ -869,7 +869,8 @@ export class Scene {
     /**
      * Returns the method associated with the method signature (implementation or declaration).
      * Resolution order: O(1) canonicalizer reverse lookup (any registered signature), then
-     * class traversal with signature matching, then cache back-fill into the canonicalizer.
+     * class traversal with signature matching. Both paths are read-only: no interning
+     * and no model back-fill (query paths must not write).
      * @param methodSignature - the signature of method.
      * @returns The method associated with the method signature, or null if not found.
      */

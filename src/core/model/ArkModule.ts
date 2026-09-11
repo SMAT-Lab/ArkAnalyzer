@@ -28,7 +28,7 @@ export type ModuleID = number;
 /**
  * Lifecycle state of an {@link ArkModule}. Stored in the low 3 bits of {@link ArkModule.tags}.
  *
- * Progression: NOT_LOADED �?INDEX �?SIGNATURES �?BODIES.
+ * Progression: NOT_LOADED → INDEX → SIGNATURES → BODIES.
  * INDEX is downgrade-only (hollow export-reachable IR); never a direct loadModule target.
  */
 export enum ModuleLoadState {

@@ -73,18 +73,12 @@ export class Local implements Value, ArkExport {
      * @example
      * 1. get the name of local value.
 
-     ```typescript
-     arkClass.getDefaultArkMethod()?.getBody().getLocals().forEach(local => {
-     const arkField = new ArkField();
-     arkField.setFieldType(ArkField.DEFAULT_ARK_Field);
-     arkField.setDeclaringClass(defaultClass);
-     arkField.setType(local.getType());
-     arkField.setName(local.getName());
-     arkField.genSignature();
-     defaultClass.addField(arkField);
-     });
-     ```
-     */
+      ```typescript
+      arkMethod.getBody().getLocals().forEach(local => {
+      console.log(local.getName());
+      });
+      ```
+      */
     public getName(): string {
         return this.name;
     }

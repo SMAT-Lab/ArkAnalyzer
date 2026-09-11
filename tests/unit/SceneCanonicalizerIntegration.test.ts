@@ -124,14 +124,15 @@ describe('Scene Canonicalizer Integration Test', () => {
         expect(scene.getFileSigCanonicalizer().getExistingId(sig)).toBe(-1);
     });
 
-    it('intern returns canonical single instance', () => {
+    it('getId+get returns canonical single instance', () => {
         const scene = new Scene();
         // The earlier dispose/clear cases wiped prior registrations: re-intern the file value.
         SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
         const sig1 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const sig2 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
-        const a = scene.getClassSigCanonicalizer().intern(sig1);
-        const b = scene.getClassSigCanonicalizer().intern(sig2);
+        const c = scene.getClassSigCanonicalizer();
+        const a = c.get(c.getId(sig1))!;
+        const b = c.get(c.getId(sig2))!;
         expect(a).toBe(b);
         expect(a).toBe(sig1);
     });

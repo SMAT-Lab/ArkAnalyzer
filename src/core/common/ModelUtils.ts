@@ -63,6 +63,7 @@ import { Builtin } from './Builtin';
 import { CALL_BACK, DEFAULT_SDK_NUMS, ETS_CODE_PATH, ETS_PATH, PATH_BE_OMITTED, PATH_DELIMITER, SCOPE_PREFIX } from './EtsConst';
 import { ModuleUtils } from '../../utils/ModuleUtils';
 import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
+import { signatureEquals } from './SignatureCanonicalizer';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -626,10 +627,11 @@ export class ModelUtils {
             const argStr = arg instanceof Constant ? arg.getValue() : argType.toString();
             return argStr.replace(/[\"|\']/g, '') === paramType.toString().replace(/[\"|\']/g, '');
         } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
-            return paramType.getClassSignature().toMapKey() === argType.getFieldSignature().getDeclaringSignature().toMapKey();
+            // Value-semantic identity comparison (hash fast reject + equals verdict).
+            return signatureEquals(paramType.getClassSignature(), argType.getFieldSignature().getDeclaringSignature());
         } else if (paramType instanceof EnumValueType) {
             if (argType instanceof EnumValueType) {
-                return paramType.getFieldSignature().toMapKey() === argType.getFieldSignature().toMapKey();
+                return signatureEquals(paramType.getFieldSignature(), argType.getFieldSignature());
             } else if (argType.constructor === paramType.getConstant()?.getType().constructor && arg instanceof Constant) {
                 return paramType.getConstant()?.getValue() === arg.getValue();
             }

@@ -66,21 +66,22 @@ SignatureCanonicalizerRegistry (全局单例)
 ├── classSigCanonicalizer: SignatureModelCanonicalizer<ClassSignature, ArkClass>
 ├── namespaceSigCanonicalizer: SignatureModelCanonicalizer<NamespaceSignature, ArkNamespace>
 ├── fieldSigCanonicalizer: SignatureModelCanonicalizer<FieldSignature, ArkField>
-├── methodSigCanonicalizer: SignatureCanonicalizer<MethodSignature>  (无 models，n:1)
-├── methodsMap: Map<number, ArkMethod>       (MethodSigID → ArkMethod，保留)
+├── methodSigCanonicalizer: SignatureModelCanonicalizer<MethodSignature, ArkMethod>  (n:1，impl + declare 槽位)
 ├── customComponentMap: Map<string, ClassSignature>  (保留，与 ID 体系无关)
-├── tempFileSigCanonicalizer: TempSignatureCanonicalizer<FileSignature>
+├── sdkGlobalMap: Map<string, ArkExport[]>  (SDK 全局符号多值表，round9 新增)
+├── firstProjectFileSigID: number  (project/SDK 文件 ID 边界，见 markProjectFileBoundary)
 ├── tempClassSigCanonicalizer: TempSignatureCanonicalizer<ClassSignature>
 ├── tempMethodSigCanonicalizer: TempSignatureCanonicalizer<MethodSignature>
-├── tempNamespaceSigCanonicalizer: TempSignatureCanonicalizer<NamespaceSignature>
 ├── tempFieldSigCanonicalizer: TempSignatureCanonicalizer<FieldSignature>
 │
 ├── static getInstance(): SignatureCanonicalizerRegistry
 ├── static dispose(): void
-├── static getFileId(sig): number
-├── static getClassById(id): ArkClass | undefined
-├── ... (其他静态快捷方法)
+├── getFileId(sig): number
+├── getClassById(id): ArkClass | undefined
+├── ... (其他实例快捷方法)
 ```
+
+> **实现勘误（round8 后最终状态）**：① 无 tempFile/tempNamespace 空间——两者实测永久为空（FileSignature 是身份根、从不被 temp 持有；namespace 不明确场景走 SigID 重载），已删除；② `methodsMap` 已删除——methodSigCanonicalizer 升级为 `SignatureModelCanonicalizer`，模型存其内置 `models` 数组（即 S1）；③ ID 查询/注册族（`getFileId` / `getArkClassById` 等）为**实例**方法（`@internal`），经 `getInstance()` 调用，另有 `registerClass` / `removeFile` 等 register/remove 静态方法；④ `sdkGlobalMap` 从 Scene 迁入并多值化（同名多实体，entry[0] 兼容旧单值语义）；⑤ 新增 `markProjectFileBoundary()` / `isProjectFileID()` / `isSdkFileID()`——project/SDK 文件按 FileSigID 区间切分，取代逐文件 `projectFile` 过滤。
 
 **理由**：
 
@@ -135,7 +136,7 @@ SignatureModelCanonicalizer<S extends Canonicalizable, M>
 | ClassSignature ↔ ArkClass            | ✅            | 1:1  | ID >= 1，`Registry.classSigCanonicalizer.getModel(id)`     |
 | NamespaceSignature ↔ ArkNamespace    | ✅            | 1:1  | ID >= 1，`Registry.namespaceSigCanonicalizer.getModel(id)` |
 | FieldSignature ↔ ArkField            | ✅            | 1:1  | ID >= 1，`Registry.fieldSigCanonicalizer.getModel(id)`     |
-| MethodSignature ↔ ArkMethod          | ❌            | n:1  | `methodsMap: Map<number, ArkMethod>` 保留                  |
+| MethodSignature ↔ ArkMethod          | ❌            | n:1  | methodSigCanonicalizer 内置 models（impl + declare 槽位注册，S1 已删除独立 methodsMap） |
 | MethodSubSignature ↔ MethodSignature | 共用          | 1:1  | 不设独立 canonicalizer，随 MethodSignature 一起单实例化    |
 
 - ID 0 固定给 DEFAULT 签名，不对应任何模型（`models[0]` = `undefined`）
@@ -276,18 +277,18 @@ public getClass(classSignature: ClassSignature): ArkClass | null {
 | `getClassesMap(refresh)`                                          | 删除——ID 稳定，无需 refresh                              |
 | 模型上的 `scene?: Scene` 字段和 `setScene()` 级联传播             | Registry 全局访问                                        |
 
-**待删除的内容**（代码当前保留为委托，设计目标为删除）：
+**已删除的内容**（tasks §13 在后续轮次完成，proposal 中原列为"待删除"）：
 
-| 待删除项                                              | 当前状态                         | 删除后替代方案                                 |
-| ----------------------------------------------------- | -------------------------------- | ---------------------------------------------- |
-| Scene 的 `internFileSig()`/`internClassSig()` 等方法  | 保留为委托 Registry 的快捷方法   | 调用方直接使用 `Registry.getInstance().xxxCanonicalizer.getId(sig)` |
-| Scene 的 `getFileById()`/`getClassById()` 等方法      | 保留为委托 Registry 的快捷方法   | 调用方直接使用 `Registry.getInstance().xxxCanonicalizer.getModel(id)` |
+| 已删除项                                            | 删除后替代方案                                 |
+| --------------------------------------------------- | ---------------------------------------------- |
+| Scene 的 `internFileSig()`/`internClassSig()` 等方法 | 调用方直接使用 `Registry.getInstance().xxxCanonicalizer.getId(sig)` |
+| Scene 的 `getFileById()`/`getClassById()` 等方法    | 调用方直接使用 `Registry.getInstance().xxxCanonicalizer.getModel(id)` |
 
-**待重新探索的内容**：
+**已删除的内容（原"待重新探索"项）**：
 
-| 待探索项                  | 当前状态                                                     | 设计目标                                     |
-| ------------------------- | ------------------------------------------------------------ | -------------------------------------------- |
-| `getMethodsMap(refresh)`  | 保留（refresh=true 时清空 `registry.methodsMap` 重建）       | 删除——ID 稳定，无需 refresh                  |
+| 已删除项                  | 删除时状态                                                 | 最终替代方案                                     |
+| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| `getMethodsMap(refresh)`  | 曾回退保留（inferTypes 需 refresh 重建），后续轮次彻底删除   | methodSigCanonicalizer 为唯一事实源，ID 稳定无需 refresh；`getMethods()` 平面遍历收集 |
 
 **实施历史**：`getMethodsMap(refresh)` 在 session2 中尝试删除，发现 `inferTypes()` 仍需 refresh 重建 methodsMap（类型推导过程中新增的方法需要被 methodsMap 包含），已回退保留。待重新探索是否能消除 refresh 依赖（可能需要推导中增量注册方法到 methodsMap）。
 
@@ -678,6 +679,8 @@ this.declaringFileID = this.declaringArkFile.getFileSigID();
 - 混合方案下 setter 自动清除 ID 缓存，推导中签名重建无需显式 intern
 
 ### R10: 临时 ID 引用计数不精确（size() 为下界）
+
+> **⚠ 实现状态更新（round20/B 轮）**：本节描述的 refcount 方案（一版）已退役。TempSignatureCanonicalizer 经历了三版演进：**一版（refcount）**——`Map<id, sig>` + 引用计数，即本节描述的 register/release/refCounts 机制；**二版（弱表）**——`Map<id, WeakRef>` + FinalizationRegistry 自动清理，因 GC 驱动的清理时序不确定（KeepDuringJob 窗口）与 WeakRef/FR 的 GC 开销退役；**三版（索引表，当前实现）**——`slots: (S | undefined)[]` 强持有 + 单调 nextId 永不复用 + 显式 `retire`/`retireWithReplacement`（迁移置空 + temp→formal 替换记录）。三版下统计**同步即精确**（三数自洽 totalRegistered = liveCount + retiredCount），`getExistingTempId` 走实例自带 symbol 属性而非 objectIdentity 查询。引用计数不精确问题（下界语义）随一版机制整体退役；slot 强持有下"推导中间垃圾"钉活到 Registry.dispose，是知情权衡（见 TempSignatureCanonicalizer.ts 头注释）。下方原文保留作为一版设计的历史记录。
 
 **风险**：方案B仅在 ArkSignatureBuilder 工厂方法中调用 `register()`（按签名对象调用 1 次），但同一个不明确签名对象可能被传播给多个 Type/Expr/Ref 持有（7 个已知共享场景）。`register()` 次数（1 次）少于实际持有者数量（2~N 个），导致引用计数偏低。每个持有者的 setter 各调用 1 次 `release()`，第一次 release 后 refcount 归 0 并从 `refCounts` 删除，后续 release 为 no-op（安全，不出负数）。
 

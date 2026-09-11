@@ -18,8 +18,6 @@ import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 import { Language } from '../core/model/ArkFile';
 import { getCxxSourceFileExtensionSet } from '../frontend/cppFrontend/utils/cppUtils';
-import { CryptoUtils } from './crypto_utils';
-import { transfer2UnixPath } from './pathTransfer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FileUtils');
 
@@ -124,10 +122,4 @@ export function getFileAbsPath(srcPathList: string[], relativePath: string): str
     }
 
     return '';
-}
-
-export function getFileSignatureMapKey(projectName: string, fileName: string): string {
-    const normalizedFileName = transfer2UnixPath(fileName);
-    const hashcode = CryptoUtils.hashcode(`@${projectName}/${normalizedFileName}: `);
-    return `${hashcode}${path.basename(normalizedFileName)}`;
 }

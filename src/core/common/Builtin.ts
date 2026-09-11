@@ -24,7 +24,8 @@ import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry
  *
  * Signatures created here are **unclear stubs** (declaring file = FileSignature.DEFAULT) that
  * live in the temp canonicalizer. During type inference they are resolved to the real SDK
- * signatures via the built-in library (see TypeInference.inferBaseType → scene.getSdkGlobal);
+ * signatures via the built-in library (see TypeInference.inferBaseType →
+ * SignatureCanonicalizerRegistry.getSdkGlobal);
  * when the SDK is unavailable (enableBuiltIn=false) they remain unresolved in temp space and
  * are reported by checkTempSignatureCompleteness.
  */

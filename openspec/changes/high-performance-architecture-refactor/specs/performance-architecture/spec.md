@@ -25,20 +25,15 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 - **THEN** 应调用 `SignatureCanonicalizerRegistry.dispose()` 清空所有 canonicalizer、models 数组、methodsMap 和 customComponentMap
 - **AND** 下次 `getInstance()` 调用时自动重建单例并重新初始化 DEFAULT 签名
 
-#### Scenario: Scene 待删除的委托方法
+#### Scenario: Scene 待删除的委托方法（已删除）
 
 - **WHEN** Scene 上的 `internFileSig()`/`internClassSig()`/`internMethodSig()`/`internNamespaceSig()`/`internFieldSig()` 和 `getFileById()`/`getClassById()`/`getMethodById()`/`getNamespaceById()` 方法被调用
-- **THEN** 当前代码中这些方法保留为委托 Registry 的快捷方法（过渡期）
-- **AND** 设计目标为删除这些方法，调用方直接使用 `SignatureCanonicalizerRegistry.getInstance()` 访问
-- **AND** 此项标记为待实施，本轮不修改代码
+- **THEN** 这些方法已在后续轮次全部删除（原为"过渡期保留委托"），调用方直接使用 `SignatureCanonicalizerRegistry.getInstance()` / Registry 静态方法访问
 
-#### Scenario: getMethodsMap refresh 待重新探索
+#### Scenario: getMethodsMap refresh（已删除）
 
-- **WHEN** 类型推导过程中需要获取所有方法的 Map
-- **THEN** 当前代码保留 `getMethodsMap(refresh)` 方法，`refresh=true` 时清空 `registry.methodsMap` 重建
-- **AND** `inferTypes()` 中调用 `getMethodsMap(true)` 刷新方法 Map
-- **AND** 设计目标为删除 refresh 逻辑（ID 稳定，无需 refresh），但实施中发现 `inferTypes()` 仍需 refresh
-- **AND** 此项标记为待重新探索，后续分析是否能消除 refresh 依赖
+- **WHEN** 类型推导过程中需要获取所有方法
+- **THEN** `getMethodsMap(refresh)` 方法已在后续轮次彻底删除：methodSigCanonicalizer 是唯一事实源（ID 稳定，无需 refresh），`getMethods()` 平面遍历 canonicalizer models 收集
 
 ### Requirement: SignatureModelCanonicalizer — 签名+模型统一存储
 
@@ -70,8 +65,8 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 
 #### Scenario: 正式签名单实例化
 
-- **WHEN** 调用正式 canonicalizer 的 `intern(sig)` 处理两个值相同但引用不同的签名实例
-- **THEN** 应返回同一个 canonical 单实例对象（首次注册的实例），后续所有 `intern()` 调用返回同一对象
+- **WHEN** 两个值相同但引用不同的签名实例分别经 `getId(sig)` 注册（intern）后再通过 `get(id)` 取回
+- **THEN** 应取回同一个 canonical 单实例对象（首次注册的实例）；后续所有值相同签名的 `getId` + `get` 组合取回同一对象（曾有 `intern(sig)` = getId+get 的组合方法，review 工作项 A 已删除——生产 0 调用，语义由 getId+get 组合承载）
 
 #### Scenario: 仅检查不新建
 
@@ -114,8 +109,8 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 
 #### Scenario: 签名引用比较安全性
 
-- **WHEN** 代码中通过 `===` 引用比较两个签名对象（如 `ClassHierarchyAnalysis.ts`、`ModelUtils.ts`、`TypeInference.ts` 中的现有比较点）
-- **THEN** 代码中通过 `===` 引用比较两个签名对象的场景应改为 `toMapKey()` 值比较（如 `TypeInference.isSameType()`、`IRInference.needInfer()`、`ModelUtils` 中的 4 处比较点已修复），确保相同值的签名即使不是同一对象引用也能正确比较；`ArkClass` 和 `MethodSubSignature` 的 `===` 比较在混合方案下天然安全（Map 查询返回同一实例 / MethodSignature 持有同一 MethodSubSignature）
+- **WHEN** 代码中需要比较两个签名对象的值是否相同（如 `TypeInference.isSameType()`、`ModelUtils.matchType()` 中的比较点）
+- **THEN** 应使用 `signatureEquals(a, b)`（缓存 hash 先比 + equals 终审的纯值比较，不依赖注册状态——ID 判等对未注册签名存在 -1 哨兵双向误判，getId 版另有盲写副作用）；原始 `===` 引用比较已从 TypeInference.isSameType、IRInference.needInfer（最终实现为 fileName 比较）、ModelUtils 中的比较点修复；`ArkClass` 和 `MethodSubSignature` 的 `===` 比较在混合方案下天然安全（Map 查询返回同一实例 / MethodSignature 持有同一 MethodSubSignature）
 
 #### Scenario: ArkBody 不 ID 化
 
@@ -124,18 +119,18 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 
 ### Requirement: 签名 setter 自动 intern
 
-模型的签名 setter 应自动调用 `canonicalizer.intern()`，确保签名对象单实例化，减少值相同但引用不同的签名实例数量。
+模型的签名 setter 应自动完成签名的 intern（注册到 canonicalizer 并取回 canonical 单实例），确保签名对象单实例化，减少值相同但引用不同的签名实例数量。实现形式为 `getId(sig)` + `get(id)` 拆分（D13：setter 中同步缓存 sigID；曾有 `intern()` 组合方法，工作项 A 已删除）。
 
 #### Scenario: 模型签名 setter 自动 intern
 
 - **WHEN** `ArkFile.setFileSignature()`、`ArkClass.setSignature()`、`ArkMethod.setImplementationSignature()`、`ArkField.setSignature()`、`ArkNamespace.setSignature()` 被调用设置签名
-- **THEN** setter 内部应调用对应 canonicalizer 的 `intern(sig)` 方法，将签名对象替换为 canonical 单实例
+- **THEN** setter 内部应调用对应 canonicalizer 的 `getId(sig)`（注册并取得 ID）并将返回的 canonical 实例（`get(id)`）存为签名引用，同时缓存 sigID 字段
 - **AND** 后续通过 getter 获取的签名为 canonical 单实例，`===` 引用比较更安全
 
-#### Scenario: declare 签名 setter 不 intern
+#### Scenario: declare 签名 setter 不注册 model
 
 - **WHEN** `ArkMethod.setDeclareSignatures()` 或 `ArkClass.setDeclareSignature()` 被调用
-- **THEN** 不应调用 `intern()`（overload 方法有多个声明签名，参数相同返回类型不同的会被误判为相同）
+- **THEN** declare 路径只 intern 签名取得 ID（`getId`），**不注册 model**——注册延迟到 `ArkClass.addMethod` 终点（防止覆盖 builder 合并期需读取的前一个同签名方法；overload 方法有多个声明签名，参数相同返回类型不同的会被误判为相同，故不做单实例替换）
 - **AND** 声明签名保持原始实例
 
 ### Requirement: isUnclear() 接口 — 签名不明确性判断
@@ -206,9 +201,9 @@ ClassType、FunctionType、EnumValueType、LexicalEnvType 应删除签名对象�
 
 ### Requirement: toMapKey 设计原则
 
-`toMapKey()` 是签名值比较的依据（用于 `TypeInference.isSameType()` 等代码中的值比较和调试输出），其计算逻辑直接影响比较的正确性。所有签名的 `toMapKey()` 应遵循统一的设计原则，确保 ID 化后签名身份的一致性。
+`toMapKey()` 原为签名值比较的依据（用于 `TypeInference.isSameType()` 等代码中的值比较和调试输出）。**最终状态（review 工作项 B/D 后）**：身份值比较已改用 `signatureEquals`（hash + equals，见"签名引用比较安全性" Scenario），生产代码中 toMapKey 的消费者为零，**5 类签名的 `toMapKey()` 已全部标注 `@deprecated`**——保留仅为对外 API 兼容（D11），身份判等用 `equals()`（配 `getHashCode()` 快速排除）、调试输出用 `toString()`。FileSignature 的实现改为 `toString()` 身份投影（projectName + fileName 完整身份字段，无碰撞——旧 `${hashcode}${basename}` 格式的 32 位 hash 对同名 basename 文件存在碰撞误判），其余 4 类保持递归拼接实现。
 
-**注意**：`SignatureCanonicalizer` 当前采用 hash + equals 三层架构做值语义去重（见"hash + equals 三层去重架构" Requirement），`toMapKey()` 不再作为 canonicalizer 的去重依据。但 `toMapKey()` 仍用于代码中的值比较和调试。
+**注意**：`SignatureCanonicalizer` 采用 hash + equals 三层架构做值语义去重（见"hash + equals 三层去重架构" Requirement），`toMapKey()` 从不作为 canonicalizer 的去重依据。
 
 #### Scenario: toMapKey 包含身份标识字段
 
@@ -233,6 +228,7 @@ ClassType、FunctionType、EnumValueType、LexicalEnvType 应删除签名对象�
 - **WHEN** 需要紧凑的 Map key 或值比较依据时
 - **THEN** 应使用 `toMapKey()`，它仅包含身份标识字段，不含可变字段和可读性修饰
 - **AND** 当需要调试输出或可读性表示时，应使用 `toString()`，它可包含更完整的信息（如 returnType、可读性前缀等）
+- **AND** 例外（工作项 B 后）：`FileSignature.toMapKey()` 即 `toString()` 身份投影——FileSignature 的 toString 本就只含身份字段（projectName + fileName），分离无实际意义；上层 4 类签名的递归拼接规则不变
 
 #### Scenario: FieldSignature.toMapKey 新增
 
@@ -263,8 +259,8 @@ ClassType、FunctionType、EnumValueType、LexicalEnvType 应删除签名对象�
 #### Scenario: MethodSignature.equals 语义一致性
 
 - **WHEN** `MethodSignature.equals()` 比较两个 MethodSignature
-- **THEN** equals 应比较 `methodSubSignature.toString()`（包含方法名+参数类型+静态标志），与 `toMapKey()` 语义一致
-- **AND** 不比较 `returnType`（可变字段，不在 toMapKey 中）
+- **THEN** equals 的值语义等价于比较 `methodSubSignature.toString()`（方法名+参数类型+静态标志）+ returnType——工作项 I（bug #8 修复）后实现为**字段级短路**（`methodSubSignatureValueEquals`：staticFlag → methodName → 参数数量 → 逐参数类型 → returnType），多数不匹配场景零字符串拼接；值语义与原 toString 比较严格等价
+- **AND** equals **比较 returnType**（重载要求：仅返回类型不同的签名 intern 到不同 ID——与 toMapKey 排除 returnType 不同）；returnType 刻意不参与缓存 hash（推导原地改 returnType 不致 ID 漂移，"hash 宽松保证 ID 稳定，equals 严格保证语义"）
 
 ### Requirement: 不明确签名的临时 ID 机制
 

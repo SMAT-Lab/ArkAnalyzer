@@ -91,12 +91,12 @@ Type/Signature 层新增 `sigID` + `tempSigID` 双字段，setter 清除 ID 缓�
 
 Scene 删除 `filesMap`/`classesMap`/`namespacesMap`/`sdkArkFilesMap` 和 10 个 canonicalizer 字段。公开 API 保留（向后兼容），内部委托 Registry。
 
-**待删除项**（代码当前保留为委托，设计目标为删除）：
-- Scene 的 `internFileSig()`/`internClassSig()`/`internMethodSig()`/`internNamespaceSig()`/`internFieldSig()` 辅助方法 — 当前保留为委托 Registry 的快捷方法，待删除（调用方直接使用 Registry）
-- Scene 的 `getFileById()`/`getClassById()`/`getMethodById()`/`getNamespaceById()` 方法 — 当前保留为委托 Registry 的快捷方法，待删除（调用方直接使用 Registry）
+**已删除项**（原计划"待删除"，tasks §13/§4.23 在后续轮次完成）：
+- Scene 的 `internFileSig()`/`internClassSig()`/`internMethodSig()`/`internNamespaceSig()`/`internFieldSig()` 辅助方法 — 已删除（调用方直接使用 Registry）
+- Scene 的 `getFileById()`/`getClassById()`/`getMethodById()`/`getNamespaceById()` 方法 — 已删除（调用方直接使用 Registry）
 
-**待重新探索项**：
-- `getMethodsMap(refresh)` — 设计目标为删除（ID 稳定，无需 refresh），实施中尝试删除后发现 `inferTypes()` 仍需 refresh 重建 methodsMap，已回退保留。待重新探索是否能消除 refresh 依赖
+**已删除项（原"待重新探索"项）**：
+- `getMethodsMap(refresh)` — 曾回退保留（`inferTypes()` 仍需 refresh 重建 methodsMap），后续轮次已彻底删除：methodSigCanonicalizer 升级为 `SignatureModelCanonicalizer` 成为唯一事实源，ID 稳定无需 refresh。
 
 ### 7. 类型推导 `===` 修复 + 签名 setter 自动 intern
 

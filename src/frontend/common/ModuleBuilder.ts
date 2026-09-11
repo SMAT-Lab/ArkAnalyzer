@@ -922,8 +922,10 @@ export class ModuleBuilder {
      * types, parameter types, signature return types, import/export resolution). At BODIES level,
      * full type inference runs (including stmt-level propagation and return type aggregation).
      *
-     * Does NOT call {@link Scene.getMethodsMap}(true): rebuilding the global index would clear
-     * caches for other modules. Does NOT set {@link Scene.buildStage} to TYPE_INFERRED: that is a
+     * Does NOT rebuild the global method index (the former Scene.getMethodsMap(true) was
+     * removed with the registry refactor — methodSigCanonicalizer is now the single source
+     * of truth): rebuilding would clear caches for other modules. Does NOT set {@link Scene.buildStage}
+     * to TYPE_INFERRED: that is a
      * whole-scene flag. Does NOT call {@link SdkUtils.dispose} / {@link ModuleUtils.dispose} /
      * {@link ValueUtil.dispose}: the global caches are shared across modules and should be
      * released by the caller after all modules are processed.

@@ -162,13 +162,13 @@ describe('SignatureCanonicalizerRegistry Test', () => {
         expect((reg as unknown as Record<string, unknown>).tempNamespaceSigCanonicalizer).toBeUndefined();
     });
 
-    it('intern returns canonical single instance', () => {
+    it('getId+get returns canonical single instance', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         reg.fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
         const sig1 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const sig2 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
-        const a = reg.classSigCanonicalizer.intern(sig1);
-        const b = reg.classSigCanonicalizer.intern(sig2);
+        const a = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getId(sig1))!;
+        const b = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getId(sig2))!;
         expect(a).toBe(b);
         expect(a).toBe(sig1);
     });
@@ -195,7 +195,7 @@ describe('NamespaceSignature SigID constructor Test', () => {
         expect(nsSig.getDeclaringFileSignature().equals(fileSig)).toBe(true);
         expect(nsSig.getDeclaringNamespaceSignature()!.equals(parentSig)).toBe(true);
         // The parent chain resolves to the canonical interned instance
-        expect(nsSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.intern(parentSig));
+        expect(nsSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(parentSig))!);
         // Top-level namespace has no declaring namespace
         expect(parentSig.getDeclaringNamespaceSignature()).toBeNull();
     });
@@ -364,7 +364,7 @@ describe('ClassSignature SigID constructor Test', () => {
 
         expect(classSig.getDeclaringFileSignature().equals(fileSig)).toBe(true);
         expect(classSig.getDeclaringNamespaceSignature()!.equals(nsSig)).toBe(true);
-        expect(classSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.intern(nsSig));
+        expect(classSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(nsSig))!);
         // Top-level class has no declaring namespace
         const topLevel = new ClassSignature('TopLevel', fileSig, null);
         expect(topLevel.getDeclaringNamespaceSignature()).toBeNull();
@@ -615,7 +615,7 @@ describe('MethodSignature canonical parameter-name refresh Test', () => {
 
         const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(impl))!;
         expect(canonical.getMethodSubSignature().getParameters()[0].getName()).toBe('x');
-        expect(canonical).toBe(reg.methodSigCanonicalizer.intern(declaring));
+        expect(canonical).toBe(reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(declaring))!);
     });
 
     it('parameter count mismatch never refreshes (defensive)', () => {
@@ -719,7 +719,7 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
         // Field state equals the legacy setter-chain result
         expect(ns.getDeclaringFileID()).toBe(fileSigID);
         expect(ns.getDeclaringArkNamespace()).toBeNull();
-        expect(ns.getSignature()).toBe(reg.namespaceSigCanonicalizer.intern(nsSig));
+        expect(ns.getSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(nsSig))!);
         expect(ns.getName()).toBe('Injected');
     });
 

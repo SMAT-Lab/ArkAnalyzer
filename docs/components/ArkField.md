@@ -209,14 +209,16 @@ export class ArkField extends ArkBaseModel {
 
 ```typescript
 export class FieldSignature {
-    private declaringSignature: BaseSignature;  // 所属类或命名空间签名
+    private declaringClassSigID?: number;       // 所属类 ClassSigID（-1 = unclear；undefined = 命名空间侧声明）
+    private declaringNamespaceSigID?: number;   // 所属命名空间 NamespaceSigID（可选）
+    private declaringClassTempSigID?: number;   // unclear 类的 temp 索引（引用语义）
     private fieldName: string;
     private type: Type;
     private staticFlag: boolean;
 }
 ```
 
-`toString()` 输出 `<@Project/File: ClassName.fieldName>` 或带 `[static]` 前缀，与 IR 中 `Ref` 文本一致。
+`toString()` 输出 `<@Project/File: ClassName.fieldName>` 或带 `[static]` 前缀，与 IR 中 `Ref` 文本一致。签名构造时缓存 32 位 hash（`getHashCode()`），供 `SignatureCanonicalizerRegistry` 做 hash + equals 值语义去重；`type` 是可变字段，不参与身份（hash/equals/toMapKey 均排除）。
 
 ## 4. 主要接口
 
@@ -228,15 +230,14 @@ export class FieldSignature {
 | `getType(): Type` | 返回 `fieldSignature.getType()` |
 | `getSignature(): FieldSignature` / `setSignature(s)` | 全局唯一签名 |
 | `getCategory(): FieldCategory` / `setCategory(c)` | 通过 tag 系统获取/设置字段种类（9 种类型） |
-| `getDeclaringArkClass(): ArkClass` / `setDeclaringArkClass(c)` | 反向定位所属类 |
+| `getDeclaringArkClass(): ArkClass` / `setDeclaringClassID(id)` | 反向定位所属类（getter 经 Registry 按 ClassSigID 反查；对象 setter 已废弃，改用 ID 注入构造器） |
 | `getInitializer(): Stmt[]` / `setInitializer(stmts)` | 初始化语句（会被搬到 `%instInit` / `%statInit`） |
 | `getQuestionToken() / setQuestionToken(b)` | 通过 `BaseModelTag.QUESTION_TOKEN` 管理 `foo?: T` 中的可选标记 |
 | `getExclamationToken() / setExclamationToken(b)` | 通过 `BaseModelTag.EXCLAMATION_TOKEN` 管理 `foo!: T` 中的"definite assignment"标记 |
-| `getCode(): string` / `setCode(s)` | 字段对应的源码片段 |
 | `getOriginFullPosition(): FullPosition` | 源码完整位置（起始/结束行列） |
 | `setOriginFullPosition(position: FullPosition)` | 设置源码完整位置 |
 | `getLanguage(): Language` | 字段所属文件的语言种类（继承自类） |
-| `validate(): ArkError` | 必要字段完整性检查（`declaringClass`、`fieldSignature`） |
+| `validate(): ArkError` | 必要字段完整性检查（`declaringClassID`、`fieldSigID`） |
 | `isPublic(): boolean` | 是否为 public（无显式修饰时类/接口/对象字段默认 true） |
 
 ### 修饰符
@@ -256,8 +257,9 @@ export class FieldSignature {
 | `getFieldName(): string` | 字段名 |
 | `getType(): Type` / `setType(t)` | 字段类型 |
 | `isStatic(): boolean` | 是否静态 |
-| `getDeclaringSignature(): BaseSignature` | 所属 `ClassSignature` 或 `NamespaceSignature` |
+| `getDeclaringSignature(): BaseSignature` | 所属 `ClassSignature` 或 `NamespaceSignature`（经 Registry 按 SigID 反查） |
 | `getBaseName(): string` | 所属类名（或命名空间名） |
+| `toMapKey(): string` | 紧凑身份键（declaringSigID + fieldName + staticFlag，排除可变的 type） |
 | `toString(): string` | `<@Pkg/File: Class.field>`，静态字段加 `[static]` |
 
 ### 已废弃接口
@@ -269,6 +271,7 @@ export class FieldSignature {
 | `getOriginPosition(): LineColPosition` | ⚠️ **废弃于 1.0.91**，建议使用 `getOriginFullPosition()` |
 | `setOriginPosition(position: LineColPosition)` | ⚠️ **废弃于 1.0.91**，建议使用 `setOriginFullPosition()` |
 | `isExported(): boolean` | ⚠️ **废弃于 1.0.91**，建议使用 `isExport()` 替代 |
+| `setCode(s)` | ⚠️ **废弃于 1.0.91**，空实现（源码统一存储在 `ArkFile` 上） |
 
 ## 5. 使用示例
 

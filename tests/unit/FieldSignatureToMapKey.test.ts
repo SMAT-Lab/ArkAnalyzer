@@ -74,11 +74,13 @@ describe('FieldSignature.toMapKey Test', () => {
         expect(fs.toMapKey()).not.toContain('[static]');
     });
 
-    it('toMapKey differs from toString in recursive call', () => {
+    it('toMapKey matches toString when the declaring chain is identity-projected', () => {
+        // Since FileSignature.toMapKey became the collision-free identity projection
+        // (= toString), the recursive toMapKey chain no longer diverges from toString
+        // for a clear (formal) declaring class — the legacy "hash + basename" format
+        // difference at the file layer is gone.
         const fs = new FieldSignature('name', classSigID, UnknownType.getInstance(), false);
-        const toMapKeyResult = fs.toMapKey();
-        const toStringResult = fs.toString();
-        expect(toMapKeyResult).not.toBe(toStringResult);
+        expect(fs.toMapKey()).toBe(fs.toString());
     });
 
     it('DEFAULT is defined and has toMapKey', () => {

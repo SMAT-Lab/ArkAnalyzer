@@ -88,6 +88,7 @@ import { SdkUtils } from './SdkUtils';
 import { ModifierType } from '../model/ArkBaseModel';
 import { Scene } from '../../Scene';
 import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
+import { signatureEquals } from './SignatureCanonicalizer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 // Builtin stub signatures carry FileSignature.DEFAULT whose fileName is UNKNOWN_FILE_NAME,
@@ -1168,7 +1169,9 @@ export class TypeInference {
 
     public static isSameType(type1: Type, type2: Type): boolean {
         if (type1 instanceof ClassType && type2 instanceof ClassType) {
-            return type1.getClassSignature().toMapKey() === type2.getClassSignature().toMapKey();
+            // Value-semantic identity comparison: cached-hash fast reject + equals verdict
+            // (replaces the legacy toMapKey() string comparison — no string building).
+            return signatureEquals(type1.getClassSignature(), type2.getClassSignature());
         } else if (type1 instanceof LiteralType) {
             return typeof type1.getLiteralName() === type2.toString();
         } else if (type1 instanceof KeyofTypeExpr) {

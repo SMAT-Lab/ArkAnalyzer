@@ -56,21 +56,21 @@ describe('SignatureCanonicalizer Test', () => {
         expect(c.getId(makeSig('c'))).toBe(2);
     });
 
-    it('intern returns the canonical single instance', () => {
+    it('getId+get returns the canonical single instance', () => {
         const c = new SignatureCanonicalizer<TestSig>();
         const sig1 = makeSig('foo');
         const sig2 = makeSig('foo');
-        const a = c.intern(sig1);
-        const b = c.intern(sig2);
+        const a = c.get(c.getId(sig1))!;
+        const b = c.get(c.getId(sig2))!;
         expect(a).toBe(sig1);
         expect(b).toBe(sig1);
         expect(a).toBe(b);
     });
 
-    it('intern returns the input signature on first registration', () => {
+    it('getId+get returns the input signature on first registration', () => {
         const c = new SignatureCanonicalizer<TestSig>();
         const sig = makeSig('first');
-        expect(c.intern(sig)).toBe(sig);
+        expect(c.get(c.getId(sig))!).toBe(sig);
     });
 
     it('getExistingId returns the existing ID without creating a new one', () => {
@@ -153,13 +153,13 @@ describe('SignatureCanonicalizer Test', () => {
         expect(c.size()).toBe(1);
     });
 
-    it('intern ensures === comparison safety', () => {
+    it('getId+get ensures === comparison safety', () => {
         const c = new SignatureCanonicalizer<TestSig>();
         const sig1 = makeSig('foo');
         const sig2 = makeSig('foo');
         expect(sig1 === sig2).toBe(false);
-        const a = c.intern(sig1);
-        const b = c.intern(sig2);
+        const a = c.get(c.getId(sig1))!;
+        const b = c.get(c.getId(sig2))!;
         expect(a === b).toBe(true);
     });
 });

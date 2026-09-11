@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
-import path from 'path';
 import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ClassType, Type, UnknownType } from '../base/Type';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { ANONYMOUS_CLASS_PREFIX, LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER } from '../common/Const';
-import { CryptoUtils } from '../../utils/crypto_utils';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
-import { SignatureCanonicalizer, Canonicalizable } from '../common/SignatureCanonicalizer';
+import { SignatureCanonicalizer, Canonicalizable, signatureEquals } from '../common/SignatureCanonicalizer';
 import { hashString32, hashCombineU32 } from '../../utils/HashUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
@@ -57,7 +55,6 @@ function requireExistingId<S extends Canonicalizable>(kind: string, sig: S, cano
 export class FileSignature {
     private projectName: string;
     private fileName: string;
-    private hashcode: number;
     private readonly hashCode: number;
 
     /** The canonical DEFAULT signature (formal sigID 0 in the registry). */
@@ -68,7 +65,6 @@ export class FileSignature {
     constructor(projectName: string, fileName: string) {
         this.projectName = projectName;
         this.fileName = transfer2UnixPath(fileName);
-        this.hashcode = CryptoUtils.hashcode(this.toString());
         let h = 0xdeadbeef;
         h = hashCombineU32(h, hashString32(this.projectName));
         h = hashCombineU32(h, hashString32(this.fileName));
@@ -87,8 +83,19 @@ export class FileSignature {
         return `@${this.projectName}/${this.fileName}: `;
     }
 
+    /**
+     * @deprecated No longer used internally since the ID refactor: identity comparison
+     * uses {@link signatureEquals} (hash + equals), indexing uses the canonicalizer.
+     * Kept for backward compatibility only — for identity checks use `equals()`
+     * (with `getHashCode()` fast reject), for debug output use `toString()`.
+     *
+     * Implementation note: identity projection (= toString, projectName + fileName are
+     * the complete identity fields) — collision-free, unlike the legacy
+     * `${hashcode}${basename}` format whose 32-bit hash could collide for
+     * same-basename files in different directories.
+     */
     public toMapKey(): string {
-        return `${this.hashcode}${path.basename(this.fileName)}`;
+        return this.toString();
     }
 
     public getHashCode(): number {
@@ -129,8 +136,9 @@ export class NamespaceSignature {
     /**
      * Build from signature instances (backward-compatible value constructor).
      * @deprecated Pass formal SigIDs instead (e.g. via ArkFile.getFileSigID() /
-     * ArkNamespace.getNamespaceSigID()). This value-object overload interns the declaring
-     * signatures internally and will be removed in a future release.
+     * ArkNamespace.getNamespaceSigID()). The declaring signatures must already be
+     * interned — this overload resolves their existing IDs and fails fast otherwise
+     * (it never interns) — and will be removed in a future release.
      */
     constructor(namespaceName: string, declaringFileSignature: FileSignature, declaringNamespaceSignature?: NamespaceSignature | null);
     /**
@@ -217,6 +225,12 @@ export class NamespaceSignature {
         return this.getDeclaringFileSignature().toString() + this.namespaceName;
     }
 
+    /**
+     * @deprecated No longer used internally since the ID refactor: identity comparison
+     * uses {@link signatureEquals} (hash + equals), indexing uses the canonicalizer.
+     * Kept for backward compatibility only — for identity checks use `equals()`
+     * (with `getHashCode()` fast reject), for debug output use `toString()`.
+     */
     public toMapKey(): string {
         const declaringNS = this.getDeclaringNamespaceSignature();
         if (declaringNS !== null) {
@@ -268,8 +282,9 @@ export class ClassSignature {
     /**
      * Build from signature instances (backward-compatible value constructor).
      * @deprecated Pass formal SigIDs instead (e.g. via ArkFile.getFileSigID() /
-     * ArkNamespace.getNamespaceSigID()). This value-object overload interns the declaring
-     * signatures internally and will be removed in a future release.
+     * ArkNamespace.getNamespaceSigID()). The declaring signatures must already be
+     * interned — this overload resolves their existing IDs and fails fast otherwise
+     * (it never interns) — and will be removed in a future release.
      */
     constructor(className: string, declaringFileSignature: FileSignature, declaringNamespaceSignature?: NamespaceSignature | null);
     /**
@@ -388,6 +403,12 @@ export class ClassSignature {
         return this.getDeclaringFileSignature().toString() + this.getClassName();
     }
 
+    /**
+     * @deprecated No longer used internally since the ID refactor: identity comparison
+     * uses {@link signatureEquals} (hash + equals), indexing uses the canonicalizer.
+     * Kept for backward compatibility only — for identity checks use `equals()`
+     * (with `getHashCode()` fast reject), for debug output use `toString()`.
+     */
     public toMapKey(): string {
         const declaringNS = this.getDeclaringNamespaceSignature();
         if (declaringNS !== null) {
@@ -730,6 +751,12 @@ export class FieldSignature {
         return this.getDeclaringSignature().toString() + '.' + tmpSig;
     }
 
+    /**
+     * @deprecated No longer used internally since the ID refactor: identity comparison
+     * uses {@link signatureEquals} (hash + equals), indexing uses the canonicalizer.
+     * Kept for backward compatibility only — for identity checks use `equals()`
+     * (with `getHashCode()` fast reject), for debug output use `toString()`.
+     */
     public toMapKey(): string {
         let tmpSig = this.fieldName;
         if (this.isStatic()) {
@@ -838,6 +865,37 @@ export class MethodSubSignature {
         }
         return tmpSig;
     }
+}
+
+/**
+ * @internal Value-semantic equality between two MethodSubSignatures, semantically
+ * equivalent to `a.toString() === b.toString()` plus return-type equality (the legacy
+ * MethodSignature.equals semantics), but short-circuits from cheap to expensive with
+ * NO string building in the common mismatch cases:
+ * staticFlag (boolean) → methodName (string ===, V8 length/reference short-circuit) →
+ * parameter count → per-parameter type (reference short-circuit for singleton types,
+ * then toString — Type has no hash infrastructure) → return type.
+ * Parameter types that are undefined/null compare as UnknownType (preserving the
+ * `MethodSubSignature.toString` projection semantics).
+ */
+function methodSubSignatureValueEquals(a: MethodSubSignature, b: MethodSubSignature): boolean {
+    if (a === b) return true;
+    if (a.isStatic() !== b.isStatic()) return false;
+    if (a.getMethodName() !== b.getMethodName()) return false;
+    const ap = a.getParameters();
+    const bp = b.getParameters();
+    if (ap.length !== bp.length) return false;
+    for (let i = 0; i < ap.length; i++) {
+        const at = ap[i]?.getType();
+        const bt = bp[i]?.getType();
+        if (at === bt) {
+            continue;
+        }
+        if ((at?.toString() ?? UnknownType.getInstance().toString()) !== (bt?.toString() ?? UnknownType.getInstance().toString())) {
+            return false;
+        }
+    }
+    return a.getReturnType().toString() === b.getReturnType().toString();
 }
 
 /**
@@ -972,6 +1030,12 @@ export class MethodSignature {
         return this.getDeclaringClassSignature().toString() + '.' + this.methodSubSignature.toString(ptrName, visited);
     }
 
+    /**
+     * @deprecated No longer used internally since the ID refactor: identity comparison
+     * uses {@link signatureEquals} (hash + equals), indexing uses the canonicalizer.
+     * Kept for backward compatibility only — for identity checks use `equals()`
+     * (with `getHashCode()` fast reject), for debug output use `toString()`.
+     */
     public toMapKey(): string {
         return this.getDeclaringClassSignature().toMapKey() + '.' + this.methodSubSignature.toString();
     }
@@ -984,13 +1048,14 @@ export class MethodSignature {
         if (this === other) return true;
         if (this.declaringClassSigID !== other.declaringClassSigID) return false;
         if (this.declaringClassTempSigID !== other.declaringClassTempSigID) return false;
-        if (this.methodSubSignature.toString() !== other.methodSubSignature.toString()) return false;
         // The return type participates in equality (like isMatch) so that overloads differing
         // only in return type intern to distinct IDs. It is intentionally NOT part of the
         // cached hash: type inference mutates return types in place, and keeping the hash
         // stable allows re-interning the mutated signature to the same ID (hash-equal is a
         // legal superset of equals-equal).
-        return this.methodSubSignature.getReturnType().toString() === other.methodSubSignature.getReturnType().toString();
+        // Field-level short-circuit (was: methodSubSignature.toString() !== ... — string
+        // building on every equals call); see methodSubSignatureValueEquals.
+        return methodSubSignatureValueEquals(this.methodSubSignature, other.methodSubSignature);
     }
 
     /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
@@ -1010,7 +1075,17 @@ export class MethodSignature {
     }
 
     public isMatch(signature: MethodSignature): boolean {
-        return this.toString() === signature.toString() && this.getType().toString() === signature.getType().toString();
+        // Declaring comparison is VALUE-semantic (signatureEquals: cached-hash reject +
+        // equals verdict) — equivalent to the legacy `toString() === toString()` since
+        // ClassSignature.toString is an identity projection, and it preserves isMatch's
+        // lenient semantics for unclear stubs (two value-equal stub instances still match,
+        // unlike equals' strict tempSigID reference semantics).
+        if (!signatureEquals(this.getDeclaringClassSignature(), signature.getDeclaringClassSignature())) {
+            return false;
+        }
+        // Sub-signature comparison shares the field-level path with equals (was: full
+        // MethodSignature.toString() building ×2 + returnType.toString() ×2 per call).
+        return methodSubSignatureValueEquals(this.methodSubSignature, signature.methodSubSignature);
     }
 
     public getParamLength(): number {
@@ -1062,60 +1137,36 @@ export class AliasTypeSignature {
     }
 }
 
-//TODO, reconstruct
+/**
+ * Legacy free-function comparators — kept for API compatibility (external callers may
+ * exist). Internally modernized from the legacy toString()-building / Type-reference
+ * comparisons to the hash+equals value protocol; behavior now aligns with the
+ * corresponding signature classes' `equals()`:
+ * - classSignatureCompare now also compares the declaring namespace (the legacy
+ *   implementation silently ignored it, misjudging same-name classes in different
+ *   namespaces as equal);
+ * - methodSubSignatureCompare now compares parameter/return types by value (the legacy
+ *   implementation used `===` reference comparison, misjudging value-equal distinct
+ *   Type instances as different).
+ */
 export function fieldSignatureCompare(leftSig: FieldSignature, rightSig: FieldSignature): boolean {
-    if (leftSig.getDeclaringSignature().toString() === rightSig.getDeclaringSignature().toString() && leftSig.getFieldName() === rightSig.getFieldName()) {
-        return true;
-    }
-    return false;
+    return signatureEquals(leftSig.getDeclaringSignature(), rightSig.getDeclaringSignature()) && leftSig.getFieldName() === rightSig.getFieldName();
 }
 
 export function methodSignatureCompare(leftSig: MethodSignature, rightSig: MethodSignature): boolean {
-    if (
-        classSignatureCompare(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) &&
-        methodSubSignatureCompare(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature())
-    ) {
-        return true;
-    }
-    return false;
+    return signatureEquals(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) && methodSubSignatureValueEquals(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature());
 }
 
 export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig: MethodSubSignature): boolean {
-    if (
-        leftSig.getMethodName() === rightSig.getMethodName() &&
-        arrayCompare(leftSig.getParameterTypes(), rightSig.getParameterTypes()) &&
-        leftSig.getReturnType() === rightSig.getReturnType() &&
-        leftSig.isStatic() === rightSig.isStatic()
-    ) {
-        return true;
-    }
-    return false;
+    return methodSubSignatureValueEquals(leftSig, rightSig);
 }
 
 export function classSignatureCompare(leftSig: ClassSignature, rightSig: ClassSignature): boolean {
-    if (fileSignatureCompare(leftSig.getDeclaringFileSignature(), rightSig.getDeclaringFileSignature()) && leftSig.getClassName() === rightSig.getClassName()) {
-        return true;
-    }
-    return false;
+    return signatureEquals(leftSig, rightSig);
 }
 
 export function fileSignatureCompare(leftSig: FileSignature, rightSig: FileSignature): boolean {
-    if (leftSig.getFileName() === rightSig.getFileName() && leftSig.getProjectName() === rightSig.getProjectName()) {
-        return true;
-    }
-    return false;
-}
-
-function arrayCompare(leftArray: any[], rightArray: any[]): boolean {
-    if (leftArray.length !== rightArray.length) {
-        return false;
-    }
-    for (let i = 0; i < leftArray.length; i++) {
-        if (leftArray[i] !== rightArray[i]) {
-            return false;
-        }
-    }
-    return true;
+    return leftSig.equals(rightSig);
 }
 
 export function genSignature4ImportClause(arkFileName: string, importClauseName: string): string {

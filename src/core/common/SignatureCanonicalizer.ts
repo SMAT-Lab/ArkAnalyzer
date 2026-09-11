@@ -32,6 +32,37 @@ export interface Canonicalizable {
 }
 
 /**
+ * Value-semantic identity comparison between two signatures:
+ * cached-hash fast reject + `equals()` final verdict.
+ *
+ * Execution rules: the hash comparison short-circuits only comparisons whose
+ * result is "unequal"; comparisons whose result is "equal" necessarily run
+ * `equals()` (the Canonicalizable contract "equals ⇒ same hash" guarantees the
+ * hashes match), where canonical instances short-circuit on the first line
+ * (`this === other`). This is the same hash-then-equals protocol the
+ * canonicalizer probe uses internally — running it once directly between the
+ * two objects, instead of twice (once per probe) plus an ID comparison, and
+ * without depending on registration state.
+ *
+ * Why not compare canonicalizer IDs ("same ID ⇒ equal")? IDs are a function
+ * of value × registration history, not of value alone: two unregistered
+ * signatures (e.g. temp stubs) both yield getExistingId() === -1 and would be
+ * wrongly judged equal; one registered + one unregistered would be wrongly
+ * judged unequal; and the getId() variant would blind-write unregistered
+ * values into the formal space (permanent holes, see the temp-space design).
+ *
+ * Replaces the legacy `toMapKey()` string comparison at identity-comparison
+ * sites (TypeInference.isSameType / ModelUtils.matchType): no string building,
+ * no string hashing. Note that for unclear (temp-held) signatures the
+ * reference-semantics temp ID participates in hash/equals by design — two
+ * value-equal but distinct temp instances compare unequal (see
+ * TempSignatureCanonicalizer's instance semantics).
+ */
+export function signatureEquals(a: Canonicalizable, b: Canonicalizable): boolean {
+    return a.getHashCode() === b.getHashCode() && a.equals(b);
+}
+
+/**
  * A canonicalizer that deduplicates signatures by value semantics using hash + equals.
  *
  * Replaces the previous `toMapKey()`-string-based approach with a three-layer
@@ -87,20 +118,6 @@ export class SignatureCanonicalizer<S extends Canonicalizable> {
      */
     public get(id: number): S | undefined {
         return this.canonicalizer.get(id);
-    }
-
-    /**
-     * Canonicalize a signature and return the canonical single instance.
-     *
-     * After `intern()`, two signatures with the same `getHashCode()` and `equals()` will return
-     * the exact same object reference, making `===` comparison safe.
-     *
-     * @param sig - The signature to intern
-     * @returns The canonical single instance
-     */
-    public intern(sig: S): S {
-        const id = this.canonicalizer.getId(sig);
-        return this.canonicalizer.get(id)!;
     }
 
     /**

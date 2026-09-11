@@ -523,10 +523,19 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const baseType = base.getType();
         // Object paths (fallback branches): the iterator stubs are unclear and are routed to
         // the temp canonicalizer inside the constructors — no formal interning without a model.
+        // round32b：begin/end 字段类型由 BooleanType 改 UnknownType——BooleanType 是
+        // 历史 quirk（begin/end 的语义是迭代器端点而非 bool；循环条件的 boolean 语义
+        // 由 handleForRangeIterEnd 对 doneFlag 的显式 setType 承担）。BooleanType 会经
+        // 赋值传播污染迭代器 Local 的类型（IterableIterator stub → boolean），随后
+        // deref 推导走 core inferInstanceMember 的 primitive→wrapper 提升链
+        //（'boolean' → Registry.getSdkGlobal('Boolean') → lib.es5 Boolean 类），
+        // 把解引用字段的声明类错误改写为 Boolean（CI structBinding MapUsage 的
+        // `IterableIterator.*` 变 `Boolean.*` 根因）。UnknownType 不传播
+        //（transferRight2Left 的 unclear guard 拦截），迭代器保持 stub 形态。
         const beginFieldSignature =
             baseType instanceof ClassType
-                ? new FieldSignature(BuiltinCxx.ITERATOR_RESULT_BEGIN, baseType.getClassSignature(), BooleanType.getInstance(), false)
-                : new FieldSignature(BuiltinCxx.ITERATOR_RESULT_BEGIN, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
+                ? new FieldSignature(BuiltinCxx.ITERATOR_RESULT_BEGIN, baseType.getClassSignature(), UnknownType.getInstance(), false)
+                : new FieldSignature(BuiltinCxx.ITERATOR_RESULT_BEGIN, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, UnknownType.getInstance(), false);
         const beginFieldRef = new ArkInstanceFieldRef(base, beginFieldSignature);
         const beginStmt = new ArkAssignStmt(iterator, beginFieldRef);
         stmts.push(beginStmt);
@@ -534,8 +543,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         stmts.push(dummyInitializerStmt);
         const doneFieldSignature =
             baseType instanceof ClassType
-                ? new FieldSignature(BuiltinCxx.ITERATOR_RESULT_END, baseType.getClassSignature(), BooleanType.getInstance(), false)
-                : new FieldSignature(BuiltinCxx.ITERATOR_RESULT_END, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
+                ? new FieldSignature(BuiltinCxx.ITERATOR_RESULT_END, baseType.getClassSignature(), UnknownType.getInstance(), false)
+                : new FieldSignature(BuiltinCxx.ITERATOR_RESULT_END, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, UnknownType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(base, doneFieldSignature);
         const doneFieldRefPositions = [iteratorPositions[0], ...iterablePositions];
         return { iterator, doneFieldRef, doneFieldRefPositions };

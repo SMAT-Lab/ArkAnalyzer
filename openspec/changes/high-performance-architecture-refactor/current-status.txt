@@ -110,9 +110,9 @@ high-performance-architecture-refactor
 
 ## 关键设计约束
 
-### R10: 引用计数不精确（size() 为下界）
+### R10: 临时 ID 机制已演进为三版索引表（原引用计数方案退役）
 
-ArkSignatureBuilder 返回的签名对象在 7 个场景中被多个 Type 共享。register 按签名对象调用 1 次但实际有 2~N 个持有者。功能正确性不受影响，仅完整性检查 size() 是下界。
+原文描述的一版 refcount 方案（register/release/refCounts、size() 为下界）已退役。TempSignatureCanonicalizer 现为三版索引表：slot 数组强持有 + 单调 nextId 永不复用 + 显式 retire/retireWithReplacement（迁移置空 + temp→formal 替换记录）。统计同步即精确（totalRegistered = liveCount + retiredCount 三数自洽）。slot 强持有下"推导中间垃圾"钉活到 Registry.dispose，是知情权衡。详见 TempSignatureCanonicalizer.ts 头注释。
 
 ### R11: returnType/type 可变字段与 canonicalizer 去重冲突
 
