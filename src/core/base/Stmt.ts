@@ -343,18 +343,13 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the absolute full position of the invoke whose callee identifier is `name`
-     * within this statement (best-effort).
-     * Locates `name` inside the invoke operand's AST span for the start, and uses the
-     * fragment end (column to the right of `)`) as the end — same half-open convention
-     * as {@link getOriginFullPosition}.
-     * @param name - Callee identifier; must match this statement's invoke method name.
-     * @returns Absolute `FullPosition` of `name(...)`, or `FullPosition.DEFAULT` if not found.
+     * Returns the absolute full position of this statement's invoke (best-effort).
+     * Uses the IR method name to locate the callee identifier inside the invoke operand's
+     * AST span for the start, and uses the fragment end (column to the right of `)`) as
+     * the end — same half-open convention as {@link getOriginFullPosition}.
+     * @returns Absolute `FullPosition` of `methodName(...)`, or `FullPosition.DEFAULT` if not found.
      */
-    public getInvokeFullPosition(name: string): FullPosition {
-        if (!name) {
-            return FullPosition.DEFAULT;
-        }
+    public getInvokeFullPosition(): FullPosition {
         let invoke: AbstractInvokeExpr | undefined;
         if (this instanceof ArkInvokeStmt) {
             invoke = this.getInvokeExpr();
@@ -367,10 +362,10 @@ export abstract class Stmt {
             return FullPosition.DEFAULT;
         }
         const methodName = invoke.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (methodName !== name) {
+        if (!methodName) {
             return FullPosition.DEFAULT;
         }
-        return this.getInvokePosFromOperandSpan(name, invoke) ?? FullPosition.DEFAULT;
+        return this.getInvokePosFromOperandSpan(methodName, invoke) ?? FullPosition.DEFAULT;
     }
 
     /**
@@ -388,8 +383,22 @@ export abstract class Stmt {
         if (!frag || startOffset === null) {
             return null;
         }
-        const start = offsetToAbsoluteLineCol(frag, startOffset, invokePos.getFirstLine(), invokePos.getFirstCol());
-        return new FullPosition(start.getLineNo(), start.getColNo(), invokePos.getLastLine(), invokePos.getLastCol());
+        const firstLine = invokePos.getFirstLine();
+        const firstCol = invokePos.getFirstCol();
+        let startLine: number;
+        let startCol: number;
+        if (startOffset === 0) {
+            startLine = firstLine;
+            startCol = firstCol;
+        } else if (firstLine === invokePos.getLastLine()) {
+            startLine = firstLine;
+            startCol = firstCol + startOffset;
+        } else {
+            const start = offsetToAbsoluteLineCol(frag, startOffset, firstLine, firstCol);
+            startLine = start.getLineNo();
+            startCol = start.getColNo();
+        }
+        return new FullPosition(startLine, startCol, invokePos.getLastLine(), invokePos.getLastCol());
     }
 
     /**

@@ -14,7 +14,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildLineStarts, extractSourceTextByFullPosition, matchCallOpenParen } from '../../../../src/core/common/StringUtils';
+import {
+    buildLineStarts,
+    extractSourceTextByFullPosition,
+    matchCallOpenParen,
+    offsetToAbsoluteLineCol,
+} from '../../../../src/core/common/StringUtils';
 import { FullPosition } from '../../../../src/core/base/Position';
 
 describe('buildLineStarts / extractSourceTextByFullPosition cache', () => {
@@ -75,5 +80,25 @@ describe('matchCallOpenParen', () => {
         expect(matchCallOpenParen('foo', 'foo')).toBeNull();
         expect(matchCallOpenParen('(foo)', 'foo')).toBeNull();
         expect(matchCallOpenParen('foo < bar', 'foo')).toBeNull();
+    });
+});
+
+describe('offsetToAbsoluteLineCol', () => {
+    it('keeps origin when offset is 0', () => {
+        const pos = offsetToAbsoluteLineCol('foo()', 0, 10, 5);
+        expect(pos.getLineNo()).toBe(10);
+        expect(pos.getColNo()).toBe(5);
+    });
+
+    it('adds offset on the same line', () => {
+        const pos = offsetToAbsoluteLineCol('a1.call1()', 3, 17, 1);
+        expect(pos.getLineNo()).toBe(17);
+        expect(pos.getColNo()).toBe(4);
+    });
+
+    it('handles newlines without allocating slices', () => {
+        const pos = offsetToAbsoluteLineCol('call\n()', 5, 47, 1);
+        expect(pos.getLineNo()).toBe(48);
+        expect(pos.getColNo()).toBe(1);
     });
 });

@@ -270,10 +270,16 @@ function skipTemplateInterpolation(text: string, start: number): number {
  * Converts an offset within `text` to an absolute line/col, given the absolute origin of `text`.
  */
 export function offsetToAbsoluteLineCol(text: string, offset: number, originLine: number, originCol: number): LineColPosition {
-    const before = text.slice(0, offset);
-    const relLine = before.split('\n').length - 1;
-    const lastNl = before.lastIndexOf('\n');
-    const colInText = lastNl === -1 ? offset + 1 : offset - lastNl;
+    let relLine = 0;
+    let lineStart = 0;
+    const end = offset < text.length ? offset : text.length;
+    for (let i = 0; i < end; i++) {
+        if (text.charCodeAt(i) === 10 /* \n */) {
+            relLine++;
+            lineStart = i + 1;
+        }
+    }
+    const colInText = end - lineStart + 1;
     const line = originLine + relLine;
     const col = relLine === 0 ? originCol + (colInText - 1) : colInText;
     return new LineColPosition(line, col);
