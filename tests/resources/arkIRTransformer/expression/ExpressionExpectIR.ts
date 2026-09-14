@@ -928,6 +928,46 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [[57, 1, 57, 20], [57, 1, 57, 10]],
         },
         {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callParenBase()>()',
+            operandOriginalPositions: [[60, 1, 60, 22], [60, 2, 60, 5]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .m()>()',
+            operandOriginalPositions: [[61, 1, 61, 10], [61, 2, 61, 5]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .parenCall2()>()',
+            operandOriginalPositions: [[62, 1, 62, 17]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callNonNull()>()',
+            operandOriginalPositions: [[63, 1, 63, 19], [63, 1, 63, 4]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callBang()>()',
+            operandOriginalPositions: [[64, 1, 64, 12]],
+        },
+        {
+            text: '%6 = <any>callAs',
+            operandOriginalPositions: [[65, 2, 65, 15], [65, 2, 65, 15], [65, 2, 65, 8]],
+        },
+        {
+            text: 'ptrinvoke %6<@%unk/%unk: .%6()>()',
+            operandOriginalPositions: [[65, 1, 65, 18], [65, 2, 65, 8]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .key()>()',
+            operandOriginalPositions: [[66, 1, 66, 11], [66, 1, 66, 4]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .\'lit\'()>()',
+            operandOriginalPositions: [[67, 1, 67, 13], [67, 1, 67, 4]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callMultilineArgs()>(para1)',
+            operandOriginalPositions: [[68, 1, 70, 2], [68, 1, 68, 4], [69, 5, 69, 10]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],

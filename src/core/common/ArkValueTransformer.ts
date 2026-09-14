@@ -956,11 +956,8 @@ export class ArkValueTransformer {
     private getCallNameNode(callee: ts.Expression): ts.Node {
         let expr: ts.Expression = callee;
         while (true) {
-            if (ts.isParenthesizedExpression(expr) || ts.isNonNullExpression(expr)) {
-                expr = expr.expression;
-                continue;
-            }
-            if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+            if (ts.isParenthesizedExpression(expr) || ts.isNonNullExpression(expr)
+                || ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
                 expr = expr.expression;
                 continue;
             }

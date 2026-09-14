@@ -56,6 +56,19 @@ commentGeneric<T /* > */>();
 // same-name call chain
 fooSame().fooSame();
 
+// unwrap / element-access / multiline-args for invoke position
+(obj).callParenBase();
+(obj.m)();
+((parenCall2))();
+obj!.callNonNull();
+callBang!();
+(callAs as any)();
+obj[key]();
+obj['lit']();
+obj.callMultilineArgs(
+    para1
+);
+
 // ptr invoke expr test
 function returnFunc1(): () => void {
     const nestedReturnFunc:()=>void = () => {

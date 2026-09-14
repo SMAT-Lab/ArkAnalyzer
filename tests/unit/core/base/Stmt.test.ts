@@ -332,6 +332,49 @@ describe('Stmt Source Code and Position Test', () => {
             expectFullPos(second!.getInvokeFullPosition(), 57, 11, 57, 20);
         });
 
+        it('starts at method name for (obj).callParenBase()', () => {
+            const stmt = findStmtByOriginalText('(obj).callParenBase();');
+            expectFullPos(stmt.getInvokeFullPosition(), 60, 7, 60, 22);
+        });
+
+        it('starts at method name for parenthesized property access (obj.m)()', () => {
+            const stmt = findStmtByOriginalText('(obj.m)();');
+            expectFullPos(stmt.getInvokeFullPosition(), 61, 6, 61, 10);
+        });
+
+        it('unwraps nested parentheses for ((parenCall2))()', () => {
+            const stmt = findStmtByOriginalText('((parenCall2))();');
+            expectFullPos(stmt.getInvokeFullPosition(), 62, 3, 62, 17);
+        });
+
+        it('starts at method name for non-null member call obj!.callNonNull()', () => {
+            const stmt = findStmtByOriginalText('obj!.callNonNull();');
+            expectFullPos(stmt.getInvokeFullPosition(), 63, 6, 63, 19);
+        });
+
+        it('unwraps non-null on callee callBang!()', () => {
+            const stmt = findStmtByOriginalText('callBang!();');
+            expectFullPos(stmt.getInvokeFullPosition(), 64, 1, 64, 12);
+        });
+
+        it('unwraps as-expression for (callAs as any)()', () => {
+            expectFullPos(findStmtByIrText('ptrinvoke %6').getInvokeFullPosition(), 65, 2, 65, 18);
+        });
+
+        it('starts at element key for obj[key]()', () => {
+            const stmt = findStmtByOriginalText('obj[key]();');
+            expectFullPos(stmt.getInvokeFullPosition(), 66, 5, 66, 11);
+        });
+
+        it('starts at string literal key for obj[\'lit\']()', () => {
+            const stmt = findStmtByOriginalText('obj[\'lit\']();');
+            expectFullPos(stmt.getInvokeFullPosition(), 67, 5, 67, 13);
+        });
+
+        it('covers multiline argument list for callMultilineArgs', () => {
+            expectFullPos(findStmtByIrText('.callMultilineArgs()').getInvokeFullPosition(), 68, 5, 70, 2);
+        });
+
         it('returns DEFAULT when statement has no invoke', () => {
             const stmt = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
             expect(stmt.getInvokeFullPosition()).toBe(FullPosition.DEFAULT);
