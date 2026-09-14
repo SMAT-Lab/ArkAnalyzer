@@ -16,7 +16,7 @@
 import { describe, expect, it, assert } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
-import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt, FullPosition } from '../../../../src';
+import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt, FullPosition } from '../../../../src';
 
 describe('Stmt Source Code and Position Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
@@ -320,6 +320,16 @@ describe('Stmt Source Code and Position Test', () => {
         it('returns position of call3 for stmt with call args', () => {
             const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
             expectFullPos(stmt.getInvokeFullPosition(), 19, 13, 19, 32);
+        });
+
+        it('returns distinct positions for same-name call chain fooSame().fooSame()', () => {
+            const sameNameStmts = callStmts?.filter((s) => s.toString().includes('fooSame')) ?? [];
+            const first = sameNameStmts.find((s) => s instanceof ArkAssignStmt);
+            const second = sameNameStmts.find((s) => s instanceof ArkInvokeStmt);
+            assert.isDefined(first);
+            assert.isDefined(second);
+            expectFullPos(first!.getInvokeFullPosition(), 57, 1, 57, 10);
+            expectFullPos(second!.getInvokeFullPosition(), 57, 11, 57, 20);
         });
 
         it('returns DEFAULT when statement has no invoke', () => {

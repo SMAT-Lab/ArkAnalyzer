@@ -19,7 +19,6 @@ import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } fro
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
 import { Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
-import { isPositiveFullPosition, matchCallOpenParen, offsetToAbsoluteLineCol } from '../common/StringUtils';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
 import { IRUtils } from '../common/IRUtils';
@@ -343,10 +342,10 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the absolute full position of this statement's invoke (best-effort).
-     * Uses the IR method name to locate the callee identifier inside the invoke operand's
-     * AST span for the start, and uses the fragment end (column to the right of `)`) as
-     * the end — same half-open convention as {@link getOriginFullPosition}.
+     * Returns the absolute full position of this statement's invoke.
+     * Start is the callee identifier; end is the CallExpression span end (right of `)`),
+     * same half-open convention as {@link getOriginFullPosition}.
+     * The span is captured from the AST at IR construction.
      * @returns Absolute `FullPosition` of `methodName(...)`, or `FullPosition.DEFAULT` if not found.
      */
     public getInvokeFullPosition(): FullPosition {
@@ -361,44 +360,7 @@ export abstract class Stmt {
         if (!invoke) {
             return FullPosition.DEFAULT;
         }
-        const methodName = invoke.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (!methodName) {
-            return FullPosition.DEFAULT;
-        }
-        return this.getInvokePosFromOperandSpan(methodName, invoke) ?? FullPosition.DEFAULT;
-    }
-
-    /**
-     * Locate `name(...)` inside the invoke operand's AST span.
-     * Start is the callee identifier; end is the CallExpression span end (right of `)`).
-     */
-    private getInvokePosFromOperandSpan(name: string, invoke: AbstractInvokeExpr): FullPosition | null {
-        const invokePos = this.getOperandOriginalPosition(invoke);
-        if (!isPositiveFullPosition(invokePos)) {
-            return null;
-        }
-        const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
-        const frag = arkFile?.getSourceTextByFullPosition(invokePos);
-        const startOffset = matchCallOpenParen(frag, name);
-        if (!frag || startOffset === null) {
-            return null;
-        }
-        const firstLine = invokePos.getFirstLine();
-        const firstCol = invokePos.getFirstCol();
-        let startLine: number;
-        let startCol: number;
-        if (startOffset === 0) {
-            startLine = firstLine;
-            startCol = firstCol;
-        } else if (firstLine === invokePos.getLastLine()) {
-            startLine = firstLine;
-            startCol = firstCol + startOffset;
-        } else {
-            const start = offsetToAbsoluteLineCol(frag, startOffset, firstLine, firstCol);
-            startLine = start.getLineNo();
-            startCol = start.getColNo();
-        }
-        return new FullPosition(startLine, startCol, invokePos.getLastLine(), invokePos.getLastCol());
+        return invoke.getInvokeFullPosition() ?? FullPosition.DEFAULT;
     }
 
     /**

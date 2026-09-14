@@ -53,6 +53,9 @@ strGeneric<'a>b'>();
 fnGeneric<(x: () => void) => string>();
 commentGeneric<T /* > */>();
 
+// same-name call chain
+fooSame().fooSame();
+
 // ptr invoke expr test
 function returnFunc1(): () => void {
     const nestedReturnFunc:()=>void = () => {

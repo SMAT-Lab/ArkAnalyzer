@@ -17,8 +17,6 @@ import { describe, expect, it } from 'vitest';
 import {
     buildLineStarts,
     extractSourceTextByFullPosition,
-    matchCallOpenParen,
-    offsetToAbsoluteLineCol,
 } from '../../../../src/core/common/StringUtils';
 import { FullPosition } from '../../../../src/core/base/Position';
 
@@ -30,75 +28,5 @@ describe('buildLineStarts / extractSourceTextByFullPosition cache', () => {
         const oneshot = extractSourceTextByFullPosition(text, pos);
         expect(cached).toBe('line2');
         expect(cached).toBe(oneshot);
-    });
-});
-
-describe('matchCallOpenParen', () => {
-    it('matches a plain call', () => {
-        expect(matchCallOpenParen('foo()', 'foo')).toBe(0);
-        expect(matchCallOpenParen('a1.call1()', 'call1')).toBe(3);
-    });
-
-    it('plain name( is preferred over a longer prefix identifier', () => {
-        expect(matchCallOpenParen('foofoo()', 'foo')).toBeNull();
-        expect(matchCallOpenParen('x.foo()', 'foo')).toBe(2);
-    });
-
-    it('matches a parenthesized callee', () => {
-        expect(matchCallOpenParen('(foo)()', 'foo')).toBe(1);
-    });
-
-    it('matches call with whitespace before paren via slow path', () => {
-        expect(matchCallOpenParen('foo ()', 'foo')).toBe(0);
-    });
-
-    it('matches nested generics', () => {
-        expect(matchCallOpenParen('foo<Bar<T>>()', 'foo')).toBe(0);
-    });
-
-    it('does not treat => as a generic closer', () => {
-        expect(matchCallOpenParen('foo<() => void>()', 'foo')).toBe(0);
-        expect(matchCallOpenParen('foo<(x: () => void) => string>()', 'foo')).toBe(0);
-    });
-
-    it('does not treat > or < inside string literal types as generic brackets', () => {
-        expect(matchCallOpenParen("foo<'a>b'>()", 'foo')).toBe(0);
-        expect(matchCallOpenParen('foo<"x<y">()', 'foo')).toBe(0);
-    });
-
-    it('does not treat > inside comments as a generic closer', () => {
-        expect(matchCallOpenParen('foo<T /* > */>()', 'foo')).toBe(0);
-        expect(matchCallOpenParen('foo<T // >\n>()', 'foo')).toBe(0);
-    });
-
-    it('does not treat > inside template literal types as a generic closer', () => {
-        expect(matchCallOpenParen('foo<`a>b`>()', 'foo')).toBe(0);
-        expect(matchCallOpenParen('foo<`${">"}`>()', 'foo')).toBe(0);
-    });
-
-    it('returns null when name is not followed by a call', () => {
-        expect(matchCallOpenParen('foo', 'foo')).toBeNull();
-        expect(matchCallOpenParen('(foo)', 'foo')).toBeNull();
-        expect(matchCallOpenParen('foo < bar', 'foo')).toBeNull();
-    });
-});
-
-describe('offsetToAbsoluteLineCol', () => {
-    it('keeps origin when offset is 0', () => {
-        const pos = offsetToAbsoluteLineCol('foo()', 0, 10, 5);
-        expect(pos.getLineNo()).toBe(10);
-        expect(pos.getColNo()).toBe(5);
-    });
-
-    it('adds offset on the same line', () => {
-        const pos = offsetToAbsoluteLineCol('a1.call1()', 3, 17, 1);
-        expect(pos.getLineNo()).toBe(17);
-        expect(pos.getColNo()).toBe(4);
-    });
-
-    it('handles newlines without allocating slices', () => {
-        const pos = offsetToAbsoluteLineCol('call\n()', 5, 47, 1);
-        expect(pos.getLineNo()).toBe(48);
-        expect(pos.getColNo()).toBe(1);
     });
 });

@@ -19,6 +19,7 @@ import { FullPosition } from '../base/Position';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import {
     AbstractBinopExpr,
+    AbstractInvokeExpr,
     ArkAwaitExpr,
     ArkCastExpr,
     ArkConditionExpr,
@@ -920,20 +921,58 @@ export class ArkValueTransformer {
 
         const invokeExprPosition = FullPosition.buildFromNode(callExpression, this.sourceFile);
 
+        let result: ValueAndStmts;
         if (calleeValue instanceof AbstractFieldRef) {
-            return this.handleFieldRefInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
-        }
-
-        if (calleeValue instanceof Local) {
-            return this.handleLocalInvoke(calleeValue, callExpression, args, invokeExprPosition, calleePositions, stmts);
-        }
-
-        if (calleeValue instanceof ArkArrayRef && ts.isElementAccessExpression(functionNameNode)) {
-            return this.handleArrayRefInvoke(calleeValue, functionNameNode as ts.ElementAccessExpression, args,
+            result = this.handleFieldRefInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
+        } else if (calleeValue instanceof Local) {
+            result = this.handleLocalInvoke(calleeValue, callExpression, args, invokeExprPosition, calleePositions, stmts);
+        } else if (calleeValue instanceof ArkArrayRef && ts.isElementAccessExpression(functionNameNode)) {
+            result = this.handleArrayRefInvoke(calleeValue, functionNameNode as ts.ElementAccessExpression, args,
                 invokeExprPosition, calleePositions, stmts);
+        } else {
+            result = this.handleDefaultInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
         }
+        if (result.value instanceof AbstractInvokeExpr) {
+            result.value.setInvokeFullPosition(this.buildInvokeFullPosition(functionNameNode, callExpression));
+        }
+        return result;
+    }
 
-        return this.handleDefaultInvoke(calleeValue, args, invokeExprPosition, calleePositions, stmts);
+    private buildInvokeFullPosition(
+        calleeNode: ts.LeftHandSideExpression,
+        callExpression: ts.CallExpression | ts.TaggedTemplateExpression,
+    ): FullPosition {
+        const nameNode: ts.Node = this.getCallNameNode(calleeNode);
+        const namePos: FullPosition = FullPosition.buildFromNode(nameNode, this.sourceFile);
+        const callPos: FullPosition = FullPosition.buildFromNode(callExpression, this.sourceFile);
+        return new FullPosition(
+            namePos.getFirstLine(),
+            namePos.getFirstCol(),
+            callPos.getLastLine(),
+            callPos.getLastCol(),
+        );
+    }
+
+    private getCallNameNode(callee: ts.Expression): ts.Node {
+        let expr: ts.Expression = callee;
+        while (true) {
+            if (ts.isParenthesizedExpression(expr) || ts.isNonNullExpression(expr)) {
+                expr = expr.expression;
+                continue;
+            }
+            if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+                expr = expr.expression;
+                continue;
+            }
+            break;
+        }
+        if (ts.isPropertyAccessExpression(expr)) {
+            return expr.name;
+        }
+        if (ts.isElementAccessExpression(expr)) {
+            return expr.argumentExpression;
+        }
+        return expr;
     }
 
     private handleFieldRefInvoke(

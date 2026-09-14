@@ -920,6 +920,14 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [[54, 1, 54, 28]],
         },
         {
+            text: '%5 = staticinvoke <@%unk/%unk: .fooSame()>()',
+            operandOriginalPositions: [[57, 1, 57, 10], [57, 1, 57, 10]],
+        },
+        {
+            text: 'instanceinvoke %5.<@%unk/%unk: .fooSame()>()',
+            operandOriginalPositions: [[57, 1, 57, 20], [57, 1, 57, 10]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],

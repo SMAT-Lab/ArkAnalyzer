@@ -20,6 +20,7 @@ import { Value } from '../base/Value';
 import { ExprUseReplacer } from './ExprUseReplacer';
 import { RefUseReplacer } from './RefUseReplacer';
 import { IRUtils } from './IRUtils';
+import { FullPosition } from '../base/Position';
 
 /**
  * Replace old use(Value) of a Stmt inplace
@@ -34,6 +35,7 @@ export class StmtUseReplacer {
     }
 
     public caseStmt(stmt: Stmt): void {
+        this.transferInvokeFullPosition();
         if (stmt instanceof ArkAssignStmt) {
             this.caseAssignStmt(stmt);
         } else if (stmt instanceof ArkInvokeStmt) {
@@ -44,6 +46,15 @@ export class StmtUseReplacer {
             this.caseIfStmt(stmt);
         } else if (stmt instanceof ArkThrowStmt) {
             this.caseThrowStmt(stmt);
+        }
+    }
+
+    private transferInvokeFullPosition(): void {
+        if (this.oldUse instanceof AbstractInvokeExpr && this.newUse instanceof AbstractInvokeExpr) {
+            const pos: FullPosition | undefined = this.oldUse.getInvokeFullPosition();
+            if (pos) {
+                this.newUse.setInvokeFullPosition(pos);
+            }
         }
     }
 
