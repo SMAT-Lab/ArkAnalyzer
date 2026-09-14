@@ -15,6 +15,7 @@
 'use strict';
 
 const { rmDirSafe } = require('./shared/fileUtils');
+const { isOhosTypescriptExcludedFile } = require('./ohosTypescriptVendorFiles');
 
 const fs = require('fs');
 const path = require('path');
@@ -23,6 +24,25 @@ const projectRoot = path.resolve(__dirname, '..');
 const sourceDir = path.join(projectRoot, 'node_modules', 'ohos-typescript');
 const targetDir = path.join(projectRoot, 'lib', 'node_modules', 'ohos-typescript');
 const markerPath = path.join(sourceDir, '.ohos-typescript-version');
+
+function collectRuntimeRelPaths(rootDir) {
+    const result = [];
+    function walk(absDir, relBase) {
+        for (const ent of fs.readdirSync(absDir, { withFileTypes: true })) {
+            const rel = relBase ? `${relBase}/${ent.name}` : ent.name;
+            const abs = path.join(absDir, ent.name);
+            if (ent.isDirectory()) {
+                walk(abs, rel);
+                continue;
+            }
+            if (!isOhosTypescriptExcludedFile(rel)) {
+                result.push(rel);
+            }
+        }
+    }
+    walk(rootDir, '');
+    return result;
+}
 
 if (!fs.existsSync(sourceDir)) {
     console.error('[vendorOhosTypescript] source not found:', sourceDir);
@@ -34,8 +54,18 @@ if (!process.env.CLOUD_BUILD_ENV && !fs.existsSync(markerPath)) {
     process.exit(1);
 }
 
-rmDirSafe(targetDir);
-fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-fs.cpSync(sourceDir, targetDir, { recursive: true });
+const runtimeFiles = collectRuntimeRelPaths(sourceDir);
+if (!runtimeFiles.includes('lib/typescript.js')) {
+    console.error('[vendorOhosTypescript] missing lib/typescript.js in source');
+    process.exit(1);
+}
 
-console.log('[vendorOhosTypescript] vendored to', targetDir);
+rmDirSafe(targetDir);
+for (const rel of runtimeFiles) {
+    const from = path.join(sourceDir, rel);
+    const to = path.join(targetDir, rel);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+}
+
+console.log(`[vendorOhosTypescript] vendored ${runtimeFiles.length} runtime files to ${targetDir}`);
