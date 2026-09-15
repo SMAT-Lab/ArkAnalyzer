@@ -21,7 +21,6 @@ import { Type } from '../base/Type';
 import { ArkBaseModel, BaseModelTag, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { Language } from './ArkFile';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 export enum FieldCategory {
     PROPERTY_DECLARATION = 0,
@@ -88,7 +87,7 @@ export class ArkField extends ArkBaseModel {
         if (this.sourceCode !== undefined) {
             return this.sourceCode;
         }
-        const code = extractSourceTextByFullPosition(this.getDeclaringArkClass().getDeclaringArkFile().getCode(), this.originFullPosition);
+        const code = this.getDeclaringArkClass().getDeclaringArkFile().getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
             return code;

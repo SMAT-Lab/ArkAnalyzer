@@ -852,6 +852,122 @@ export const CallExpression_Expect_IR = {
             [28, 39, 28, 46]],
         },
         {
+            text: '%2 = instanceinvoke obj.<@%unk/%unk: .call400()>()',
+            operandOriginalPositions: [[31, 12, 32, 15], [31, 12, 32, 15], [31, 12, 31, 15]],
+        },
+        {
+            text: 'a300 = instanceinvoke %2.<@%unk/%unk: .call500()>(para1)',
+            operandOriginalPositions: [[31, 5, 31, 9], [31, 12, 33, 20], [31, 12, 32, 15], [33, 14, 33, 19]],
+        },
+        {
+            text: '%3 = staticinvoke <@%unk/%unk: .call600()>()',
+            operandOriginalPositions: [[35, 12, 35, 21], [35, 12, 35, 21]],
+        },
+        {
+            text: '%4 = instanceinvoke %3.<@%unk/%unk: .call700()>()',
+            operandOriginalPositions: [[35, 12, 36, 15], [35, 12, 36, 15], [35, 12, 35, 21]],
+        },
+        {
+            text: 'a500 = instanceinvoke %4.<@%unk/%unk: .call800()>()',
+            operandOriginalPositions: [[35, 5, 35, 9], [35, 12, 37, 15], [35, 12, 36, 15]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .call900()>()',
+            operandOriginalPositions: [[40, 1, 40, 15], [40, 1, 40, 4]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .prefixCall10()>()',
+            operandOriginalPositions: [[43, 1, 43, 15]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .$tempCall()>()',
+            operandOriginalPositions: [[44, 1, 44, 12]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callSpace()>()',
+            operandOriginalPositions: [[45, 1, 45, 13]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .genericCall()>()',
+            operandOriginalPositions: [[46, 1, 46, 17]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callNewline()>()',
+            operandOriginalPositions: [[47, 1, 48, 3]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .parenCall()>()',
+            operandOriginalPositions: [[49, 1, 49, 14]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .nestedGeneric()>()',
+            operandOriginalPositions: [[50, 1, 50, 24]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .arrowGeneric()>()',
+            operandOriginalPositions: [[51, 1, 51, 27]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .strGeneric()>()',
+            operandOriginalPositions: [[52, 1, 52, 20]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .fnGeneric()>()',
+            operandOriginalPositions: [[53, 1, 53, 39]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .commentGeneric()>()',
+            operandOriginalPositions: [[54, 1, 54, 28]],
+        },
+        {
+            text: '%5 = staticinvoke <@%unk/%unk: .fooSame()>()',
+            operandOriginalPositions: [[57, 1, 57, 10], [57, 1, 57, 10]],
+        },
+        {
+            text: 'instanceinvoke %5.<@%unk/%unk: .fooSame()>()',
+            operandOriginalPositions: [[57, 1, 57, 20], [57, 1, 57, 10]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callParenBase()>()',
+            operandOriginalPositions: [[60, 1, 60, 22], [60, 2, 60, 5]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .m()>()',
+            operandOriginalPositions: [[61, 1, 61, 10], [61, 2, 61, 5]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .parenCall2()>()',
+            operandOriginalPositions: [[62, 1, 62, 17]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callNonNull()>()',
+            operandOriginalPositions: [[63, 1, 63, 19], [63, 1, 63, 4]],
+        },
+        {
+            text: 'staticinvoke <@%unk/%unk: .callBang()>()',
+            operandOriginalPositions: [[64, 1, 64, 12]],
+        },
+        {
+            text: '%6 = <any>callAs',
+            operandOriginalPositions: [[65, 2, 65, 15], [65, 2, 65, 15], [65, 2, 65, 8]],
+        },
+        {
+            text: 'ptrinvoke %6<@%unk/%unk: .%6()>()',
+            operandOriginalPositions: [[65, 1, 65, 18], [65, 2, 65, 8]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .key()>()',
+            operandOriginalPositions: [[66, 1, 66, 11], [66, 1, 66, 4]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .\'lit\'()>()',
+            operandOriginalPositions: [[67, 1, 67, 13], [67, 1, 67, 4]],
+        },
+        {
+            text: 'instanceinvoke obj.<@%unk/%unk: .callMultilineArgs()>(para1)',
+            operandOriginalPositions: [[68, 1, 70, 2], [68, 1, 68, 4], [69, 5, 69, 10]],
+        },
+        {
             text: 'return',
             operandOriginalPositions: [],
         },],
@@ -1031,8 +1147,8 @@ class LocalModification {
 export const PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR = `returnFunc1(): @expression/CallExpressionTest.ts: %dflt.%AM0() {
   label0:
     this = this: @expression/CallExpressionTest.ts: %dflt
-    nestedReturnFunc = %AM4$returnFunc1
-    ptrinvoke nestedReturnFunc<@expression/CallExpressionTest.ts: %dflt.%AM4$returnFunc1()>()
+    nestedReturnFunc = %AM7$returnFunc1
+    ptrinvoke nestedReturnFunc<@expression/CallExpressionTest.ts: %dflt.%AM7$returnFunc1()>()
     return nestedReturnFunc
 }
 `;
@@ -1047,7 +1163,7 @@ export const PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR = `callFuncReturne
 }
 `;
 
-export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
+export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM8$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
   label0:
     resolve = parameter0: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)
     this = this: @expression/CallExpressionTest.ts: %dflt

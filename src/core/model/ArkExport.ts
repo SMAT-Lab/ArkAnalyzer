@@ -21,7 +21,6 @@ import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT, ModifierType } from './ArkBaseM
 import { ArkError } from '../common/ArkError';
 import { ArkMetadataKind, CommentsMetadata } from './ArkMetadata';
 import { ArkNamespace } from './ArkNamespace';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 export type ExportSignature = NamespaceSignature | ClassSignature | MethodSignature | LocalSignature;
 
@@ -155,7 +154,7 @@ export class ExportInfo extends ArkBaseModel implements FromInfo {
         if (this.sourceCode !== undefined) {
             return this.sourceCode;
         }
-        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        const code = this.getDeclaringArkFile().getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
             return code;

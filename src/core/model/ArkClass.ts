@@ -28,7 +28,6 @@ import { FullPosition, INVALID_LINE } from '../base/Position';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { ModelUtils } from '../common/ModelUtils';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
@@ -133,7 +132,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (this.sourceCode !== undefined) {
             return this.sourceCode;
         }
-        const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.originFullPosition);
+        const code = this.getDeclaringArkFile().getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
         }

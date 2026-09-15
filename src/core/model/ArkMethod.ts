@@ -33,7 +33,6 @@ import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
 
@@ -108,14 +107,14 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             return this.sourceCode;
         }
         if (this.implOriginFullPosition !== undefined) {
-            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.implOriginFullPosition);
+            const code = this.getDeclaringArkFile().getSourceTextByFullPosition(this.implOriginFullPosition);
             if (code !== undefined) {
                 this.sourceCode = code;
             }
             return code;
         }
         if (this.declareOriginFullPositions && this.declareOriginFullPositions.length > 0) {
-            const code = extractSourceTextByFullPosition(this.getDeclaringArkFile().getCode(), this.declareOriginFullPositions[0]);
+            const code = this.getDeclaringArkFile().getSourceTextByFullPosition(this.declareOriginFullPositions[0]);
             if (code !== undefined) {
                 this.sourceCode = code;
             }

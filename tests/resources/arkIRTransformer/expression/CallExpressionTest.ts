@@ -27,6 +27,48 @@ let a40 = call30(para10, para20);
 // call chain
 let a200 = call200().call300(para100, para200);
 
+// multiline call chain
+let a300 = obj
+    .call400()
+    .call500(para1);
+
+let a500 = call600()
+    .call700()
+    .call800();
+
+// optional chain
+obj?.call900();
+
+// regex contract: identifier boundaries, $, whitespace, generics
+prefixCall10();
+$tempCall();
+callSpace ();
+genericCall<T>();
+callNewline
+();
+(parenCall)();
+nestedGeneric<Bar<T>>();
+arrowGeneric<() => void>();
+strGeneric<'a>b'>();
+fnGeneric<(x: () => void) => string>();
+commentGeneric<T /* > */>();
+
+// same-name call chain
+fooSame().fooSame();
+
+// unwrap / element-access / multiline-args for invoke position
+(obj).callParenBase();
+(obj.m)();
+((parenCall2))();
+obj!.callNonNull();
+callBang!();
+(callAs as any)();
+obj[key]();
+obj['lit']();
+obj.callMultilineArgs(
+    para1
+);
+
 // ptr invoke expr test
 function returnFunc1(): () => void {
     const nestedReturnFunc:()=>void = () => {

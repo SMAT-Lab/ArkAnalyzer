@@ -16,7 +16,7 @@
 import { describe, expect, it, assert } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
-import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt } from '../../../../src';
+import { ArkReturnStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Local, DEFAULT_ARK_METHOD_NAME, Stmt, FullPosition } from '../../../../src';
 
 describe('Stmt Source Code and Position Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
@@ -200,6 +200,184 @@ describe('Stmt Source Code and Position Test', () => {
             assert.isDefined(pos3);
             expect(pos3!.getFirstLine()).toBe(22);
             expect(pos3!.getFirstCol()).toBe(14);
+        });
+    });
+
+    describe('getInvokeFullPosition', () => {
+        const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+        const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
+        const callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
+
+        function findStmtByOriginalText(text: string): Stmt {
+            const stmt = callStmts?.find((s) => s.getOriginalText() === text);
+            assert.isDefined(stmt);
+            return stmt!;
+        }
+
+        function findStmtByIrText(substr: string): Stmt {
+            const stmt = callStmts?.find((s) => s.toString().includes(substr));
+            assert.isDefined(stmt);
+            return stmt!;
+        }
+
+        function expectFullPos(pos: FullPosition, firstLine: number, firstCol: number, lastLine: number, lastCol: number): void {
+            expect(pos.getFirstLine()).toBe(firstLine);
+            expect(pos.getFirstCol()).toBe(firstCol);
+            expect(pos.getLastLine()).toBe(lastLine);
+            expect(pos.getLastCol()).toBe(lastCol);
+        }
+
+        it('returns full position for static call call10()', () => {
+            const stmt = findStmtByOriginalText('call10();');
+            expectFullPos(stmt.getInvokeFullPosition(), 23, 1, 23, 9);
+        });
+
+        it('returns full position for member call call1()', () => {
+            const stmt = findStmtByOriginalText('a1.call1();');
+            expectFullPos(stmt.getInvokeFullPosition(), 17, 4, 17, 11);
+        });
+
+        it('returns full position for member call call2()', () => {
+            const stmt = findStmtByOriginalText('let a2 = a3.call2();');
+            expectFullPos(stmt.getInvokeFullPosition(), 18, 13, 18, 20);
+        });
+
+        it('returns invoke position on the IR stmt that owns that call', () => {
+            expectFullPos(findStmtByIrText('.call200()').getInvokeFullPosition(), 28, 12, 28, 21);
+            expectFullPos(findStmtByIrText('.call300()').getInvokeFullPosition(), 28, 22, 28, 47);
+        });
+
+        it('returns full position for multiline member call chain', () => {
+            expectFullPos(findStmtByIrText('.call400()').getInvokeFullPosition(), 32, 6, 32, 15);
+            expectFullPos(findStmtByIrText('.call500()').getInvokeFullPosition(), 33, 6, 33, 20);
+        });
+
+        it('returns full position for multiline static call chain', () => {
+            expectFullPos(findStmtByIrText('.call600()').getInvokeFullPosition(), 35, 12, 35, 21);
+            expectFullPos(findStmtByIrText('.call700()').getInvokeFullPosition(), 36, 6, 36, 15);
+            expectFullPos(findStmtByIrText('.call800()').getInvokeFullPosition(), 37, 6, 37, 15);
+        });
+
+        it('returns full position for optional chain call900()', () => {
+            const stmt = findStmtByOriginalText('obj?.call900();');
+            expectFullPos(stmt.getInvokeFullPosition(), 40, 6, 40, 15);
+        });
+
+        it('returns full position for prefixCall10 without matching call10 substring', () => {
+            const prefixStmt = findStmtByOriginalText('prefixCall10();');
+            expectFullPos(prefixStmt.getInvokeFullPosition(), 43, 1, 43, 15);
+        });
+
+        it('returns full position for $ identifier call', () => {
+            const stmt = findStmtByOriginalText('$tempCall();');
+            expectFullPos(stmt.getInvokeFullPosition(), 44, 1, 44, 12);
+        });
+
+        it('matches call with whitespace before parenthesis', () => {
+            const stmt = findStmtByOriginalText('callSpace ();');
+            expectFullPos(stmt.getInvokeFullPosition(), 45, 1, 45, 13);
+        });
+
+        it('matches simple generic type arguments', () => {
+            const stmt = findStmtByOriginalText('genericCall<T>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 46, 1, 46, 17);
+        });
+
+        it('matches call with newline before parenthesis', () => {
+            expectFullPos(findStmtByIrText('.callNewline()').getInvokeFullPosition(), 47, 1, 48, 3);
+        });
+
+        it('matches parenthesized callee (parenCall)()', () => {
+            const stmt = findStmtByOriginalText('(parenCall)();');
+            expectFullPos(stmt.getInvokeFullPosition(), 49, 2, 49, 14);
+        });
+
+        it('matches nested generic type arguments', () => {
+            const stmt = findStmtByOriginalText('nestedGeneric<Bar<T>>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 50, 1, 50, 24);
+        });
+
+        it('matches generic type arguments containing =>', () => {
+            const stmt = findStmtByOriginalText('arrowGeneric<() => void>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 51, 1, 51, 27);
+        });
+
+        it('matches generic type arguments with > inside a string literal', () => {
+            const stmt = findStmtByOriginalText('strGeneric<\'a>b\'>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 52, 1, 52, 20);
+        });
+
+        it('matches nested function types with =>', () => {
+            const stmt = findStmtByOriginalText('fnGeneric<(x: () => void) => string>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 53, 1, 53, 39);
+        });
+
+        it('matches generic type arguments with > inside a comment', () => {
+            const stmt = findStmtByOriginalText('commentGeneric<T /* > */>();');
+            expectFullPos(stmt.getInvokeFullPosition(), 54, 1, 54, 28);
+        });
+
+        it('returns position of call3 for stmt with call args', () => {
+            const stmt = findStmtByOriginalText('let a4 = a3.call3(para1, para2);');
+            expectFullPos(stmt.getInvokeFullPosition(), 19, 13, 19, 32);
+        });
+
+        it('returns distinct positions for same-name call chain fooSame().fooSame()', () => {
+            const sameNameStmts = callStmts?.filter((s) => s.toString().includes('fooSame')) ?? [];
+            const first = sameNameStmts.find((s) => s instanceof ArkAssignStmt);
+            const second = sameNameStmts.find((s) => s instanceof ArkInvokeStmt);
+            assert.isDefined(first);
+            assert.isDefined(second);
+            expectFullPos(first!.getInvokeFullPosition(), 57, 1, 57, 10);
+            expectFullPos(second!.getInvokeFullPosition(), 57, 11, 57, 20);
+        });
+
+        it('starts at method name for (obj).callParenBase()', () => {
+            const stmt = findStmtByOriginalText('(obj).callParenBase();');
+            expectFullPos(stmt.getInvokeFullPosition(), 60, 7, 60, 22);
+        });
+
+        it('starts at method name for parenthesized property access (obj.m)()', () => {
+            const stmt = findStmtByOriginalText('(obj.m)();');
+            expectFullPos(stmt.getInvokeFullPosition(), 61, 6, 61, 10);
+        });
+
+        it('unwraps nested parentheses for ((parenCall2))()', () => {
+            const stmt = findStmtByOriginalText('((parenCall2))();');
+            expectFullPos(stmt.getInvokeFullPosition(), 62, 3, 62, 17);
+        });
+
+        it('starts at method name for non-null member call obj!.callNonNull()', () => {
+            const stmt = findStmtByOriginalText('obj!.callNonNull();');
+            expectFullPos(stmt.getInvokeFullPosition(), 63, 6, 63, 19);
+        });
+
+        it('unwraps non-null on callee callBang!()', () => {
+            const stmt = findStmtByOriginalText('callBang!();');
+            expectFullPos(stmt.getInvokeFullPosition(), 64, 1, 64, 12);
+        });
+
+        it('unwraps as-expression for (callAs as any)()', () => {
+            expectFullPos(findStmtByIrText('ptrinvoke %6').getInvokeFullPosition(), 65, 2, 65, 18);
+        });
+
+        it('starts at element key for obj[key]()', () => {
+            const stmt = findStmtByOriginalText('obj[key]();');
+            expectFullPos(stmt.getInvokeFullPosition(), 66, 5, 66, 11);
+        });
+
+        it('starts at string literal key for obj[\'lit\']()', () => {
+            const stmt = findStmtByOriginalText('obj[\'lit\']();');
+            expectFullPos(stmt.getInvokeFullPosition(), 67, 5, 67, 13);
+        });
+
+        it('covers multiline argument list for callMultilineArgs', () => {
+            expectFullPos(findStmtByIrText('.callMultilineArgs()').getInvokeFullPosition(), 68, 5, 70, 2);
+        });
+
+        it('returns DEFAULT when statement has no invoke', () => {
+            const stmt = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
+            expect(stmt.getInvokeFullPosition()).toBe(FullPosition.DEFAULT);
         });
     });
 });

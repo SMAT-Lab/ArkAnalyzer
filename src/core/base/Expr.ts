@@ -49,6 +49,7 @@ import { ModelUtils } from '../common/ModelUtils';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { getCxxSourceFileExtensionSet } from '../../frontend/cppFrontend/utils/cppUtils';
 import { ArkAssignStmt } from './Stmt';
+import { FullPosition } from './Position';
 
 const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();
 
@@ -82,6 +83,8 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     private args: Value[];
     private realGenericTypes?: Type[];
     private spreadFlags?: boolean[]; // flags to indicate whether the argument is spread, which is undefined  when no spread argument exists.
+    /** Absolute `name(...)` span captured from the CallExpression AST at IR construction. */
+    private invokeFullPosition?: FullPosition;
 
     constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super();
@@ -89,6 +92,18 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         this.args = args;
         this.realGenericTypes = realGenericTypes;
         this.spreadFlags = spreadFlags;
+    }
+
+    /**
+     * Returns the absolute full position of `methodName(...)` captured from the AST,
+     * or undefined when this invoke was synthesized during IR construction.
+     */
+    public getInvokeFullPosition(): FullPosition | undefined {
+        return this.invokeFullPosition;
+    }
+
+    public setInvokeFullPosition(invokeFullPosition: FullPosition): void {
+        this.invokeFullPosition = invokeFullPosition;
     }
 
     /**

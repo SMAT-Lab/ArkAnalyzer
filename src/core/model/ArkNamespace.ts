@@ -24,7 +24,6 @@ import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { NAME_DELIMITER } from '../common/Const';
 import { SdkUtils } from '../common/SdkUtils';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 
 /**
  * @category core/model
@@ -127,9 +126,9 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
         if (this.sourceCodes !== undefined) {
             return this.sourceCodes;
         }
-        const fileCode = this.getDeclaringArkFile().getCode();
+        const file = this.getDeclaringArkFile();
         const codes = this.originFullPositions
-            .map(position => extractSourceTextByFullPosition(fileCode, position))
+            .map(position => file.getSourceTextByFullPosition(position))
             .filter((code): code is string => code !== undefined);
         this.sourceCodes = codes;
         return codes;

@@ -19,7 +19,6 @@ import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } fro
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
 import { Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
-import { extractSourceTextByFullPosition } from '../common/StringUtils';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
 import { IRUtils } from '../common/IRUtils';
@@ -335,11 +334,33 @@ export abstract class Stmt {
             return undefined;
         }
         const arkFile = this.cfg?.getDeclaringMethod()?.getDeclaringArkFile();
-        const code = extractSourceTextByFullPosition(arkFile?.getCode(), this.originFullPosition);
+        const code = arkFile?.getSourceTextByFullPosition(this.originFullPosition);
         if (code !== undefined) {
             this.sourceCode = code;
         }
         return code;
+    }
+
+    /**
+     * Returns the absolute full position of this statement's invoke.
+     * Start is the callee identifier; end is the CallExpression span end (right of `)`),
+     * same half-open convention as {@link getOriginFullPosition}.
+     * The span is captured from the AST at IR construction.
+     * @returns Absolute `FullPosition` of `methodName(...)`, or `FullPosition.DEFAULT` if not found.
+     */
+    public getInvokeFullPosition(): FullPosition {
+        let invoke: AbstractInvokeExpr | undefined;
+        if (this instanceof ArkInvokeStmt) {
+            invoke = this.getInvokeExpr();
+        } else if (this instanceof ArkAssignStmt && this.getRightOp() instanceof AbstractInvokeExpr) {
+            invoke = this.getRightOp() as AbstractInvokeExpr;
+        } else {
+            return FullPosition.DEFAULT;
+        }
+        if (!invoke) {
+            return FullPosition.DEFAULT;
+        }
+        return invoke.getInvokeFullPosition() ?? FullPosition.DEFAULT;
     }
 
     /**
