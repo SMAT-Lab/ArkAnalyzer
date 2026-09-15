@@ -119,12 +119,12 @@ describe('SignatureCanonicalizerRegistry Test', () => {
         expect(id).equals(-1);
     });
 
-    it('static getArkFileById returns undefined for unregistered ID', () => {
-        expect(reg.getArkFileById(999)).toBeUndefined();
+    it('static getFileById returns undefined for unregistered ID', () => {
+        expect(reg.getFileById(999)).toBeUndefined();
     });
 
-    it('static getArkClassById returns undefined for unregistered ID', () => {
-        expect(reg.getArkClassById(999)).toBeUndefined();
+    it('static getClassById returns undefined for unregistered ID', () => {
+        expect(reg.getClassById(999)).toBeUndefined();
     });
 
     it('methodSigCanonicalizer stores models', () => {
@@ -283,10 +283,10 @@ describe('DEFAULT signature singleton Test', () => {
         expect(ClassSignature.DEFAULT).toBe(ClassSignature.DEFAULT);
     });
 
-    it('isDefault is true for value-equal instances (even not interned)', () => {
-        // Constructed directly, never passed to getId — the hash lookup still finds sigID 0.
-        expect(new FileSignature(UNKNOWN_PROJECT_NAME, UNKNOWN_FILE_NAME).isDefault()).toBe(true);
-        expect(new ClassSignature(UNKNOWN_CLASS_NAME, FileSignature.DEFAULT, null).isDefault()).toBe(true);
+    it('value-equal DEFAULT instances intern to sigID 0 (even not explicitly registered)', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        expect(reg.fileSigCanonicalizer.getExistingId(new FileSignature(UNKNOWN_PROJECT_NAME, UNKNOWN_FILE_NAME))).toBe(0);
+        expect(reg.classSigCanonicalizer.getExistingId(new ClassSignature(UNKNOWN_CLASS_NAME, FileSignature.DEFAULT, null))).toBe(0);
     });
 
     it('signatures built from UNKNOWN constants intern to the DEFAULT sigID 0', () => {
@@ -300,36 +300,35 @@ describe('DEFAULT signature singleton Test', () => {
         expect(reg.namespaceSigCanonicalizer.getExistingId(new NamespaceSignature(UNKNOWN_NAMESPACE_NAME, FileSignature.DEFAULT, null))).toBe(0);
     });
 
-    it('isDefault is false for non-default signatures', () => {
+    it('isUnclear is false for non-default signatures', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/a.ts');
         reg.fileSigCanonicalizer.getId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
         reg.classSigCanonicalizer.getId(classSig);
-        expect(fileSig.isDefault()).toBe(false);
-        expect(classSig.isDefault()).toBe(false);
+        expect(fileSig.isUnclear()).toBe(false);
+        expect(classSig.isUnclear()).toBe(false);
         expect(
-            new MethodSignature(reg.classSigCanonicalizer.getId(classSig), new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isDefault()
+            new MethodSignature(reg.classSigCanonicalizer.getId(classSig), new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()
         ).toBe(false);
-        expect(new FieldSignature('f', reg.classSigCanonicalizer.getId(classSig), UnknownType.getInstance(), false).isDefault()).toBe(false);
+        expect(new FieldSignature('f', reg.classSigCanonicalizer.getId(classSig), UnknownType.getInstance(), false).isUnclear()).toBe(false);
     });
 
-    it('isDefault survives registry disposal (value-based, no identity drift)', () => {
-        const oldDefault = FileSignature.DEFAULT;
+    it('isUnclear is false for DEFAULT signatures (field-value check, no identity drift)', () => {
+        // After the isDefault/isUnclear merge, DEFAULT is distinguished from unclear stubs
+        // by field values (name '%unk' + fileSigID 0), not by registry identity —
+        // so old/equal/new instances all report isUnclear() === false consistently.
         const equalInstance = new FileSignature(UNKNOWN_PROJECT_NAME, UNKNOWN_FILE_NAME);
-        expect(oldDefault.isDefault()).toBe(true);
-        expect(equalInstance.isDefault()).toBe(true);
+        expect(equalInstance.isUnclear()).toBe(false);
 
         SignatureCanonicalizerRegistry.dispose();
-        // After rebuild the canonical instance is a new object; the old reference still
-        // reports isDefault() correctly (no identity drift), and the getter resolves again.
         const newDefault = FileSignature.DEFAULT;
-        expect(newDefault.isDefault()).toBe(true);
-        expect(oldDefault.isDefault()).toBe(true);
-        expect(equalInstance.isDefault()).toBe(true);
+        const oldDefault = equalInstance;
+        expect(newDefault.isUnclear()).toBe(false);
+        expect(oldDefault.isUnclear()).toBe(false);
     });
 
-    it('isUnclear semantics are preserved with isDefault', () => {
+    it('isUnclear semantics: direct field check (merged isDefault), formal ID means resolved', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/a.ts');
         reg.fileSigCanonicalizer.getId(fileSig);
@@ -343,13 +342,19 @@ describe('DEFAULT signature singleton Test', () => {
             reg.classSigCanonicalizer.getId(clearClassSig),
             new MethodSubSignature('m', [], UnknownType.getInstance(), false)
         );
+        // A positive formal declaring ID means the declaring class went through the formal
+        // path — the method is not unclear, even if the class's own file happens to be
+        // DEFAULT (architecturally, unclear classes go through temp, not formal; this test
+        // interns one for coverage of the edge case).
         const unclearMethodSig = new MethodSignature(
             reg.classSigCanonicalizer.getId(unclearClassSig),
             new MethodSubSignature('m', [], UnknownType.getInstance(), false)
         );
         expect(clearMethodSig.isUnclear()).toBe(false);
-        expect(unclearMethodSig.isUnclear()).toBe(true);
-        expect(MethodSignature.DEFAULT.isUnclear()).toBe(false);
+        expect(unclearMethodSig.isUnclear()).toBe(false);
+        // DEFAULT method signature: declaring side is the DEFAULT class (SigID 0) —
+        // "method on an unknown class", unclear by the non-positive-ID semantics.
+        expect(MethodSignature.DEFAULT.isUnclear()).toBe(true);
     });
 });
 
@@ -679,7 +684,7 @@ describe('MethodSignature SigID constructor Test', () => {
         expect(r1.getHashCode()).toBe(inA.getHashCode());
     });
 
-    it('isUnclear via SigID: DEFAULT declaring class (ID 0) is not unclear; unknown file is', () => {
+    it('isUnclear via SigID: positive formal ID means resolved; non-positive (-1 temp, 0 DEFAULT declaring) is unclear', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/msig-c.ts');
         reg.fileSigCanonicalizer.getId(fileSig);
@@ -687,9 +692,11 @@ describe('MethodSignature SigID constructor Test', () => {
         const unclearID = reg.classSigCanonicalizer.getId(new ClassSignature('Unclear', FileSignature.DEFAULT, null));
 
         expect(new MethodSignature(clearID, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(false);
-        expect(new MethodSignature(unclearID, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(true);
-        // DEFAULT declaring class (SigID 0): not unclear
-        expect(new MethodSignature(0, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(false);
+        // A positive formal ID means resolved, even if the class's own file is DEFAULT
+        // (architecturally, unclear classes go through temp).
+        expect(new MethodSignature(unclearID, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(false);
+        // DEFAULT declaring class (SigID 0): "method on an unknown class" — unclear
+        expect(new MethodSignature(0, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(true);
     });
 
     it('getDeclaringClassSigID returns the interned ID directly (no lazy interning)', () => {
@@ -959,7 +966,7 @@ describe('Builtin stub cache Test', () => {
 });
 
 describe('BySig lookup read-only Test', () => {
-    it('getArkClassBySig never interns the queried signature', () => {
+    it('getClassBySig never interns the queried signature', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const before = reg.classSigCanonicalizer.size();
         // Only the file signature is interned; the class value stays unregistered on purpose.
@@ -967,13 +974,13 @@ describe('BySig lookup read-only Test', () => {
         reg.fileSigCanonicalizer.getId(fileSig);
         const unregistered = new ClassSignature('NeverRegistered', fileSig, null);
 
-        expect(reg.getArkClassBySig(unregistered)).toBeUndefined();
+        expect(reg.getClassBySig(unregistered)).toBeUndefined();
         // No interning side effect: the signature table is unchanged
         expect(reg.classSigCanonicalizer.size()).toBe(before);
         expect(reg.classSigCanonicalizer.getExistingId(unregistered)).toBe(-1);
     });
 
-    it('getArkClassBySig resolves after the class is registered', () => {
+    it('getClassBySig resolves after the class is registered', () => {
         const scene = new Scene();
         const arkFile = new ArkFile(Language.TYPESCRIPT);
         arkFile.setScene(scene);
@@ -985,17 +992,17 @@ describe('BySig lookup read-only Test', () => {
         arkFile.addArkClass(arkClass);
 
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const resolved = reg.getArkClassBySig(new ClassSignature('BySigHost', fileSig, null));
+        const resolved = reg.getClassBySig(new ClassSignature('BySigHost', fileSig, null));
         expect(resolved).toBe(arkClass);
     });
 
-    it('getArkNamespaceBySig never interns and resolves registered namespaces', () => {
+    it('getNamespaceBySig never interns and resolves registered namespaces', () => {
         const scene = new Scene();
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const unregisteredNs = new NamespaceSignature('NeverRegisteredNs', reg.fileSigCanonicalizer.getId(new FileSignature('proj', 'src/never-ns.ts')));
         const before = reg.namespaceSigCanonicalizer.size();
 
-        expect(reg.getArkNamespaceBySig(unregisteredNs)).toBeUndefined();
+        expect(reg.getNamespaceBySig(unregisteredNs)).toBeUndefined();
         expect(reg.namespaceSigCanonicalizer.size()).toBe(before);
         expect(reg.namespaceSigCanonicalizer.getExistingId(unregisteredNs)).toBe(-1);
 
@@ -1006,50 +1013,60 @@ describe('BySig lookup read-only Test', () => {
         arkFile.setFileSignature(fileSig);
         const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
         const ns = new ArkNamespace(fileSigID, undefined, new NamespaceSignature('NsBySigHost', fileSigID));
-        expect(reg.getArkNamespaceBySig(new NamespaceSignature('NsBySigHost', fileSigID))).toBe(ns);
+        expect(reg.getNamespaceBySig(new NamespaceSignature('NsBySigHost', fileSigID))).toBe(ns);
     });
 
-    it('getArkFileBySig and getArkFieldBySig never intern the queried signature', () => {
+    it('getFileBySig and getFieldBySig never intern the queried signature', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileBefore = reg.fileSigCanonicalizer.size();
         const fieldBefore = reg.fieldSigCanonicalizer.size();
 
-        expect(reg.getArkFileBySig(new FileSignature('proj', 'src/never-file.ts'))).toBeUndefined();
+        expect(reg.getFileBySig(new FileSignature('proj', 'src/never-file.ts'))).toBeUndefined();
         expect(reg.fileSigCanonicalizer.size()).toBe(fileBefore);
 
         const fieldSig = new FieldSignature('neverField', 9999, UnknownType.getInstance(), false);
-        expect(reg.getArkFieldBySig(fieldSig)).toBeUndefined();
+        expect(reg.getFieldBySig(fieldSig)).toBeUndefined();
         expect(reg.fieldSigCanonicalizer.size()).toBe(fieldBefore);
         expect(reg.fieldSigCanonicalizer.getExistingId(fieldSig)).toBe(-1);
     });
 });
 
-describe('Value-object overload fail-fast Test', () => {
-    it('ClassSignature throws when the declaring file signature is not interned', () => {
-        const fileSig = new FileSignature('proj', 'src/failfast-a.ts');
-        expect(() => new ClassSignature('Host', fileSig, null)).toThrow(/not interned/);
+describe('Value-object overload defensive fallback Test (mode B\', work item P)', () => {
+    it('ClassSignature defaults the declaring FileSigID to 0 when not interned (composite becomes unclear)', () => {
+        const fileSig = new FileSignature('proj', 'src/fallback-a.ts');
+        const sig = new ClassSignature('Host', fileSig, null);
+        expect(sig.getDeclaringFileSigID()).toBe(0);
+        expect(sig.isUnclear()).toBe(true);
     });
 
-    it('NamespaceSignature throws when the declaring file signature is not interned', () => {
-        const fileSig = new FileSignature('proj', 'src/failfast-b.ts');
-        expect(() => new NamespaceSignature('NS', fileSig, null)).toThrow(/not interned/);
+    it('NamespaceSignature defaults the declaring FileSigID to 0 when not interned', () => {
+        const fileSig = new FileSignature('proj', 'src/fallback-b.ts');
+        const sig = new NamespaceSignature('NS', fileSig, null);
+        expect(sig.getDeclaringFileSigID()).toBe(0);
+        expect(sig.isUnclear()).toBe(true);
     });
 
-    it('MethodSignature throws when a clear declaring class signature is not interned', () => {
+    it('MethodSignature routes to temp when a clear declaring class signature is not interned', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const fileSig = new FileSignature('proj', 'src/failfast-c.ts');
+        const fileSig = new FileSignature('proj', 'src/fallback-c.ts');
         reg.fileSigCanonicalizer.getId(fileSig);
-        // Clear (file interned) but the class value itself was never interned.
+        // Clear (file interned) but the class value itself was never interned → error log + tempClass fallback.
         const classSig = new ClassSignature('UninternedHost', fileSig, null);
         const sub = new MethodSubSignature('m', [], UnknownType.getInstance(), false);
-        expect(() => new MethodSignature(classSig, sub)).toThrow(/not interned/);
+        const methodSig = new MethodSignature(classSig, sub);
+        expect(methodSig.isUnclear()).toBe(true);
+        expect(methodSig.getDeclaringClassSigID()).toBe(-1);
+        expect(methodSig.getDeclaringClassTempSigID()).toBeDefined();
     });
 
-    it('FieldSignature throws when a clear declaring class signature is not interned', () => {
+    it('FieldSignature routes to temp when a clear declaring class signature is not interned', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const fileSig = new FileSignature('proj', 'src/failfast-d.ts');
+        const fileSig = new FileSignature('proj', 'src/fallback-d.ts');
         reg.fileSigCanonicalizer.getId(fileSig);
         const classSig = new ClassSignature('UninternedHost', fileSig, null);
-        expect(() => new FieldSignature('f', classSig, UnknownType.getInstance(), false)).toThrow(/not interned/);
+        const fieldSig = new FieldSignature('f', classSig, UnknownType.getInstance(), false);
+        expect(fieldSig.isUnclear()).toBe(true);
+        expect(fieldSig.getDeclaringClassSigID()).toBe(-1);
+        expect(fieldSig.getDeclaringClassTempSigID()).toBeDefined();
     });
 });

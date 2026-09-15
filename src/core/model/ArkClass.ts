@@ -393,12 +393,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public setSignature(classSig: ClassSignature): void {
         const existing = this.registry.classSigCanonicalizer.getExistingId(classSig);
-        this.classSigID = this.registry.classSigCanonicalizer.getId(classSig);
-        // 新值首建 → 注册；驱逐态恢复（sig 值残留、model 已被 removeClass 删除）→ 补注册
-        //（否则 reload 时 getDeclaringArkClass 查不到 model，genDefaultArkMethod 链 NPE）；
+        this.classSigID = existing >= 0 ? existing : this.registry.classSigCanonicalizer.getId(classSig);
+        // 新值首建 → 注册；
+        // 驱逐态恢复（sig 值残留、model 已被 removeClass 删除）→ 补注册（否则 reload 时 getDeclaringArkClass 查不到 model，genDefaultArkMethod 链 NPE）；
         // 已有别的 model 持有该签名 → 不覆盖（防"后 setSignature 者顶替"写穿）。
         if (existing < 0 || this.registry.classSigCanonicalizer.getModel(existing) === undefined) {
-            SignatureCanonicalizerRegistry.registerClass(this);
+            this.registry.registerClass(this);
         }
     }
 
@@ -636,12 +636,10 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         const id = field.getFieldSigID();
         if (field.isStatic()) {
             if (!this.hasTopStaticFieldWithID(id)) {
-                SignatureCanonicalizerRegistry.registerField(field);
                 this.addTopStaticFieldSigID(id);
             }
         } else {
             if (!this.hasTopFieldWithID(id)) {
-                SignatureCanonicalizerRegistry.registerField(field);
                 this.addTopFieldSigID(id);
             }
         }
@@ -1258,7 +1256,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     /** @internal Returns the direct instance field with the given SigID, or undefined. */
     public getTopFieldByID(id: number): ArkField | undefined {
         if (this.hasTopFieldWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkFieldById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getFieldById(id);
         }
         return undefined;
     }
@@ -1328,7 +1326,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     /** @internal Returns the direct static field with the given SigID, or undefined. */
     public getTopStaticFieldByID(id: number): ArkField | undefined {
         if (this.hasTopStaticFieldWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkFieldById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getFieldById(id);
         }
         return undefined;
     }
@@ -1436,14 +1434,14 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             const rtn = this.hasTopStaticFieldWithID(id);
             if (rtn) {
                 this.removeTopStaticFieldSigID(id);
-                SignatureCanonicalizerRegistry.removeField(field);
+                this.registry.removeField(field);
             }
             return rtn;
         }
         const rtn = this.hasTopFieldWithID(id);
         if (rtn) {
             this.removeTopFieldSigID(id);
-            SignatureCanonicalizerRegistry.removeField(field);
+            this.registry.removeField(field);
         }
         return rtn;
     }
@@ -1457,7 +1455,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         } else {
             rtn = this.removeTopMethodSigID(id);
         }
-        rtn &&= SignatureCanonicalizerRegistry.removeMethod(method);
+        rtn &&= this.registry.removeMethod(method);
         return rtn;
     }
 

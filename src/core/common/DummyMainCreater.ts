@@ -42,7 +42,6 @@ import { DUMMY_CLASS, DUMMY_FILE, DUMMY_METHOD } from './Const';
 import { ArkThisRef } from '../base/Ref';
 import { COMPONENT } from './EtsConst';
 import { FullPosition } from '../base/Position';
-import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const COMPONENT_BASE_CLASSES = ['CustomComponent', 'ViewPU'];
 const ABILITY_BASE_CLASSES = ['UIExtensionAbility', 'Ability', 'FormExtensionAbility', 'UIAbility', 'BackupExtensionAbility'];
@@ -160,7 +159,6 @@ export class DummyMainCreater {
         this.dummyMain.setIsGeneratedFlag(true);
         checkAndUpdateMethod(this.dummyMain, dummyMainClass);
         dummyMainClass.addMethod(this.dummyMain);
-        SignatureCanonicalizerRegistry.registerMethod(this.dummyMain);
 
         // step4: create instance local for each class
         for (const cls of this.entryClasses) {

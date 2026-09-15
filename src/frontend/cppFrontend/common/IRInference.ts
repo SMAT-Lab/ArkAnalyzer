@@ -138,11 +138,12 @@ export class IRInference {
     }
 
     public static inferStaticInvokeExpr(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr {
-        const fileSignature = expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature();
-        // Builtin stubs carry FileSignature.DEFAULT, so the DEFAULT check alone lets them
-        // through to inference (the old reference comparison against the core ES2015 virtual
-        // signature was always true for CXX/std signatures — dead condition, now removed).
-        if (!fileSignature.isDefault()) {
+        // Builtin stubs carry FileSignature.DEFAULT (FileSigID 0), so the ID > 0 check lets
+        // real files through to inference (the old reference comparison against the core
+        // ES2015 virtual signature was always true for CXX/std signatures — dead condition, now removed).
+        // Pure field read: FileSigID 0 = DEFAULT (internDefaults 固化), > 0 = real file.
+        const fileSigID = expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSigID();
+        if (fileSigID > 0) {
             return expr;
         }
         const arkClass = arkMethod.getDeclaringArkClass();
@@ -188,7 +189,7 @@ export class IRInference {
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             CxxModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile(), arkClass) ??
-            SignatureCanonicalizerRegistry.getSdkGlobal(methodName);
+            SdkUtils.getSdkGlobal(methodName);
         let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
         if (method) {
             signature = method.matchMethodSignature(expr.getArgs());
@@ -521,7 +522,7 @@ export class IRInference {
     }
 
     private static inferInvokeExprWithArray(methodName: string, expr: AbstractInvokeExpr, baseType: ArrayType, scene: Scene): AbstractInvokeExpr | null {
-        const arrayInterface = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+        const arrayInterface = SdkUtils.getSdkGlobal(Builtin.ARRAY);
         if (arrayInterface instanceof ArkClass) {
             return this.inferInvokeExpr(expr, new ClassType(arrayInterface.getSignature(), [baseType.getBaseType()]), methodName, scene);
         } else if (methodName === Builtin.ITERATOR_FUNCTION) {
@@ -537,7 +538,7 @@ export class IRInference {
             expr.setMethodSignature(baseType.getMethodSignature());
             return expr;
         }
-        const funcInterface = SignatureCanonicalizerRegistry.getSdkGlobal(FUNCTION);
+        const funcInterface = SdkUtils.getSdkGlobal(FUNCTION);
         if (funcInterface instanceof ArkClass) {
             const method = ModelUtils.findPropertyInClass(methodName, funcInterface);
             if (method instanceof ArkMethod) {
@@ -557,7 +558,7 @@ export class IRInference {
     ): AbstractInvokeExpr | null {
         let declaredClass = scene.getClass(baseType.getClassSignature());
         if (!declaredClass) {
-            const globalClass = SignatureCanonicalizerRegistry.getSdkGlobal(baseType.getClassSignature().getClassName());
+            const globalClass = SdkUtils.getSdkGlobal(baseType.getClassSignature().getClassName());
             if (globalClass instanceof ArkClass) {
                 declaredClass = globalClass;
             }

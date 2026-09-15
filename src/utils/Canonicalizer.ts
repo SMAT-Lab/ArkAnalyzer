@@ -64,8 +64,8 @@ function hashString(value: string): number {
  * @template T - The type of items to canonicalize
  */
 export class Canonicalizer<T> {
-    // Array from integer ID to Item
-    private list: T[] = [];
+    // Array from integer ID to Item; undefined = removed via removeAt (ID is not recycled).
+    private list: (T | undefined)[] = [];
 
     private keyExtractor: (item: T) => unknown;
     private equalityComparer?: (a: T, b: T) => boolean;
@@ -168,7 +168,19 @@ export class Canonicalizer<T> {
     }
 
     /**
-     * Get the total number of unique items seen so far.
+     * Remove the item at the given ID by setting the slot to undefined.
+     * The ID is NOT recycled — subsequent registrations still get fresh dense IDs.
+     * Note: does NOT remove the Symbol property from the object (if objectIdentity strategy);
+     * the Symbol remains for audit traceability.
+     */
+    public removeAt(id: number): void {
+        if (id >= 0 && id < this.list.length) {
+            this.list[id] = undefined;
+        }
+    }
+
+    /**
+     * Get the total number of unique items seen so far (includes removed slots).
      */
     public size(): number {
         return this.list.length;
@@ -515,6 +527,9 @@ export class Canonicalizer<T> {
         const items = this.list;
         this.list = [];
         for (const item of items) {
+            if (item === undefined) {
+                continue; // Skip removed slots (IDs not recycled, holes preserved by nextById).
+            }
             const key = this.keyExtractor(item) as number;
             const slot = this.findNumberSlot(key);
             if (this.numberOccupied[slot] === 0) {
@@ -530,6 +545,9 @@ export class Canonicalizer<T> {
         const items = this.list;
         this.list = [];
         for (const item of items) {
+            if (item === undefined) {
+                continue; // Skip removed slots.
+            }
             const key = this.keyExtractor(item) as string;
             const hash = hashString(key);
             const slot = this.findStringSlot(hash, key);

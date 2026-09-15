@@ -32,6 +32,9 @@ import {
 import { Local } from './Local';
 import { Constant } from './Constant';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Type');
 
 /**
  * @category core/base/type
@@ -530,15 +533,20 @@ export class FunctionType extends Type {
     constructor(methodSignature: MethodSignature, realGenericTypes?: Type[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与 ClassType 同构的路由：formal 只读命中（不写 formal 空间，防无 model
-        // 空洞）→ 未命中（unclear）→ temp 索引表登记（slot 强持有传入实例）。
-        const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
-        if (existingId !== -1) {
-            this.methodSigID = existingId;
-            this.tempSigID = undefined;
-        } else {
+        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。不写 formal 空间。
+        if (methodSignature.isUnclear()) {
             this.methodSigID = -1;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+        } else {
+            const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
+            if (existingId !== -1) {
+                this.methodSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`FunctionType: clear MethodSignature not interned — routing to temp defensively: ${methodSignature.toString()}`);
+                this.methodSigID = -1;
+                this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+            }
         }
         this.realGenericTypes = realGenericTypes;
     }
@@ -661,20 +669,19 @@ export class ClassType extends Type {
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // formal 只读命中：值查找（getExistingId），命中即用——ClassType 不写
-        // formal 空间（原盲写 getId 是无 model 空洞的根源：clear 但未注册的签名
-        // 值一旦进入 formal，后到的真实 ArkClass.setSignature 会因 existing≥0
-        // 跳过注册，形成永久洞 + getClass 查询失效）。
-        const existingId = reg.classSigCanonicalizer.getExistingId(classSignature);
-        if (existingId !== -1) {
-            this.classSigID = existingId;
-        } else {
-            // temp 兜底（不区分 isUnclear）：索引表登记（同实例复用 ID，新实例
-            // 新 ID），slot 强持有传入实例（取回逐字节等价于历史锚定）。clear 未
-            // 注册签名与 unclear stub 统一走此路径；解析（真实类后到注册后）由
-            // 消费方的值查找（getArkClassBySig 等）完成。
+        // 模式 B' 路由（isUnclear 优先）：unclear → temp（声明链文件未知，需推导解析）；clear + formal 命中 → formal ID；clear + formal miss → error log + temp 兜底（编程异常，不 throw）。Type 构造器不写 formal 空间（不调 getId）。
+        if (classSignature.isUnclear()) {
             this.classSigID = -1;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
+        } else {
+            const existingId = reg.classSigCanonicalizer.getExistingId(classSignature);
+            if (existingId !== -1) {
+                this.classSigID = existingId;
+            } else {
+                logger.error(`ClassType: clear ClassSignature not interned — routing to temp defensively: ${classSignature.toString()}`);
+                this.classSigID = -1;
+                this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
+            }
         }
         this.realGenericTypes = realGenericTypes;
     }
@@ -709,18 +716,21 @@ export class ClassType extends Type {
 
     public setClassSignature(newClassSignature: ClassSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与构造器同构的路由：formal 只读命中 → 直接使用；未命中（无论 unclear
-        // 还是 clear 未注册）→ temp 索引表登记。
+        // 模式 B' 路由（与构造器同构）：unclear → temp；clear + formal 命中 → formal（旧 temp 经 retireWithReplacement 显式迁移——置空 slot + 记录 formal 归宿，共享该 temp 签名的其他持有者经替换记录直达 formal）；clear + formal miss → error log + temp 兜底。
+        if (newClassSignature.isUnclear()) {
+            this.classSigID = -1;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
+            return;
+        }
         const existingId = reg.classSigCanonicalizer.getExistingId(newClassSignature);
         if (existingId !== -1) {
-            // B 轮（索引表）：旧 temp 注册的显式迁移——置空 slot + 记录 formal
-            // 归宿（共享该 temp 签名的其他持有者经替换记录直达 formal）。
             if (this.tempSigID !== undefined) {
                 reg.tempClassSigCanonicalizer.retireWithReplacement(this.tempSigID, existingId);
             }
             this.classSigID = existingId;
             this.tempSigID = undefined;
         } else {
+            logger.error(`ClassType: clear ClassSignature not interned (setClassSignature) — routing to temp defensively: ${newClassSignature.toString()}`);
             this.classSigID = -1;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
         }
@@ -1170,14 +1180,20 @@ export class LexicalEnvType extends Type {
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与 ClassType 同构的路由：formal 只读命中 → temp 索引表登记。
-        const existingId = reg.methodSigCanonicalizer.getExistingId(nestedMethod);
-        if (existingId !== -1) {
-            this.nestedMethodSigID = existingId;
-            this.tempSigID = undefined;
-        } else {
+        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。
+        if (nestedMethod.isUnclear()) {
             this.nestedMethodSigID = -1;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
+        } else {
+            const existingId = reg.methodSigCanonicalizer.getExistingId(nestedMethod);
+            if (existingId !== -1) {
+                this.nestedMethodSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`LexicalEnvType: clear MethodSignature not interned — routing to temp defensively: ${nestedMethod.toString()}`);
+                this.nestedMethodSigID = -1;
+                this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
+            }
         }
         this.closures = closures ?? [];
     }
@@ -1249,14 +1265,20 @@ export class EnumValueType extends Type {
     constructor(signature: FieldSignature, constant?: Constant) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 与 ClassType 同构的路由：formal 只读命中 → temp 索引表登记。
-        const existingId = reg.fieldSigCanonicalizer.getExistingId(signature);
-        if (existingId !== -1) {
-            this.fieldSigID = existingId;
-            this.tempSigID = undefined;
-        } else {
+        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。
+        if (signature.isUnclear()) {
             this.fieldSigID = -1;
             this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
+        } else {
+            const existingId = reg.fieldSigCanonicalizer.getExistingId(signature);
+            if (existingId !== -1) {
+                this.fieldSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`EnumValueType: clear FieldSignature not interned — routing to temp defensively: ${signature.toString()}`);
+                this.fieldSigID = -1;
+                this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
+            }
         }
         this.constant = constant;
     }

@@ -13,70 +13,39 @@
  * limitations under the License.
  */
 
+import { Canonicalizer } from '../../utils/Canonicalizer';
+
 /**
- * 临时签名的索引表（三版，B 轮；替换二版的 WeakRef 弱注册表）。
+ * 临时签名的索引表（组合 Canonicalizer.objectIdentity 策略）。
+ *
+ * 组合设计：注册/查ID/get/clear 委托 inner Canonicalizer（objectIdentity——Symbol 幂等
+ * + 稠密 ID + 数组存储，与原独立实现完全同构）；本类仅追加 temp 空间独有的
+ * retire（迁移置空）+ replacement（temp→formal 替换记录）+ 计数器 + 审计视图。
  *
  * 设计演进：
- * - 一版（refcount）：Map<id, sig> + 引用计数——release 配对要求高、计数不精确
- *   （R10 共享场景 register 1 次持有 2~N 个），已退役；
- * - 二版（弱表）：Map<id, WeakRef> + FinalizationRegistry 三层自动销毁——GC 驱动
- *   的条目清理带 KeepDuringJob 时序不确定性，WeakRef/FR 对 V8 GC 有真实开销，
- *   已退役（round20/B 轮）；
- * - 三版（索引表，当前）：slot 数组强引用 + 单调 nextId + 显式 retire（迁移置空）
- *   + temp→formal 替换记录。持有者的存活锚点职责由 slot 统一接管（持有者锚删除
- *   随 B 轮批 2/3 落地——slot[id] === register 时的传入实例，取回逐字节等价）。
+ * - 一版（refcount）：Map + 引用计数——release 配对要求高，已退役；
+ * - 二版（弱表）：Map<id, WeakRef> + FinalizationRegistry——GC 时序不确定，已退役；
+ * - 三版（独立索引表）：slots 数组 + 显式 retire + 替换记录（195 行独立实现）；
+ * - 四版（组合，当前）：委托 Canonicalizer.objectIdentity + 追加 retire/replacement 层
+ *   ——消除与 Canonicalizer 的代码重复，核心机制单一来源。
  *
- * 1. 存储结构：`slots: (S | undefined)[]`——下标即 tempSigID，强引用签名实例；
- *    置空（retire）= 已迁移。
- *    - ID 从 0 单调分配、永不复用（FieldSignature.hashCode 混入 tempSigID，
- *      复用会造成同值签名 hash 语义混乱）；
- *    - register(sig) 的 sig 必为活对象——symbol 属性命中即"我注册过"，复用 ID
- *      安全；retire 后 symbol 保留（审计追溯），同实例再次 register 返回原 ID
- *      （消费方经 getReplacement 直达 formal——"下一处直接使用 formal ID"）。
- *
- * 2. 生命周期（全保留，设计决策 §26.3）：未 retire 的 slot 永不强清——slot 是
- *    完整注册审计表（任何 temp ID 可追溯取回，弱表给不了的能力）。"推导中间
- *    垃圾"（持有者已死但未 retire 的条目）钉活到 Registry.dispose——内存代价
- *    知情权衡（量级压缩靠 A2 源头减量，非注册侧清理）。强引用下无自动清理是
- *    JS 根本约束（无 finalizer 可感知强可达对象的持有者消亡）。
- *
- * 3. 迁移与替换记录：retireWithReplacement(id, formalId) 在持有者显式重路由到
- *    formal 时调用（slot 置空 + replacements 记录 temp→formal 归宿）。共享该
- *    temp 签名的其他持有者（R10）经 getReplacement 找到 formal ID（三级查的
- *    fallback），或惰性物化写回自己的 formal SigID 字段（tempSigID 保留作
- *    "曾 temp"审计痕迹）。
- *
- * 4. 可观测性（同步即精确——无 pending-dead 窗口，settle 的 gc 轮次已退役）：
- *    三数自洽 totalRegistered = liveCount + retiredCount；liveIds（非空 slot
- *    遗留视图）/ registeredIds（全区间审计视图，含已置空——可经 getReplacement
- *    追溯归宿）/ replacedCount（有 formal 归宿记录的迁移数，≤ retired）。
+ * 生命周期（全保留）：未 retire 的条目永不清——完整注册审计表。"推导中间垃圾"
+ * 钉活到 Registry.dispose——知情权衡（JS 无法感知强可达对象的持有者消亡）。
+ * 三数自洽：totalRegistered（inner.size）= liveCount + retiredCount（retiredIds.size）。
  */
 export class TempSignatureCanonicalizer<S extends object> {
-    /** slot 数组：下标 = tempSigID，强引用；undefined = 已迁移（retire）。 */
-    private slots: (S | undefined)[] = [];
-    /** 单调递增的下一个 ID，永不复用（= 历史注册总量）。 */
-    private nextId: number = 0;
-    /** 未迁移（非空 slot）计数——register 新分配 ++ / retire 置空 --。 */
-    private liveCount: number = 0;
-    /** 已迁移（置空）计数。 */
-    private retiredCount: number = 0;
+    /** objectIdentity 策略的注册/查ID/get/clear 核心（Symbol 幂等 + 稠密 ID + list 数组）。 */
+    private readonly inner: Canonicalizer<S> = new Canonicalizer<S>();
+
+    /** 已迁移（retire 置空）的 ID 集——get(id) 查此 Set 先于 inner.get(id)。 */
+    private retiredIds = new Set<number>();
+
     /** temp → formal 替换记录（迁移时的归宿），get(id) miss 时的 fallback。 */
     private replacements = new Map<number, number>();
 
-    private idSymbol: symbol = Symbol('ArkAnalyzerTempSigId');
-
     /** 注册签名对象：同一实例重复注册复用同一 ID；新实例分配新 ID。 */
     public register(sig: S): number {
-        const keyed = sig as { [key: symbol]: number | undefined };
-        const existing = keyed[this.idSymbol];
-        if (existing !== undefined) {
-            return existing;
-        }
-        const id = this.nextId++;
-        keyed[this.idSymbol] = id;
-        this.slots[id] = sig;
-        this.liveCount++;
-        return id;
+        return this.inner.getId(sig);
     }
 
     /**
@@ -84,32 +53,26 @@ export class TempSignatureCanonicalizer<S extends object> {
      * {@link getReplacement} 获得 formal 归宿（三级查的 fallback）。
      */
     public get(id: number): S | undefined {
-        return this.slots[id];
+        if (this.retiredIds.has(id)) {
+            return undefined;
+        }
+        return this.inner.get(id);
     }
 
-    /**
-     * 查询签名对象的 tempSigID，不注册。未注册返回 -1。
-     * symbol 在 retire 后不清（实例属性，审计追溯保留）。
-     */
+    /** 查询签名对象的 tempSigID，不注册。未注册返回 -1。Symbol 在 retire 后不清（审计追溯保留）。 */
     public getExistingTempId(sig: S): number {
-        const keyed = sig as { [key: symbol]: number | undefined };
-        const existing = keyed[this.idSymbol];
-        return existing === undefined ? -1 : existing;
+        return this.inner.getExistingId(sig);
     }
 
     /** 迁移置空（幂等）。供持有者显式重路由 formal 时经 retireWithReplacement 调用。 */
     public retire(id: number): void {
-        if (this.slots[id] !== undefined) {
-            this.slots[id] = undefined;
-            this.retiredCount++;
-            this.liveCount--;
+        if (!this.retiredIds.has(id) && this.inner.get(id) !== undefined) {
+            this.retiredIds.add(id);
+            this.inner.removeAt(id);
         }
     }
 
-    /**
-     * 迁移置空 + 记录 formal 归宿（幂等；重复调用以首次记录为准）。
-     * 共享该 temp 签名的其他持有者经 {@link getReplacement} 拿到 formal ID。
-     */
+    /** 迁移置空 + 记录 formal 归宿（幂等；重复调用以首次记录为准）。 */
     public retireWithReplacement(id: number, formalId: number): void {
         this.retire(id);
         if (!this.replacements.has(id)) {
@@ -122,74 +85,55 @@ export class TempSignatureCanonicalizer<S extends object> {
         return this.replacements.get(id) ?? -1;
     }
 
-    /**
-     * 未迁移（非空 slot）量——"最终遗留的 temp sig 数"（含推导中间垃圾与未成功
-     * 推导的活签名；全保留语义下二者由审计视图区分归因）。
-     */
+    /** 未迁移量 = inner.size() - retiredIds.size（三数自洽）。 */
     public size(): number {
-        return this.liveCount;
+        return this.inner.size() - this.retiredIds.size;
     }
 
-    /** 历史注册总量（= nextId，永不复用）。 */
+    /** 历史注册总量 = inner.size()（含已置空）。 */
     public totalRegistered(): number {
-        return this.nextId;
+        return this.inner.size();
     }
 
-    /** 已迁移（置空）总量。三数自洽：totalRegistered = size + retired。 */
+    /** 已迁移总量 = retiredIds.size。三数自洽：totalRegistered = size + retired。 */
     public retired(): number {
-        return this.retiredCount;
+        return this.retiredIds.size;
     }
 
-    /** 全区间审计视图：[0, nextId) 的全部 ID（含已置空——可经 getReplacement 追溯归宿）。 */
+    /** 全区间审计视图：[0, totalRegistered) 的全部 ID（含已置空——可经 getReplacement 追溯归宿）。 */
     public registeredIds(): number[] {
         const ids: number[] = [];
-        for (let i = 0; i < this.nextId; i++) {
+        for (let i = 0; i < this.inner.size(); i++) {
             ids.push(i);
         }
         return ids;
     }
 
-    /** 遗留视图：非空 slot 的 ID 集。 */
+    /** 遗留视图：未迁移（非空 slot）的 ID 集。 */
     public liveIds(): number[] {
         const ids: number[] = [];
-        for (let i = 0; i < this.nextId; i++) {
-            if (this.slots[i] !== undefined) {
+        for (let i = 0; i < this.inner.size(); i++) {
+            if (!this.retiredIds.has(i) && this.inner.get(i) !== undefined) {
                 ids.push(i);
             }
         }
         return ids;
     }
 
-    /**
-     * 索引表统计（同步即精确）：
-     * - liveCount：未迁移（非空 slot）的签名数；
-     * - totalRegistered：历史注册总量（nextId）；
-     * - retiredCount：已迁移（置空）总量——total = live + retired 三数自洽；
-     * - replacedCount：有 formal 归宿记录的迁移数（≤ retired）。
-     */
+    /** 索引表统计（同步即精确）。 */
     public getStats(): { liveCount: number; totalRegistered: number; retiredCount: number; replacedCount: number } {
         return {
-            liveCount: this.liveCount,
-            totalRegistered: this.nextId,
-            retiredCount: this.retiredCount,
+            liveCount: this.size(),
+            totalRegistered: this.inner.size(),
+            retiredCount: this.retiredIds.size,
             replacedCount: this.replacements.size,
         };
     }
 
-    /**
-     * 清空：活对象移除 symbol 属性，全部状态重置（ID 空间归零重用）。
-     */
+    /** 清空：委托 inner.clear（Symbol 清理 + 换新 Symbol + 重置），追加本层状态重置。 */
     public clear(): void {
-        for (const sig of this.slots) {
-            if (sig !== undefined) {
-                delete (sig as { [key: symbol]: number | undefined })[this.idSymbol];
-            }
-        }
-        this.slots = [];
-        this.nextId = 0;
-        this.liveCount = 0;
-        this.retiredCount = 0;
-        this.replacements = new Map();
-        this.idSymbol = Symbol('ArkAnalyzerTempSigId');
+        this.inner.clear();
+        this.retiredIds.clear();
+        this.replacements.clear();
     }
 }

@@ -57,7 +57,7 @@ function mem(tag: string): void {
 
 /** Prints temp stats (index-table: sync-exact, live = non-retired slots). */
 function stats(tag: string): void {
-    const s = SignatureCanonicalizerRegistry.getTempSpacesStats();
+    const s = SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats();
     const reg = SignatureCanonicalizerRegistry.getInstance();
     const formalField = reg.fieldSigCanonicalizer.size();
     const formalMethod = reg.methodSigCanonicalizer.size();

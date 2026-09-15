@@ -107,8 +107,10 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
             namespace.getNamespaces().forEach(ns => existing.addNamespace(ns));
             return;
         }
+        // Model registration is guaranteed by setSignature (all production callers build the signature,
+        // thus register, before reaching here — TS via the 3-arg constructor, C++ via buildArkNamespace's internal setSignature);
+        // this method only maintains the parent namespace's top-level index.
         this.addTopNamespaceSigID(namespace.getNamespaceSigID());
-        SignatureCanonicalizerRegistry.registerNamespace(namespace);
     }
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
@@ -181,7 +183,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     /** @internal Returns the direct child namespace with the given SigID, or undefined. */
     public getTopNamespaceByID(id: number): ArkNamespace | undefined {
         if (this.hasTopNamespaceWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkNamespaceById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getNamespaceById(id);
         }
         return undefined;
     }
@@ -249,7 +251,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     /** @internal Returns the direct child class with the given SigID, or undefined. */
     public getTopClassByID(id: number): ArkClass | undefined {
         if (this.hasTopClassWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkClassById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getClassById(id);
         }
         return undefined;
     }
@@ -290,13 +292,11 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public setSignature(namespaceSignature: NamespaceSignature): void {
+        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复（sig 值残留、model 已被 removeNamespace 删除）→ 补注册（否则 reload 时 getNamespaceById 查不到 model）；已有别的 model 持有该签名 → 不覆盖。已存在时直接用 existing 省一次 getId 探测。
         const existing = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);
-        this.namespaceSigID = this.registry.namespaceSigCanonicalizer.getId(namespaceSignature);
-        // 注意：existing ≥ 0 但 model 缺失属错误态（上游 intern 了签名却未注册
-        // ArkNamespace）——此处不做补挂修复，以保持问题真相可见；该错误态由
-        // validateNamespaceSpace 的 N3 规则报告，供回溯上游定位。
-        if (existing < 0) {
-            SignatureCanonicalizerRegistry.registerNamespace(this);
+        this.namespaceSigID = existing >= 0 ? existing : this.registry.namespaceSigCanonicalizer.getId(namespaceSignature);
+        if (existing < 0 || this.registry.namespaceSigCanonicalizer.getModel(existing) === undefined) {
+            this.registry.registerNamespace(this);
         }
     }
 
@@ -533,7 +533,6 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
         if (existing) {
             SdkUtils.copyMembers(arkClass, existing);
         } else {
-            SignatureCanonicalizerRegistry.registerClass(arkClass);
             this.addTopClassSigID(arkClass.getClassSigID());
         }
     }
@@ -614,7 +613,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
         const rtn = this.hasTopClassWithID(id);
         if (rtn) {
             this.removeTopClassSigID(id);
-            SignatureCanonicalizerRegistry.removeClass(arkClass);
+            this.registry.removeClass(arkClass);
         }
         return rtn;
     }
@@ -624,7 +623,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
         const rtn = this.hasTopNamespaceWithID(id);
         if (rtn) {
             this.removeTopNamespaceSigID(id);
-            SignatureCanonicalizerRegistry.removeNamespace(namespace);
+            this.registry.removeNamespace(namespace);
         }
         return rtn;
     }

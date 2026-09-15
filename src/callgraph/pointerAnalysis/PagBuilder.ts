@@ -14,6 +14,7 @@
  */
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, CallSite, DynCallSite, FuncID, ICallSite } from '../model/CallGraph';
+import { SdkUtils } from '../../core/common/SdkUtils';
 import { Scene } from '../../Scene';
 import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
@@ -55,7 +56,6 @@ import { ContextType, PointerAnalysisConfig, PtaAnalysisScale } from './PointerA
 import { ContextID, DUMMY_CID } from './context/Context';
 import { ContextSelector, emptyID, KCallSiteContextSelector, KFuncContextSelector, KObjContextSelector } from './context/ContextSelector';
 import { PluginManager } from './plugins/PluginManager';
-import { SignatureCanonicalizerRegistry } from '../../core/common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
 
@@ -625,7 +625,7 @@ export class PagBuilder {
             if (value instanceof ArkNewExpr) {
                 return (value.getType() as ClassType).getClassSignature() as ClassSignature;
             }
-            return SignatureCanonicalizerRegistry.getSdkGlobal('Array')!.getSignature() as ClassSignature;
+            return SdkUtils.getSdkGlobal('Array')!.getSignature() as ClassSignature;
         };
 
         const clsSig = getClassSignature(value);

@@ -150,7 +150,7 @@ export class CxxSceneUtils {
         if (tsMtd instanceof Local || tsMtd instanceof ArkField) {
             const type = tsMtd.getType();
             if (type instanceof FunctionType) {
-                tsMtd = SignatureCanonicalizerRegistry.getInstance().getArkMethodBySig(type.getMethodSignature()) ?? null;
+                tsMtd = SignatureCanonicalizerRegistry.getInstance().getMethodBySig(type.getMethodSignature()) ?? null;
             }
         }
         if (tsMtd instanceof ArkMethod && cppMtd.getBody()) {

@@ -316,7 +316,7 @@ export class StageStatistics {
                 field: reg.fieldSigCanonicalizer.size(),
                 method: reg.methodSigCanonicalizer.size(),
             },
-            temp: SignatureCanonicalizerRegistry.getTempSpacesStats(),
+            temp: SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats(),
         });
     }
 

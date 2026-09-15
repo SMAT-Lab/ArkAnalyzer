@@ -14,6 +14,7 @@
  */
 
 import { ArkFile, Language } from '../../../core/model/ArkFile';
+import { SdkUtils } from '../../../core/common/SdkUtils';
 import { ClassSignature, FileSignature } from '../../../core/model/ArkSignature';
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../../core/model/ArkExport';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
@@ -41,7 +42,6 @@ import { TypeInference } from '../../../core/common/TypeInference';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { Scene } from '../../../Scene';
 import { ReferenceType } from '../base/Type';
-import { SignatureCanonicalizerRegistry } from '../../../core/common/SignatureCanonicalizerRegistry';
 
 // Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
@@ -439,7 +439,7 @@ export class CxxModelUtils {
                 return property;
             }
         }
-        const objectClass = SignatureCanonicalizerRegistry.getSdkGlobal('Object');
+        const objectClass = SdkUtils.getSdkGlobal('Object');
         if (objectClass instanceof ArkClass && arkClass !== objectClass) {
             return this.findPropertyInClass(name, objectClass);
         }

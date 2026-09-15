@@ -189,13 +189,10 @@ export class ArkField extends ArkBaseModel {
     public setSignature(fieldSig: FieldSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const existing = reg.fieldSigCanonicalizer.getExistingId(fieldSig);
-        this.fieldSigID = reg.fieldSigCanonicalizer.getId(fieldSig);
-        // 与 ArkClass.setSignature 对等的保护：签名值已被别的 ArkField 持有时不覆盖
-        // 全局 model——防止"后 setSignature 者顶替"写穿（如推断期把声明侧签名 set 到
-        // 匿名类字段上会顶替声明类字段的 model）。正常 builder 首建（existing < 0）
-        // 走注册。
-        if (existing < 0) {
-            SignatureCanonicalizerRegistry.registerField(this);
+        this.fieldSigID = existing >= 0 ? existing : reg.fieldSigCanonicalizer.getId(fieldSig);
+        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model → 不覆盖（防"后 setSignature 者顶替"写穿——如推断期把声明侧签名 set 到匿名类字段上会顶替声明类字段的 model）。已存在时直接用 existing 省一次 getId 探测。
+        if (existing < 0 || reg.fieldSigCanonicalizer.getModel(existing) === undefined) {
+            reg.registerField(this);
         }
     }
 

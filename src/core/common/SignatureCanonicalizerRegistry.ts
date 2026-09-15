@@ -14,7 +14,7 @@
  */
 
 import { FileSignature, ClassSignature, MethodSignature, NamespaceSignature, FieldSignature, MethodSubSignature } from '../model/ArkSignature';
-import { ClassType, UnknownType } from '../base/Type';
+import { UnknownType } from '../base/Type';
 import { UNKNOWN_CLASS_NAME, UNKNOWN_FIELD_NAME, UNKNOWN_FILE_NAME, UNKNOWN_METHOD_NAME, UNKNOWN_NAMESPACE_NAME, UNKNOWN_PROJECT_NAME } from './Const';
 import { ArkFile } from '../model/ArkFile';
 import { ArkClass } from '../model/ArkClass';
@@ -93,116 +93,16 @@ export class SignatureCanonicalizerRegistry {
     public sdkGlobalMap: Map<string, ArkExport[]> = new Map();
 
     // --- SDK global symbol queries (owner of sdkGlobalMap) ---
-    // 加载边约束：Registry 处于依赖图最底层（一切模块 import 它）。方法内**禁止**
-    // 值 import ArkClass/ArkNamespace/Local 等——esbuild 会把这些 import 真实化
-    // （基线中它们是纯类型使用、被 elision 剥离），形成 Registry → 模型深链的新
-    // 增加载边，翻转 ESM 循环（Registry ↔ base/Type ↔ cpp/ModelUtils → cpp/base/Type
-    // extends 未完成类）的进入方向，实测触发 "Class extends value undefined"。
-    // 实体判别一律用下面的结构 helper（ArkClass/ArkNamespace 均有 XxxSigID getter，
-    // ArkClass/ArkNamespace/Local/ArkMethod/AliasType 的特征互斥）。
-
-    private static isArkClassEntity(e: ArkExport): e is ArkClass {
-        const c = e as Partial<Record<'getClassSigID' | 'getFields', unknown>>;
-        return typeof c.getClassSigID === 'function' && typeof c.getFields === 'function';
-    }
-
-    private static isArkNamespaceEntity(e: ArkExport): e is ArkNamespace {
-        const n = e as Partial<Record<'getNamespaceSigID' | 'getNamespaces', unknown>>;
-        return typeof n.getNamespaceSigID === 'function' && typeof n.getNamespaces === 'function';
-    }
-
-    /**
-     * Single-value view of the SDK global map: the first entity registered under
-     * the name (legacy first-win semantics). Returns null when unregistered.
-     */
-    public static getSdkGlobal(globalName: string): ArkExport | null {
-        return this.getInstance().sdkGlobalMap.get(globalName)?.[0] ?? null;
-    }
-
-    /**
-     * All SDK global entities registered under the given name (multi-declaration
-     * scenario: e.g. `interface Object` + `declare var Object: ObjectConstructor` are
-     * two entities). Order is the registration order; entry [0] equals {@link getSdkGlobal}.
-     */
-    public static getSdkGlobals(globalName: string): ArkExport[] {
-        return this.getInstance().sdkGlobalMap.get(globalName) ?? [];
-    }
-
-    /**
-     * Get all member-provider classes of a global symbol for member probing —
-     * equivalent to the member union the legacy copyMembers merging produced:
-     *  - every ArkClass entity registered under the name (same-name interface
-     *    declarations across lib files), and
-     *  - for `declare var X: XConstructor` locals, the constructor-side class
-     *    (XConstructor) plus every entity registered under THAT name.
-     * Members resolved against these candidates carry their real declaring class
-     * in the signature (version judgement).
-     */
-    public static getSdkGlobalMemberClasses(globalName: string): ArkClass[] {
-        const result: ArkClass[] = [];
-        const seen = new Set<ArkClass>();
-        const push = (c: ArkClass) => {
-            if (!seen.has(c)) {
-                seen.add(c);
-                result.push(c);
-            }
-        };
-        for (const e of this.getSdkGlobals(globalName)) {
-            if (this.isArkClassEntity(e)) {
-                push(e);
-            } else if (
-                // var 声明的 Local 实体结构判别：ArkMethod/AliasType 无 getType，
-                // ArkClass/ArkNamespace 已排除。
-                !this.isArkNamespaceEntity(e) &&
-                typeof (e as { getType?: unknown }).getType === 'function'
-            ) {
-                const localType = (e as unknown as { getType: () => unknown }).getType();
-                if (localType instanceof ClassType) {
-                    // Local → ctor class via canonicalizer direct lookup: SDK classes are
-                    // registered (setModel) at build time before their var locals enter
-                    // the global map, so this is equivalent to the legacy Scene.getClass
-                    // path; evicted models miss the same way on both paths.
-                    const ctorSig = (localType as ClassType).getClassSignature();
-                    const id = this.getInstance().classSigCanonicalizer.getExistingId(ctorSig);
-                    const ctorClass = id !== -1 ? this.getInstance().classSigCanonicalizer.getModel(id) : undefined;
-                    if (ctorClass !== undefined) {
-                        push(ctorClass);
-                    }
-                    for (const c of this.getSdkGlobals(ctorSig.getClassName())) {
-                        if (this.isArkClassEntity(c)) {
-                            push(c);
-                        }
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Get the same-name classes mounted in sibling entities of a class's declaring
-     * namespace — for cross-file same-name namespaces (e.g. `Intl` declared across
-     * lib.es5 + lib.es20XX.intl), the class's counterpart in each sibling namespace
-     * carries members declared in that file. Sibling order follows registration
-     * order (= DFS file order); returns [] for non-global namespaces.
-     */
-    public static getNamespacedSiblingClasses(arkClass: ArkClass): ArkClass[] {
-        const ns = arkClass.getDeclaringArkNamespace();
-        if (!ns) {
-            return [];
-        }
-        const result: ArkClass[] = [];
-        const className = arkClass.getName();
-        for (const e of this.getSdkGlobals(ns.getName())) {
-            if (this.isArkNamespaceEntity(e) && e !== ns) {
-                const c = e.getClassWithName(className);
-                if (c) {
-                    result.push(c);
-                }
-            }
-        }
-        return result;
-    }
+    // 加载边约束：Registry 处于依赖图最底层（一切模块 import 它）。模型类
+    //（ArkClass/ArkNamespace/Local 等）的 import 仅可用于**类型位置**（泛型参数、
+    // 方法签名）——编译器 elision 会剥离这些 import，不构成运行时加载边；
+    // **禁止值使用**（方法实现内的 new/instanceof/静态访问）——esbuild 会把含
+    // 值使用的 import 真实化为运行时加载边，接通 Registry → 模型深链（模型类 →
+    // … → cpp/base/Type 的顶层 extends），翻转 ESM 循环进入方向，实测触发
+    // "Class extends value undefined"。历史上的实体判别需求（duck-typing 结构
+    // helper）已随工作项 L 迁移至 SdkUtils（上层可自由 instanceof）——本类现在
+    // 只保存 sdkGlobalMap 字段（dispose 生命周期聚合），全部查询入口（单值/
+    // 多值/成员探测）统一在 SdkUtils。
 
     // --- Project/SDK file ID boundary ---
 
@@ -284,16 +184,15 @@ export class SignatureCanonicalizerRegistry {
     }
 
     /** 单个 temp 索引表空间的统计快照（字段语义见 TempSignatureCanonicalizer.getStats）。 */
-    public static getTempSpacesStats(): {
+    public getTempSpacesStats(): {
         class: TempSpaceStats;
         method: TempSpaceStats;
         field: TempSpaceStats;
     } {
-        const reg = this.getInstance();
         return {
-            class: reg.tempClassSigCanonicalizer.getStats(),
-            method: reg.tempMethodSigCanonicalizer.getStats(),
-            field: reg.tempFieldSigCanonicalizer.getStats(),
+            class: this.tempClassSigCanonicalizer.getStats(),
+            method: this.tempMethodSigCanonicalizer.getStats(),
+            field: this.tempFieldSigCanonicalizer.getStats(),
         };
     }
 
@@ -307,7 +206,7 @@ export class SignatureCanonicalizerRegistry {
      *
      * @returns 三空间统计（结构与 {@link getTempSpacesStats} 相同）。
      */
-    public static async settleTempSpaces(): Promise<{
+    public async settleTempSpaces(): Promise<{
         class: TempSpaceStats;
         method: TempSpaceStats;
         field: TempSpaceStats;
@@ -343,61 +242,59 @@ export class SignatureCanonicalizerRegistry {
     }
 
     /** @internal Get an ArkFile by its formal FileSigID. */
-    public getArkFileById(id: number): ArkFile | undefined {
+    public getFileById(id: number): ArkFile | undefined {
         return this.fileSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkFile by its formal FileSigID. Read-only: never interns the signature. */
-    public getArkFileBySig(fileSig: FileSignature): ArkFile | undefined {
+    public getFileBySig(fileSig: FileSignature): ArkFile | undefined {
         const id = this.fileSigCanonicalizer.getExistingId(fileSig);
         return id === -1 ? undefined : this.fileSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkClass by its formal ClassSigID. */
-    public getArkClassById(id: number): ArkClass | undefined {
+    public getClassById(id: number): ArkClass | undefined {
         return this.classSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkClass by its formal ClassSigID. Read-only: never interns the signature. */
-    public getArkClassBySig(classSig: ClassSignature): ArkClass | undefined {
+    public getClassBySig(classSig: ClassSignature): ArkClass | undefined {
         const id = this.classSigCanonicalizer.getExistingId(classSig);
         return id === -1 ? undefined : this.classSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkMethod by its formal MethodSigID. */
-    public getArkMethodById(id: number): ArkMethod | undefined {
+    public getMethodById(id: number): ArkMethod | undefined {
         return this.methodSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkMethod by its formal MethodSigID. Read-only: never interns the signature. */
-    public getArkMethodBySig(methodSig: MethodSignature): ArkMethod | undefined {
+    public getMethodBySig(methodSig: MethodSignature): ArkMethod | undefined {
         const id = this.methodSigCanonicalizer.getExistingId(methodSig);
         return id === -1 ? undefined : this.methodSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkNamespace by its formal NamespaceSigID. */
-    public getArkNamespaceById(id: number): ArkNamespace | undefined {
+    public getNamespaceById(id: number): ArkNamespace | undefined {
         return this.namespaceSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkNamespace by its formal NamespaceSigID. Read-only: never interns the signature. */
-    public getArkNamespaceBySig(nsSig: NamespaceSignature): ArkNamespace | undefined {
+    public getNamespaceBySig(nsSig: NamespaceSignature): ArkNamespace | undefined {
         const id = this.namespaceSigCanonicalizer.getExistingId(nsSig);
         return id === -1 ? undefined : this.namespaceSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkField by its formal FieldSigID. */
-    public getArkFieldById(id: number): ArkField | undefined {
+    public getFieldById(id: number): ArkField | undefined {
         return this.fieldSigCanonicalizer.getModel(id);
     }
 
     /** @internal Get an ArkField by its formal FieldSigID. Read-only: never interns the signature. */
-    public getArkFieldBySig(fieldSig: FieldSignature): ArkField | undefined {
+    public getFieldBySig(fieldSig: FieldSignature): ArkField | undefined {
         const id = this.fieldSigCanonicalizer.getExistingId(fieldSig);
         return id === -1 ? undefined : this.fieldSigCanonicalizer.getModel(id);
     }
-
-    // --- Static shortcut methods for model register/remove ---
 
     /** @internal Register an ArkFile into the file canonicalizer. Skips if fileSigID is 0 (DEFAULT). */
     public registerFile(file: ArkFile): void {
@@ -407,24 +304,34 @@ export class SignatureCanonicalizerRegistry {
         }
     }
 
-    /** @internal Register an ArkClass into the class canonicalizer. */
-    public static registerClass(cls: ArkClass): void {
-        this.getInstance().classSigCanonicalizer.setModel(cls.getClassSigID(), cls);
+    /** @internal Register an ArkClass into the class canonicalizer. Skips if classSigID is not positive (unset / DEFAULT). */
+    public registerClass(cls: ArkClass): void {
+        if (cls.getClassSigID() > 0) {
+            this.classSigCanonicalizer.setModel(cls.getClassSigID(), cls);
+        }
+    }
+
+    /** @internal Register an ArkField into the field canonicalizer. Skips if fieldSigID is 0 (DEFAULT) or -1 (not set). */
+    public registerField(field: ArkField): void {
+        const id = field.getFieldSigID();
+        if (id > 0) {
+            this.fieldSigCanonicalizer.setModel(id, field);
+        }
     }
 
     /** @internal Register an ArkMethod into the method canonicalizer. Skips if methodSigID is undefined (declare-only) or not positive. */
-    public static registerMethod(method: ArkMethod): void {
+    public registerMethod(method: ArkMethod): void {
         const id = method.getMethodSigID();
         if (id !== undefined && id > 0) {
-            this.getInstance().methodSigCanonicalizer.setModel(id, method);
+            this.methodSigCanonicalizer.setModel(id, method);
         }
     }
 
     /** @internal Register an ArkNamespace into the namespace canonicalizer. Skips if namespaceSigID is 0 (DEFAULT). */
-    public static registerNamespace(ns: ArkNamespace): void {
+    public registerNamespace(ns: ArkNamespace): void {
         const id = ns.getNamespaceSigID();
         if (id > 0) {
-            this.getInstance().namespaceSigCanonicalizer.setModel(id, ns);
+            this.namespaceSigCanonicalizer.setModel(id, ns);
         }
     }
 
@@ -432,7 +339,7 @@ export class SignatureCanonicalizerRegistry {
      * @internal Register a custom @Component into customComponentMap.
      * Entries intentionally survive module unload so ViewTree can still resolve signatures.
      */
-    public static registerCustomComponent(cls: ArkClass): void {
+    public registerCustomComponent(cls: ArkClass): void {
         if (!cls.hasComponentDecorator()) {
             return;
         }
@@ -440,41 +347,38 @@ export class SignatureCanonicalizerRegistry {
         if (!name || name.startsWith('%')) {
             return;
         }
-        this.getInstance().customComponentMap.set(name, cls.getSignature());
+        this.customComponentMap.set(name, cls.getSignature());
     }
 
     /**
      * @internal Remove a custom component entry from customComponentMap.
      * Not called on module unload — the map must outlive IR.
      */
-    public static unregisterCustomComponent(cls: ArkClass): void {
+    public unregisterCustomComponent(cls: ArkClass): void {
         const name = cls.getName();
         if (!name || !cls.hasComponentDecorator()) {
             return;
         }
-        const reg = this.getInstance();
-        const existing = reg.customComponentMap.get(name);
-        if (existing && reg.classSigCanonicalizer.getExistingId(existing) === cls.getClassSigID()) {
-            reg.customComponentMap.delete(name);
+        const existing = this.customComponentMap.get(name);
+        if (existing && this.classSigCanonicalizer.getExistingId(existing) === cls.getClassSigID()) {
+            this.customComponentMap.delete(name);
         }
     }
 
     /** @internal Remove an ArkFile from the file canonicalizer. Returns true if it existed. */
-    public static removeFile(file: ArkFile): boolean {
+    public removeFile(file: ArkFile): boolean {
         const id = file.getFileSigID();
-        const reg = this.getInstance();
-        const existed = reg.fileSigCanonicalizer.getModel(id) !== undefined;
-        reg.fileSigCanonicalizer.removeModel(id);
+        const existed = this.fileSigCanonicalizer.getModel(id) !== undefined;
+        this.fileSigCanonicalizer.removeModel(id);
         return existed;
     }
 
     /** @internal Remove an ArkClass from the class canonicalizer and customComponentMap. Returns true if it existed. */
-    public static removeClass(arkClass: ArkClass): boolean {
+    public removeClass(arkClass: ArkClass): boolean {
         this.unregisterCustomComponent(arkClass);
         const id = arkClass.getClassSigID();
-        const reg = this.getInstance();
-        const existed = reg.classSigCanonicalizer.getModel(id) !== undefined;
-        reg.classSigCanonicalizer.removeModel(id);
+        const existed = this.classSigCanonicalizer.getModel(id) !== undefined;
+        this.classSigCanonicalizer.removeModel(id);
         return existed;
     }
 
@@ -482,65 +386,45 @@ export class SignatureCanonicalizerRegistry {
      * @internal Remove an ArkClass from the class canonicalizer without touching customComponentMap.
      * Used by disposeModule where customComponentMap entries must survive module unload.
      */
-    public static removeClassModel(arkClass: ArkClass): boolean {
+    public removeClassModel(arkClass: ArkClass): boolean {
         const id = arkClass.getClassSigID();
-        const reg = this.getInstance();
-        const existed = reg.classSigCanonicalizer.getModel(id) !== undefined;
-        reg.classSigCanonicalizer.removeModel(id);
+        const existed = this.classSigCanonicalizer.getModel(id) !== undefined;
+        this.classSigCanonicalizer.removeModel(id);
         return existed;
     }
 
     /** @internal Remove an ArkMethod from the method canonicalizer (impl + declare slots). Returns true if any existed. */
-    public static removeMethod(method: ArkMethod): boolean {
-        const reg = this.getInstance();
+    public removeMethod(method: ArkMethod): boolean {
         let existed = false;
         const implID = method.getMethodSigID();
         if (implID !== undefined && implID > 0) {
-            existed = reg.methodSigCanonicalizer.getModel(implID) !== undefined;
-            reg.methodSigCanonicalizer.removeModel(implID);
+            existed = this.methodSigCanonicalizer.getModel(implID) !== undefined;
+            this.methodSigCanonicalizer.removeModel(implID);
         }
         for (const declareID of method.getDeclareSigIDs() ?? []) {
-            if (declareID > 0 && reg.methodSigCanonicalizer.getModel(declareID) !== undefined) {
+            if (declareID > 0 && this.methodSigCanonicalizer.getModel(declareID) !== undefined) {
                 existed = true;
-                reg.methodSigCanonicalizer.removeModel(declareID);
+                this.methodSigCanonicalizer.removeModel(declareID);
             }
         }
         return existed;
     }
 
     /** @internal Remove an ArkNamespace from the namespace canonicalizer. Returns true if it existed. */
-    public static removeNamespace(namespace: ArkNamespace): boolean {
+    public removeNamespace(namespace: ArkNamespace): boolean {
         const id = namespace.getNamespaceSigID();
-        const reg = this.getInstance();
-        const existed = reg.namespaceSigCanonicalizer.getModel(id) !== undefined;
-        reg.namespaceSigCanonicalizer.removeModel(id);
+        const existed = this.namespaceSigCanonicalizer.getModel(id) !== undefined;
+        this.namespaceSigCanonicalizer.removeModel(id);
         return existed;
-    }
-
-    /** @internal Register an ArkField into the field canonicalizer. Skips if fieldSigID is 0 (DEFAULT) or -1 (not set). */
-    public static registerField(field: ArkField): void {
-        const id = field.getFieldSigID();
-        if (id > 0) {
-            this.getInstance().fieldSigCanonicalizer.setModel(id, field);
-        }
     }
 
     /** @internal Remove an ArkField from the field canonicalizer. Returns true if it existed. */
-    public static removeField(field: ArkField): boolean {
+    public removeField(field: ArkField): boolean {
         const id = field.getFieldSigID();
-        const reg = this.getInstance();
-        const existed = reg.fieldSigCanonicalizer.getModel(id) !== undefined;
-        reg.fieldSigCanonicalizer.removeModel(id);
+        const existed = this.fieldSigCanonicalizer.getModel(id) !== undefined;
+        this.fieldSigCanonicalizer.removeModel(id);
         return existed;
     }
-
-    // --- Static shortcut methods for temp canonicalizers ---
-
-    // 注：temp 空间为索引表（三版：slot 强持有 + retire 显式迁移 + 替换记录，
-    // 见 TempSignatureCanonicalizer）；持有者直接经 getInstance() 使用各
-    // tempXxxSigCanonicalizer（register/get/getReplacement/retire）。
-
-    // --- Instance helper methods ---
 
     /**
      * Intern the 5 DEFAULT signatures to formal canonicalizers, each obtaining fixed ID 0.

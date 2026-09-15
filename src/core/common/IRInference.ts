@@ -187,7 +187,7 @@ export class IRInference {
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             ModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile()) ??
-            SignatureCanonicalizerRegistry.getSdkGlobal(methodName);
+            SdkUtils.getSdkGlobal(methodName);
         let method;
         let signature;
         if (arkExport instanceof ArkMethod) {
@@ -201,7 +201,7 @@ export class IRInference {
             }
             const type = TypeInference.replaceAliasType(arkExportType);
             if (type instanceof ClassType) {
-                const cls = registry.getArkClassBySig(type.getClassSignature());
+                const cls = registry.getClassBySig(type.getClassSignature());
                 method = cls?.getMethodWithName(CALL_SIGNATURE_NAME);
             } else if (type instanceof FunctionType) {
                 signature = type.getMethodSignature();
@@ -491,7 +491,7 @@ export class IRInference {
     }
 
     public static inferInvokeExprWithArray(methodName: string, expr: AbstractInvokeExpr, baseType: ArrayType, scene: Scene): AbstractInvokeExpr | null {
-        const arrayInterface = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+        const arrayInterface = SdkUtils.getSdkGlobal(Builtin.ARRAY);
         if (arrayInterface instanceof ArkClass) {
             return this.inferInvokeExpr(expr, new ClassType(arrayInterface.getSignature(), [baseType.getBaseType()]), methodName, scene);
         } else if (methodName === Builtin.ITERATOR_FUNCTION) {
@@ -507,7 +507,7 @@ export class IRInference {
             expr.setMethodSignature(baseType.getMethodSignature());
             return expr;
         }
-        const funcInterface = SignatureCanonicalizerRegistry.getSdkGlobal(FUNCTION);
+        const funcInterface = SdkUtils.getSdkGlobal(FUNCTION);
         if (funcInterface instanceof ArkClass) {
             const method = ModelUtils.findPropertyInClass(methodName, funcInterface);
             if (method instanceof ArkMethod) {
@@ -532,7 +532,7 @@ export class IRInference {
         if (bySig instanceof ArkClass) {
             declaredClasses.push(bySig);
         }
-        for (const c of SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses(baseType.getClassSignature().getClassName())) {
+        for (const c of SdkUtils.getSdkGlobalMemberClasses(baseType.getClassSignature().getClassName())) {
             if (!declaredClasses.includes(c)) {
                 declaredClasses.push(c);
             }
@@ -540,7 +540,7 @@ export class IRInference {
         // ns 兄弟类候选：跨文件同名 namespace（Intl 系）中后续文件的同名类持有该文件
         // 声明的成员（等价旧 copyNamespace 互拷可见性；登记序 = DFS 文件序）。
         if (bySig instanceof ArkClass) {
-            for (const sibling of SignatureCanonicalizerRegistry.getNamespacedSiblingClasses(bySig)) {
+            for (const sibling of SdkUtils.getNamespacedSiblingClasses(bySig)) {
                 if (!declaredClasses.includes(sibling)) {
                     declaredClasses.push(sibling);
                 }
@@ -776,7 +776,7 @@ export class IRInference {
             // Convert primitive types to their wrapper class types
             const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
             const className = baseType instanceof BigIntType ? Builtin.BIGINT : name.charAt(0).toUpperCase() + name.slice(1);
-            const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(className);
+            const arrayClass = SdkUtils.getSdkGlobal(className);
             if (arrayClass instanceof ArkClass) {
                 return inferMember(new ClassType(arrayClass.getSignature(), arrayClass.getRealTypes()), value, arkMethod);
             }
@@ -823,7 +823,7 @@ export class IRInference {
         } else if (baseType instanceof AliasType) {
             return this.generateNewFieldSignature(ref, arkClass, baseType.getOriginalType());
         } else if (baseType instanceof ArrayType) {
-            const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+            const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
             if (arrayClass instanceof ArkClass) {
                 baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
             }
@@ -846,13 +846,13 @@ export class IRInference {
                 ref.retireTemp();
                 return new ArkArrayRef(ref.getBase(), index ?? ValueUtil.createConst(fieldName));
             } else {
-                const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+                const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
                 if (arrayClass instanceof ArkClass) {
                     baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
                 }
             }
         } else if (baseType instanceof FunctionType) {
-            const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.FUNCTION);
+            const arrayClass = SdkUtils.getSdkGlobal(Builtin.FUNCTION);
             if (arrayClass instanceof ArkClass) {
                 baseType = new ClassType(arrayClass.getSignature());
             }
@@ -1033,9 +1033,9 @@ export class IRInference {
     private static findPropertyFormChildrenClass(fieldName: string, arkClass: ArkClass, baseType: ClassType): ArkField | ArkMethod | null {
         const registry = SignatureCanonicalizerRegistry.getInstance();
         if (baseType.getClassSignature().getClassName() !== DEFAULT_ARK_CLASS_NAME) {
-            // Unclear stubs have no formal model, so getArkClassBySig returns undefined for
+            // Unclear stubs have no formal model, so getClassBySig returns undefined for
             // them — the extended-class lookup below is naturally skipped (read-only lookup).
-            const extendedClasses = registry.getArkClassBySig(baseType.getClassSignature())?.getExtendedClassList();
+            const extendedClasses = registry.getClassBySig(baseType.getClassSignature())?.getExtendedClassList();
             if (!extendedClasses) {
                 return null;
             }

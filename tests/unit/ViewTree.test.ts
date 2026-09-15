@@ -80,7 +80,7 @@ import {
 } from '../resources/viewtree/bindPopup/ExpectView';
 import { Project_Page_Expect_ViewTree } from '../resources/viewtree/project/ExpectView';
 import { ViewTreePrinter } from '../../src';
-import { CryptoUtils } from '../../src/utils/crypto_utils';
+import * as crypto from 'crypto';
 
 function expectViewTree(root: ViewTreeNode | null, expectTree: any) {
     if (!root) {
@@ -435,7 +435,7 @@ describe('project Test', () => {
             return;
         }
         let printer = new ViewTreePrinter(vt);
-        expect(CryptoUtils.sha256(printer.dump())).eq('gA9b_8g9pqxGE0JjQkK19eC-Rq5LANgG6DuDtq_X8Fo');
+        expect(crypto.createHash('sha256').update(printer.dump()).digest('base64url')).eq('gA9b_8g9pqxGE0JjQkK19eC-Rq5LANgG6DuDtq_X8Fo');
     });
 });
 

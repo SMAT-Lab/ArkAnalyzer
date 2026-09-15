@@ -287,7 +287,7 @@ function initHeritage(heritageClauses: Map<string, string>, cls: ArkClass): void
 
 /** Register @Component into customComponentMap while the class is being built. */
 function registerCustomComponentIfNeeded(cls: ArkClass): void {
-    SignatureCanonicalizerRegistry.registerCustomComponent(cls);
+    SignatureCanonicalizerRegistry.getInstance().registerCustomComponent(cls);
 }
 
 function buildInterface2ArkClass(clsNode: ts.InterfaceDeclaration, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {

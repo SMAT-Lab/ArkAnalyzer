@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ describe('CanonicalizerValidator file space Test', () => {
         file.setFileSignature(new FileSignature('proj', 'src/val-evict.ts'));
         const id = file.getFileSigID();
 
-        const existed = SignatureCanonicalizerRegistry.removeFile(file);
+        const existed = SignatureCanonicalizerRegistry.getInstance().removeFile(file);
         expect(existed).toBe(true);
 
         try {
@@ -118,7 +118,7 @@ describe('CanonicalizerValidator file space Test', () => {
         const file = new ArkFile(Language.TYPESCRIPT);
         file.setFileSignature(new FileSignature('proj', 'src/val-all.ts'));
         const id = file.getFileSigID();
-        SignatureCanonicalizerRegistry.removeFile(file);
+        SignatureCanonicalizerRegistry.getInstance().removeFile(file);
         try {
             // The evicted entry is reported (R3) -> validateAll fails.
             expect(CanonicalizerValidator.validateFileSpace().some(v => v.includes(`R3: ID ${id}`))).toBe(true);
@@ -224,12 +224,12 @@ describe('CanonicalizerValidator namespace space Test', () => {
         const id = ns.getNamespaceSigID();
         file.addNamespace(ns);
         try {
-            const existed = SignatureCanonicalizerRegistry.removeNamespace(ns);
+            const existed = SignatureCanonicalizerRegistry.getInstance().removeNamespace(ns);
             expect(existed).toBe(true);
             expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(true);
         } finally {
             // 恢复：补挂 model + file 链（addNamespace 幂等，重挂同实例）。
-            SignatureCanonicalizerRegistry.registerNamespace(ns);
+            SignatureCanonicalizerRegistry.getInstance().registerNamespace(ns);
             file.addNamespace(ns);
         }
         expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(false);
@@ -277,7 +277,7 @@ describe('CanonicalizerValidator namespace space Test', () => {
             // existing≥0 分支跳过注册），需显式 registerNamespace，再建立父子链
             // 与 file 链，N7a/N7b/N7c 全部消除。
             const parent = new ArkNamespace(fileID, undefined, parentSig);
-            SignatureCanonicalizerRegistry.registerNamespace(parent);
+            SignatureCanonicalizerRegistry.getInstance().registerNamespace(parent);
             parent.addNamespace(child);
             file.addNamespace(parent);
         }
@@ -318,24 +318,21 @@ describe('CanonicalizerValidator namespace space Test', () => {
         expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N7c: top-level ID ${id}`))).toBe(false);
     });
 
-    it('setSignature does not mask an interned-but-model-less signature — N3 keeps reporting it', () => {
+    it('setSignature re-registers an evicted model — three-state alignment (was: N3 keeps reporting interned-but-model-less)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const file = setupHostFile('src/ns-val-heal.ts');
         const fileID = file.getFileSigID();
-        // 显式 getId intern（无 model → N3 报告）。注：NamespaceSignature.
-        // getNamespaceSigID() 为只读（返回 -1），无 model 条目只能经显式 getId 产生
-        //（tests 或未来代码的写入形态）。
+        // 显式 getId intern（无 model —— N3 报告过）。注：NamespaceSignature.getNamespaceSigID()
+        // 为只读字段不回写 -1，真实无 model 的目标只能经显式 getId 创建（tests 未覆盖上游错误的真实态）。
         const sig = new NamespaceSignature('HealNS', fileID);
         const id = reg.namespaceSigCanonicalizer.getId(sig);
         expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(true);
-        // 真实 ArkNamespace 到达：setSignature 不补挂（错误态不做自愈修复，
-        // 保持问题真相可见）——model 仍缺失，N3 持续报告该 ID，供回溯上游定位。
+        // 真实 ArkNamespace 挂载：setSignature 三态处理（三态对齐后）——驱逐态补注册，
+        // N3 不再报告（model 已恢复，与 ArkClass.setSignature 行为一致）。
         const ns = new ArkNamespace(fileID, undefined, sig);
-        expect(reg.namespaceSigCanonicalizer.getModel(id)).toBeUndefined();
-        expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(true);
-        // 该实例自身也因缺 model 逃逸注册（getNamespaceSigID 无效值）。
+        expect(reg.namespaceSigCanonicalizer.getModel(id)).toBe(ns);
+        expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(false);
         expect(ns.getNamespaceSigID()).toBe(id);
-        void ns;
     });
 });
 
@@ -370,11 +367,11 @@ describe('CanonicalizerValidator class space Test', () => {
         const file = setupHostFile('src/cls-val-evict.ts');
         const cls = setupTopClass(file, 'EvictCls');
         const id = cls.getClassSigID();
-        SignatureCanonicalizerRegistry.removeClassModel(cls);
+        SignatureCanonicalizerRegistry.getInstance().removeClassModel(cls);
         try {
             expect(CanonicalizerValidator.validateClassSpace().some(v => v.includes(`C3: ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerClass(cls);
+            SignatureCanonicalizerRegistry.getInstance().registerClass(cls);
         }
         expect(CanonicalizerValidator.validateClassSpace().some(v => v.includes(`C3: ID ${id}`))).toBe(false);
     });
@@ -430,7 +427,7 @@ describe('CanonicalizerValidator class space Test', () => {
             // 恢复：真实 ArkNamespace 到达父签名（显式注册——setSignature 不自愈），
             // 建立父 ns 与 file 链后 C7a 消除、N7c 不再触发。
             const parent = new ArkNamespace(fileID, undefined, parentSig);
-            SignatureCanonicalizerRegistry.registerNamespace(parent);
+            SignatureCanonicalizerRegistry.getInstance().registerNamespace(parent);
             file.addNamespace(parent);
         }
         expect(CanonicalizerValidator.validateClassSpace().some(v => v.includes(`C7a: ID ${clsID}`))).toBe(false);
@@ -504,11 +501,11 @@ describe('CanonicalizerValidator field space Test', () => {
     it('F3: eviction (model removed, sig kept) is reported and recovers on re-mount', () => {
         const { field } = setupField('src/fld-val-evict.ts', 'FldEvictHost', 'evictField');
         const id = field.getFieldSigID();
-        SignatureCanonicalizerRegistry.removeField(field);
+        SignatureCanonicalizerRegistry.getInstance().removeField(field);
         try {
             expect(CanonicalizerValidator.validateFieldSpace().some(v => v.includes(`F3: ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerField(field);
+            SignatureCanonicalizerRegistry.getInstance().registerField(field);
         }
         expect(CanonicalizerValidator.validateFieldSpace().some(v => v.includes(`F3: ID ${id}`))).toBe(false);
     });
@@ -554,7 +551,7 @@ describe('CanonicalizerValidator field space Test', () => {
         } finally {
             reg.fieldSigCanonicalizer.removeModel(id);
             // 恢复：原 field 重新挂载。
-            SignatureCanonicalizerRegistry.registerField(field);
+            SignatureCanonicalizerRegistry.getInstance().registerField(field);
         }
         expect(CanonicalizerValidator.validateFieldSpace().some(v => v.includes(`F4b: model at ID ${id}`))).toBe(false);
     });
@@ -563,12 +560,12 @@ describe('CanonicalizerValidator field space Test', () => {
         const { cls, field } = setupField('src/fld-val-f7a.ts', 'FldF7aHost', 'f7aField');
         const id = field.getFieldSigID();
         // 模拟 P0 前的驱逐不完整形态：class model 删除但 field model 残留。
-        SignatureCanonicalizerRegistry.removeClassModel(cls);
+        SignatureCanonicalizerRegistry.getInstance().removeClassModel(cls);
         try {
             const violations = CanonicalizerValidator.validateFieldSpace();
             expect(violations.some(v => v.includes(`F7a: ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerClass(cls);
+            SignatureCanonicalizerRegistry.getInstance().registerClass(cls);
         }
         expect(CanonicalizerValidator.validateFieldSpace().some(v => v.includes(`F7a: ID ${id}`))).toBe(false);
     });
@@ -640,11 +637,11 @@ describe('CanonicalizerValidator method space Test', () => {
         );
         const id = reg.methodSigCanonicalizer.getId(declSig);
         // 删 class model（模拟驱逐后 class 不在）→ declare-only 不再合法。
-        SignatureCanonicalizerRegistry.removeClassModel(cls);
+        SignatureCanonicalizerRegistry.getInstance().removeClassModel(cls);
         try {
             expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`M3: ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerClass(cls);
+            SignatureCanonicalizerRegistry.getInstance().registerClass(cls);
         }
         expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`M3: ID ${id}`))).toBe(false);
     });
@@ -713,7 +710,7 @@ describe('CanonicalizerValidator method space Test', () => {
         } finally {
             reg.methodSigCanonicalizer.removeModel(id);
             reg.methodSigCanonicalizer.removeModel(divergentSigID);
-            SignatureCanonicalizerRegistry.registerMethod(method);
+            SignatureCanonicalizerRegistry.getInstance().registerMethod(method);
         }
         expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`M4b: model at ID ${id}`))).toBe(false);
     });
@@ -726,7 +723,7 @@ describe('CanonicalizerValidator method space Test', () => {
         try {
             expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`M6: class`) && v.includes(`ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerMethod(method);
+            SignatureCanonicalizerRegistry.getInstance().registerMethod(method);
         }
         expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`ID ${id}`))).toBe(false);
     });
@@ -734,12 +731,12 @@ describe('CanonicalizerValidator method space Test', () => {
     it('M7: method surviving its declaring class eviction is reported', () => {
         const { cls, method } = setupMethod('src/mtd-val-m7.ts', 'MtdM7Host', 'm7Method');
         const id = method.getMethodSigID()!;
-        SignatureCanonicalizerRegistry.removeClassModel(cls);
+        SignatureCanonicalizerRegistry.getInstance().removeClassModel(cls);
         try {
             const violations = CanonicalizerValidator.validateMethodSpace();
             expect(violations.some(v => v.includes(`M7: ID ${id}`))).toBe(true);
         } finally {
-            SignatureCanonicalizerRegistry.registerClass(cls);
+            SignatureCanonicalizerRegistry.getInstance().registerClass(cls);
         }
         expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes(`M7: ID ${id}`))).toBe(false);
     });
@@ -862,7 +859,7 @@ describe('CanonicalizerValidator temp spaces Test', () => {
         const field = new ArkField(host.getClassSigID());
         field.setSignature(new FieldSignature('staleField', host.getClassSigID(), ct, false));
         host.addField(field);
-        SignatureCanonicalizerRegistry.registerClass(host);
+        SignatureCanonicalizerRegistry.getInstance().registerClass(host);
         // 正常态：持有者声明的 tempSigID 在 temp 空间有效，零违规。
         expect(CanonicalizerValidator.validateTempSpaces().some(v => v.includes('T3:'))).toBe(false);
         // 模拟 temp 空间独立清空（Registry dispose 的 temp 段单独发生）——模型树
@@ -885,7 +882,7 @@ describe('CanonicalizerValidator temp spaces Test', () => {
         const field = new ArkField(host.getClassSigID());
         field.setSignature(new FieldSignature('replacedField', host.getClassSigID(), ct, false));
         host.addField(field);
-        SignatureCanonicalizerRegistry.registerClass(host);
+        SignatureCanonicalizerRegistry.getInstance().registerClass(host);
         // 迁移场景：slot 置空 + 替换记录（持有者仍声明该 tempSigID——惰性物化
         // 痕迹态 formalID≥0 && tempSigID≠undefined 同款覆盖）。
         const tempId = ct.getTempSigID()!;

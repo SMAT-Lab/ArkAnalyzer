@@ -1189,7 +1189,7 @@ describe('Test built in version', () => {
         scene.inferTypes();
         // 多值探测语义：'any' 声明在 lib.es2021.promise 的 PromiseConstructor 上，
         // ES2017 引用集不含该文件——全实体探测均 miss。
-        assert.isFalse(SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses('Promise').some(c => c.getMethodWithName('any') !== null));
+        assert.isFalse(SdkUtils.getSdkGlobalMemberClasses('Promise').some(c => c.getMethodWithName('any') !== null));
     });
 
     it('version 2021 case', () => {
@@ -1200,7 +1200,7 @@ describe('Test built in version', () => {
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
         // ES2021 引用集含 lib.es2021.promise——探测到 any（成员签名归属真实声明文件）。
-        const anyOwner = SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses('Promise').find(c => c.getMethodWithName('any') !== null);
+        const anyOwner = SdkUtils.getSdkGlobalMemberClasses('Promise').find(c => c.getMethodWithName('any') !== null);
         assert.isNotNull(anyOwner);
         assert.equal(anyOwner!.getDeclaringArkFile().getName(), 'lib.es2021.promise.d.ts');
     });

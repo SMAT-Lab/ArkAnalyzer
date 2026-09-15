@@ -270,7 +270,7 @@ describe('ArkMethod outer method SigID Test', () => {
 
         const methodSig = new MethodSignature(arkClass.getClassSigID(), new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
         const method = new ArkMethod(arkClass.getClassSigID(), methodSig);
-        SignatureCanonicalizerRegistry.registerMethod(method);
+        SignatureCanonicalizerRegistry.getInstance().registerMethod(method);
         return method;
     }
 

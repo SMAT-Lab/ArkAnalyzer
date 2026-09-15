@@ -17,6 +17,7 @@ import { TypeInference } from '../common/TypeInference';
 import { BasicBlock } from '../graph/BasicBlock';
 import { MethodSignature } from '../model/ArkSignature';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
+import { SdkUtils } from '../common/SdkUtils';
 import { Local } from './Local';
 import {
     AliasType,
@@ -51,6 +52,9 @@ import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { getCxxSourceFileExtensionSet } from '../../frontend/cppFrontend/utils/cppUtils';
 import { ArkAssignStmt } from './Stmt';
 import { FullPosition } from './Position';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Expr');
 
 const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();
 
@@ -127,6 +131,12 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
      */
     private route(methodSignature: MethodSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 模式 B' 路由：unclear → temp；clear + formal 命中 → formal（旧 temp 经 retireWithReplacement 显式迁移——共享持有者经替换记录直达 formal）；clear + formal miss → error log + temp 兜底。
+        if (methodSignature.isUnclear()) {
+            this.methodSigID = -1;
+            this.tempMethodSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+            return;
+        }
         const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
         if (existingId !== -1) {
             if (this.tempMethodSigID !== undefined) {
@@ -135,6 +145,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
             this.methodSigID = existingId;
             this.tempMethodSigID = undefined;
         } else {
+            logger.error(`AbstractInvokeExpr: clear MethodSignature not interned (route) — routing to temp defensively: ${methodSignature.toString()}`);
             this.methodSigID = -1;
             this.tempMethodSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
         }
@@ -577,7 +588,7 @@ export class ArkNewExpr extends AbstractExpr {
         if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
             // interface 的 construct-signature 可能在 var 侧构造器类上（如
             // interface Object 的构造签名在 ObjectConstructor）——多实体探测
-            const candidates = [classConstructor, ...SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses(classConstructor.getName())];
+            const candidates = [classConstructor, ...SdkUtils.getSdkGlobalMemberClasses(classConstructor.getName())];
             for (const candidate of candidates) {
                 const returnType = candidate.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType();
                 if (returnType) {

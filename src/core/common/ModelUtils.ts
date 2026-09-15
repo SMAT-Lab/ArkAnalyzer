@@ -354,7 +354,7 @@ export class ModelUtils {
         if (primary) {
             return primary;
         }
-        for (const e of SignatureCanonicalizerRegistry.getSdkGlobals(namespace.getName())) {
+        for (const e of SdkUtils.getSdkGlobals(namespace.getName())) {
             if (e instanceof ArkNamespace && e !== namespace) {
                 const property = this.findPropertyInNamespace(name, e);
                 if (property) {
@@ -385,7 +385,7 @@ export class ModelUtils {
                 return property;
             }
         }
-        const objectClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.OBJECT);
+        const objectClass = SdkUtils.getSdkGlobal(Builtin.OBJECT);
         if (objectClass instanceof ArkClass && arkClass !== objectClass) {
             return this.findPropertyInClass(name, objectClass);
         }
@@ -441,7 +441,7 @@ export class ModelUtils {
         while (method) {
             const sigID = method.getLocalClassSigID(className);
             if (sigID !== undefined) {
-                const cls = SignatureCanonicalizerRegistry.getInstance().getArkClassById(sigID);
+                const cls = SignatureCanonicalizerRegistry.getInstance().getClassById(sigID);
                 if (cls) {
                     return cls;
                 }
@@ -468,7 +468,7 @@ export class ModelUtils {
             ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(baseName) ??
             ModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile());
         if (!arkModel && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
-            arkModel = SignatureCanonicalizerRegistry.getSdkGlobal(baseName);
+            arkModel = SdkUtils.getSdkGlobal(baseName);
         }
         return arkModel;
     }
@@ -477,7 +477,7 @@ export class ModelUtils {
         return (
             this.findDeclaredLocal(new Local(refName), method, 1) ??
             this.getArkExportInImportInfoWithName(refName, method.getDeclaringArkFile()) ??
-            SignatureCanonicalizerRegistry.getSdkGlobal(refName)
+            SdkUtils.getSdkGlobal(refName)
         );
     }
 
@@ -488,9 +488,9 @@ export class ModelUtils {
             if (model instanceof Local || model instanceof ArkField) {
                 const type = model.getType();
                 if (type instanceof ClassType) {
-                    model = this.registry.getArkClassBySig(type.getClassSignature());
+                    model = this.registry.getClassBySig(type.getClassSignature());
                 } else if (type instanceof AnnotationNamespaceType) {
-                    model = this.registry.getArkNamespaceBySig(type.getNamespaceSignature());
+                    model = this.registry.getNamespaceBySig(type.getNamespaceSignature());
                 }
             }
             const name = singleNames[i].replace(/<(\w+)>/, EMPTY_STRING);
@@ -726,7 +726,7 @@ export function getArkFile(im: FromInfo): ArkFile | null {
     }
     // ohos common module
     const scene = im.getDeclaringArkFile().getScene();
-    const module = SignatureCanonicalizerRegistry.getSdkGlobal(from);
+    const module = SdkUtils.getSdkGlobal(from);
     if (module instanceof ArkNamespace) {
         return module.getDeclaringArkFile();
     }

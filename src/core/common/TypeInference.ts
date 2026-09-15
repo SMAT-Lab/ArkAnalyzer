@@ -203,7 +203,7 @@ export class TypeInference {
                 type = leftOpType;
             }
         } else if (leftOpType instanceof AliasType) {
-            const defArkMethod = registry.getArkMethodBySig(leftOpType.getSignature().getDeclaringMethodSignature());
+            const defArkMethod = registry.getMethodBySig(leftOpType.getSignature().getDeclaringMethodSignature());
             const defArkClass = defArkMethod?.getDeclaringArkClass();
             let baseType = this.inferUnclearedType(leftOpType.getOriginalType(), defArkClass ?? declaringArkClass, visited, defArkMethod);
             if (baseType) {
@@ -649,7 +649,7 @@ export class TypeInference {
             arkMethod.containsModifier(ModifierType.ASYNC) &&
             (!(returnType instanceof ClassType) || returnType.getClassSignature().getClassName() !== PROMISE)
         ) {
-            const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
+            const promise = SdkUtils.getSdkGlobal(PROMISE);
             if (promise instanceof ArkClass) {
                 return new ClassType(promise.getSignature(), [returnType]);
             }
@@ -785,7 +785,7 @@ export class TypeInference {
         } else if (baseType instanceof ArrayType) {
             propertyAndType = this.inferArrayFieldType(declareClass, fieldName);
         } else if (baseType instanceof AnnotationNamespaceType) {
-            const namespace = registry.getArkNamespaceBySig(baseType.getNamespaceSignature());
+            const namespace = registry.getNamespaceBySig(baseType.getNamespaceSignature());
             if (namespace) {
                 // 多实体探测：跨文件同名 ns（Intl 系）的后续文件实体持有该文件声明的成员
                 const property = ModelUtils.findPropertyInNamespaces(fieldName, namespace);
@@ -802,7 +802,7 @@ export class TypeInference {
 
     private static inferClassFieldType(declareClass: ArkClass, baseType: ClassType, fieldName: string): [any, Type] | null {
         const registry = SignatureCanonicalizerRegistry.getInstance();
-        const arkClass = registry.getArkClassBySig(baseType.getClassSignature());
+        const arkClass = registry.getClassBySig(baseType.getClassSignature());
         if (!arkClass) {
             return null;
         }
@@ -812,7 +812,7 @@ export class TypeInference {
             // 多实体探测：字段在同名其他全局实体（跨文件 interface 增补 / var 构造器
             // 侧类）上时逐实体查找——命中者签名自然归属真实声明类（等价旧 copyMembers
             // 合并的成员可见性，但成员物理留在声明类）。
-            for (const e of SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses(arkClass.getName())) {
+            for (const e of SdkUtils.getSdkGlobalMemberClasses(arkClass.getName())) {
                 if (e !== arkClass) {
                     property = ModelUtils.findPropertyInClass(fieldName, e);
                     if (property) {
@@ -824,7 +824,7 @@ export class TypeInference {
             // ns 兄弟类探测：跨文件同名 namespace（Intl 系）中，后续文件的同名类持有
             // 该文件声明的成员（等价旧 copyNamespace 互拷的可见性）。
             if (!property) {
-                for (const sibling of SignatureCanonicalizerRegistry.getNamespacedSiblingClasses(arkClass)) {
+                for (const sibling of SdkUtils.getNamespacedSiblingClasses(arkClass)) {
                     property = ModelUtils.findPropertyInClass(fieldName, sibling);
                     if (property) {
                         ownerClass = sibling;
@@ -884,7 +884,7 @@ export class TypeInference {
     }
 
     private static inferArrayFieldType(declareClass: ArkClass, fieldName: string): [ArkField, Type] | null {
-        const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+        const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
         if (arrayClass instanceof ArkClass) {
             const property = ModelUtils.findPropertyInClass(fieldName, arrayClass);
             if (property instanceof ArkField) {
@@ -912,7 +912,7 @@ export class TypeInference {
         let arkExport: ArkExport | null =
             ModelUtils.findSymbolInFileWithName(baseName, arkClass) ?? ModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile());
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
-            arkExport = SignatureCanonicalizerRegistry.getSdkGlobal(baseName);
+            arkExport = SdkUtils.getSdkGlobal(baseName);
         }
         return this.parseArkExport2Type(arkExport);
     }
@@ -945,7 +945,7 @@ export class TypeInference {
             return [];
         }
         const types: Type[] = [];
-        for (const entity of SignatureCanonicalizerRegistry.getSdkGlobals(baseName)) {
+        for (const entity of SdkUtils.getSdkGlobals(baseName)) {
             const t = this.parseArkExport2Type(entity);
             if (t) {
                 types.push(t);
@@ -964,7 +964,7 @@ export class TypeInference {
             (!arkExport || (arkExport instanceof Local && declaredArkFile.getProjectName() === SdkUtils.BUILT_IN_NAME)) &&
             !declaredArkFile.getImportInfoBy(typeName)
         ) {
-            const globalVal = SignatureCanonicalizerRegistry.getSdkGlobal(typeName);
+            const globalVal = SdkUtils.getSdkGlobal(typeName);
             if (globalVal) {
                 arkExport = globalVal;
             }
@@ -977,7 +977,7 @@ export class TypeInference {
     }
 
     public static getTypeByGlobalName(globalName: string, arkMethod: ArkMethod): Type | null {
-        const arkExport: ArkExport | null = SignatureCanonicalizerRegistry.getSdkGlobal(globalName);
+        const arkExport: ArkExport | null = SdkUtils.getSdkGlobal(globalName);
         return this.parseArkExport2Type(arkExport);
     }
 
@@ -1227,7 +1227,7 @@ export class TypeInference {
             }
             childClass = childClass?.getSuperClass();
         }
-        const objectClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.OBJECT);
+        const objectClass = SdkUtils.getSdkGlobal(Builtin.OBJECT);
         return fatherClass === objectClass;
     }
 

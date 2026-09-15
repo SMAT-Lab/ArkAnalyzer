@@ -54,7 +54,7 @@ describe('Local class deterministic resolution (method scope chain)', () => {
         expect(m).toBeDefined();
         const sigID = m!.getLocalClassSigID('Local');
         expect(sigID).toBeDefined();
-        const cls = SignatureCanonicalizerRegistry.getInstance().getArkClassById(sigID!);
+        const cls = SignatureCanonicalizerRegistry.getInstance().getClassById(sigID!);
         expect(cls).toBeDefined();
         expect(cls!.getName()).toBe('Local$Outer-m');
     });

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, beforeAll } from 'vitest';
 import { Scene } from '../../src/Scene';
 import { ClassSignature, FileSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../src/core/model/ArkSignature';
 import { ClassType, FunctionType, EnumValueType, GenericType, UnknownType, NumberType, StringType, Type } from '../../src/core/base/Type';
@@ -29,11 +29,12 @@ import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureC
 import { Builtin } from '../../src/core/common/Builtin';
 
 describe('Temp ID Mechanism Test', () => {
-    // The value-object constructor overloads are fail-fast: declaring file signatures must be
-    // interned first. Pre-register the file values shared by the cases below so the class
-    // signatures take the formal-ID path (an uninterned file now throws — see the last case).
+    let reg: SignatureCanonicalizerRegistry;
+    // Pre-register the file values shared by the cases below so the class signatures take the
+    // formal-ID path. An uninterned declaring file now falls back to ID 0 (DEFAULT) with an
+    // error log — mode B' defensive routing (work item P), no throw.
     beforeEach(() => {
-        const reg = SignatureCanonicalizerRegistry.getInstance();
+        reg = SignatureCanonicalizerRegistry.getInstance();
         reg.fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
         reg.fileSigCanonicalizer.getId(new FileSignature('p', 'c.ts'));
     });
@@ -216,8 +217,12 @@ describe('Temp ID Mechanism Test', () => {
         expect(id1).toBe(id2);
     });
 
-    it('uninterned declaring file signature fails fast instead of entering temp space', () => {
-        expect(() => new ClassSignature('A', new FileSignature('p', 'unregistered.ts'), null)).toThrow(/not interned/);
+    it('uninterned declaring file signature defaults to ID 0 with error log (mode B\' defensive fallback, no throw)', () => {
+        // Pattern B'（工作项 P）：clear FileSignature declaring 未 intern → error log + 置 0（DEFAULT，
+        // 复合签名变为 unclear 语义——getDeclaringFileSigID() === 0 使 isUnclear() 为 true）。
+        const sig = new ClassSignature('A', new FileSignature('p', 'unregistered.ts'), null);
+        expect(sig.getDeclaringFileSigID()).toBe(0);
+        expect(sig.isUnclear()).toBe(true);
     });
 
     it('same signature instance shared by two ClassTypes reuses one temp ID (idempotent register)', () => {
@@ -262,12 +267,12 @@ describe('Temp ID Mechanism Test', () => {
         const fileID = reg.fileSigCanonicalizer.getExistingId(fileSig);
         const sig = new ClassSignature('Resolvable', fileSig, null);
         const ct = new ClassType(sig); // 未注册 → 持 temp
-        expect(reg.getArkClassBySig(ct.getClassSignature())).toBeUndefined();
+        expect(reg.getClassBySig(ct.getClassSignature())).toBeUndefined();
 
         const arkClass = new ArkClass(fileID);
         arkClass.setSignature(sig); // 真实类后到注册
         // 值查找不受 ClassType 持 temp 影响：经 getClassSignature() 的消费路径解析成功。
-        expect(reg.getArkClassBySig(ct.getClassSignature())).toBe(arkClass);
+        expect(reg.getClassBySig(ct.getClassSignature())).toBe(arkClass);
     });
 
     it('Builtin shared stubs keep their temp-routing behavior (no formal write)', () => {
@@ -355,9 +360,8 @@ describe('Temp ID Mechanism Test', () => {
 
     /** 在指定类上注册一个 type 为指定类型的真实字段，返回 (class, field)。 */
     function setupFieldWith(className: string, fieldName: string, type: Type): { arkClass: ArkClass; arkField: ArkField } {
-        const scene = new Scene();
         const fileSig = new FileSignature('p', 'f.ts');
-        const fileID = scene.getFileSigCanonicalizer().getExistingId(fileSig);
+        const fileID = reg.fileSigCanonicalizer.getExistingId(fileSig);
         const arkClass = new ArkClass(fileID);
         arkClass.setSignature(new ClassSignature(className, fileSig, null));
         const arkField = new ArkField(arkClass.getClassSigID());
@@ -438,29 +442,6 @@ describe('Temp ID Mechanism Test', () => {
         expect(ref.getType().toString()).toBe('number');
     });
 
-    // --- AbstractInvokeExpr 签名两分路由（temp / formal+栅栏，无泛型双视图）---
-
-    /** 在宿主 file 的类上注册一个真实方法并返回（供 invoke expr 构造签名）。
-     *  fileName 仅作区分记录——宿主 FileSignature 一律用已 intern 的 'p/f.ts'
-     *  （beforeEach 预注册），避免对象重载的 requireExistingId fail-fast。 */
-    function setupMethodWith(fileName: string, className: string, methodName: string, returnType: Type): { method: ArkMethod; subSig: MethodSubSignature } {
-        void fileName;
-        const scene = new Scene();
-        const fileSig = new FileSignature('p', 'f.ts');
-        const fileID = scene.getFileSigCanonicalizer().getExistingId(fileSig);
-        const arkClass = new ArkClass(fileID);
-        arkClass.setSignature(new ClassSignature(className, fileSig, null));
-        // 挂到真实 ArkFile（updateMethodIndex 需经 getDeclaringArkFile 查语言）。
-        const hostFile = new ArkFile(Language.TYPESCRIPT);
-        hostFile.setFileSignature(fileSig);
-        hostFile.addArkClass(arkClass);
-        const subSig = new MethodSubSignature(methodName, [], returnType, false);
-        const method = new ArkMethod(arkClass.getClassSigID());
-        method.setImplementationSignature(new MethodSignature(arkClass.getClassSigID(), subSig));
-        arkClass.addMethod(method);
-        return { method, subSig };
-    }
-
     it('invokeExpr with an unregistered stub signature routes to temp (no formal write)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const formalSizeBefore = reg.methodSigCanonicalizer.size();
@@ -473,6 +454,32 @@ describe('Temp ID Mechanism Test', () => {
         // 锚点直返：getMethodSignature 返回构造时实例（toString 稳定性）。
         expect(expr.getMethodSignature()).toBe(stubSig);
     });
+});
+
+describe('Temp ID Test 2', () => {
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+    })
+    /** 在宿主 file 的类上注册一个真实方法并返回（供 invoke expr 构造签名）。
+     *  fileName 仅作区分记录——宿主 FileSignature 一律用已 intern 的 'p/f.ts'
+     *  （beforeEach 预注册），确保走 formal-ID 路径（未 intern 的 clear 签名经模式 B' 兜底会进 temp / 置 0）。 */
+    function setupMethodWith(fileName: string, className: string, methodName: string, returnType: Type): { method: ArkMethod; subSig: MethodSubSignature } {
+        void fileName;
+        const scene = new Scene();
+        const fileSig = new FileSignature('p', 'f.ts');
+        // 挂到真实 ArkFile（updateMethodIndex 需经 getDeclaringArkFile 查语言）。
+        const hostFile = new ArkFile(Language.TYPESCRIPT);
+        hostFile.setFileSignature(fileSig);
+        const fileID = scene.getFileSigCanonicalizer().getExistingId(fileSig);
+        const arkClass = new ArkClass(fileID);
+        arkClass.setSignature(new ClassSignature(className, fileSig, null));
+        hostFile.addArkClass(arkClass);
+        const subSig = new MethodSubSignature(methodName, [], returnType, false);
+        const method = new ArkMethod(arkClass.getClassSigID());
+        method.setImplementationSignature(new MethodSignature(arkClass.getClassSigID(), subSig));
+        arkClass.addMethod(method);
+        return { method, subSig };
+    }
 
     it('invokeExpr with a registered method signature resolves the formal ID read-only', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();

@@ -14,6 +14,7 @@
  */
 
 import * as ts from 'ohos-typescript';
+import { SdkUtils } from './SdkUtils';
 import { Local } from '../base/Local';
 import { FullPosition } from '../base/Position';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
@@ -40,6 +41,7 @@ import {
 import { ArkClass } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { buildNormalArkClassFromArkFile, buildNormalArkClassFromArkNamespace } from '../model/builder/ArkClassBuilder';
+import { buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import {
     AliasType,
     AnyType,
@@ -93,7 +95,6 @@ import { TypeInference } from './TypeInference';
 import { KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { ArkNamespace } from '../model/ArkNamespace';
 import { ArkFile } from '../model/ArkFile';
-import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -365,6 +366,13 @@ export class ArkValueTransformer {
         } else {
             buildNormalArkClassFromArkFile(objectLiteralExpression, this.declaringFile, anonymousClass, this.sourceFile, this.declaringMethod);
         }
+        // Build the default constructor at creation time instead of waiting for the batch
+        // post-pass (SceneBuilder.updateOrAddDefaultConstructors): the constructor invoke
+        // expr built below probes the formal space with the constructor signature, and
+        // without a real (value-equal) registered signature the probe misses and falls into
+        // the temp defensive route with an error log. The batch pass is idempotent here
+        // (needDefaultConstructorInClass sees the existing constructor and skips).
+        buildDefaultConstructor(anonymousClass);
 
         const objectLiteralExpressionPosition = FullPosition.buildFromNode(objectLiteralExpression, this.sourceFile);
         const stmts: Stmt[] = [];
@@ -379,7 +387,13 @@ export class ArkValueTransformer {
         newExprStmts.forEach(stmt => stmts.push(stmt));
 
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
-        const constructorMethodSignature = new MethodSignature(anonymousClass.getClassSigID(), constructorMethodSubSignature);
+        // Prefer the real (just-built) default constructor signature so the invoke expr's
+        // route hits the formal space directly (value-equal probe); fall back to the legacy
+        // probe shape only if the constructor was not created (defensive —
+        // needDefaultConstructorInClass guards).
+        const realConstructor = anonymousClass.getMethodWithName(CONSTRUCTOR_NAME);
+        const constructorMethodSignature = realConstructor?.getSignature()
+            ?? new MethodSignature(anonymousClass.getClassSigID(), constructorMethodSubSignature);
         const constructorInvokeExpr = new ArkInstanceInvokeExpr(newExprLocal as Local, constructorMethodSignature, []);
 
         const assignStmt = new ArkAssignStmt(newExprLocal, constructorInvokeExpr);
@@ -606,7 +620,7 @@ export class ArkValueTransformer {
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
         let popMethodSignature = ModelUtils.popMethodSignatureCache.get(componentName);
         if (!popMethodSignature) {
-            const cls = SignatureCanonicalizerRegistry.getSdkGlobal(COMMON_METHOD);
+            const cls = SdkUtils.getSdkGlobal(COMMON_METHOD);
             if (cls instanceof ArkClass) {
                 const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
                 if (commonSignature) {

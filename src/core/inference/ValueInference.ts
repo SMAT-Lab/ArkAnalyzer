@@ -15,6 +15,7 @@
 
 
 import { ArkAssignStmt, Stmt } from '../base/Stmt';
+import { SdkUtils } from '../common/SdkUtils';
 import { Value } from '../base/Value';
 import { Inference, InferenceFlow } from './Inference';
 import { ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef } from '../base/Ref';
@@ -65,7 +66,6 @@ import { ClassSignature } from '../model/ArkSignature';
 import { Builtin } from '../common/Builtin';
 import { Language } from '../model/ArkFile';
 import { IRInference as CxxIRInference } from '../../frontend/cppFrontend/common/IRInference';
-import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -376,7 +376,7 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
         const scene = arkMethod.getDeclaringArkFile().getScene();
         if (baseType instanceof ArrayType || baseType instanceof TupleType) {
-            const arrayInterface = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+            const arrayInterface = SdkUtils.getSdkGlobal(Builtin.ARRAY);
             const realTypes = baseType instanceof ArrayType ? [baseType.getBaseType()] : undefined;
             if (arrayInterface instanceof ArkClass) {
                 baseType = new ClassType(arrayInterface.getSignature(), realTypes);

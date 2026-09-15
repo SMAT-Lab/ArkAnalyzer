@@ -1423,7 +1423,7 @@ export class ModuleBuilder {
                 base.removeExtendedClass(cls);
             }
             for (const mtd of cls.getMethods(true)) {
-                SignatureCanonicalizerRegistry.removeMethod(mtd);
+                SignatureCanonicalizerRegistry.getInstance().removeMethod(mtd);
                 mtd.clearBodyAndSupplementary();
             }
             // 驱逐 field model（P0）：非 keep 类摘除挂载点前清 field model，
@@ -1431,7 +1431,7 @@ export class ModuleBuilder {
             // class model）。须在 removeArkClass 摘挂载之前（getFields 依赖
             // class 索引仍在）。reload 重建由 addField 兜底注册负责。
             for (const fld of cls.getFields()) {
-                SignatureCanonicalizerRegistry.removeField(fld);
+                SignatureCanonicalizerRegistry.getInstance().removeField(fld);
             }
             const ns = cls.getDeclaringArkNamespace();
             if (ns) {

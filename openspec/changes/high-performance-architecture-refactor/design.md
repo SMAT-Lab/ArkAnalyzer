@@ -505,7 +505,19 @@ public getClass(classSignature: ClassSignature): ArkClass | null {
 
 **决策**：5 个签名类各新增 `@internal isUnclear(): boolean` 方法，判断签名是否为不明确签名（需要走临时 canonicalizer）。
 
-**判断标准**：签名的 `declaringFileSignature` 是否为 `FileSignature.DEFAULT`（沿着声明链追溯到文件层）。DEFAULT 单例及其直接组合返回 `false`（走正式 canonicalizer ID 0）。
+> **⚠ 实现状态更新（工作项 P/R 后最终形态）**：本节描述的是最初设计。isUnclear 的路由判据经工作项 P（模式 B' 统一路由）和后续简化（工作项 R：直接字段检查）已演进为以下最终形态——不再依赖 registry 查找或声明链遍历，全部为 O(1) 字段读：
+>
+> | 签名类 | 最终实现 | 语义 |
+> |--------|---------|------|
+> | FileSignature | `return false` | 身份根，永不 unclear |
+> | ClassSignature | `declaringFileSigID === 0 && className !== '%unk'` | 纯字段检查（' %unk' 名 + FileSigID 0 即 DEFAULT） |
+> | NamespaceSignature | `declaringFileSigID === 0 && namespaceName !== '%unk'` | 同上 |
+> | MethodSignature | `declaringClassSigID === -1` | 模式 B' 不变式：formal ID ≥ 0 即 resolved |
+> | FieldSignature | `declaringClassSigID === -1 \|\| declaringNamespaceSigID === -1` | 同上 |
+>
+> `isDefault()` 方法已删除（其 registry lookup 被字段值比较取代）。构造器增加了 SigID + temp ID 的 number 重载（MethodSignature 第 3 参数 / FieldSignature 第 6 参数），使 temp 构造不再依赖 deprecated 对象重载。以下原文保留作为设计历史记录。
+
+**判断标准**（最初设计，已演进）：签名的 `declaringFileSignature` 是否为 `FileSignature.DEFAULT`（沿着声明链追溯到文件层）。DEFAULT 单例及其直接组合返回 `false`（走正式 canonicalizer ID 0）。
 
 | 签名类 | `isUnclear()` 实现 | 语义 |
 |--------|-------------------|------|

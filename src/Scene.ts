@@ -199,6 +199,12 @@ export class Scene {
         disposeClassMap();
         this.moduleCache = undefined;
         this.memoryMonitor = undefined;
+        this.releaseSceneBuilder();
+        this.builtFileOrder = [];
+        this.moduleScenesMap.clear();
+        this.modulePath2NameMap.clear();
+        this.moduleSdkMap.clear();
+        this.projectSdkMap.clear();
         if (this.statsExitHandler) {
             process.removeListener('exit', this.statsExitHandler);
             this.statsExitHandler = undefined;
@@ -251,21 +257,14 @@ export class Scene {
         return this.overRideDependencyMap;
     }
 
+    /**
+     * @deprecated Use {@link dispose} instead. clear() and dispose() had overlapping
+     * responsibilities (both cleared the Registry and builder state) with inconsistent
+     * coverage — this method now delegates to dispose() for a single cleanup path.
+     * This method will be removed in a future release.
+     */
     public clear(): void {
-        this.moduleScenesMap.clear();
-        this.modulePath2NameMap.clear();
-
-        this.moduleSdkMap.clear();
-        this.projectSdkMap.clear();
-
-        this.releaseSceneBuilder();
-        this.moduleCache?.clear();
-        this.builtFileOrder = [];
-        SignatureCanonicalizerRegistry.dispose();
-        // Force re-creation of Registry for next use
-        SignatureCanonicalizerRegistry.getInstance();
-        // 组件名 stub 缓存随 Registry 同点清理（缓存实例的 temp symbol 属旧空间）。
-        ArkSignatureBuilder.clearComponentStubCache();
+        this.dispose();
     }
 
     public getStage(): SceneBuildStage {
@@ -585,11 +584,11 @@ export class Scene {
 
     /**
      * @deprecated Compatibility delegate only — no longer used internally. Use
-     * {@link SignatureCanonicalizerRegistry.getSdkGlobal} instead (the sdk global
+     * {@link SdkUtils.getSdkGlobal} instead (the sdk global
      * map lives in the registry).
      */
     public getSdkGlobal(globalName: string): ArkExport | null {
-        return SignatureCanonicalizerRegistry.getSdkGlobal(globalName);
+        return SdkUtils.getSdkGlobal(globalName);
     }
 
     /**
@@ -882,7 +881,7 @@ export class Scene {
     public getMethod(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null;
     public getMethod(methodSignature: MethodSignature, _refresh?: boolean): ArkMethod | null {
         // Fast path: O(1) model lookup (read-only, never interns the signature).
-        const arkMethod = this.registry.getArkMethodBySig(methodSignature);
+        const arkMethod = this.registry.getMethodBySig(methodSignature);
         if (arkMethod !== undefined) {
             return arkMethod;
         }
@@ -941,22 +940,22 @@ export class Scene {
      */
     public disposeModule(module: ArkModule): void {
         for (const arkFile of module.getFilesMap().values()) {
-            SignatureCanonicalizerRegistry.removeFile(arkFile);
+            this.registry.removeFile(arkFile);
             for (const ns of arkFile.getAllNamespacesUnderThisFile()) {
-                SignatureCanonicalizerRegistry.removeNamespace(ns);
+                this.registry.removeNamespace(ns);
             }
             for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
-                SignatureCanonicalizerRegistry.removeClassModel(cls);
+                this.registry.removeClassModel(cls);
                 // 驱逐 field model（P0）：不清则 field model 残留为 stale 形态
                 //（class model 已删而 field model 还挂，getDeclaringArkClass 经
                 // getModel()! 静默返回 undefined，消费方链式 NPE + validate F4/F6/F7
                 // 违规）。reload 自愈由 ArkClass.addField 的兜底注册负责。
                 // 此刻 class 索引未清（clearAllReferences 在 unload 后半），遍历安全。
                 for (const fld of cls.getFields()) {
-                    SignatureCanonicalizerRegistry.removeField(fld);
+                    this.registry.removeField(fld);
                 }
                 for (const mtd of cls.getMethods(true)) {
-                    SignatureCanonicalizerRegistry.removeMethod(mtd);
+                    this.registry.removeMethod(mtd);
                     // Release heavy per-method IR (ArkBody/CFG/Stmt/Locals + ViewTree) so it can be
                     // GC'd on eviction, even if the ArkMethod/ArkFile skeleton is still referenced
                     // by residual back-edges. Bodies/viewTrees are rebuilt on reload.
@@ -1089,7 +1088,7 @@ export class Scene {
      * （非错误，未解析签名保持原状）。
      */
     private checkTempSignatureCompleteness(): void {
-        const stats = SignatureCanonicalizerRegistry.getTempSpacesStats();
+        const stats = this.registry.getTempSpacesStats();
         const liveTotal = stats.class.liveCount + stats.method.liveCount + stats.field.liveCount;
         if (liveTotal > 0) {
             const brief = {
@@ -1110,7 +1109,7 @@ export class Scene {
         method: TempSpaceStats;
         field: TempSpaceStats;
     }> {
-        return SignatureCanonicalizerRegistry.settleTempSpaces();
+        return this.registry.settleTempSpaces();
     }
 
     /**

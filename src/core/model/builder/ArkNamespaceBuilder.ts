@@ -63,7 +63,7 @@ export function buildArkNamespace(node: ts.ModuleDeclaration, ns: ArkNamespace, 
         else if (ts.isModuleDeclaration(node.body)) {
             logger.trace('This ModuleBody is an NamespaceDeclaration.');
             const namespaceSig = buildNamespaceSignature(node.body, ns);
-            let childNs = SignatureCanonicalizerRegistry.getInstance().getArkNamespaceBySig(namespaceSig);
+            let childNs = SignatureCanonicalizerRegistry.getInstance().getNamespaceBySig(namespaceSig);
             if (!childNs) {
                 childNs = new ArkNamespace(ns.getDeclaringFileID(), ns.getNamespaceSigID(), namespaceSig);
                 ns.addNamespace(childNs);
@@ -87,7 +87,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
     statements.forEach(child => {
         if (ts.isModuleDeclaration(child)) {
             const childNsSig = buildNamespaceSignature(child, namespace);
-            let childNs = SignatureCanonicalizerRegistry.getInstance().getArkNamespaceBySig(childNsSig);
+            let childNs = SignatureCanonicalizerRegistry.getInstance().getNamespaceBySig(childNsSig);
             if (!childNs) {
                 childNs = new ArkNamespace(namespace.getDeclaringFileID(), namespace.getNamespaceSigID(), childNsSig);
                 namespace.addNamespace(childNs);
@@ -98,7 +98,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             }
         } else if (ts.isClassDeclaration(child) || ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child) || ts.isStructDeclaration(child)) {
             const classSig = buildClassSignature(child, namespace);
-            let cls = SignatureCanonicalizerRegistry.getInstance().getArkClassBySig(classSig);
+            let cls = SignatureCanonicalizerRegistry.getInstance().getClassBySig(classSig);
             if (!cls) {
                 cls = new ArkClass(namespace.getDeclaringFileID(), namespace.getNamespaceSigID(), classSig);
                 namespace.addArkClass(cls);

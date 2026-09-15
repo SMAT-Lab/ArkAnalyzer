@@ -89,7 +89,6 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BuiltinCxx } from './Builtin';
 import { CxxModelUtils, setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { Language } from '../../../core/model/ArkFile';
-import { SignatureCanonicalizerRegistry } from '../../../core/common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 // Builtin stub signatures carry FileSignature.DEFAULT whose fileName is UNKNOWN_FILE_NAME,
@@ -875,7 +874,7 @@ export class TypeInference {
             const types: Type[] = Array.from(typeMap.values());
             let returnType = types.length === 1 ? types[0] : new UnionType(types);
             if (arkMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
+                const promise = SdkUtils.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     returnType = new ClassType(promise.getSignature(), [returnType]);
                 }
@@ -1076,7 +1075,7 @@ export class TypeInference {
     }
 
     private static inferArrayFieldType(declareClass: ArkClass, fieldName: string): [ArkField, Type] | null {
-        const arrayClass = SignatureCanonicalizerRegistry.getSdkGlobal(Builtin.ARRAY);
+        const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
         if (arrayClass instanceof ArkClass) {
             const property = CxxModelUtils.findPropertyInClass(fieldName, arrayClass);
             if (property instanceof ArkField) {
@@ -1103,7 +1102,7 @@ export class TypeInference {
             CxxModelUtils.findSymbolInFileWithName(baseName, arkClass) ??
             CxxModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile(), arkClass);
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
-            arkExport = SignatureCanonicalizerRegistry.getSdkGlobal(baseName);
+            arkExport = SdkUtils.getSdkGlobal(baseName);
         }
         return this.parseArkExport2Type(arkExport);
     }
@@ -1125,7 +1124,7 @@ export class TypeInference {
             (!arkExport || (arkExport instanceof Local && declaredArkFile.getProjectName() === SdkUtils.BUILT_IN_NAME)) &&
             !declaredArkFile.getImportInfoBy(typeName)
         ) {
-            const globalVal = SignatureCanonicalizerRegistry.getSdkGlobal(typeName);
+            const globalVal = SdkUtils.getSdkGlobal(typeName);
             if (globalVal) {
                 arkExport = globalVal;
             }

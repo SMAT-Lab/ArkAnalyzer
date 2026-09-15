@@ -163,9 +163,9 @@ describe('CanonicalizerValidator end-to-end smoke Test', () => {
         const scene = new Scene();
         // 构建后（推断前）：formal field 空间只含 builder 注册的真实字段（有 model）；
         // fieldRef 的未注册签名（stub/占位）全部在 temp——field temp 从 0 变为可见。
-        const buildStats = SignatureCanonicalizerRegistry.getTempSpacesStats();
+        const buildStats = SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats();
         scene.buildSceneFromProjectDir(config);
-        const afterBuild = SignatureCanonicalizerRegistry.getTempSpacesStats();
+        const afterBuild = SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats();
 
         // field temp 空间因 fieldRef 路由而出现条目（未解析 field 引用可见化）。
         expect(afterBuild.field.totalRegistered).toBeGreaterThan(buildStats.field.totalRegistered);
@@ -224,9 +224,9 @@ describe('CanonicalizerValidator end-to-end smoke Test', () => {
         config.buildFromProjectDir('./tests/resources/pta/Container');
         config.getSdksObj().push({ name: 'ohos', path: './node_modules/typescript/lib', moduleName: '' });
         const scene = new Scene();
-        const before = SignatureCanonicalizerRegistry.getTempSpacesStats();
+        const before = SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats();
         scene.buildSceneFromProjectDir(config);
-        const afterBuild = SignatureCanonicalizerRegistry.getTempSpacesStats();
+        const afterBuild = SignatureCanonicalizerRegistry.getInstance().getTempSpacesStats();
 
         // temp method 空间因 invoke expr 路由而出现条目（ArkUI stub / 动态方法
         // 占位等未解析 invoke 签名可见化）。

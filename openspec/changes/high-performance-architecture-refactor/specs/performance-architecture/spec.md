@@ -11,7 +11,7 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 #### Scenario: 全局单例访问
 
 - **WHEN** 任何代码需要获取签名的正式 ID 或通过 ID 查询模型
-- **THEN** 应通过 `SignatureCanonicalizerRegistry.getInstance()` 获取 Registry 实例，或通过静态快捷方法（如 `SignatureCanonicalizerRegistry.getFileId(sig)`、`SignatureCanonicalizerRegistry.getClassById(id)`）直接访问，无需持有 Scene 引用
+- **THEN** 应通过 `SignatureCanonicalizerRegistry.getInstance()` 获取 Registry 实例，再调用实例方法（查询族 getXxxById/BySig（工作项 Q 去前缀重命名）、register/remove 族、边界族、统计族——工作项 N 后除 getInstance/dispose 外全部为实例方法，多 Scene 适配时只需换 registry 引用来源），无需持有 Scene 引用
 
 #### Scenario: DEFAULT 签名初始化
 
@@ -49,6 +49,16 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 - **WHEN** 通过 `setFile()` 注册一个 ArkFile，或通过 `disposeModule()` 移除一个 ArkFile
 - **THEN** 应调用 `setModel(id, file)` 注册或 `removeModel(id)` 移除（设为 `undefined`，ID 不回收）
 
+#### Scenario: class model 注册点唯一性
+
+- **WHEN** `ArkFile.addArkClass()` / `ArkNamespace.addArkClass()` 被调用挂载顶层类索引
+- **THEN** 这两个方法**不注册 model**——class model 的注册由 `ArkClass.setSignature()` 的三态处理唯一保证（新值首建注册 / 驱逐态补注册 / 他 model 持有不覆盖）；addArkClass 只维护文件/命名空间的顶层 SigID 索引（识别声明合并场景走 copyMembers）。`Registry.registerClass` 带 id > 0 守卫，调用面收敛为 setSignature 唯一一处（review 工作项 K）
+
+#### Scenario: namespace model 注册点唯一性
+
+- **WHEN** `ArkFile.addNamespace()` / `ArkNamespace.addNamespace()` 被调用挂载顶层命名空间索引
+- **THEN** 这两个方法**不注册 model**——namespace model 的注册由 `ArkNamespace.setSignature()` 唯一保证（首建注册；驱逐态不补挂，交 Validator N3 规则暴露——与 class 的三态处理刻意不同，见 bug 清单 #10）；addNamespace 只维护文件/命名空间的顶层 SigID 索引（识别声明合并场景走递归合并）。`Registry.registerNamespace` 带 id > 0 守卫，调用面收敛为 setSignature 唯一一处（review 工作项 O）
+
 #### Scenario: 获取所有模型
 
 - **WHEN** 需要遍历所有已注册的模型（如 `getFiles()`、`getClasses()`）
@@ -77,9 +87,8 @@ ArkAnalyzer 应引入 `SignatureCanonicalizerRegistry` 全局单例，集中管�
 
 - **WHEN** Builder 阶段创建两个值相同但引用不同的不明确签名实例（如两个 `ClassSignature("F", FileSignature.DEFAULT, null)`，分别来自不同类的 extends 声明）
 - **THEN** 临时 canonicalizer 应基于对象引用（`objectIdentity` 策略）为每个实例分配独立的临时 ID，即使值完全相同也不合并
-- **AND** 临时 canonicalizer 使用 `TempSignatureCanonicalizer<S>`（内部包装 `Canonicalizer<T>` 的 objectIdentity 策略），维护引用计数追踪每个 tempSigID 被多少个 Type/Signature 对象引用
-- **AND** `register(sig)` 在 Type 构造/签名赋值时调用（refcount++），`release(tempSigID)` 在迁移入口调用（refcount--，归 0 则移除）
-- **AND** 此引用计数机制已实现并预留，当前混合方案中暂未在 Type 构造和 setter 中强制使用
+- **AND** 临时 canonicalizer 为 `TempSignatureCanonicalizer<S>`（组合 `Canonicalizer<S>` 的 objectIdentity 策略——注册/查ID/get/clear 委托 inner，追加 retire 置空 + replacement 替换记录 + 审计视图，工作项 S）
+- **AND** `register(sig)` 在 Type 构造/路由时调用（Symbol 幂等——同实例复用 ID）；`retireWithReplacement(tempSigID, formalSigID)` 在迁移入口调用（slot 置空 + 记录 formal 归宿，共享持有者经 `getReplacement` 直达 formal）
 
 #### Scenario: DEFAULT 签名进入正式空间
 

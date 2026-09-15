@@ -127,7 +127,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport
 
 function buildAndCollectNamespace(child: ts.ModuleDeclaration, arkFile: ArkFile, astRoot: ts.SourceFile): void {
     const namespaceSig = buildNamespaceSignature(child, arkFile);
-    let ns = SignatureCanonicalizerRegistry.getInstance().getArkNamespaceBySig(namespaceSig);
+    let ns = SignatureCanonicalizerRegistry.getInstance().getNamespaceBySig(namespaceSig);
     if (!ns) {
         ns = new ArkNamespace(arkFile.getFileSigID(), undefined, namespaceSig);
         arkFile.addNamespace(ns);

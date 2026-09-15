@@ -141,7 +141,7 @@ export class SdkUtils {
         if (fileSigID === undefined) {
             return undefined;
         }
-        return SignatureCanonicalizerRegistry.getInstance().getArkFileById(fileSigID);
+        return SignatureCanonicalizerRegistry.getInstance().getFileById(fileSigID);
     }
 
     private static isGlobalPath(file: ArkFile): boolean {
@@ -315,6 +315,101 @@ export class SdkUtils {
         }
     }
 
+    // --- SDK global symbol member probing (migrated from Registry — work item L) ---
+    // This layer MAY use instanceof on model classes freely (SdkUtils sits above the
+    // dependency-graph floor); the Registry must not (value imports of model classes
+    // would create real module-loading edges that flip the ESM cycle, see Registry's
+    // dependency-graph constraint note).
+
+    /**
+     * Get all member-provider classes of a global symbol for member probing —
+     * equivalent to the member union the legacy copyMembers merging produced:
+     *  - every ArkClass entity registered under the name (same-name interface
+     *    declarations across lib files), and
+     *  - for `declare var X: XConstructor` locals, the constructor-side class
+     *    (XConstructor) plus every entity registered under THAT name.
+     * Members resolved against these candidates carry their real declaring class
+     * in the signature (version judgement).
+     */
+    public static getSdkGlobalMemberClasses(globalName: string): ArkClass[] {
+        const result: ArkClass[] = [];
+        const seen = new Set<ArkClass>();
+        const push = (c: ArkClass) => {
+            if (!seen.has(c)) {
+                seen.add(c);
+                result.push(c);
+            }
+        };
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        for (const e of SdkUtils.getSdkGlobals(globalName)) {
+            if (e instanceof ArkClass) {
+                push(e);
+            } else if (e instanceof Local) {
+                const localType = e.getType();
+                if (localType instanceof ClassType) {
+                    // Local → ctor class via canonicalizer direct lookup: SDK classes are
+                    // registered (setModel) at build time before their var locals enter
+                    // the global map, so this is equivalent to the legacy Scene.getClass
+                    // path; evicted models miss the same way on both paths.
+                    const ctorSig = localType.getClassSignature();
+                    const id = reg.classSigCanonicalizer.getExistingId(ctorSig);
+                    const ctorClass = id !== -1 ? reg.classSigCanonicalizer.getModel(id) : undefined;
+                    if (ctorClass !== undefined) {
+                        push(ctorClass);
+                    }
+                    for (const c of SdkUtils.getSdkGlobals(ctorSig.getClassName())) {
+                        if (c instanceof ArkClass) {
+                            push(c);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get the same-name classes mounted in sibling entities of a class's declaring
+     * namespace — for cross-file same-name namespaces (e.g. `Intl` declared across
+     * lib.es5 + lib.es20XX.intl), the class's counterpart in each sibling namespace
+     * carries members declared in that file. Sibling order follows registration
+     * order (= DFS file order); returns [] for non-global namespaces.
+     */
+    public static getNamespacedSiblingClasses(arkClass: ArkClass): ArkClass[] {
+        const ns = arkClass.getDeclaringArkNamespace();
+        if (!ns) {
+            return [];
+        }
+        const result: ArkClass[] = [];
+        const className = arkClass.getName();
+        for (const e of SdkUtils.getSdkGlobals(ns.getName())) {
+            if (e instanceof ArkNamespace && e !== ns) {
+                const c = e.getClassWithName(className);
+                if (c) {
+                    result.push(c);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Single-value view of the SDK global map: the first entity registered under
+     * the name (legacy first-win semantics). Returns null when unregistered.
+     */
+    public static getSdkGlobal(globalName: string): ArkExport | null {
+        return SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap.get(globalName)?.[0] ?? null;
+    }
+
+    /**
+     * All SDK global entities registered under the given name (multi-declaration
+     * scenario: e.g. `interface Object` + `declare var Object: ObjectConstructor` are
+     * two entities). Order is the registration order; entry [0] equals {@link getSdkGlobal}.
+     */
+    public static getSdkGlobals(globalName: string): ArkExport[] {
+        return SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap.get(globalName) ?? [];
+    }
+
     public static copyMembers(from: ArkClass, to: ArkClass): void {
         from.getMethods().forEach(method => {
             const dist = method.isStatic() ? to.getStaticMethodWithName(method.getName()) : to.getMethodWithName(method.getName());
@@ -346,7 +441,7 @@ export class SdkUtils {
     }
 
     public static computeGlobalThis(leftOp: AbstractFieldRef, arkMethod: ArkMethod): void {
-        const globalThis = SignatureCanonicalizerRegistry.getSdkGlobal(GLOBAL_THIS_NAME);
+        const globalThis = SdkUtils.getSdkGlobal(GLOBAL_THIS_NAME);
         if (globalThis instanceof ArkNamespace) {
             const exportInfo = new ExportInfo.Builder()
                 .exportClauseName(leftOp.getFieldName())
@@ -357,7 +452,7 @@ export class SdkUtils {
     }
 
     public static extendArkUI(scene: Scene): void {
-        const cls = SignatureCanonicalizerRegistry.getSdkGlobal(COMMON_METHOD);
+        const cls = SdkUtils.getSdkGlobal(COMMON_METHOD);
         if (cls instanceof ArkClass) {
             const methodSubSignature = new MethodSubSignature(COMPONENT_POP_FUNCTION, [], VoidType.getInstance(), false);
             const mtd = new ArkMethod(cls.getClassSigID(), undefined, new MethodSignature(cls.getClassSigID(), methodSubSignature));

@@ -17,7 +17,7 @@ import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/Ar
 import { ClassType, GenericType, StringType, UnknownType } from '../base/Type';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
-import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
+import { SdkUtils } from './SdkUtils';
 
 /**
  * Built-in class name constants and signature stubs.
@@ -25,7 +25,7 @@ import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry
  * Signatures created here are **unclear stubs** (declaring file = FileSignature.DEFAULT) that
  * live in the temp canonicalizer. During type inference they are resolved to the real SDK
  * signatures via the built-in library (see TypeInference.inferBaseType →
- * SignatureCanonicalizerRegistry.getSdkGlobal);
+ * SdkUtils.getSdkGlobal);
  * when the SDK is unavailable (enableBuiltIn=false) they remain unresolved in temp space and
  * are reported by checkTempSignatureCompleteness.
  */
@@ -172,7 +172,7 @@ export class Builtin {
     }
 
     public static getBuiltInMethodSignature(className: string, methodName: string, scene: Scene): MethodSignature | undefined {
-        const globalClass = SignatureCanonicalizerRegistry.getSdkGlobal(className);
+        const globalClass = SdkUtils.getSdkGlobal(className);
         if (globalClass instanceof ArkClass) {
             return globalClass.getMethodWithName(methodName)?.getSignature();
         }

@@ -159,6 +159,12 @@ export abstract class AbstractFieldRef extends AbstractRef {
      */
     private route(fieldSignature: FieldSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
+        // 模式 B' 路由：unclear → temp；clear + formal 命中 → formal（精度栅栏 + 旧 temp retire）；clear + formal miss → error log + temp 兜底。
+        if (fieldSignature.isUnclear()) {
+            this.fieldSigID = -1;
+            this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
+            return;
+        }
         const existingId = reg.fieldSigCanonicalizer.getExistingId(fieldSignature);
         if (existingId !== -1) {
             const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
@@ -171,7 +177,7 @@ export abstract class AbstractFieldRef extends AbstractRef {
             this.fieldSigID = existingId;
             this.tempFieldSigID = undefined;
         } else {
-            // temp 路由。
+            logger.error(`AbstractFieldRef: clear FieldSignature not interned (route) — routing to temp defensively: ${fieldSignature.toString()}`);
             this.fieldSigID = -1;
             this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
         }

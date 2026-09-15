@@ -34,7 +34,6 @@ import { AbstractInvokeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkClass } from '../../model/ArkClass';
 import { BUSINESS_ERROR, OHOS_BASE_FILE } from '../../common/EtsConst';
-import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 
 class AbcImportInference extends ImportInfoInference {
     /**
@@ -262,7 +261,7 @@ export class AbcInstanceInvokeExprInference extends InstanceInvokeExprInference 
     private processExtendFunc(value: ArkInstanceInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr | null {
         if (value.getBase().getName() === AbcInstanceInvokeExprInference.CONTEXT) {
             const scene = arkMethod.getDeclaringArkFile().getScene();
-            const signature = SignatureCanonicalizerRegistry.getSdkGlobal(AbcInstanceInvokeExprInference.CONTEXT)?.getSignature();
+            const signature = SdkUtils.getSdkGlobal(AbcInstanceInvokeExprInference.CONTEXT)?.getSignature();
             if (signature instanceof AliasTypeSignature) {
                 const cls = scene.getMethod(signature.getDeclaringMethodSignature())?.getDeclaringArkClass();
                 if (cls) {

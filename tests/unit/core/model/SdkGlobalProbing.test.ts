@@ -17,6 +17,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import { Scene, SceneConfig } from '../../../../src';
 import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
+import { SdkUtils } from '../../../../src/core/common/SdkUtils';
 import { ArkClass } from '../../../../src/core/model/ArkClass';
 import { ArkField } from '../../../../src/core/model/ArkField';
 import { ArkExport } from '../../../../src/core/model/ArkExport';
@@ -62,7 +63,7 @@ describe('SDK global multi-value probing invariants', () => {
 
     it('multi-value entity lists are complete (same-name interfaces across files + var local)', () => {
         // interface Promise：es5 骨架 + es2015.iterable + es2018.promise 等 + var local。
-        const promiseEntities = SignatureCanonicalizerRegistry.getSdkGlobals('Promise');
+        const promiseEntities = SdkUtils.getSdkGlobals('Promise');
         expect(promiseEntities.length).toBeGreaterThanOrEqual(3);
         expect(promiseEntities.some(e => e instanceof ArkClass && e.getDeclaringArkFile().getName() === 'lib.es5.d.ts')).toBe(true);
         const fileOf = (e: ArkExport): string | undefined => {
@@ -71,7 +72,7 @@ describe('SDK global multi-value probing invariants', () => {
         };
         expect(promiseEntities.some(e => fileOf(e) === 'lib.es2018.promise.d.ts')).toBe(true);
         // PromiseConstructor 实体含 es2021.promise（any 所在文件）。
-        const ctorClasses = SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses('Promise');
+        const ctorClasses = SdkUtils.getSdkGlobalMemberClasses('Promise');
         const anyOwner = ctorClasses.find(c => c.getMethodWithName('any') !== null);
         expect(anyOwner).toBeDefined();
         expect(anyOwner!.getDeclaringArkFile().getName()).toBe('lib.es2021.promise.d.ts');
@@ -94,12 +95,12 @@ describe('SDK global multi-value probing invariants', () => {
                 expect(decl).toBe(cls.getClassSigID());
                 checked++;
             }
-            for (const sibling of SignatureCanonicalizerRegistry.getNamespacedSiblingClasses(cls)) {
+            for (const sibling of SdkUtils.getNamespacedSiblingClasses(cls)) {
                 visit(sibling);
             }
         };
         for (const name of SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap.keys()) {
-            for (const cls of SignatureCanonicalizerRegistry.getSdkGlobalMemberClasses(name)) {
+            for (const cls of SdkUtils.getSdkGlobalMemberClasses(name)) {
                 visit(cls);
             }
         }

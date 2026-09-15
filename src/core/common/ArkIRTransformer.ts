@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { SdkUtils } from './SdkUtils';
 import {
     AbstractInvokeExpr,
     AliasTypeExpr,
@@ -343,7 +344,7 @@ export class ArkIRTransformer {
         stmts.push(new ArkReturnVoidStmt());
         if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
+                const promise = SdkUtils.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
                 } else {
@@ -498,7 +499,7 @@ export class ArkIRTransformer {
             if (rightType instanceof ClassType) {
                 // TypeLiteral 的 ClassType 唯一生成路径是"构建即 addArkClass 注册、
                 // 签名即归属"，签名直查必命中，无需按名兜底
-                const classObject = SignatureCanonicalizerRegistry.getInstance().getArkClassBySig(rightType.getClassSignature());
+                const classObject = SignatureCanonicalizerRegistry.getInstance().getClassBySig(rightType.getClassSignature());
                 if (classObject) {
                     expr.setOriginalObject(classObject);
                 }

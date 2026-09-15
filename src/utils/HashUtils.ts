@@ -17,7 +17,7 @@
  * Hash primitives ported from HomeFlow's fact-id-hash-collision-design.
  *
  * These provide better avalanche properties than the FNV-1a variant in
- * `Canonicalizer.hashString` and the Java-style `CryptoUtils.hashcode`.
+ * `Canonicalizer.hashString`（内部 slot 定位）。
  *
  * Reference: doc/design/fact-id-hash-collision-design.md
  */

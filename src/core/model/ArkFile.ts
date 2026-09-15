@@ -122,8 +122,12 @@ export class ArkFile {
     }
 
     public setFileSignature(fileSignature: FileSignature): void {
-        this.fileSigID = this.registry.fileSigCanonicalizer.getId(fileSignature);
-        this.registry.registerFile(this);
+        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复（sig 值残留、model 已被 removeFile 删除）→ 补注册（否则 reload 时 getFileById 查不到 model）；已有别的 model 持有该签名 → 不覆盖（防"后 setFileSignature 者顶替"写穿）。已存在时直接用 existing 省一次 getId 探测。
+        const existing = this.registry.fileSigCanonicalizer.getExistingId(fileSignature);
+        this.fileSigID = existing >= 0 ? existing : this.registry.fileSigCanonicalizer.getId(fileSignature);
+        if (existing < 0 || this.registry.fileSigCanonicalizer.getModel(existing) === undefined) {
+            this.registry.registerFile(this);
+        }
     }
 
     /** @internal Get the formal FileSigID of this file. */
@@ -262,7 +266,6 @@ export class ArkFile {
         if (existing) {
             SdkUtils.copyMembers(arkClass, existing);
         } else {
-            SignatureCanonicalizerRegistry.registerClass(arkClass);
             if (!this.topClassSigIDSet) {
                 this.topClassSigIDSet = new Set<number>();
             }
@@ -365,7 +368,7 @@ export class ArkFile {
     /** @internal Returns the direct child namespace with the given SigID, or undefined. */
     public getTopNamespaceByID(id: number): ArkNamespace | undefined {
         if (this.hasTopNamespaceWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkNamespaceById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getNamespaceById(id);
         }
         return undefined;
     }
@@ -422,7 +425,7 @@ export class ArkFile {
     /** @internal Returns the direct child class with the given SigID, or undefined. */
     public getTopClassByID(id: number): ArkClass | undefined {
         if (this.hasTopClassWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getArkClassById(id);
+            return SignatureCanonicalizerRegistry.getInstance().getClassById(id);
         }
         return undefined;
     }
@@ -489,7 +492,7 @@ export class ArkFile {
         }
         const result: ArkClass[] = [];
         for (const sigID of set) {
-            const cls = SignatureCanonicalizerRegistry.getInstance().getArkClassById(sigID);
+            const cls = SignatureCanonicalizerRegistry.getInstance().getClassById(sigID);
             if (cls) {
                 result.push(cls);
             }
@@ -506,7 +509,6 @@ export class ArkFile {
             return;
         }
         this.addTopNamespaceSigID(namespace.getNamespaceSigID());
-        SignatureCanonicalizerRegistry.registerNamespace(namespace);
     }
 
     /**
@@ -546,7 +548,7 @@ export class ArkFile {
         const rtn = this.hasTopNamespaceWithID(id);
         if (rtn) {
             this.removeTopNamespaceSigID(id);
-            SignatureCanonicalizerRegistry.removeNamespace(namespace);
+            this.registry.removeNamespace(namespace);
         }
         return rtn;
     }
@@ -556,7 +558,7 @@ export class ArkFile {
         const rtn = this.hasTopClassWithID(id);
         if (rtn) {
             this.topClassSigIDSet!.delete(id);
-            SignatureCanonicalizerRegistry.removeClass(arkClass);
+            this.registry.removeClass(arkClass);
         }
         return rtn;
     }

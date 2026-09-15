@@ -14,6 +14,7 @@
  */
 
 import { Local } from '../../../../core/base/Local';
+import { SdkUtils } from '../../../../core/common/SdkUtils';
 import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../../../core/base/Stmt';
 import { BasicBlock } from '../../../../core/graph/BasicBlock';
 import { Cfg } from '../../../../core/graph/Cfg';
@@ -35,7 +36,6 @@ import { AstKind, CxxNodeFlag, CxxAstNode, CxxTranslationUnit } from '../../util
 import { hasNodeFlag } from '../../utils/cppUtils';
 import { CxxLoopBuilder } from './LoopBuilder';
 import { CxxIfBuilder } from './IfBuilder';
-import { SignatureCanonicalizerRegistry } from '../../../../core/common/SignatureCanonicalizerRegistry';
 
 export class BlockBuilder {
     id: number;
@@ -1528,7 +1528,7 @@ export class CfgBuilder {
         }
         if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType && !this.declaringMethod.getAsteriskToken()) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = SignatureCanonicalizerRegistry.getSdkGlobal(PROMISE);
+                const promise = SdkUtils.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
                 } else {

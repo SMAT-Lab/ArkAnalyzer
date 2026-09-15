@@ -344,7 +344,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         if (node.inner.length === 0 && node.originalId) {
             const classSigID = classMap.get(node.originalId);
             if (classSigID !== undefined) {
-                const cls = SignatureCanonicalizerRegistry.getInstance().getArkClassById(classSigID);
+                const cls = SignatureCanonicalizerRegistry.getInstance().getClassById(classSigID);
                 if (cls) {
                     return new ClassType(cls.getSignature());
                 }
@@ -403,7 +403,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             // buildTypeFromDerivedType / 内建——均为真实归属签名）；miss 再按名兜底
             //（保守保留：CxxModelInference 推断回写可能引入非真实签名）
             const classObject =
-                SignatureCanonicalizerRegistry.getInstance().getArkClassBySig(rightType.getClassSignature()) ??
+                SignatureCanonicalizerRegistry.getInstance().getClassBySig(rightType.getClassSignature()) ??
                 ModelUtils.getClassWithName(rightType.getClassSignature().getClassName(), this.declaringMethod.getDeclaringArkClass());
             if (classObject) {
                 expr.setOriginalObject(classObject);

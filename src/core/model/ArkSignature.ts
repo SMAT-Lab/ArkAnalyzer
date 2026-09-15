@@ -16,9 +16,9 @@
 import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ClassType, Type, UnknownType } from '../base/Type';
 import { MethodParameter } from './builder/ArkMethodBuilder';
-import { ANONYMOUS_CLASS_PREFIX, LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER } from '../common/Const';
+import { ANONYMOUS_CLASS_PREFIX, LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER, UNKNOWN_CLASS_NAME, UNKNOWN_NAMESPACE_NAME } from '../common/Const';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
-import { SignatureCanonicalizer, Canonicalizable, signatureEquals } from '../common/SignatureCanonicalizer';
+import { signatureEquals } from '../common/SignatureCanonicalizer';
 import { hashString32, hashCombineU32 } from '../../utils/HashUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
@@ -26,27 +26,6 @@ export type Signature = FileSignature | NamespaceSignature | ClassSignature | Me
 
 export interface ArkSignature {
     getSignature(): Signature;
-}
-
-/**
- * Resolve the formal SigID of a declaring signature passed to a value-object constructor
- * overload, failing fast when the value has never been interned.
- *
- * The value-object overloads are NOT query paths: silently storing -1 (or silently
- * interning the declaring value) would produce signatures whose declaring SigID cannot
- * be resolved back, or pollute the formal space with model-less entries. Callers must
- * intern the declaring signature first (e.g. via ArkFile.setFileSignature /
- * canonicalizer.getId) or use the SigID overload directly.
- */
-function requireExistingId<S extends Canonicalizable>(kind: string, sig: S, canonicalizer: SignatureCanonicalizer<S>): number {
-    const id = canonicalizer.getExistingId(sig);
-    if (id === -1) {
-        throw new Error(
-            `${kind}: declaring signature '${sig.toString()}' is not interned. ` +
-                `Intern it first (canonicalizer.getId) or use the SigID constructor overload.`
-        );
-    }
-    return id;
 }
 
 /**
@@ -107,11 +86,6 @@ export class FileSignature {
         return this.projectName === other.projectName && this.fileName === other.fileName;
     }
 
-    /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
-    public isDefault(): boolean {
-        return SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getExistingId(this) === 0;
-    }
-
     /** @internal FileSignature is never unclear (it is the identity root). */
     public isUnclear(): boolean {
         return false;
@@ -155,11 +129,28 @@ export class NamespaceSignature {
             nsSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
         } else {
             const reg = SignatureCanonicalizerRegistry.getInstance();
-            fileSigID = requireExistingId('NamespaceSignature', declaringFileOrID, reg.fileSigCanonicalizer);
-            nsSigID =
-                declaringNSOrID instanceof NamespaceSignature
-                    ? requireExistingId('NamespaceSignature', declaringNSOrID, reg.namespaceSigCanonicalizer)
-                    : undefined;
+            // 模式 B'（FileSignature 永不 unclear——身份根）：formal 命中 → formal；miss → error log + 置 0（DEFAULT，复合签名变为 unclear 语义）。
+            const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
+            if (fileExistingId !== -1) {
+                fileSigID = fileExistingId;
+            } else {
+                NamespaceSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
+                fileSigID = 0;
+            }
+            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
+            if (declaringNSOrID instanceof NamespaceSignature) {
+                if (declaringNSOrID.isUnclear()) {
+                    nsSigID = -1;
+                } else {
+                    const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
+                    if (nsExistingId !== -1) {
+                        nsSigID = nsExistingId;
+                    } else {
+                        NamespaceSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
+                        nsSigID = -1;
+                    }
+                }
+            }
         }
         this.declaringFileSigID = fileSigID;
         this.declaringNamespaceSigID = nsSigID;
@@ -250,17 +241,14 @@ export class NamespaceSignature {
         return this.declaringNamespaceSigID === other.declaringNamespaceSigID;
     }
 
-    /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
-    public isDefault(): boolean {
-        return SignatureCanonicalizerRegistry.getInstance().namespaceSigCanonicalizer.getExistingId(this) === 0;
-    }
-
-    /** @internal Whether this signature's declaring file is unknown (FileSignature.DEFAULT). */
+    /**
+     * @internal Whether this signature's declaring file is unknown (FileSignature.DEFAULT).
+     * Direct field check (no registry lookup): unclear iff declaring file is DEFAULT (FileSigID 0)
+     * and this is not the DEFAULT placeholder itself (distinguished by the '%unk' name — any
+     * value-equal instance would intern to formal ID 0).
+     */
     public isUnclear(): boolean {
-        // ID 快判：FileSigID 0 即 FileSignature.DEFAULT（internDefaults 固化），等价于
-        // getDeclaringFileSignature().isDefault()，且省去 fileSig canonicalizer 的两次
-        // Map 查找（get + getExistingId）。
-        return !this.isDefault() && this.getDeclaringFileSigID() === 0;
+        return this.declaringFileSigID === 0 && this.namespaceName !== UNKNOWN_NAMESPACE_NAME;
     }
 }
 
@@ -301,11 +289,28 @@ export class ClassSignature {
             nsSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
         } else {
             const reg = SignatureCanonicalizerRegistry.getInstance();
-            fileSigID = requireExistingId('ClassSignature', declaringFileOrID, reg.fileSigCanonicalizer);
-            nsSigID =
-                declaringNSOrID instanceof NamespaceSignature
-                    ? requireExistingId('ClassSignature', declaringNSOrID, reg.namespaceSigCanonicalizer)
-                    : undefined;
+            // 模式 B'（FileSignature 永不 unclear——身份根）：formal 命中 → formal；miss → error log + 置 0（DEFAULT，复合签名变为 unclear 语义）。
+            const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
+            if (fileExistingId !== -1) {
+                fileSigID = fileExistingId;
+            } else {
+                ClassSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
+                fileSigID = 0;
+            }
+            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
+            if (declaringNSOrID instanceof NamespaceSignature) {
+                if (declaringNSOrID.isUnclear()) {
+                    nsSigID = -1;
+                } else {
+                    const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
+                    if (nsExistingId !== -1) {
+                        nsSigID = nsExistingId;
+                    } else {
+                        ClassSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
+                        nsSigID = -1;
+                    }
+                }
+            }
         }
         this.declaringFileSigID = fileSigID;
         this.declaringNamespaceSigID = nsSigID;
@@ -432,18 +437,14 @@ export class ClassSignature {
         return this.declaringNamespaceSigID === other.declaringNamespaceSigID;
     }
 
-    /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
-    public isDefault(): boolean {
-        return SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getExistingId(this) === 0;
-    }
-
-    /** @internal Whether this signature's declaring file is unknown (FileSignature.DEFAULT). */
+    /**
+     * @internal Whether this signature's declaring file is unknown (FileSignature.DEFAULT).
+     * Direct field check (no registry lookup): unclear iff declaring file is DEFAULT (FileSigID 0)
+     * and this is not the DEFAULT placeholder itself (distinguished by the '%unk' name).
+     * This is a hot path in Method/FieldSignature constructor temp/formal branching.
+     */
     public isUnclear(): boolean {
-        // ID 快判：FileSigID 0 即 FileSignature.DEFAULT（internDefaults 固化），等价于
-        // getDeclaringFileSignature().isDefault()，且省去 fileSig canonicalizer 的两次
-        // Map 查找（get + getExistingId）。本方法是 Method/FieldSignature 构造期 tempsig
-        // 分叉的热路径，收益随签名构造量累积。
-        return !this.isDefault() && this.getDeclaringFileSigID() === 0;
+        return this.declaringFileSigID === 0 && this.className !== UNKNOWN_CLASS_NAME;
     }
 }
 
@@ -548,8 +549,7 @@ export class FieldSignature {
     private type: Type;
     private staticFlag: boolean;
     /**
-     * @internal 构造期按值固化；A2 批 2 起可经 {@link copyFieldsFrom} 随字段
-     * 改写同步更新（就地演进原语——值与 hash 始终一致，不破坏 hash/equals 契约）。
+     * @internal 构造期按值固化；改写同步更新（就地演进原语——值与 hash 始终一致，不破坏 hash/equals 契约）。
      * 构造器经 {@link recomputeHashCode} 完成首次赋值（TS 无法静态确认，`!` 断言）。
      */
     private hashCode!: number;
@@ -558,13 +558,7 @@ export class FieldSignature {
     private declaringClassSigID?: number;
     /** @internal Formal NamespaceSigID of the declaring namespace. -1 = unclear. undefined = declared by class. */
     private declaringNamespaceSigID?: number;
-    /**
-     * @internal Temp ClassSigID for the unclear declaring class (reference-semantics).
-     * B 轮（索引表）后是唯一的 temp 侧状态——取回走 slot、迁移经替换记录惰性
-     * 物化（tempSigID 保留作痕迹）。历史 display 锚（declaringSignatureDisplay）
-     * 已删：U+ 后 alias declaring 是独立 formal 条目自持 display，普通场景
-     * canonical 与传入实例值等价。
-     */
+    /** @internal Temp ClassSigID for the unclear declaring class (reference-semantics). */
     private declaringClassTempSigID?: number;
 
     private static readonly logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'FieldSignature');
@@ -576,16 +570,14 @@ export class FieldSignature {
 
     /**
      * Build from a declaring signature instance (backward-compatible value constructor).
-     * Unclear declaring signatures are routed to the temp canonicalizer (reference
-     * semantics, independently migratable); clear ones are interned into the formal space.
-     * @deprecated Pass formal SigIDs instead: the class-ID overload, or the namespace-ID
-     * overload with the trailing literal `true`.
+     * @deprecated Pass formal SigIDs (plus optional temp ClassSigID) instead.
      */
     constructor(fieldName: string, declaringSignature: BaseSignature, type: Type, staticFlag?: boolean);
     /**
-     * Build directly from the declaring class's formal ClassSigID (must already be interned).
+     * Build from SigIDs. Formal: `(name, classSigID, type, staticFlag?)` with classSigID >= 0.
+     * Temp: `(name, -1, type, staticFlag, false, tempClassSigID)` — classSigID = -1 marks unclear.
      */
-    constructor(fieldName: string, declaringClassSigID: number, type: Type, staticFlag?: boolean);
+    constructor(fieldName: string, declaringClassSigID: number, type: Type, staticFlag?: boolean, namespaceDeclared?: false, declaringClassTempSigID?: number);
     /**
      * Build directly from the declaring namespace's formal NamespaceSigID (must already be
      * interned). The trailing literal `true` disambiguates the namespace ID space from the
@@ -593,18 +585,32 @@ export class FieldSignature {
      * ordering).
      */
     constructor(fieldName: string, declaringNamespaceSigID: number, type: Type, staticFlag: boolean, namespaceDeclared: true);
-    constructor(fieldName: string, declaringOrID: BaseSignature | number, type: Type, staticFlag: boolean = false, namespaceDeclared?: true) {
+    constructor(
+        fieldName: string,
+        declaringOrID: BaseSignature | number,
+        type: Type,
+        staticFlag: boolean = false,
+        namespaceDeclared?: boolean,
+        declaringClassTempSigID?: number
+    ) {
         this.fieldName = fieldName;
         this.type = type;
         this.staticFlag = staticFlag;
-        this.setDeclaringFields(declaringOrID, namespaceDeclared);
+        if (typeof declaringOrID === 'number' && !namespaceDeclared) {
+            // Class-side SigID path: direct field assignment (formal or temp via optional param).
+            this.declaringClassSigID = declaringOrID;
+            this.declaringClassTempSigID = declaringClassTempSigID;
+            this.declaringNamespaceSigID = undefined;
+        } else {
+            this.setDeclaringFields(declaringOrID, namespaceDeclared ?? false);
+        }
         this.recomputeHashCode();
     }
 
     /**
-     * @internal 解析 declaring 并写入三个 SigID 字段（构造器与 {@link applyFields}
-     * 共用）：数字重载直存；对象重载按 isUnclear 分流（unclear class → temp 登记；
-     * clear → formal 只读命中；unclear ns → 仅标记 -1）。
+     * @internal 解析 declaring 并写入三个 SigID 字段（构造器与 {@link applyFields}共用）：
+     * 数字重载直存；
+     * 对象重载按 isUnclear 分流（unclear class → temp 登记；clear → formal 只读命中；unclear ns → 仅标记 -1）。
      */
     private setDeclaringFields(declaringOrID: BaseSignature | number, namespaceDeclared: boolean = false): void {
         if (typeof declaringOrID === 'number') {
@@ -623,21 +629,33 @@ export class FieldSignature {
         this.declaringNamespaceSigID = undefined;
         const reg = SignatureCanonicalizerRegistry.getInstance();
         if (declaringOrID instanceof ClassSignature) {
+            // 模式 B'：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底（不 throw）。
             if (declaringOrID.isUnclear()) {
                 this.declaringClassSigID = -1;
                 this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringOrID);
             } else {
-                this.declaringClassSigID = requireExistingId('FieldSignature', declaringOrID, reg.classSigCanonicalizer);
+                const existingId = reg.classSigCanonicalizer.getExistingId(declaringOrID);
+                if (existingId !== -1) {
+                    this.declaringClassSigID = existingId;
+                } else {
+                    FieldSignature.logger.error(`Clear ClassSignature declaring not interned — routing to temp: ${declaringOrID.toString()}`);
+                    this.declaringClassSigID = -1;
+                    this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringOrID);
+                }
             }
         } else {
+            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
             if (declaringOrID.isUnclear()) {
-                // Unclear namespace: mark only — no temp registration (the temp namespace
-                // space never had a production registrant; the unclear-ns form is a
-                // marking-only shape with no SigID-path retrieval — callers keep the
-                // signature instance themselves when needed).
+                FieldSignature.logger.error(`Clear ClassSignature declaring not interned — routing to temp: ${declaringOrID.toString()}`);
                 this.declaringNamespaceSigID = -1;
             } else {
-                this.declaringNamespaceSigID = requireExistingId('FieldSignature', declaringOrID, reg.namespaceSigCanonicalizer);
+                const existingNsId = reg.namespaceSigCanonicalizer.getExistingId(declaringOrID);
+                if (existingNsId !== -1) {
+                    this.declaringNamespaceSigID = existingNsId;
+                } else {
+                    FieldSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringOrID.toString()}`);
+                    this.declaringNamespaceSigID = -1;
+                }
             }
         }
     }
@@ -776,22 +794,18 @@ export class FieldSignature {
         return this.declaringClassSigID === other.declaringClassSigID && this.declaringNamespaceSigID === other.declaringNamespaceSigID && this.declaringClassTempSigID === other.declaringClassTempSigID;
     }
 
-    /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
-    public isDefault(): boolean {
-        return SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(this) === 0;
-    }
-
-    /** @internal Whether the declaring signature is unclear (temp-held, unresolved). */
+    /**
+     * @internal Whether the declaring signature is unclear (temp-held, unresolved).
+     * Direct field check (no registry lookup, no declaring signature chain traversal):
+     * class-side unclear = declaringClassSigID is non-positive — -1 (temp-held) or 0
+     * (DEFAULT class as declaring, i.e. "method on an unknown class" — stub builders
+     * like ArkSignatureBuilder.buildMethodSignatureFromMethodName pass 0 directly);
+     * namespace-side unclear = declaringNamespaceSigID === -1.
+     * A positive formal declaring ID implies the declaring entity went through the
+     * formal path — no chain check needed.
+     */
     public isUnclear(): boolean {
-        if (this.isDefault()) return false;
-        if (this.declaringClassSigID === -1 || this.declaringNamespaceSigID === -1) {
-            return true;
-        }
-        const declaringSignature = this.getDeclaringSignature();
-        if (declaringSignature instanceof ClassSignature && declaringSignature.isDefault()) return false;
-        // ID 快判（FileSigID 0 即 FileSignature.DEFAULT）：省去 fileSig canonicalizer 的
-        // get + getExistingId 两次 Map 查找。
-        return declaringSignature.getDeclaringFileSigID() === 0;
+        return this.declaringClassSigID === -1 || this.declaringClassSigID === 0 || this.declaringNamespaceSigID === -1;
     }
 }
 
@@ -925,26 +939,34 @@ export class MethodSignature {
 
     /**
      * Build from a declaring class signature instance (backward-compatible value constructor).
-     * Unclear declaring signatures are routed to the temp canonicalizer (reference
-     * semantics, independently migratable); clear ones resolve to their formal ClassSigID.
-     * @deprecated Pass the formal ClassSigID instead (e.g. via ArkClass.getClassSigID()).
+     * @deprecated Pass the formal ClassSigID (plus optional temp ClassSigID) instead.
      */
     constructor(declaringClassSignature: ClassSignature, methodSubSignature: MethodSubSignature);
     /**
-     * Build directly from the declaring class's formal ClassSigID (must already be interned).
+     * Build from SigIDs. Formal: `(classSigID, subSig)` with classSigID >= 0.
+     * Temp: `(-1, subSig, tempClassSigID)` — declaringClassSigID = -1 marks unclear, tempClassSigID is the temp index.
      */
-    constructor(declaringClassSigID: number, methodSubSignature: MethodSubSignature);
-    constructor(declaringClassOrID: ClassSignature | number, methodSubSignature: MethodSubSignature) {
+    constructor(declaringClassSigID: number, methodSubSignature: MethodSubSignature, declaringClassTempSigID?: number);
+    constructor(declaringClassOrID: ClassSignature | number, methodSubSignature: MethodSubSignature, declaringClassTempSigID?: number) {
         this.methodSubSignature = methodSubSignature;
         if (typeof declaringClassOrID === 'number') {
             this.declaringClassSigID = declaringClassOrID;
+            this.declaringClassTempSigID = declaringClassTempSigID;
         } else {
             const reg = SignatureCanonicalizerRegistry.getInstance();
+            // 模式 B'：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底（不 throw）。
             if (declaringClassOrID.isUnclear()) {
                 this.declaringClassSigID = -1;
                 this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringClassOrID);
             } else {
-                this.declaringClassSigID = requireExistingId('MethodSignature', declaringClassOrID, reg.classSigCanonicalizer);
+                const existingId = reg.classSigCanonicalizer.getExistingId(declaringClassOrID);
+                if (existingId !== -1) {
+                    this.declaringClassSigID = existingId;
+                } else {
+                    MethodSignature.logger.error(`Clear ClassSignature declaring not interned — routing to temp: ${declaringClassOrID.toString()}`);
+                    this.declaringClassSigID = -1;
+                    this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringClassOrID);
+                }
             }
         }
         let h = 0xdeadbeef;
@@ -1058,20 +1080,18 @@ export class MethodSignature {
         return methodSubSignatureValueEquals(this.methodSubSignature, other.methodSubSignature);
     }
 
-    /** @internal Whether this signature is the canonical DEFAULT (formal sigID 0 in the registry). */
-    public isDefault(): boolean {
-        return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getExistingId(this) === 0;
-    }
-
-    /** @internal Whether the declaring class is unclear (temp-held, unresolved). */
+    /**
+     * @internal Whether the declaring class is unclear (temp-held, unresolved).
+     * Direct field check (no registry lookup, no declaring class chain traversal):
+     * declaringClassSigID is non-positive — -1 means explicitly unclear (temp-held, set by
+     * mode B' temp path); 0 means the DEFAULT class is the declaring side ("method on an
+     * unknown class" — stub builders like ArkSignatureBuilder.buildMethodSignatureFromMethodName
+     * pass 0 directly, and value-object construction over ClassSignature.DEFAULT resolves
+     * to 0). A positive formal declaring ID implies the declaring class went through the
+     * formal path — the method is not unclear.
+     */
     public isUnclear(): boolean {
-        if (this.isDefault()) return false;
-        if (this.declaringClassSigID === -1) return true;
-        if (this.declaringClassSigID === 0) return false;
-        // ID 快判（FileSigID 0 即 FileSignature.DEFAULT）：原三环链
-        // （classSig Map 查 → fileSig Map 查 → getExistingId Map 查）收敛为一次
-        // classSig Map 查 + 字段读。
-        return this.getDeclaringClassSignature().getDeclaringFileSigID() === 0;
+        return this.declaringClassSigID === -1 || this.declaringClassSigID === 0;
     }
 
     public isMatch(signature: MethodSignature): boolean {
