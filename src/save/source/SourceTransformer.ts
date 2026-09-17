@@ -34,7 +34,7 @@ import {
 import { Local } from '../../core/base/Local';
 import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { ClassSignature, classSignatureCompare, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { ArkCodeBuffer } from '../ArkStream';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { PrinterUtils } from '../base/PrinterUtils';
@@ -128,14 +128,17 @@ export class SourceTransformer {
             if (methodName === CONSTRUCTOR_NAME) {
                 return `super(${args.join(', ')})`;
             }
-            // If base type is not match the method declaring class, here take it as super.foo() even though the source code may be this.foo().
-            // Because it can not distinguish exactly whether it's this.foo() or super.foo() when foo is only defined in super class.
-            const baseType = base.getType();
-            if (baseType instanceof ClassType) {
-                if (!classSignatureCompare(baseType.getClassSignature(), invokeExpr.getMethodSignature().getDeclaringClassSignature())) {
-                    return `super.${methodName}${genericCode}(${args.join(', ')})`;
-                }
-            }
+            // A base named 'this' always denotes a this-receiver call (`this.foo()` or the
+            // shorthand `foo()`). An explicit `super.foo()` is built with a distinct
+            // 'super' Local (ArkValueTransformer.superExpressionToValueAndStmts) and flows
+            // into the valueToString(base) fallback below. The signature's declaring class
+            // landing on a base class only reflects member inheritance (after the def-side
+            // correction chain resolves it) — it must NOT turn a this-call into super.foo():
+            // this.foo() and super.foo() differ in both method lookup and this-binding.
+            // The historical signature-compare approximation here printed super.foo() for
+            // inherited-member this-calls; it stayed invisible only while build-time probe
+            // stubs were never corrected, and was exposed once the this-semantic guards
+            // let inference resolve them to the real (base-class) declaring signatures.
         }
         return `${this.valueToString(base)}.${methodName}${genericCode}(${args.join(', ')})`;
     }

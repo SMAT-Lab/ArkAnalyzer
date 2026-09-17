@@ -40,8 +40,9 @@ import {
 } from '../base/Expr';
 import { ArkClass } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
+import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 import { buildNormalArkClassFromArkFile, buildNormalArkClassFromArkNamespace } from '../model/builder/ArkClassBuilder';
-import { buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
+import { ensureDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import {
     AliasType,
     AnyType,
@@ -366,13 +367,13 @@ export class ArkValueTransformer {
         } else {
             buildNormalArkClassFromArkFile(objectLiteralExpression, this.declaringFile, anonymousClass, this.sourceFile, this.declaringMethod);
         }
-        // Build the default constructor at creation time instead of waiting for the batch
-        // post-pass (SceneBuilder.updateOrAddDefaultConstructors): the constructor invoke
-        // expr built below probes the formal space with the constructor signature, and
-        // without a real (value-equal) registered signature the probe misses and falls into
-        // the temp defensive route with an error log. The batch pass is idempotent here
-        // (needDefaultConstructorInClass sees the existing constructor and skips).
-        buildDefaultConstructor(anonymousClass);
+        // Build the default constructor at creation time so the constructor invoke expr
+        // below probes the formal space with a real (value-equal) signature — a missing
+        // probe falls into the temp defensive route with an error log. The on-demand
+        // variant (isLibraryClass guard lifted) also covers SDK-file object literals:
+        // the registration happens inside the host file's own build stage, so the SDK /
+        // project ID-boundary invariant is preserved either way.
+        ensureDefaultConstructor(anonymousClass);
 
         const objectLiteralExpressionPosition = FullPosition.buildFromNode(objectLiteralExpression, this.sourceFile);
         const stmts: Stmt[] = [];
@@ -388,12 +389,11 @@ export class ArkValueTransformer {
 
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         // Prefer the real (just-built) default constructor signature so the invoke expr's
-        // route hits the formal space directly (value-equal probe); fall back to the legacy
-        // probe shape only if the constructor was not created (defensive —
-        // needDefaultConstructorInClass guards).
+        // route hits the formal space directly; the fallback is an unclear (%unk) stub —
+        // never a clear unregistered shape (that would hit the clear+miss error route).
         const realConstructor = anonymousClass.getMethodWithName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = realConstructor?.getSignature()
-            ?? new MethodSignature(anonymousClass.getClassSigID(), constructorMethodSubSignature);
+            ?? new MethodSignature(0, constructorMethodSubSignature);
         const constructorInvokeExpr = new ArkInstanceInvokeExpr(newExprLocal as Local, constructorMethodSignature, []);
 
         const assignStmt = new ArkAssignStmt(newExprLocal, constructorInvokeExpr);
@@ -946,13 +946,20 @@ export class ArkValueTransformer {
 
         let fieldSignature: FieldSignature;
         if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
-            // getClassSignature() (not getClassSigID()): the class may still be unclear and live
-            // in the temp canonicalizer (classSigID === -1); the object overload interns it properly.
-            fieldSignature = new FieldSignature(
-                cloneText(propertyAccessExpression.name.getText(this.sourceFile)),
-                (baseValue.getType() as ClassType).getClassSignature(),
-                UnknownType.getInstance()
-            );
+            const baseType = baseValue.getType() as ClassType;
+            const fieldName = cloneText(propertyAccessExpression.name.getText(this.sourceFile));
+            // Model-level direct lookup: resolve the base type's class and probe its field
+            // by name — a hit (the field really is declared on this class) reuses its formal
+            // signature directly (route hits formal, zero probe). A miss (field on a base
+            // class / static / actually a method / not yet registered due to build order —
+            // buildArkClassMembers builds method bodies before fields) builds a %unk stub
+            // (declaring 0, unclear semantics) routed to temp without the clear+miss error;
+            // inference is base-driven and corrects it via updateFieldSignature (formal hit
+            // retires the temp row) once the field is registered / resolved along the base
+            // type + heritage chain.
+            const baseClass = SignatureCanonicalizerRegistry.getInstance().getClassById(baseType.getClassSigID());
+            const field = baseClass?.getFieldWithName(fieldName);
+            fieldSignature = field?.getSignature() ?? new FieldSignature(fieldName, 0, UnknownType.getInstance());
         } else {
             fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(cloneText(propertyAccessExpression.name.getText(this.sourceFile)));
         }
@@ -1191,10 +1198,18 @@ export class ArkValueTransformer {
                 ) {
                     methodSignature = sameNameMethods[0].getSignature();
                 } else {
-                    // getClassSignature() (not getClassSigID()): the class may still be unclear and live
-                    // in the temp canonicalizer; the object overload interns it properly.
-                    declareSignature = baseType.getClassSignature();
-                    methodSignature = new MethodSignature(declareSignature, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
+                    // Stub probe (round29 normalization missed — method not uniquely owned by
+                    // this class: declared on a base class, overloaded, static, or not yet
+                    // registered due to build order). The no-arg/UnknownType stub can never
+                    // value-equal a real method signature (equals covers parameters + return
+                    // type), so a "clear + formal miss" route is a systematic false alarm.
+                    // Normalize the declaring side to 0 (%unk, unclear semantics) — routed to
+                    // temp without the error log; inference is base-driven and corrects it via
+                    // setMethodSignature (formal hit retires the temp row).
+                    methodSignature = new MethodSignature(
+                        0,
+                        ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName)
+                    );
                 }
             } else {
                 declareSignature = ClassSignature.DEFAULT;

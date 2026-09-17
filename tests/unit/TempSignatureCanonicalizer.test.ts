@@ -53,19 +53,19 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(id1).toBe(id2);
         expect(id2).toBe(id3);
         // 幂等：不产生新条目。
-        expect(c.size()).toBe(1);
+        expect(c.liveCount()).toBe(1);
         expect(c.totalRegistered()).toBe(1);
     });
 
     it('size counts non-retired slots (strongly held by the index table)', () => {
         const c = new TempSignatureCanonicalizer<TestSig>();
-        expect(c.size()).toBe(0);
+        expect(c.liveCount()).toBe(0);
         const sig1 = makeSig('a');
         const sig2 = makeSig('b');
         c.register(sig1);
         c.register(sig2);
         // slot 强持有（全保留语义）：注册即计数，与持有者存亡无关。
-        expect(c.size()).toBe(2);
+        expect(c.liveCount()).toBe(2);
     });
 
     it('get returns the signature object by ID while the slot is live', () => {
@@ -88,7 +88,7 @@ describe('TempSignatureCanonicalizer Test', () => {
         const id = c.register(sig);
         expect(c.getExistingTempId(sig)).toBe(id);
         // 查询不改变计数。
-        expect(c.size()).toBe(1);
+        expect(c.liveCount()).toBe(1);
         expect(c.totalRegistered()).toBe(1);
     });
 
@@ -101,7 +101,7 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(id1).not.toBe(id2);
         expect(c.get(id1)).toBe(sig1);
         expect(c.get(id2)).toBe(sig2);
-        expect(c.size()).toBe(2);
+        expect(c.liveCount()).toBe(2);
     });
 
     it('getStats reports live/total/retired with the three-number invariant', () => {
@@ -123,9 +123,9 @@ describe('TempSignatureCanonicalizer Test', () => {
         const sigB = makeSig('b');
         const idA = c.register(sigA);
         c.register(sigB);
-        expect(c.size()).toBe(2);
+        expect(c.liveCount()).toBe(2);
         c.clear();
-        expect(c.size()).toBe(0);
+        expect(c.liveCount()).toBe(0);
         expect(c.totalRegistered()).toBe(0);
         expect(c.get(idA)).toBeUndefined();
         // 活对象的 symbol 已被摘除：clear 后重新注册视为新实例（ID 从 0 重分配）。
@@ -154,7 +154,7 @@ describe('TempSignatureCanonicalizer Test', () => {
         c.retire(0);
         expect(c.registeredIds()).toEqual([0, 1]);
         expect(c.liveIds()).toEqual([1]);
-        expect(c.size()).toBe(1);
+        expect(c.liveCount()).toBe(1);
     });
 
     // --- 三版（索引表）核心语义：retire / 替换记录 / 幂等 ---
@@ -165,13 +165,13 @@ describe('TempSignatureCanonicalizer Test', () => {
         const id = c.register(sig);
         expect(c.retire(id)).toBeUndefined();
         expect(c.get(id)).toBeUndefined();
-        expect(c.size()).toBe(0);
+        expect(c.liveCount()).toBe(0);
         expect(c.retired()).toBe(1);
         expect(c.totalRegistered()).toBe(1);
         // 幂等：重复 retire 不再计数。
         c.retire(id);
         expect(c.retired()).toBe(1);
-        expect(c.size()).toBe(0);
+        expect(c.liveCount()).toBe(0);
         // 三数自洽保持。
         const st = c.getStats();
         expect(st.totalRegistered).toBe(st.liveCount + st.retiredCount);
@@ -206,7 +206,7 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(c.getReplacement(id)).toBe(7);
         // 计数不因重复 register 变化。
         expect(c.totalRegistered()).toBe(1);
-        expect(c.size() + c.retired()).toBe(1);
+        expect(c.liveCount() + c.retired()).toBe(1);
     });
 
     it('clear wipes the replacement records', () => {

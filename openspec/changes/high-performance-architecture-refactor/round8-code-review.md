@@ -4,13 +4,28 @@
 | 项           | 内容                                                                                                                                                                                                                                                                                                                   |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 涉及 commit  | `2cb7ada0` "refactor with id"（207 文件，+18139/-5078）`2ea2421b` "performance improve"（48 文件，+3904/-1088，基于前者）                                                                                                                                                                                              |
-| 分析基线     | `git diff 2cb7ada0^ 2ea2421b`（行号引用以当前工作区为准）                                                                                                                                                                                                                                                              |
+| 分析基线     | 行号刷新基线：`cd73247a` → 最新工作区（含 round10 实施轮改动）；PR #1053 统计口径：merge-base `d8222bb2`（= `2cb7ada0^`）→ 最新工作区；历史分析基线 `git diff 2cb7ada0^ 2ea2421b`                                                                                                                                    |
 | 测试状态     | `npx tsc --noEmit` 通过；commit 时 TS 单测 1235/1236（唯一失败 ModuleBuilder EPERM 环境问题），本轮 review 最终为 **1480/1481**（同一 EPERM 环境问题；减少 = CryptoUtils 整文件删除 -6 测试）；工作项 A-S 全部落地后全量回归维持 1480/1481，无新增失败。C++ 测试需 LLVM/Clang 环境（本机未配置，历轮基线均为 TS-only） |
 | 配套设计文档 | `openspec/changes/high-performance-architecture-refactor/`（proposal / design / spec / tasks / current-status）                                                                                                                                                                                                        |
 
+**改动概况**（统计口径 = PR #1053 diff：merge-base `d8222bb2`（= `2cb7ada0^`）→ 最新工作区，`git diff` 净值）：
+
+| 类别 | 文件数 | 总新增 | 其中：代码 | 其中：注释 | 其中：空行 | 注释占比 | 总删除 |
+|---|---|---|---|---|---|---|---|
+| 源码 `src/` | 89 | **+10918** | 7279 | **3048** | 591 | 27.9% | -4109 |
+| 测试 `tests/` | 126 | **+8417** | 6587 | **1003** | 827 | 11.9% | -1497 |
+| 文档（openspec / docs / CHANGELOG 等） | 16 | **+3477** | —（文档正文，不适用注释分类） | — | — | — | -182 |
+| **合计** | **231** | **+22812** | 13866 | **4051** | 1418 | 21.0%（代码+测试口径） | **-5788** |
+
+- **新增测试用例 352**（it/test 计数；新增测试文件 33 个）；
+- **review 修复轮增量**（`cd73247a` → 工作区，即 "performance improve" + round8-10 review 修复轮，本文档 §5.1 工作项 A-S + #19 修复均属此增量）：99 文件，**+6101/-2166**，新增用例 74——与本表格的 PR 全量口径互补；
+- **与 gitcode PR #1053 页面数字可能的细微出入**：① 本地 master 的 `cd73247a` 是 PR 原始 `2cb7ada0` 在 `!1063`（`d2e4faa0`）之上 rebase 的结果，rebase 适配有少量差异；② PR 于 12 天前开启，`e07bc51c` / `7bf84f9d` 等后续 commit 是否已全部推送到 PR 分支以页面为准；③ 平台统计口径差异（大文件折叠等）。
+
+（本文档正文与 bug 清单的行号引用均已按 `cd73247a` → 最新工作区刷新；§5.1 工作项记录内的行号为执行时刻快照、保持原样；标注"（修复前）/旧"的引用指向历史版本。）
+
 **本文档的定位**：代码改动过于庞大（2 万+ 行），直接 review code 不现实。本文档试图把改动"翻译"出来——每个主要 model 改了什么字段、关键处理流程从什么样变成了什么样、为什么必须改——通过 review 本文档来代替 review code。文中所有结论都附文件:行号，可随时回查代码验证。
 
-// TODO: PR 可能还会修改，再终稿定稿之后，记得来刷新所有的行列号信息。
+// TODO: PR 可能还会修改，再终稿定稿之后，记得来刷新所有的行列号信息。 →（已执行：行号已按 cd73247a → 最新工作区刷新，见"改动概况"；§5.1 工作项内的行号为执行时刻快照、"（修复前）/旧"引用指向历史版本，均保持原样。）
 
 **章节导航**：
 
@@ -85,7 +100,7 @@ core/common/TempSignatureCanonicalizer.ts（新增）—— temp 签名的索引
 **新方案的"三层"**：是这条路径上从"一个签名对象"到"一个 ID"的**三道工序**：缓存 hash → 哈希表定位 → equals 终审。下面以 `getId(sig)` 为例串起来走一遍：
 
 1. **Layer 1（缓存 hash）**：签名对象构造时把身份字段（如 classSigID + className）算成一个 32 位数字，存进 `readonly` 字段。**这一步在对象生命周期内只发生一次**（例外：MethodSignature 构造 hash 内部含一次 `methodSubSignature.toString()` 拼接——工作项 I 评估后**保持现状**：构造期一次性成本非热点，见"例外一"）；
-2. **Layer 2（哈希表探测）**：`getId()` 调 `getHashCode()`——只是 `return this.hashCode` 读缓存字段（ArkSignature.ts:94-96），随后用这个数字在 TypedArray 哈希表里定位桶。**hash 不同的比较在此结束**（短路，无任何字符串操作）；结果为相等的比较会进入 Layer 3；
+2. **Layer 2（哈希表探测）**：`getId()` 调 `getHashCode()`——只是 `return this.hashCode` 读缓存字段（ArkSignature.ts:80-82），随后用这个数字在 TypedArray 哈希表里定位桶。**hash 不同的比较在此结束**（短路，无任何字符串操作）；结果为相等的比较会进入 Layer 3；
 3. **Layer 3（equals 终审）**：hash 相同（值相同或罕见的 32 位碰撞）时逐个 `equals()` 比较。**equals 不是本方案新增的成本，而是任何哈希表查询的固有步骤**——"hash 定位 + 等值确认"两步缺一不可（修改前的 JS Map 同样要做，而且是**整个 key 字符串逐字节 memcmp**，50-100 字符；新方案的 equals 是逐字段比较：2 个数字 `===` + 1 个字符串名 `===`，canonical 实例场景第一行 `this === other` 引用短路，一次指针比较）。
 
 **可变字段排除原则**：`MethodSignature` 的 hash 不含 `returnType`、`FieldSignature` 的 hash 不含 `type`。原因：类型推导会原地 `setReturnType()`/`setType()` 修改这些字段——若参与 hash，改一次类型签名 hash 就变了，下次 intern 会落进不同 ID，前功尽弃。排除后签名身份终身稳定。（`MethodSignature.equals` 与 hash 刻意不对齐的完整原因——重载需要 equals 含 returnType——详见 §3.6 ArkMethod 节的 n:1 专题，它是 method 签名的特有问题，故在彼处展开。）
@@ -186,7 +201,7 @@ core/common/TempSignatureCanonicalizer.ts（新增）—— temp 签名的索引
   **"推导中间垃圾"实例（builder 阶段先建 fieldRef、再被 invokeExpr 摘取的场景）**：源码 `foo.bar()`——IR 转换器处理属性访问 `foo.bar` 时，**先**把它建为 `ArkInstanceFieldRef`（此刻 foo 类型未知 → FieldSignature 探测 formal miss → 登记 temp field 空间）；**随后**发现它是被调用的 callee，摘取 base 和签名转建 `ArkInstanceInvokeExpr`，fieldRef 本体被丢弃、不进入 IR。这个已死 ref 的 temp 行再没有持有者来迁移——就是典型的"持有者已死但未 retire"中间垃圾，全保留策略下钉活到 dispose。
 - **可观测性**：统计同步即精确，三数自洽 `totalRegistered = liveCount + retiredCount`。
 
-**三版演进**（每版都是上一版实测翻车后的修正，`TempSignatureCanonicalizer.ts:16-53` 头注释有完整记录）：
+**三版演进**（每版都是上一版实测翻车后的修正，`TempSignatureCanonicalizer.ts:18-35` 头注释有完整记录；工作项 S 组合化后现为四版——委托 Canonicalizer.objectIdentity + 追加 retire/replacement 层）：
 
 - **一版（refcount）**：`Map<id, sig>` + 引用计数，推导成功一处计数减1，计数为0则置空可回收。但是共享场景计数不精确（register 1 次持有 2~N 个），最终出现大量无法回收的签名，方案被舍弃；
 - **二版（弱引用表）**：`Map<id, WeakRef>` + FinalizationRegistry——GC 驱动清理时序不确定（KeepDuringJob 窗口）、只能一次性全部回收、中途不会逐步回收、WeakRef/FR 有真实 GC 开销，方案被舍弃；
@@ -234,7 +249,7 @@ foo.bar(); // 调用2次                  // builder 期：为此行构造 invok
 
 ### 2.1 ID 0 = DEFAULT 签名保留位
 
-Registry 构造时 `internDefaults()` 把 5 类 UNKNOWN 常量签名各自 intern 到 ID 0（Registry.ts:553-560），`models[0]` 恒为 undefined（不对应任何模型），这些原来是作为单例存在：
+Registry 构造时 `internDefaults()` 把 5 类 UNKNOWN 常量签名各自 intern 到 ID 0（SignatureCanonicalizerRegistry.ts:437），`models[0]` 恒为 undefined（不对应任何模型），这些原来是作为单例存在：
 
 - DEFAULT_FILE_SIGNATURE
 - DEFAULT_CLASS_SIGNATURE
@@ -264,7 +279,7 @@ Registry 构造时 `internDefaults()` 把 5 类 UNKNOWN 常量签名各自 inter
 
 **问题**：`getFiles()`（项目文件）与 `getSdkArkFiles()`（SDK 文件）需要区分两类文件。修改前靠两个独立 Map（filesMap / sdkArkFilesMap）；修改后全部文件在同一个 fileSigCanonicalizer 里，需要新的切分手段。
 
-**方案**：`markProjectFileBoundary()`（Registry.ts:207-246）——SDK 构建阶段结束时（此后注册的都是 project 文件）记下当时的 `fileSigCanonicalizer.size()` 作为边界 `firstProjectFileSigID`。此后：
+**方案**：`markProjectFileBoundary()`（SignatureCanonicalizerRegistry.ts:124）——SDK 构建阶段结束时（此后注册的都是 project 文件）记下当时的 `fileSigCanonicalizer.size()` 作为边界 `firstProjectFileSigID`。此后：
 
 - `[1, boundary)` = SDK 文件，`[boundary, size)` = project 文件（ID 0 是 DEFAULT，两边都不属于）；
 - `isProjectFileID(id)` / `isSdkFileID(id)` 只做一次数字比较；
@@ -282,16 +297,16 @@ tempFile 是身份根，没有 declaring，`isUnclear()` 恒 false，天然不�
 
 代码中不存在 tempNamespace 空间是有结构性保证，论证分三层：
 
-1. **唯一入口检查**：temp 空间的唯一写入 API 是 `TempSignatureCanonicalizer.register()`。全仓库 register 调用点**全部**针对 ClassSignature / MethodSignature / FieldSignature 三类：ClassType/FunctionType/LexicalEnvType/EnumValueType 构造器的 unclear 分支（Type.ts:677/541/1180/1259）、FieldSignature.setDeclaringFields 的 unclear **class** 分支（ArkSignature.ts:609）、MethodSignature 构造器的 unclear **class** 分支（ArkSignature.ts:887）、AbstractInvokeExpr.route / AbstractFieldRef 的 miss 分支。**不存在任何一条路径把 NamespaceSignature 传给 register**；
+1. **唯一入口检查**：temp 空间的唯一写入 API 是 `TempSignatureCanonicalizer.register()`。全仓库 register 调用点**全部**针对 ClassSignature / MethodSignature / FieldSignature 三类：ClassType/FunctionType/LexicalEnvType/EnumValueType 构造器的 unclear 分支（Type.ts:673/537/1184/1269）、FieldSignature.setDeclaringFields 的 unclear **class** 分支（ArkSignature.ts:633）、MethodSignature 构造器的 unclear **class** 分支（ArkSignature.ts:958）、AbstractInvokeExpr.route / AbstractFieldRef 的 miss 分支。**不存在任何一条路径把 NamespaceSignature 传给 register**；
 2. ** unclear 的根源不适用于 ns**：unclear 的定义是"declaringFile 未知"（Builtin stub、extends 目标未解析）。而 namespace 的声明链总是从**真实的 ArkFile** 出发——builder 创建 ns 时文件已知，直接传 FileSigID（SigID 构造重载）；Builtin 造 stub 只造 ClassSignature（declaringFile=DEFAULT），从不造 ns stub。ClassSignature / MethodSignature 里挂的也是 `declaringNamespaceSigID`（数字），不会把 ns 对象卷进 unclear 链；
-3. **唯一的例外分支被刻意"仅标记"**：FieldSignature 值对象构造若传入 unclear 的 NamespaceSignature，该分支只置 `declaringNamespaceSigID = -1`（标记），**不登记 temp**（ArkSignature.ts:614-619 注释原文："no temp registration — the temp namespace space never had a production registrant; the unclear-ns form is a marking-only shape"）。需要取回时由调用方自持签名实例。
+3. **唯一的例外分支被刻意"仅标记"**：FieldSignature 值对象构造若传入 unclear 的 NamespaceSignature，该分支只置 `declaringNamespaceSigID = -1`（标记），**不登记 temp**（ArkSignature.ts:646-658——模式 B' 改造前注释原文："no temp registration — the temp namespace space never had a production registrant; the unclear-ns form is a marking-only shape"；B' 后该分支为 unclear → 标记 -1，clear + formal miss → error log + 标记 -1，仍无 temp 登记）。需要取回时由调用方自持签名实例。
 
 > Note: Namespace 是根据代码中的场景和实际测试结果来分析其不会出现的，为了简化表示，就将其删除了。如果后续有场景需要，可以再加。
 
 ### 2.4 Registry 上的配套存储：customComponentMap 与 sdkGlobalMap 多值表
 
 - **`customComponentMap: Map<string, ClassSignature>`**：@Component 组件简单名 → 类签名。迁到 Registry 的关键原因：模块卸载（disposeModule）后条目仍需存活（ViewTree 建叶子节点要解析签名），生命周期必须独立于模块，挂在全局 Registry 上最自然。
-- **`sdkGlobalMap: Map<string, ArkExport[]>`**（Registry.ts:84-93）：SDK 全局符号**多值表**。修改前是 Scene 上的 `Map<string, ArkExport>` 单值表——`interface Object`（lib.es5）与 `declare var Object: ObjectConstructor` 这类**同名多实体**互相覆盖，只能靠 copyMembers 把成员物理灌进首实体（污染模型）。修改后同名实体按登记序全部保留在列表里，成员留在各自真实声明类上，探测层逐实体查找，成员签名自然归属真实声明文件。**查询入口全部在 SdkUtils**。典型消费场景见 §4.4 例二。
+- **`sdkGlobalMap: Map<string, ArkExport[]>`**（SignatureCanonicalizerRegistry.ts:93）：SDK 全局符号**多值表**。修改前是 Scene 上的 `Map<string, ArkExport>` 单值表——`interface Object`（lib.es5）与 `declare var Object: ObjectConstructor` 这类**同名多实体**互相覆盖，只能靠 copyMembers 把成员物理灌进首实体（污染模型）。修改后同名实体按登记序全部保留在列表里，成员留在各自真实声明类上，探测层逐实体查找，成员签名自然归属真实声明文件。**查询入口全部在 SdkUtils**。典型消费场景见 §4.4 例二。
 
 > Note: `sdkGlobalMap: Map<string, ArkExport[]>` 后续要考虑删除，至少是类型推导后清除。但是要考虑接口兼容性。
 
@@ -821,7 +836,7 @@ function outer() {
 **修改后**：
 
 - **`SceneBuilder.ts`**（844 行，全部从 Scene.ts 拆出，文件头有逐段迁移对照）：**一次性构建上下文**。`Scene.getOrCreateSceneBuilder()` 惰性创建挂 `scene.activeBuilder`；完整构建入口结束时 `releaseSceneBuilder()` 释放（工作态随 GC 回收，Scene 只留产物）。五大分区：配置解析族 / project 文件 DFS 族 / SDK 构建族 / body 构建族 / harmony 模块族。模块化增量路径（`analyseByModule`/`loadModule` → ModuleBuilder）不经此上下文。
-- **`builtFileOrder: number[]`**（Scene.ts:144）：DFS 中 `setFile` 的后序记录 = 严格拓扑序（被依赖者在前）。**推断期零排序**：`inferTypes` 直接正序遍历该数组（Scene.ts:1047-1059），取代旧版每轮 `sortByDependency(filesMap, projectName)` 全量拓扑重算（该函数 commit 时成为无调用的残留体，已随 review 工作项 G 整文件删除 DependenciesSort.ts，§5.1）。注意 FileSigID 本身的前序 intern 序不具拓扑性质（多入口/菱形场景依赖方可能晚于被依赖方 intern），**不可**替代此数组（注释明确警告）。
+- **`builtFileOrder: number[]`**（Scene.ts:144）：DFS 中 `setFile` 的后序记录 = 严格拓扑序（被依赖者在前）。**推断期零排序**：`inferTypes` 直接正序遍历该数组（Scene.ts:1049-1056），取代旧版每轮 `sortByDependency(filesMap, projectName)` 全量拓扑重算（该函数 commit 时成为无调用的残留体，已随 review 工作项 G 整文件删除 DependenciesSort.ts，§5.1）。注意 FileSigID 本身的前序 intern 序不具拓扑性质（多入口/菱形场景依赖方可能晚于被依赖方 intern），**不可**替代此数组（注释明确警告）。
 - **performance improve 增量**：`fromResolutionCache`（import from → 物理路径解析缓存，含负缓存）、`fromResolutionStack`（嵌套槽隔离）、`resolvedOhPkgCache`（刻意独立于正被遍历的 ohPkgContentMap，避开 JS Map 迭代中新增项的坑，SceneBuilder.ts:515-522）。
 - **`ModuleScene.ts`**：模块视图类拆出（Scene.ts re-export 兼容）；`moduleFileMap` key 从签名字符串变为 FileSigID；文件构建复用 SceneBuilder 的 DFS（必须先注册后构建）。
 - **`SceneBuildStage.ts`**：枚举从 7 值减为 5 值（`CLASS_COLLECTED`/`METHOD_COLLECTED` 随懒收集流程退役删除——模型在 `setSignature` 注册点即进 canonicalizer，不再需要收集阶段）。拆到 frontend 层的动机是打破 Scene ↔ frontend 值导入循环（ESM 加载边，同类循环曾实测触发 "Class extends value undefined"，与 §2.5 同源）。
@@ -906,15 +921,15 @@ function outer() {
 | 2  | 中     | **ir.ts `fileCount` 语义膨胀**：从 `getFiles().length`（project 文件数）变为 `fileSigCanonicalizer.size()`（1 个 DEFAULT + 全部 SDK + project）。配置 OHOS SDK 时输出 JSON 的 fileCount 从几十膨胀到数千，`--help` 无声明                                                                                                                                                | ir.ts:41                                                                                    |
 | 3  | 中     | **`markProjectFileBoundary` 调用面缺口**：仅 `buildSdkStage`（SceneBuilder.ts:602）与 `ModuleBuilder.loadModule`（ModuleBuilder.ts:1021）调用。API 层面"仅 `config()` + `buildModuleScene()`"可达（不设边界）→ `getFiles()`/`getSdkArkFiles()` 恒返回空、`isProjectFileID` 恒 false，而旧 filter 语义会返回文件                                                         | SceneBuilder.ts:791-823                                                                     |
 | 4  | 中     | **ModuleScene 无 active builder 时静默跳过**：仅 warn 后 return，整个模块文件不构建，上层无失败传播                                                                                                                                                                                                                                                                      | ModuleScene.ts:123-127                                                                      |
-| 5  | 中     | **`validateFields` truthy 检查对数字 ID 语义倒置**：`!value` 判断下 `-1`（未 intern 哨兵）判"有效"、合法 `0`（DEFAULT）判 undefined。受影响 validate 调用：ArkClass.ts:1466、ArkField.ts:277、ArkMethod.ts:948、ArkNamespace.ts:634                                                                                                                                      | ArkBaseModel.ts:414-430                                                                     |
-| 6  | 低     | **哨兵不一致 + 无效守卫**：`ArkFile.fileSigID` 以 0 为"未 set"（DEFAULT 占用 0，无法用 -1），其余模型用 -1。导致 ArkFile.ts:294/430 的 `this.fileSigID >= 0` 守卫恒真形同虚设                                                                                                                                                                                            | ArkFile.ts:72-73/294/430                                                                    |
-| 7  | 低     | **`undefined as unknown as X` 类型欺骗**：ID 未设时 getter 返回类型不合法的 undefined，下游链式调用静默崩溃                                                                                                                                                                                                                                                              | ArkClass.ts:333、ArkNamespace.ts:456/564、ArkField.ts:105、ArkMethod.ts:372、ArkFile.ts:252 |
+| 5  | 中     | **`validateFields` truthy 检查对数字 ID 语义倒置**：`!value` 判断下 `-1`（未 intern 哨兵）判"有效"、合法 `0`（DEFAULT）判 undefined。受影响 validate 调用：ArkClass.ts:1464、ArkField.ts:274、ArkMethod.ts:948、ArkNamespace.ts:633                                                                                                                                      | ArkBaseModel.ts:414-430                                                                     |
+| 6  | 低     | **哨兵不一致 + 无效守卫**：`ArkFile.fileSigID` 以 0 为"未 set"（DEFAULT 占用 0，无法用 -1），其余模型用 -1。导致 ArkFile.ts:297/433 的 `this.fileSigID >= 0` 守卫恒真形同虚设                                                                                                                                                                                            | ArkFile.ts:72-73/297/433                                                                    |
+| 7  | 低     | **`undefined as unknown as X` 类型欺骗**：ID 未设时 getter 返回类型不合法的 undefined，下游链式调用静默崩溃                                                                                                                                                                                                                                                              | ArkClass.ts:333、ArkNamespace.ts:456/564、ArkField.ts:105、ArkMethod.ts:372、ArkFile.ts:255 |
 | 11 | 低     | **`--stats` 依赖进程退出钩子**：CLI 场景成立；库被长生命周期进程使用时报告永不产出（除非手动调 print/export），CLI help 未声明                                                                                                                                                                                                                                           | Scene.ts:1564-1581                                                                          |
 | 12 | 低     | **post-infer 快照时序耦合**：`recordSignatureStats('post-infer')` 在 dispose 系列之后调用，当前各 dispose 不动 Registry 暂无偏差，属时序耦合点                                                                                                                                                                                                                           | Scene.ts:1068-1074                                                                          |
 | 13 | 低     | **索引实现不统一**：ArkFile 用 `Set`（保插入序），ArkNamespace/ArkClass 用 `Int32Array + swap-remove`（删除后顺序打乱）——namespace/file 侧 swap-remove 对遍历顺序的影响需评估                                                                                                                                                                                          | ArkFile.ts:82 等                                                                            |
 | 14 | 低     | **Canonicalizer.ts:22 导出类型引用私有名**：`export interface CanonicalizerStats.strategy: CanonicalizerStrategy` 引用未导出的 type，`--declaration` 构建会报 TS4023                                                                                                                                                                                                     | Canonicalizer.ts:20-29                                                                      |
 | 15 | 低     | **HomeFlow 遗留死代码**：`scratchFoundStored`/`getScratchFoundStored` 全仓库无调用；`preferCanonicalRepresentative` 钩子无实现者且 equals 命中时静默替换代表实例（对依赖 get(id) 稳定引用的签名体系是潜伏风险）                                                                                                                                                          | Canonicalizer.ts:92/127-140/586-594                                                         |
-| 18 | 低     | **register 无可扩展性预检**：对 frozen/sealed 对象写 symbol 属性抛裸 TypeError（对照 Canonicalizer.getObjectIdentityId 有 Object.isExtensible 预检），两处行为不一致                                                                                                                                                                                                     | TempSignatureCanonicalizer.ts:69-80                                                         |
+| 18 | 低     | **register 无可扩展性预检**：对 frozen/sealed 对象写 symbol 属性抛裸 TypeError（对照 Canonicalizer.getObjectIdentityId 有 Object.isExtensible 预检），两处行为不一致                                                                                                                                                                                                     | TempSignatureCanonicalizer.ts:47-49（register，symbol 写入经 utils/Canonicalizer.ts objectIdentity） |
 | 19 | ~~中~~ | ~~**模式 B' 路由 clear-miss 误报（ERROR 日志风暴）**~~ → **已修复（round10 实施轮）**，两类根因：**① %unk 形态**——stub 构造器（`ArkSignatureBuilder.buildMethodSignatureFromMethodName` / `buildFieldSignatureFromFieldName` 直传数字 0）与 `ClassSignature.DEFAULT` 值对象构造（DEFAULT 类自身 isUnclear=false 的 name==='%unk' 例外 → formal 命中 ID 0）均产生 `declaringClassSigID = 0` 的签名，而 isUnclear 只认 -1 → 误判 clear → formal 必 miss（DEFAULT 类下永无方法/字段模型）→ error log；**② AC constructor 形态**——object literal 匿名类（%ACn）的 constructor 探测签名产生于方法体构建期，晚于它的 `updateOrAddDefaultConstructors` 批量补全还没跑（时序差），且探测形态 `constructor(): UnknownType` 与真实默认构造器 `constructor(): ClassType(%ACn)`（returnType 不同 → 值不等）错位——每对象字面量构建期一条 ERROR + temp 残留（推导期解析真实签名时被 retire）。**修复**：a) isUnclear class 侧改非正判定（`=== -1 \|\| === 0`，-1 = temp-held / 0 = DEFAULT declaring"挂在未知类上"，Method+FieldSignature 两处，行为等价仅消除误报——路由结果同为 temp）；b) `objectLiteralExpresionToValueAndStmts` 创建点提前调 `buildDefaultConstructor`（needDefaultConstructorInClass 的 OBJECT 白名单本就打开、批量补全幂等跳过、模型总数不变）+ 探测签名改取真实 constructor 签名（route formal 直达，零 ERROR 零 temp）。**决策记录**：route miss 分支防御性 retire **取消**——纯 retire 会使共享同一 temp 实例的其他持有者断链（`Builtin.TO_STRING_METHOD_SIGNATURE` 单例多 expr 共享先例，retire 后三级查 slot 空 + 无 replacement 直接 throw；retireTemp 的设计前提是"替换后无任何持有者"）；属性探测（字段 miss）日志**保持 error 不降级**（用户拍板，待专项分析彻底消减）。测试同步：SignatureCanonicalizerRegistry 2 处断言更新为新语义（SigID 0 作 declaring → unclear） | ArkValueTransformer.ts:313/:332-334、ArkSignature.ts:804/:1087、ArkMethodBuilder.ts:331-340/:359-414（修复涉及）；Expr.ts:144-148 / Ref.ts:179-183（日志保留点） |
 
 ---

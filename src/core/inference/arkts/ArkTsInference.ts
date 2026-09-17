@@ -29,7 +29,8 @@ import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, GlobalRef } fro
 import { Local } from '../../base/Local';
 import { AbcMethodInference } from '../abc/AbcInference';
 import { ANONYMOUS_CLASS_PREFIX, INSTANCE_INIT_METHOD_NAME } from '../../common/Const';
-import { CONSTRUCTOR_NAME, THIS_NAME } from '../../common/TSConst';
+import { SUPER_NAME, THIS_NAME } from '../../common/TSConst';
+
 import { AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkField } from '../../model/ArkField';
@@ -196,14 +197,20 @@ export class ArkTSFieldRefInference extends FieldRefInference {
 
     /**
      * Checks if a value represents an anonymous class 'this' field reference
-     * Identifies field references that access fields directly on 'this' in anonymous class constructors
+     * Identifies field references that access fields directly on 'this' in the AC's
+     * %instInit — the carrier of field-initializer expressions, where `this` lexically
+     * means the ENCLOSING this (rebound to the host class by inferThisLocal), so def-side
+     * member resolution against the AC would only degrade. The AC's own constructors keep
+     * the build-time this (ClassType(AC), see the this-semantic guards in
+     * ArkTSLocalInference.infer / IRInference.inferBase) and their def-side resolution
+     * must NOT be skipped — skipping it left build-time probe stubs permanently uncorrected.
      * @param {Value} stmtDef - The value to check (typically a field reference)
      * @param {ArkMethod} arkMethod - The method containing the value
-     * @returns {boolean} True if the value is an anonymous class 'this' field reference
+     * @returns {boolean} True if the value is an anonymous class %instInit 'this' field reference
      */
     private isAnonClassThisRef(stmtDef: Value, arkMethod: ArkMethod): boolean {
         return (
-            (arkMethod.getName() === INSTANCE_INIT_METHOD_NAME || arkMethod.getName() === CONSTRUCTOR_NAME) &&
+            arkMethod.getName() === INSTANCE_INIT_METHOD_NAME &&
             stmtDef instanceof ArkInstanceFieldRef &&
             stmtDef.getBase().getName() === THIS_NAME &&
             arkMethod.getDeclaringArkClass().isAnonymousClass() &&
@@ -322,9 +329,34 @@ export class ArkTSLocalInference extends LocalInference {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         let newType;
         if (name === THIS_NAME) {
-            newType = IRInference.inferThisLocal(arkMethod)?.getType();
-            if (newType) {
-                value.setType(newType);
+            // this-semantic guard: only the AC's %instInit (the carrier of field-initializer
+            // expressions, where `this` lexically means the ENCLOSING this at the object
+            // literal / class expression site — the host class) gets rebound via
+            // inferThisLocal. The AC's own methods (constructor, named method properties)
+            // keep the build-time this (ClassType(AC)) — the instance itself. Rebinding
+            // them to the host class breaks every `this.<memberOfAC>` resolution downstream.
+            const hostMethod = stmt.getCfg().getDeclaringMethod();
+            if (hostMethod.getName() === INSTANCE_INIT_METHOD_NAME && hostMethod.getDeclaringArkClass().isAnonymousClass()) {
+                newType = IRInference.inferThisLocal(hostMethod)?.getType();
+                if (newType) {
+                    value.setType(newType);
+                }
+            }
+            return undefined;
+        } else if (name === SUPER_NAME) {
+            // B1 (round10): the symmetric counterpart of the this branch. Build time
+            // leaves the 'super' Local untyped (getOrCreateLocal default Unknown); the
+            // historical normalization swapped the invoke base to 'this' and re-resolved
+            // from there (a two-pass workaround that also risked hitting a subclass
+            // override). Resolve the type here ONCE to the declaring class's base class
+            // — the single source of truth: every consumer (invoke / field-ref member
+            // resolution via inferRefinedValueType) reads it through the normal
+            // base-type path, and the resolved signature's declaring side derives from
+            // it (base-class lookup, correct super semantics). Idempotent across
+            // inference rounds (preInfer goes false once typed).
+            const superType = TypeInference.inferBaseType(SUPER_NAME, arkMethod.getDeclaringArkClass());
+            if (superType) {
+                value.setType(superType);
             }
             return undefined;
         } else if (type instanceof FunctionType) {

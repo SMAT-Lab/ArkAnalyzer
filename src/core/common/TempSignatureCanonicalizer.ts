@@ -85,8 +85,14 @@ export class TempSignatureCanonicalizer<S extends object> {
         return this.replacements.get(id) ?? -1;
     }
 
-    /** 未迁移量 = inner.size() - retiredIds.size（三数自洽）。 */
-    public size(): number {
+    /**
+     * 未迁移量（去洞活数）= inner.size() - retiredIds.size。
+     * Named liveCount (not size) on purpose: the composed Canonicalizer.size() returns the
+     * dense extent (holes included) — same name, opposite semantics silently breaks any
+     * loop bound or capacity check that treats the two as interchangeable containers.
+     * 三数自洽：totalRegistered = liveCount + retired。
+     */
+    public liveCount(): number {
         return this.inner.size() - this.retiredIds.size;
     }
 
@@ -95,7 +101,7 @@ export class TempSignatureCanonicalizer<S extends object> {
         return this.inner.size();
     }
 
-    /** 已迁移总量 = retiredIds.size。三数自洽：totalRegistered = size + retired。 */
+    /** 已迁移总量 = retiredIds.size。三数自洽：totalRegistered = liveCount + retired。 */
     public retired(): number {
         return this.retiredIds.size;
     }
@@ -123,7 +129,7 @@ export class TempSignatureCanonicalizer<S extends object> {
     /** 索引表统计（同步即精确）。 */
     public getStats(): { liveCount: number; totalRegistered: number; retiredCount: number; replacedCount: number } {
         return {
-            liveCount: this.size(),
+            liveCount: this.liveCount(),
             totalRegistered: this.inner.size(),
             retiredCount: this.retiredIds.size,
             replacedCount: this.replacements.size,

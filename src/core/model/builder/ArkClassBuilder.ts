@@ -360,8 +360,16 @@ function buildObjectLiteralExpression2ArkClass(
         if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property) || ts.isSpreadAssignment(property)) {
             buildProperty2ArkField(property, sourceFile, cls);
         } else {
-            let arkMethod = new ArkMethod(cls.getClassSigID());
+            // A2 (round10): collect method properties into arkMethods — the array was
+            // declared but never filled, so object-literal method properties ({ foo() {} })
+            // never reached the checkAndUpdateMethod + addMethod finalization below:
+            // their models existed only via the constructor-time impl registration,
+            // methodNameIndex had no entries (getMethodsWithName / findPropertyInClass /
+            // round29 this.m() normalization were all blind on AC method properties),
+            // and getMethods()/dump omitted them entirely.
+            const arkMethod = new ArkMethod(cls.getClassSigID());
             buildArkMethodFromArkClass(property, cls, arkMethod, sourceFile);
+            arkMethods.push(arkMethod);
         }
     });
     buildInitMethod(

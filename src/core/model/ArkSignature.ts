@@ -697,8 +697,13 @@ export class FieldSignature {
                 return sig;
             }
         } else if (this.declaringClassTempSigID !== undefined) {
-            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移，
-            // 惰性物化写回 declaringClassSigID，declaringClassTempSigID 保留作痕迹）。
+            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移）。
+            // 纯读：不写回 declaringClassSigID——物化写回曾让实例变成 (formalId,
+            // tempSigID 残留) 的中间态，同时破坏 hash 契约（hashCode 仍是构造/
+            // applyFields 时按旧字段值算的）与 equals 契约（与新构造的
+            // (formalId, undefined) 正式签名判不等）。字段保持构造时形态终身一致；
+            // 已迁移实例每次多一次 getReplacement 的 Map 查找（O(1)），
+            // isUnclear 保持 true（已迁移仍 unclear——推导空转幂等）。
             const sig = reg.tempClassSigCanonicalizer.get(this.declaringClassTempSigID);
             if (sig !== undefined) {
                 return sig;
@@ -707,7 +712,6 @@ export class FieldSignature {
             if (formalId !== -1) {
                 const formalSig = reg.classSigCanonicalizer.get(formalId);
                 if (formalSig !== undefined) {
-                    this.declaringClassSigID = formalId;
                     return formalSig;
                 }
             }
@@ -1002,8 +1006,12 @@ export class MethodSignature {
                 return sig;
             }
         } else if (this.declaringClassTempSigID !== undefined) {
-            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移，
-            // 惰性物化写回 declaringClassSigID，declaringClassTempSigID 保留作痕迹）。
+            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移）。
+            // 纯读（与 FieldSignature.getDeclaringSignature 同款决策）：不写回
+            // declaringClassSigID——物化写回会同时破坏 hash 契约（hash 一次算定，
+            // 含锚点字段，写回后陈旧）与 equals 契约（equals 逐字段含
+            // declaringClassTempSigID，中间态 (formalId, tempSigID 残留) 与新构造的
+            // 正式签名判不等）。
             const sig = reg.tempClassSigCanonicalizer.get(this.declaringClassTempSigID);
             if (sig !== undefined) {
                 return sig;
@@ -1012,7 +1020,6 @@ export class MethodSignature {
             if (formalId !== -1) {
                 const formalSig = reg.classSigCanonicalizer.get(formalId);
                 if (formalSig !== undefined) {
-                    this.declaringClassSigID = formalId;
                     return formalSig;
                 }
             }

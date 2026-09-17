@@ -339,6 +339,25 @@ export function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     );
 }
 
+/**
+ * On-demand variant of {@link buildDefaultConstructor} with the isLibraryClass guard
+ * lifted: callers decide by construction stage / SDK batch whether library classes
+ * get default constructors (the batch-level parameter replaces the per-class project
+ * name comparison on this hot path). The remaining static guards are unchanged.
+ */
+export function ensureDefaultConstructor(arkClass: ArkClass): boolean {
+    const category = arkClass.getCategory();
+    if (
+        arkClass.getMethodWithName(CONSTRUCTOR_NAME) !== null ||
+        (category !== ClassCategory.CLASS && category !== ClassCategory.OBJECT) ||
+        arkClass.isDefaultArkClass() ||
+        arkClass.isDeclare()
+    ) {
+        return false;
+    }
+    return buildDefaultConstructor(arkClass, new Set(), true);
+}
+
 function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass, visited: Set<number> = new Set()): void {
     if (visited.has(arkClass.getClassSigID())) {
         return;
@@ -356,13 +375,12 @@ function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass, visited: S
     }
 }
 
-export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<number> = new Set()): boolean {
+export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<number> = new Set(), force: boolean = false): boolean {
     recursivelyCheckAndBuildSuperConstructor(arkClass, visited);
 
-    if (!needDefaultConstructorInClass(arkClass)) {
+    if (!force && !needDefaultConstructorInClass(arkClass)) {
         return false;
     }
-
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
     const thisDefStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature())));
     thisLocal.setDeclaringStmt(thisDefStmt);

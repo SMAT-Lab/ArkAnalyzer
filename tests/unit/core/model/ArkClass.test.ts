@@ -17,6 +17,7 @@ import { assert, beforeAll, describe, expect, it } from 'vitest';
 import {
     ArkAssignStmt,
     ArkClass,
+    ArkInstanceInvokeExpr,
     ArkMethod,
     ClassSignature,
     ClassType,
@@ -513,13 +514,16 @@ describe('ArkClass with Heritage Class Test', () => {
 
         assert.isAtLeast(stmts!.length, 3);
         assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
-        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        // B1 (round10): super.foo() keeps the 'super' base (the historical super→this
+        // normalization removed) — the IR now preserves the super-vs-this distinction.
+        assert.equal(stmts![2].toString(), 'instanceinvoke super.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
         assert.isDefined(thisLocalStmts);
-        assert.isAtLeast(thisLocalStmts!.length, 2);
+        // Only the this.foo() statement stays on this's use chain (super.foo() no longer
+        // normalized onto it).
+        assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
-        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
         assert.isUndefined(superLocal);
@@ -532,13 +536,15 @@ describe('ArkClass with Heritage Class Test', () => {
 
         assert.isAtLeast(stmts!.length, 3);
         assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
-        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        // B1 (round10): super.foo() keeps the 'super' base and resolves the member from
+        // the base class (declaring C — the correct super lookup semantics).
+        assert.equal(stmts![2].toString(), 'instanceinvoke super.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
         assert.isDefined(thisLocalStmts);
-        assert.isAtLeast(thisLocalStmts!.length, 2);
+        // Only the this.foo() statement stays on this's use chain.
+        assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
-        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
         assert.isUndefined(superLocal);
@@ -632,6 +638,45 @@ describe('Object Literal Generated ArkClass Test', () => {
         assert.isDefined(fieldAssignStmt);
         assert.isTrue(fieldLoadStmt?.getLeftOp() instanceof Local);
         assert.equal(fieldAssignStmt?.getRightOp(), fieldLoadStmt?.getLeftOp());
+    });
+
+    it('object literal method properties are indexed and resolvable (A2: arkMethods fill)', async () => {
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ObjectLiteralMethodTest.ts');
+        assert.isDefined(arkFile);
+
+        const buildCounter = arkFile?.getDefaultClass().getMethodWithName('buildCounter');
+        assert.isDefined(buildCounter);
+        const counterLocal = buildCounter?.getBody()?.getLocals().get('counter');
+        assert.isDefined(counterLocal);
+        assert.isTrue(counterLocal!.getType() instanceof ClassType);
+
+        const objClassName = (counterLocal!.getType() as ClassType).getClassSignature().getClassName();
+        const objClass = arkFile?.getClassWithName(objClassName);
+        assert.isDefined(objClass);
+        assert.isNotNull(objClass);
+
+        // A2 (round10): method properties reach addMethod finalization — they appear in
+        // getMethods() and the name index (previously the arkMethods array was never
+        // filled, leaving getMethodWithName/findPropertyInClass/round29 normalization
+        // blind on object-literal method properties and the dump omitting them).
+        expect(objClass!.getMethods().map(m => m.getName())).toEqual(['increment', 'double']);
+        assert.isDefined(objClass!.getMethodWithName('increment'));
+        assert.isDefined(objClass!.getMethodWithName('double'));
+
+        // this.increment() inside double(): the round29 normalization now matches the
+        // unique same-name method — direct formal signature, no temp stub.
+        const doubleStmts = objClass!.getMethodWithName('double')?.getCfg()?.getStmts();
+        assert.isDefined(doubleStmts);
+        const incrementInvokes = doubleStmts!
+            .map(stmt => (stmt.getExprs() ?? []).find(expr => expr instanceof ArkInstanceInvokeExpr))
+            .filter((expr): expr is ArkInstanceInvokeExpr => expr instanceof ArkInstanceInvokeExpr);
+        expect(incrementInvokes.length).toEqual(2);
+        for (const invoke of incrementInvokes) {
+            expect(invoke.getMethodSigID()).toBeGreaterThan(0);
+            expect(invoke.getMethodSignature().toString()).toEqual(
+                `@expression/ObjectLiteralMethodTest.ts: ${objClassName}.increment()`
+            );
+        }
     });
 });
 

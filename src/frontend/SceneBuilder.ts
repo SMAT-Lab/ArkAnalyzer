@@ -34,7 +34,7 @@ import { BUILD_PROFILE_JSON5, OH_MODULES, OH_PACKAGE_JSON5 } from '../core/commo
 import { SdkUtils } from '../core/common/SdkUtils';
 import { ModelUtils } from '../core/common/ModelUtils';
 import { InferenceManager } from '../core/inference/Inference';
-import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from '../core/model/builder/ArkMethodBuilder';
+import { addInitInConstructor, buildDefaultConstructor, ensureDefaultConstructor, replaceSuper2Constructor } from '../core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './cppFrontend/model/builder/ArkMethodBuilder';
 import { SignatureCanonicalizerRegistry } from '../core/common/SignatureCanonicalizerRegistry';
 import { SceneBuildStage } from './SceneBuildStage';
@@ -561,7 +561,7 @@ export class SceneBuilder {
         }
         sceneConfig.getSdksObj()?.forEach(sdk => {
             if (!sdk.moduleName) {
-                this.buildSdk(sdk.name, path.normalize(sdk.path));
+                this.buildSdk(sdk.name, path.normalize(sdk.path), sdk.name !== SdkUtils.BUILT_IN_NAME);
                 scene.getProjectSdkMap().set(sdk.name, sdk);
             } else {
                 let moduleSdks = scene.getModuleSdkMap().get(sdk.moduleName);
@@ -606,8 +606,16 @@ export class SceneBuilder {
     /**
      * Loads SDK sources into the scene. C++ SDK files are intentionally skipped: they are not parsed or registered
      * here (only non-C++ SDK sources are processed).
+     *
+     * When {@link createDefaultConstructor} is set, default constructors are ensured for every
+     * class registered by this SDK batch right here — before the SDK/project ID boundary is
+     * marked — so their method formal IDs stay on the SDK side of the (future class/method-level)
+     * boundary invariant. The built-in lib (var-side XxxConstructor pattern + interface-only
+     * classes) is excluded by the caller for that reason; library classes must NOT receive
+     * models after the boundary (the project-stage batch pass keeps the isLibraryClass guard).
      */
-    private buildSdk(sdkName: string, sdkPath: string): void {
+    private buildSdk(sdkName: string, sdkPath: string, createDefaultConstructor: boolean): void {
+        const classIdBefore = this.registry.classSigCanonicalizer.size();
         const allFiles = this.collectSdkFiles(sdkName, sdkPath);
         allFiles.forEach(file => {
             if (FileUtils.getFileLanguage(file, this.scene.getFileLanguages()) === Language.CXX) {
@@ -615,6 +623,15 @@ export class SceneBuilder {
             }
             this.parseAndRegisterSdkFile(file, sdkPath, sdkName);
         });
+        if (createDefaultConstructor) {
+            const size = this.registry.classSigCanonicalizer.size();
+            for (let id = classIdBefore; id < size; id++) {
+                const cls = this.registry.classSigCanonicalizer.getModel(id);
+                if (cls) {
+                    ensureDefaultConstructor(cls);
+                }
+            }
+        }
     }
 
     private collectSdkFiles(sdkName: string, sdkPath: string): string[] {

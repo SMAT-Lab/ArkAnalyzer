@@ -67,6 +67,7 @@ import {
     CONSTRUCT_SIGNATURE_NAME,
     DEFAULT_ARK_CLASS_NAME,
     GETTER_PREFIX,
+    INSTANCE_INIT_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
@@ -308,8 +309,6 @@ export class IRInference {
             } else {
                 const params = resolution;
                 if (params.staticFlag) {
-                    // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
-                    ref.retireTemp();
                     let staticSig: FieldSignature;
                     if (typeof params.declaringOrID === 'number') {
                         staticSig = params.namespaceDeclared
@@ -318,7 +317,17 @@ export class IRInference {
                     } else {
                         staticSig = new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
                     }
-                    return new ArkStaticFieldRef(staticSig);
+                    // Probe before converting (twin of updateRefSignature's static params
+                    // branch): on a miss the params carry a value-space member (namespace
+                    // class/enum reference, field-style static-method reference) with no
+                    // formal home in the field space — converting would hit the clear+miss
+                    // error route and allocate an extra slot. Fall through to
+                    // updateFieldSignature (in-place temp evolution, context preserved).
+                    if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
+                        // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
+                        ref.retireTemp();
+                        return new ArkStaticFieldRef(staticSig);
+                    }
                 }
                 ref.updateFieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, params.namespaceDeclared);
             }
@@ -335,7 +344,10 @@ export class IRInference {
                 return;
             }
             const declaringArkClass = arkMethod.getDeclaringArkClass();
-            if (declaringArkClass.isAnonymousClass()) {
+            // this-semantic guard (same as ArkTSLocalInference.infer): only the AC's
+            // %instInit rebinds this to the enclosing (host) this; the AC's own methods
+            // (constructor, named method properties) keep the build-time this — ClassType(AC).
+            if (declaringArkClass.isAnonymousClass() && arkMethod.getName() === INSTANCE_INIT_METHOD_NAME) {
                 let newBase = this.inferThisLocal(arkMethod);
                 if (newBase) {
                     instance.setBase(newBase);
@@ -628,10 +640,18 @@ export class IRInference {
                 return this.invokeMatchedMethod(expr, method, declaredClass, baseType);
             }
         }
+        // No-constructor fallback (built-in lib classes behind the var-side XxxConstructor
+        // pattern, declare-only classes, ...): never register new models during inference —
+        // SDK-side constructors are ensured inside the SDK build stage (before the
+        // project/SDK ID boundary is marked), and registering here would land SDK models on
+        // the project side of the boundary. Only swap in the resolved-shape signature when
+        // it already exists formally; otherwise keep the expr's build-time temp stub (the
+        // declaring context survives, no clear+miss error route).
         const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
-        // getClassSignature() (not getClassSigID()): the class may still be unclear and live in
-        // the temp canonicalizer; the object overload interns it properly.
-        expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+        const resolvedSignature = new MethodSignature(baseType.getClassSignature(), subSignature);
+        if (SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getExistingId(resolvedSignature) !== -1) {
+            expr.setMethodSignature(resolvedSignature);
+        }
         return expr;
     }
 
@@ -867,8 +887,6 @@ export class IRInference {
             // A2 批 4：新构造值走参数式（零中间实例）——static 场景为新建持有者
             // 保留 new（首路径登记），非 static 就地演进 S。
             if (params.staticFlag) {
-                // 替换埋葬：static params 形态替换——旧 ref 纯 retire。
-                ref.retireTemp();
                 let staticSig: FieldSignature;
                 if (typeof params.declaringOrID === 'number') {
                     staticSig = params.namespaceDeclared
@@ -877,7 +895,22 @@ export class IRInference {
                 } else {
                     staticSig = new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
                 }
-                return new ArkStaticFieldRef(staticSig);
+                // Probe before converting to a static ref: the params form also fires for
+                // value-space members carried in a field-signature shape — a namespace's
+                // exported class/enum (e.g. `ns.EnumName`, the intermediate ref of
+                // `ns.EnumName.MEMBER`) or a field-style reference to a static method
+                // (`const f = C.sm`). Those signatures have NO formal home in the field
+                // space (the member is a class/method, not a field) — converting would
+                // route clear+miss into the error + temp fallback, plus an extra slot.
+                // On a hit (real static / namespace-declared field) keep the historical
+                // new-holder conversion; on a miss fall through to updateFieldSignature,
+                // which writes the params (declaring + [static] flag + type) into the
+                // existing temp row in place — context preserved, no error, no extra slot.
+                if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
+                    // 替换埋葬：static params 形态替换——旧 ref 纯 retire。
+                    ref.retireTemp();
+                    return new ArkStaticFieldRef(staticSig);
+                }
             }
             ref.updateFieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, params.namespaceDeclared);
             return ref;

@@ -71,11 +71,11 @@ describe('Temp ID Mechanism Test', () => {
         // 值命中耦合——本用例验证的是未注册签名的 temp 往返。
         const sig1 = new ClassSignature('ReRegisterA', fileSig, null);
         const sig2 = new ClassSignature('ReRegisterB', fileSig, null);
-        const sizeBefore = reg.tempClassSigCanonicalizer.size();
+        const sizeBefore = reg.tempClassSigCanonicalizer.liveCount();
         const ct = new ClassType(sig1);
         expect(ct.getClassSigID()).toBe(-1);
         const tempId1 = ct.getTempSigID()!;
-        expect(reg.tempClassSigCanonicalizer.size()).toBe(sizeBefore + 1);
+        expect(reg.tempClassSigCanonicalizer.liveCount()).toBe(sizeBefore + 1);
 
         ct.setClassSignature(sig2);
         // 两个签名均未注册 → 均走 temp：新锚点 + 新 temp ID（弱注册表：sig1 仍被
@@ -83,7 +83,7 @@ describe('Temp ID Mechanism Test', () => {
         expect(ct.getClassSigID()).toBe(-1);
         const tempId2 = ct.getTempSigID()!;
         expect(tempId2).not.toBe(tempId1); // 引用语义：不同实例不同 ID
-        expect(reg.tempClassSigCanonicalizer.size()).toBe(sizeBefore + 2);
+        expect(reg.tempClassSigCanonicalizer.liveCount()).toBe(sizeBefore + 2);
         expect(reg.tempClassSigCanonicalizer.getExistingTempId(sig2)).toBe(tempId2);
     });
 
@@ -227,7 +227,7 @@ describe('Temp ID Mechanism Test', () => {
 
     it('same signature instance shared by two ClassTypes reuses one temp ID (idempotent register)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const sizeBefore = reg.tempClassSigCanonicalizer.size();
+        const sizeBefore = reg.tempClassSigCanonicalizer.liveCount();
         const totalBefore = reg.tempClassSigCanonicalizer.totalRegistered();
         const sig = new ClassSignature('Shared', new FileSignature('p', 'f.ts'), null);
         const ct1 = new ClassType(sig);
@@ -235,7 +235,7 @@ describe('Temp ID Mechanism Test', () => {
         // 弱注册表：同一实例 → 同一 temp ID（幂等，不产生新条目）；两个 ClassType
         // 各自锚定该实例（存活期重叠，任一存活即条目存活）。
         expect(ct1.getTempSigID()).toBe(ct2.getTempSigID());
-        expect(reg.tempClassSigCanonicalizer.size()).toBe(sizeBefore + 1);
+        expect(reg.tempClassSigCanonicalizer.liveCount()).toBe(sizeBefore + 1);
         expect(reg.tempClassSigCanonicalizer.totalRegistered()).toBe(totalBefore + 1);
     });
 
@@ -243,12 +243,12 @@ describe('Temp ID Mechanism Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('p', 'f.ts');
         const fileID = reg.fileSigCanonicalizer.getExistingId(fileSig);
-        const sizeBefore = reg.tempClassSigCanonicalizer.size();
+        const sizeBefore = reg.tempClassSigCanonicalizer.liveCount();
 
         const stubSig = new ClassSignature('Late', fileSig, null);
         const ct = new ClassType(stubSig); // 未注册 → temp
         expect(ct.getClassSigID()).toBe(-1);
-        expect(reg.tempClassSigCanonicalizer.size()).toBe(sizeBefore + 1);
+        expect(reg.tempClassSigCanonicalizer.liveCount()).toBe(sizeBefore + 1);
 
         // 真实类后到注册同值签名 → setClassSignature 迁移到 formal。弱注册表语义：
         // 旧 temp 条目不显式移除（stubSig 仍被本用例局部变量锚定，size 不减），

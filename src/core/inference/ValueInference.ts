@@ -352,19 +352,21 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
 
     /**
      * Performs post-inference processing on invocation expressions
-     * Handles special case for super() calls by replacing the base with 'this' local
      * @param {ArkInstanceInvokeExpr} value - The original invocation expression
      * @param {Value} newValue - The new value after inference
-     * @param {Stmt} stmt - The statement containing the invocation
+     * @param {Stmt} stmt - The statement containing the expression
      */
     public postInfer(value: ArkInstanceInvokeExpr, newValue: Value, stmt: Stmt): void {
-        if (value instanceof ArkInstanceInvokeExpr && value.getBase().getName() === SUPER_NAME) {
-            const thisLocal = stmt.getCfg().getDeclaringMethod().getBody()?.getLocals().get(THIS_NAME);
-            if (thisLocal) {
-                value.setBase(thisLocal);
-                thisLocal.addUsedStmt(stmt);
-            }
-        }
+        // B1 (round10): the historical super→this base normalization is removed.
+        // It existed because the 'super' Local's type was never resolvable in the new
+        // chain (ArkTSLocalInference.infer's else-branch dropped the by-name
+        // inferBaseType path), so member resolution could only succeed after the base
+        // was swapped to 'this' and re-resolved from the declaring class. With the
+        // symmetric SUPER_NAME branch in ArkTSLocalInference.infer the super Local is
+        // typed to the base class directly, resolution runs in one pass from the base
+        // class (correct super lookup semantics — no subclass-override false hit), and
+        // the normalization would erase the super-vs-this distinction the printer and
+        // downstream analyses depend on.
         super.postInfer(value, newValue, stmt);
     }
 
