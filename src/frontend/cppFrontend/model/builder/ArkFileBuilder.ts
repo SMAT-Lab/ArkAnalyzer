@@ -312,15 +312,8 @@ function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astR
     addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
 }
 
-/**
- * Building ArkFile instance
- *
- * @param arkFile
- * @param astRoot
- * @returns
- */
-function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
-    // handle header units
+/** 头部单元的 include 指令 → ImportInfo。 */
+function buildImportInfosFromHeaderUnits(arkFile: ArkFile, astRoot: CxxAstNode): void {
     astRoot.headerUnits?.forEach((child: CxxAstNode) => {
         if (!child.includes) {
             return;
@@ -333,6 +326,17 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
         }
     });
+}
+
+/**
+ * Building ArkFile instance
+ *
+ * @param arkFile
+ * @param astRoot
+ * @returns
+ */
+function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    buildImportInfosFromHeaderUnits(arkFile, astRoot);
     // handle non-header unit
     const statements = astRoot.inner ?? [];
     statements.forEach((child: CxxAstNode) => {
@@ -353,7 +357,6 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             case AstKind.NamespaceDecl:
                 let ns: ArkNamespace = new ArkNamespace(arkFile.getFileSigID());
                 buildArkNamespace(child, arkFile, ns, astRoot);
-                arkFile.addNamespace(ns);
                 addExportInfoOnCondition(child, ns, arkFile, astRoot);
                 break;
             case AstKind.CXXMethodDecl:

@@ -300,12 +300,6 @@ export class SdkUtils {
         if (old instanceof ArkClass && local.getType() instanceof ClassType) {
             const localConstructor = this.getFirstGlobal(globalMap, (local.getType() as ClassType).getClassSignature().getClassName());
             if (localConstructor instanceof ArkClass) {
-                // var 侧不再 copyMembers 灌入 interface（TS 语义本就是两个声明）：
-                // local（类型即 XConstructor）登记为多值候选——探测层经它命中构造器
-                // 侧实体，成员签名自然归属真实声明类。
-                //（曾设 canonical 主定义实体表——"var 声明同文件 interface"规则——
-                // 实测 Promise 例外（var 文件无 interface 主体）且多数场景 canonical
-                // == 首实体，防御价值不抵一张表，已删。）
                 this.appendGlobal(globalMap, name, local);
             } else {
                 this.loadAPI(local, globalMap, true);
@@ -321,16 +315,7 @@ export class SdkUtils {
     // would create real module-loading edges that flip the ESM cycle, see Registry's
     // dependency-graph constraint note).
 
-    /**
-     * Get all member-provider classes of a global symbol for member probing —
-     * equivalent to the member union the legacy copyMembers merging produced:
-     *  - every ArkClass entity registered under the name (same-name interface
-     *    declarations across lib files), and
-     *  - for `declare var X: XConstructor` locals, the constructor-side class
-     *    (XConstructor) plus every entity registered under THAT name.
-     * Members resolved against these candidates carry their real declaring class
-     * in the signature (version judgement).
-     */
+    /** @internal, Get all member-provider classes of a global symbol for member probing. */
     public static getSdkGlobalMemberClasses(globalName: string): ArkClass[] {
         const result: ArkClass[] = [];
         const seen = new Set<ArkClass>();
@@ -344,24 +329,26 @@ export class SdkUtils {
         for (const e of SdkUtils.getSdkGlobals(globalName)) {
             if (e instanceof ArkClass) {
                 push(e);
-            } else if (e instanceof Local) {
-                const localType = e.getType();
-                if (localType instanceof ClassType) {
-                    // Local → ctor class via canonicalizer direct lookup: SDK classes are
-                    // registered (setModel) at build time before their var locals enter
-                    // the global map, so this is equivalent to the legacy Scene.getClass
-                    // path; evicted models miss the same way on both paths.
-                    const ctorSig = localType.getClassSignature();
-                    const id = reg.classSigCanonicalizer.getExistingId(ctorSig);
-                    const ctorClass = id !== -1 ? reg.classSigCanonicalizer.getModel(id) : undefined;
-                    if (ctorClass !== undefined) {
-                        push(ctorClass);
-                    }
-                    for (const c of SdkUtils.getSdkGlobals(ctorSig.getClassName())) {
-                        if (c instanceof ArkClass) {
-                            push(c);
-                        }
-                    }
+                continue;
+            }
+            if (!(e instanceof Local)) {
+                continue;
+            }
+            const localType = e.getType();
+            if (!(localType instanceof ClassType)) {
+                continue;
+            }
+            // Local → ctor class via canonicalizer direct lookup: SDK classes are registered (setModel) at build time
+            // before their var locals enter the global map; evicted models miss this lookup.
+            const ctorSig = localType.getClassSignature();
+            const id = reg.classSigCanonicalizer.getExistingId(ctorSig);
+            const ctorClass = id !== -1 ? reg.classSigCanonicalizer.getModel(id) : undefined;
+            if (ctorClass !== undefined) {
+                push(ctorClass);
+            }
+            for (const c of SdkUtils.getSdkGlobals(ctorSig.getClassName())) {
+                if (c instanceof ArkClass) {
+                    push(c);
                 }
             }
         }
@@ -394,8 +381,7 @@ export class SdkUtils {
     }
 
     /**
-     * Single-value view of the SDK global map: the first entity registered under
-     * the name (legacy first-win semantics). Returns null when unregistered.
+     * Single-value view of the SDK global map: the first entity registered under the name (first-win 语义). Returns null when unregistered.
      */
     public static getSdkGlobal(globalName: string): ArkExport | null {
         return SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap.get(globalName)?.[0] ?? null;

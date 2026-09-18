@@ -92,7 +92,7 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const staticField = new ArkField(cls2.getClassSigID());
         const fieldSig = new FieldSignature(
             'staticVar',
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(cls2Sig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(cls2Sig),
             BooleanType.getInstance(),
             true
         );
@@ -111,7 +111,7 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const fileSig = new FileSignature('test', 'test.ts');
         file.setFileSignature(fileSig);
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         // Regular construction: the parent namespace is interned (top-level under the
         // file) and the children's signatures declare the parent as their scope —
         // the signature ownership is the single source of truth for name lookups.
@@ -153,7 +153,7 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const ns = new ArkNamespace(
             file.getFileSigID(),
             undefined,
-            new NamespaceSignature('MySpace', SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig))
+            new NamespaceSignature('MySpace', SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig))
         );
         ns.setOriginFullPositions([FullPosition.DEFAULT]);
         // The class signature must declare the namespace as its scope — the signature

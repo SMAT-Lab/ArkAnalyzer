@@ -68,7 +68,7 @@ describe('Type.isUnclear polymorphic semantics Test', () => {
     function makeClearFileSig(): FileSignature {
         // A clear (non-DEFAULT) file signature must be interned before ClassSignature accepts it
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig);
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig);
         return fileSig;
     }
 

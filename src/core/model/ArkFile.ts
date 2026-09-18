@@ -121,10 +121,12 @@ export class ArkFile {
         return this.registry.fileSigCanonicalizer.get(this.fileSigID)!;
     }
 
+    /** @internal */
     public setFileSignature(fileSignature: FileSignature): void {
-        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复（sig 值残留、model 已被 removeFile 删除）→ 补注册（否则 reload 时 getFileById 查不到 model）；已有别的 model 持有该签名 → 不覆盖（防"后 setFileSignature 者顶替"写穿）。已存在时直接用 existing 省一次 getId 探测。
+        // 三态处理（与 ArkClass.setSignature 对齐）：
+        // 新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model 持有该签名 → 不覆盖（防"后 setFileSignature 者顶替"写穿）。
         const existing = this.registry.fileSigCanonicalizer.getExistingId(fileSignature);
-        this.fileSigID = existing >= 0 ? existing : this.registry.fileSigCanonicalizer.getId(fileSignature);
+        this.fileSigID = existing >= 0 ? existing : this.registry.fileSigCanonicalizer.getOrCreateId(fileSignature);
         if (existing < 0 || this.registry.fileSigCanonicalizer.getModel(existing) === undefined) {
             this.registry.registerFile(this);
         }
@@ -132,6 +134,15 @@ export class ArkFile {
 
     /** @internal Get the formal FileSigID of this file. */
     public getFileSigID(): number {
+        return this.fileSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the FileSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
         return this.fileSigID;
     }
 
@@ -436,9 +447,7 @@ export class ArkFile {
      * @returns A class. If there is no class, the return will be a **null**.
      */
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        // O(1) 归属初筛：签名的 declaringFileSigID 直比本 file 的 SigID（免 getExistingId
-        // 值查找与索引扫描）。命中后再经 registry 解析 model 并校验其为顶层类挂载
-        // （declaringClassSigID 归属 + 顶层索引在位），防他文件同名方法/驱逐态误报。
+        // O(1) 归属初筛：签名的 declaringFileSigID 直比本 file 的 SigID。
         if (classSignature.getDeclaringFileSigID() !== this.fileSigID) {
             return null;
         }
@@ -450,11 +459,6 @@ export class ArkFile {
     }
 
     public getClassWithName(className: string): ArkClass | null {
-        // 精确匹配：顶层拼本文件归属签名直查（复用 canonicalizer 的值索引，O(1)），
-        // miss 即 null——签名归属是唯一真相，不做线性扫描兜底，也不做合成名前缀
-        // 模糊匹配（嵌套类/局部类的短名解析由显式作用域解析承担：core 方法链
-        // 局部类表 / cpp findClassByShortName 拼名候选链）。随后按原顺序递归各
-        // namespace（其内部同样签名直查）。
         if (this.fileSigID >= 0) {
             const top = this.getClass(new ClassSignature(className, this.fileSigID));
             if (top) {

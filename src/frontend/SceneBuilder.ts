@@ -46,17 +46,13 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SceneBuilder');
 /**
  * 完整构建路径的一次性构建上下文（BuildContext）。
  *
- * P2 迁移（frontend 化）：承接原先散落在 Scene 上的构建机械与构建期工作态——
- * 配置解析族（build-profile / oh-package / tsconfig）与 project 文件 DFS 族
- * （getDependencyFilesDeeply 及全部依赖发现辅助）。
+ * 承接构建机械与构建期工作态：配置解析族（build-profile / oh-package / tsconfig）与 project 文件 DFS 族（getDependencyFilesDeeply 及全部
+ * 依赖发现辅助）。
  *
- * 生命周期：由 Scene 在构建入口创建并持有（scene.activeBuilder），构建结束由
- * 入口方法释放（置 undefined）——工作态随本实例被 GC 回收，不再驻留 Scene。
- * Scene 仅保留构建产物（builtFileOrder / moduleScenesMap / overRides / 失败文件
- * 摘要等）与查询侧状态。
+ * 生命周期：由 Scene 在构建入口创建并持有（scene.activeBuilder），构建结束由入口方法释放（置 undefined）——工作态随本实例被 GC 回收，不驻留
+ * Scene。Scene 仅保留构建产物（builtFileOrder / moduleScenesMap / overRides / 失败文件摘要等）与查询侧状态。
  *
- * 注意：本类不承载模块化增量路径（analyseByModule/loadModule 走 ModuleBuilder，
- * 其构建态常驻 Scene，不受本上下文生命周期影响）。
+ * 注意：本类不承载模块化增量路径（analyseByModule/loadModule 走 ModuleBuilder，其构建态常驻 Scene，不受本上下文生命周期影响）。
  */
 export class SceneBuilder {
     private readonly scene: Scene;
@@ -81,10 +77,8 @@ export class SceneBuilder {
     /**
      * from → 直接解析出的物理文件路径列表（性能缓存）。key 精确对齐
      * {@link getOriginPath} 的解析语义：相对形式（`./`、`../`）带声明文件
-     * 所在目录前缀（`dirname + '\x00' + from`——同目录文件的相同相对 from
-     * 才允许共享）；模块名形式（`@ohos/xxx`、裸名）用 from 本身（解析只走
-     * ohPkgContentMap / projectDir / tsconfig 全局映射，与声明文件位置无关）。
-     * 空数组也缓存（负缓存——解析失败的 from 原先每次都要走完全部分支才失败）。
+     * 所在目录前缀（`dirname + '\x00' + from`——同目录文件的相同相对 from 才允许共享）；模块名形式（`@ohos/xxx`、裸名）用 from 本身（解析只走
+     * ohPkgContentMap / projectDir / tsconfig 全局映射，与声明文件位置无关）。空数组也缓存（负缓存——避免失败 from 重复走全部分支）。
      * **只缓存纯函数结果（from → paths），绝不缓存"文件要不要构建"的决策**——
      * 后者依赖 filesMap/unhandledFilePaths 等可变状态，命中后必须逐个经
      * {@link getDependencyFilesDeeply} 的三重防重入入口重新仲裁。
@@ -545,9 +539,8 @@ export class SceneBuilder {
     // --- SDK 构建族（原 Scene.buildBasicInfo 的 SDK 段 + buildSdk 族，P3 迁移）---
 
     /**
-     * SDK 阶段（原 buildBasicInfo 后半）：注册/构建全部 SDK 源、SDK 推断 +
-     * global API 合并、记录语言表、extendArkUI、标记 project/SDK ID 边界。
-     * 顺序语义与迁移前逐行一致（含 fileLanguages 在 SDK 构建之后才生效的历史顺序）。
+     * SDK 阶段：注册/构建全部 SDK 源、SDK 推断 + global API 合并、记录语言表、extendArkUI、标记 project/SDK ID 边界。
+     * 顺序语义：fileLanguages 在 SDK 构建之后才生效。
      */
     public buildSdkStage(): void {
         this.scene.getStageStatisticsCollector()?.startStage(StageName.BuilderSdk);

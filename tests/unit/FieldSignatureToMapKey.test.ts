@@ -21,8 +21,8 @@ import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureC
 describe('FieldSignature.toMapKey Test', () => {
     const reg = SignatureCanonicalizerRegistry.getInstance();
     const fileSig = new FileSignature('testProject', 'src/foo.ts');
-    reg.fileSigCanonicalizer.getId(fileSig);
-    const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('MyClass', fileSig, null));
+    reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+    const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('MyClass', fileSig, null));
 
     it('returns same key for same declaringSignature + fieldName + staticFlag', () => {
         const fs1 = new FieldSignature('name', classSigID, UnknownType.getInstance(), false);
@@ -51,14 +51,14 @@ describe('FieldSignature.toMapKey Test', () => {
     });
 
     it('returns different keys for different declaringSignatures', () => {
-        const classSigID2 = reg.classSigCanonicalizer.getId(new ClassSignature('OtherClass', fileSig, null));
+        const classSigID2 = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('OtherClass', fileSig, null));
         const fs1 = new FieldSignature('name', classSigID, UnknownType.getInstance(), false);
         const fs2 = new FieldSignature('name', classSigID2, UnknownType.getInstance(), false);
         expect(fs1.toMapKey()).not.toBe(fs2.toMapKey());
     });
 
     it('returns different keys for namespace vs class declaringSignature', () => {
-        const nsSigID = reg.namespaceSigCanonicalizer.getId(new NamespaceSignature('MyNamespace', reg.fileSigCanonicalizer.getId(fileSig)));
+        const nsSigID = reg.namespaceSigCanonicalizer.getOrCreateId(new NamespaceSignature('MyNamespace', reg.fileSigCanonicalizer.getOrCreateId(fileSig)));
         const fs1 = new FieldSignature('name', classSigID, UnknownType.getInstance(), false);
         const fs2 = new FieldSignature('name', nsSigID, UnknownType.getInstance(), false, true);
         expect(fs1.toMapKey()).not.toBe(fs2.toMapKey());

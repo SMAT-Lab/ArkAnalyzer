@@ -104,14 +104,7 @@ export class ArkField extends ArkBaseModel {
         return undefined as unknown as ArkClass;
     }
 
-    /**
-     * Sets the declaring class of the field.
-     * Internally only the formal ClassSigID is stored; the class itself is
-     * resolved back via the class signature canonicalizer.
-     * @param declaringClass - The declaring class of the field.
-     * @deprecated Use the ID-injecting constructor
-     * {@link constructor(declaringClassID, fieldSig)}.
-     */
+    /** @deprecated Use the ID-injecting constructor {@link constructor(declaringClassID, fieldSig)}. */
     public setDeclaringArkClass(declaringClass: ArkClass): void {
         this.declaringClassID = declaringClass.getClassSigID();
     }
@@ -174,8 +167,6 @@ export class ArkField extends ArkBaseModel {
                 return sig;
             }
         }
-        // Unreachable in normal flows: a field always gets its signature set before use.
-        // Log loudly so violations surface immediately.
         logger.error(`Field has no interned signature (fieldSigID=${this.fieldSigID}); returning DEFAULT.`);
         return FieldSignature.DEFAULT;
     }
@@ -189,8 +180,9 @@ export class ArkField extends ArkBaseModel {
     public setSignature(fieldSig: FieldSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const existing = reg.fieldSigCanonicalizer.getExistingId(fieldSig);
-        this.fieldSigID = existing >= 0 ? existing : reg.fieldSigCanonicalizer.getId(fieldSig);
-        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model → 不覆盖（防"后 setSignature 者顶替"写穿——如推断期把声明侧签名 set 到匿名类字段上会顶替声明类字段的 model）。已存在时直接用 existing 省一次 getId 探测。
+        this.fieldSigID = existing >= 0 ? existing : reg.fieldSigCanonicalizer.getOrCreateId(fieldSig);
+        // 三态处理（与 ArkClass.setSignature 对齐）：
+        // 新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model → 不覆盖。
         if (existing < 0 || reg.fieldSigCanonicalizer.getModel(existing) === undefined) {
             reg.registerField(this);
         }
@@ -198,6 +190,15 @@ export class ArkField extends ArkBaseModel {
 
     /** @internal Get the formal FieldSigID of this field. */
     public getFieldSigID(): number {
+        return this.fieldSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the FieldSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
         return this.fieldSigID;
     }
 

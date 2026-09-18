@@ -131,20 +131,20 @@ export class SceneManager {
             if (tempClass == null) {
                 continue;
             }
-            let firstLevelSubclasses: ArkClass[] | null = tempClass.getExtendedClassList();
-
-            if (firstLevelSubclasses) {
-                for (let subclass of firstLevelSubclasses) {
-                    if (!isItemRegistered<ArkClass>(subclass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
-                        // 子类未处理，加入到classList
-                        classList.push(subclass);
-                    }
-                }
-            }
-
             // 当前类处理完毕，标记为已处理
             if (!isItemRegistered<ArkClass>(tempClass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
                 extendedClasses.push(tempClass);
+            }
+
+            let firstLevelSubclasses: ArkClass[] | null = tempClass.getExtendedClassList();
+            if (!firstLevelSubclasses) {
+                continue;
+            }
+            for (let subclass of firstLevelSubclasses) {
+                if (!isItemRegistered<ArkClass>(subclass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
+                    // 子类未处理，加入到classList
+                    classList.push(subclass);
+                }
             }
         }
         return extendedClasses;

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -601,8 +601,7 @@ export class TypeInfo extends Type {
     }
 
     public isUnclearWithVisited(_visited: Set<Type>): boolean {
-        // RTTI descriptor leaf: the held type is descriptive metadata, not a value type
-        // whose uncertainty should propagate (historical semantics: always false).
+        // RTTI descriptor leaf: the held type is descriptive metadata, not a value type whose uncertainty should propagate.
         return false;
     }
 

@@ -87,7 +87,7 @@ describe('SignatureCanonicalizerRegistry Test', () => {
 
     it('static getClassId returns valid ID', () => {
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
         const id = reg.getClassId(classSig);
         expect(id).equals(-1);
@@ -95,16 +95,16 @@ describe('SignatureCanonicalizerRegistry Test', () => {
 
     it('static getMethodId returns valid ID', () => {
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
-        const ms = new MethodSignature(reg.classSigCanonicalizer.getId(classSig), new MethodSubSignature('foo', [], UnknownType.getInstance(), false));
+        const ms = new MethodSignature(reg.classSigCanonicalizer.getOrCreateId(classSig), new MethodSubSignature('foo', [], UnknownType.getInstance(), false));
         const id = reg.getMethodId(ms);
         expect(id).equals(-1);
     });
 
     it('static getNamespaceId returns valid ID', () => {
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('MyNS', fileSig, null);
         const id = reg.getNamespaceId(nsSig);
         expect(id).equals(-1);
@@ -112,9 +112,9 @@ describe('SignatureCanonicalizerRegistry Test', () => {
 
     it('static getFieldId returns valid ID', () => {
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
-        const fs = new FieldSignature('field', reg.classSigCanonicalizer.getId(classSig), UnknownType.getInstance(), false);
+        const fs = new FieldSignature('field', reg.classSigCanonicalizer.getOrCreateId(classSig), UnknownType.getInstance(), false);
         const id = reg.getFieldId(fs);
         expect(id).equals(-1);
     });
@@ -141,7 +141,7 @@ describe('SignatureCanonicalizerRegistry Test', () => {
 
     it('dispose clears all canonicalizers and maps', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        reg.fileSigCanonicalizer.getId(new FileSignature('proj', 'src/a.ts'));
+        reg.fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/a.ts'));
         reg.customComponentMap.set('Comp', ClassSignature.DEFAULT);
         expect(reg.fileSigCanonicalizer.size()).toBeGreaterThan(1);
         expect(reg.customComponentMap.size).toBe(1);
@@ -164,11 +164,11 @@ describe('SignatureCanonicalizerRegistry Test', () => {
 
     it('getId+get returns canonical single instance', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        reg.fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
+        reg.fileSigCanonicalizer.getOrCreateId(new FileSignature('p', 'f.ts'));
         const sig1 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const sig2 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
-        const a = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getId(sig1))!;
-        const b = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getId(sig2))!;
+        const a = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getOrCreateId(sig1))!;
+        const b = reg.classSigCanonicalizer.get(reg.classSigCanonicalizer.getOrCreateId(sig2))!;
         expect(a).toBe(b);
         expect(a).toBe(sig1);
     });
@@ -186,16 +186,16 @@ describe('NamespaceSignature SigID constructor Test', () => {
     it('value-object overload resolves pre-interned declaring signatures and restores them via getters', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const parentSig = new NamespaceSignature('Parent', fileSig, null);
-        reg.namespaceSigCanonicalizer.getId(parentSig);
+        reg.namespaceSigCanonicalizer.getOrCreateId(parentSig);
         const nsSig = new NamespaceSignature('Child', fileSig, parentSig);
 
         // Getters resolve the canonical instances (value-equal to what was passed in)
         expect(nsSig.getDeclaringFileSignature().equals(fileSig)).toBe(true);
         expect(nsSig.getDeclaringNamespaceSignature()!.equals(parentSig)).toBe(true);
         // The parent chain resolves to the canonical interned instance
-        expect(nsSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(parentSig))!);
+        expect(nsSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getOrCreateId(parentSig))!);
         // Top-level namespace has no declaring namespace
         expect(parentSig.getDeclaringNamespaceSignature()).toBeNull();
     });
@@ -203,9 +203,9 @@ describe('NamespaceSignature SigID constructor Test', () => {
     it('SigID overload and value-object overload are equivalent (same ID, equals, hash)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-b.ts');
-        const fileID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const parentSig = new NamespaceSignature('Outer', fileSig, null);
-        const parentID = reg.namespaceSigCanonicalizer.getId(parentSig);
+        const parentID = reg.namespaceSigCanonicalizer.getOrCreateId(parentSig);
 
         const viaObjects = new NamespaceSignature('Inner', fileSig, parentSig);
         const viaIDs = new NamespaceSignature('Inner', fileID, parentID);
@@ -213,7 +213,7 @@ describe('NamespaceSignature SigID constructor Test', () => {
         expect(viaIDs.equals(viaObjects)).toBe(true);
         expect(viaObjects.equals(viaIDs)).toBe(true);
         expect(viaIDs.getHashCode()).toBe(viaObjects.getHashCode());
-        expect(reg.namespaceSigCanonicalizer.getId(viaIDs)).toBe(reg.namespaceSigCanonicalizer.getId(viaObjects));
+        expect(reg.namespaceSigCanonicalizer.getOrCreateId(viaIDs)).toBe(reg.namespaceSigCanonicalizer.getOrCreateId(viaObjects));
         expect(viaIDs.toString()).toBe(viaObjects.toString());
         expect(viaIDs.getDeclaringNamespaceSignature()).toBe(viaObjects.getDeclaringNamespaceSignature());
     });
@@ -221,24 +221,24 @@ describe('NamespaceSignature SigID constructor Test', () => {
     it('top-level namespace: undefined parent SigID equals explicit-undefined construction', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-c.ts');
-        const fileID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const withNull = new NamespaceSignature('Top', fileSig, null);
         const withID = new NamespaceSignature('Top', fileID);
 
         expect(withID.getDeclaringNamespaceSignature()).toBeNull();
         expect(withID.equals(withNull)).toBe(true);
         expect(withID.getHashCode()).toBe(withNull.getHashCode());
-        expect(reg.namespaceSigCanonicalizer.getId(withID)).toBe(reg.namespaceSigCanonicalizer.getId(withNull));
+        expect(reg.namespaceSigCanonicalizer.getOrCreateId(withID)).toBe(reg.namespaceSigCanonicalizer.getOrCreateId(withNull));
     });
 
     it('nested toString recursively resolves the parent chain', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-d.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const level1 = new NamespaceSignature('A', fileSig, null);
-        reg.namespaceSigCanonicalizer.getId(level1);
+        reg.namespaceSigCanonicalizer.getOrCreateId(level1);
         const level2 = new NamespaceSignature('B', fileSig, level1);
-        reg.namespaceSigCanonicalizer.getId(level2);
+        reg.namespaceSigCanonicalizer.getOrCreateId(level2);
         const level3 = new NamespaceSignature('C', fileSig, level2);
 
         expect(level3.toString()).toBe(`${fileSig.toString()}A.B.C`);
@@ -249,16 +249,16 @@ describe('NamespaceSignature SigID constructor Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileA = new FileSignature('proj', 'src/ns-e-a.ts');
         const fileB = new FileSignature('proj', 'src/ns-e-b.ts');
-        reg.fileSigCanonicalizer.getId(fileA);
-        reg.fileSigCanonicalizer.getId(fileB);
+        reg.fileSigCanonicalizer.getOrCreateId(fileA);
+        reg.fileSigCanonicalizer.getOrCreateId(fileB);
         const nsInA = new NamespaceSignature('Same', fileA, null);
         const nsInB = new NamespaceSignature('Same', fileB, null);
         expect(nsInA.equals(nsInB)).toBe(false);
 
         const parent1 = new NamespaceSignature('P1', fileA, null);
         const parent2 = new NamespaceSignature('P2', fileA, null);
-        reg.namespaceSigCanonicalizer.getId(parent1);
-        reg.namespaceSigCanonicalizer.getId(parent2);
+        reg.namespaceSigCanonicalizer.getOrCreateId(parent1);
+        reg.namespaceSigCanonicalizer.getOrCreateId(parent2);
         const child1 = new NamespaceSignature('Child', fileA, parent1);
         const child2 = new NamespaceSignature('Child', fileA, parent2);
         expect(child1.equals(child2)).toBe(false);
@@ -303,15 +303,15 @@ describe('DEFAULT signature singleton Test', () => {
     it('isUnclear is false for non-default signatures', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
-        reg.classSigCanonicalizer.getId(classSig);
+        reg.classSigCanonicalizer.getOrCreateId(classSig);
         expect(fileSig.isUnclear()).toBe(false);
         expect(classSig.isUnclear()).toBe(false);
         expect(
-            new MethodSignature(reg.classSigCanonicalizer.getId(classSig), new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()
+            new MethodSignature(reg.classSigCanonicalizer.getOrCreateId(classSig), new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()
         ).toBe(false);
-        expect(new FieldSignature('f', reg.classSigCanonicalizer.getId(classSig), UnknownType.getInstance(), false).isUnclear()).toBe(false);
+        expect(new FieldSignature('f', reg.classSigCanonicalizer.getOrCreateId(classSig), UnknownType.getInstance(), false).isUnclear()).toBe(false);
     });
 
     it('isUnclear is false for DEFAULT signatures (field-value check, no identity drift)', () => {
@@ -331,7 +331,7 @@ describe('DEFAULT signature singleton Test', () => {
     it('isUnclear semantics: direct field check (merged isDefault), formal ID means resolved', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const clearClassSig = new ClassSignature('Clear', fileSig, null);
         const unclearClassSig = new ClassSignature('Unclear', FileSignature.DEFAULT, null);
         expect(clearClassSig.isUnclear()).toBe(false);
@@ -339,7 +339,7 @@ describe('DEFAULT signature singleton Test', () => {
         expect(ClassSignature.DEFAULT.isUnclear()).toBe(false);
 
         const clearMethodSig = new MethodSignature(
-            reg.classSigCanonicalizer.getId(clearClassSig),
+            reg.classSigCanonicalizer.getOrCreateId(clearClassSig),
             new MethodSubSignature('m', [], UnknownType.getInstance(), false)
         );
         // A positive formal declaring ID means the declaring class went through the formal
@@ -347,7 +347,7 @@ describe('DEFAULT signature singleton Test', () => {
         // DEFAULT (architecturally, unclear classes go through temp, not formal; this test
         // interns one for coverage of the edge case).
         const unclearMethodSig = new MethodSignature(
-            reg.classSigCanonicalizer.getId(unclearClassSig),
+            reg.classSigCanonicalizer.getOrCreateId(unclearClassSig),
             new MethodSubSignature('m', [], UnknownType.getInstance(), false)
         );
         expect(clearMethodSig.isUnclear()).toBe(false);
@@ -362,14 +362,14 @@ describe('ClassSignature SigID constructor Test', () => {
     it('value-object overload resolves pre-interned declaring signatures and restores them via getters', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/cls-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('OuterNS', fileSig, null);
-        reg.namespaceSigCanonicalizer.getId(nsSig);
+        reg.namespaceSigCanonicalizer.getOrCreateId(nsSig);
         const classSig = new ClassSignature('NestedClass', fileSig, nsSig);
 
         expect(classSig.getDeclaringFileSignature().equals(fileSig)).toBe(true);
         expect(classSig.getDeclaringNamespaceSignature()!.equals(nsSig)).toBe(true);
-        expect(classSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(nsSig))!);
+        expect(classSig.getDeclaringNamespaceSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getOrCreateId(nsSig))!);
         // Top-level class has no declaring namespace
         const topLevel = new ClassSignature('TopLevel', fileSig, null);
         expect(topLevel.getDeclaringNamespaceSignature()).toBeNull();
@@ -378,9 +378,9 @@ describe('ClassSignature SigID constructor Test', () => {
     it('SigID overload and value-object overload are equivalent (same ID, equals, hash)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/cls-b.ts');
-        const fileID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('NS', fileSig, null);
-        const nsID = reg.namespaceSigCanonicalizer.getId(nsSig);
+        const nsID = reg.namespaceSigCanonicalizer.getOrCreateId(nsSig);
 
         const viaObjects = new ClassSignature('Klass', fileSig, nsSig);
         const viaIDs = new ClassSignature('Klass', fileID, nsID);
@@ -388,7 +388,7 @@ describe('ClassSignature SigID constructor Test', () => {
         expect(viaIDs.equals(viaObjects)).toBe(true);
         expect(viaObjects.equals(viaIDs)).toBe(true);
         expect(viaIDs.getHashCode()).toBe(viaObjects.getHashCode());
-        expect(reg.classSigCanonicalizer.getId(viaIDs)).toBe(reg.classSigCanonicalizer.getId(viaObjects));
+        expect(reg.classSigCanonicalizer.getOrCreateId(viaIDs)).toBe(reg.classSigCanonicalizer.getOrCreateId(viaObjects));
         expect(viaIDs.toString()).toBe(viaObjects.toString());
         expect(viaIDs.getDeclaringNamespaceSignature()).toBe(viaObjects.getDeclaringNamespaceSignature());
     });
@@ -396,7 +396,7 @@ describe('ClassSignature SigID constructor Test', () => {
     it('top-level class: omitted namespace SigID equals explicit-undefined construction', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/cls-c.ts');
-        const fileID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const withNull = new ClassSignature('Top', fileSig, null);
         const withID = new ClassSignature('Top', fileID);
 
@@ -404,17 +404,17 @@ describe('ClassSignature SigID constructor Test', () => {
         expect(withID.getDeclaringNamespaceSigID()).toBeUndefined();
         expect(withID.equals(withNull)).toBe(true);
         expect(withID.getHashCode()).toBe(withNull.getHashCode());
-        expect(reg.classSigCanonicalizer.getId(withID)).toBe(reg.classSigCanonicalizer.getId(withNull));
+        expect(reg.classSigCanonicalizer.getOrCreateId(withID)).toBe(reg.classSigCanonicalizer.getOrCreateId(withNull));
     });
 
     it('nested class toString resolves the declaring namespace chain', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/cls-d.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const outerNS = new NamespaceSignature('Outer', fileSig, null);
-        reg.namespaceSigCanonicalizer.getId(outerNS);
+        reg.namespaceSigCanonicalizer.getOrCreateId(outerNS);
         const innerNS = new NamespaceSignature('Inner', fileSig, outerNS);
-        reg.namespaceSigCanonicalizer.getId(innerNS);
+        reg.namespaceSigCanonicalizer.getOrCreateId(innerNS);
         const classSig = new ClassSignature('Deep', fileSig, innerNS);
 
         expect(classSig.toString()).toBe(`${fileSig.toString()}Outer.Inner.Deep`);
@@ -424,16 +424,16 @@ describe('ClassSignature SigID constructor Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileA = new FileSignature('proj', 'src/cls-e-a.ts');
         const fileB = new FileSignature('proj', 'src/cls-e-b.ts');
-        reg.fileSigCanonicalizer.getId(fileA);
-        reg.fileSigCanonicalizer.getId(fileB);
+        reg.fileSigCanonicalizer.getOrCreateId(fileA);
+        reg.fileSigCanonicalizer.getOrCreateId(fileB);
         const inA = new ClassSignature('Same', fileA, null);
         const inB = new ClassSignature('Same', fileB, null);
         expect(inA.equals(inB)).toBe(false);
 
         const ns1 = new NamespaceSignature('N1', fileA, null);
         const ns2 = new NamespaceSignature('N2', fileA, null);
-        reg.namespaceSigCanonicalizer.getId(ns1);
-        reg.namespaceSigCanonicalizer.getId(ns2);
+        reg.namespaceSigCanonicalizer.getOrCreateId(ns1);
+        reg.namespaceSigCanonicalizer.getOrCreateId(ns2);
         const clsInNs1 = new ClassSignature('Klass', fileA, ns1);
         const clsInNs2 = new ClassSignature('Klass', fileA, ns2);
         expect(clsInNs1.equals(clsInNs2)).toBe(false);
@@ -445,11 +445,11 @@ describe('ClassSignature SigID constructor Test', () => {
     it('AliasClassSignature forwards declaring SigIDs and preserves alias/original names', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/cls-f.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('AliasNS', fileSig, null);
-        reg.namespaceSigCanonicalizer.getId(nsSig);
+        reg.namespaceSigCanonicalizer.getOrCreateId(nsSig);
         const origin = new ClassSignature('OriginClass', fileSig, nsSig);
-        const originID = reg.classSigCanonicalizer.getId(origin);
+        const originID = reg.classSigCanonicalizer.getOrCreateId(origin);
         const alias = new AliasClassSignature('AliasName', origin);
 
         // The alias keeps the origin's declaring SigIDs (forwarded via ID accessors)
@@ -465,7 +465,7 @@ describe('ClassSignature SigID constructor Test', () => {
         // 多态（显示 aliasName）。
         expect(alias.equals(origin)).toBe(false);
         expect(origin.equals(alias)).toBe(false);
-        const aliasID = reg.classSigCanonicalizer.getId(alias);
+        const aliasID = reg.classSigCanonicalizer.getOrCreateId(alias);
         expect(aliasID).not.toBe(originID);
         expect(alias.getHashCode()).not.toBe(origin.getHashCode());
         expect(alias.toString()).toBe(`${fileSig.toString()}AliasNS.AliasName`);
@@ -473,7 +473,7 @@ describe('ClassSignature SigID constructor Test', () => {
         // 同名 alias 值相等且 intern 幂等（同 origin 维度）
         const alias2 = new AliasClassSignature('AliasName', origin);
         expect(alias.equals(alias2)).toBe(true);
-        expect(reg.classSigCanonicalizer.getId(alias2)).toBe(aliasID);
+        expect(reg.classSigCanonicalizer.getOrCreateId(alias2)).toBe(aliasID);
         // 不同 aliasName 是不同签名
         const alias3 = new AliasClassSignature('OtherName', origin);
         expect(alias.equals(alias3)).toBe(false);
@@ -484,9 +484,9 @@ describe('FieldSignature SigID constructor Test', () => {
     it('value-object overload (class) is equivalent to the class-ID overload', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/field-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('Host', fileSig, null);
-        const classSigID = reg.classSigCanonicalizer.getId(classSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(classSig);
 
         const viaObject = new FieldSignature('f', classSig, UnknownType.getInstance(), false);
         const viaID = new FieldSignature('f', classSigID, UnknownType.getInstance(), false);
@@ -494,7 +494,7 @@ describe('FieldSignature SigID constructor Test', () => {
         expect(viaID.equals(viaObject)).toBe(true);
         expect(viaObject.equals(viaID)).toBe(true);
         expect(viaID.getHashCode()).toBe(viaObject.getHashCode());
-        expect(reg.fieldSigCanonicalizer.getId(viaID)).toBe(reg.fieldSigCanonicalizer.getId(viaObject));
+        expect(reg.fieldSigCanonicalizer.getOrCreateId(viaID)).toBe(reg.fieldSigCanonicalizer.getOrCreateId(viaObject));
         expect(viaID.toString()).toBe(viaObject.toString());
         expect(viaID.getDeclaringClassSigID()).toBe(classSigID);
         expect(viaID.getDeclaringNamespaceSigID()).toBeUndefined();
@@ -504,9 +504,9 @@ describe('FieldSignature SigID constructor Test', () => {
     it('value-object overload (namespace) is equivalent to the namespace-ID overload (5-arg)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/field-b.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('NS', fileSig, null);
-        const nsSigID = reg.namespaceSigCanonicalizer.getId(nsSig);
+        const nsSigID = reg.namespaceSigCanonicalizer.getOrCreateId(nsSig);
 
         const viaObject = new FieldSignature('v', nsSig, UnknownType.getInstance(), true);
         const viaID = new FieldSignature('v', nsSigID, UnknownType.getInstance(), true, true);
@@ -514,7 +514,7 @@ describe('FieldSignature SigID constructor Test', () => {
         expect(viaID.equals(viaObject)).toBe(true);
         expect(viaObject.equals(viaID)).toBe(true);
         expect(viaID.getHashCode()).toBe(viaObject.getHashCode());
-        expect(reg.fieldSigCanonicalizer.getId(viaID)).toBe(reg.fieldSigCanonicalizer.getId(viaObject));
+        expect(reg.fieldSigCanonicalizer.getOrCreateId(viaID)).toBe(reg.fieldSigCanonicalizer.getOrCreateId(viaObject));
         expect(viaID.toString()).toBe(viaObject.toString());
         expect(viaID.getDeclaringNamespaceSigID()).toBe(nsSigID);
         expect(viaID.getDeclaringClassSigID()).toBeUndefined();
@@ -525,9 +525,9 @@ describe('FieldSignature SigID constructor Test', () => {
     it('class and namespace ID spaces occupy disjoint slots: same name and ID never equal', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/field-c.ts');
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Same', fileSig, null));
-        const nsSigID = reg.namespaceSigCanonicalizer.getId(new NamespaceSignature('Same', fileSigID));
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Same', fileSig, null));
+        const nsSigID = reg.namespaceSigCanonicalizer.getOrCreateId(new NamespaceSignature('Same', fileSigID));
 
         const viaClass = new FieldSignature('f', classSigID, UnknownType.getInstance(), false);
         const viaNS = new FieldSignature('f', nsSigID, UnknownType.getInstance(), false, true);
@@ -545,8 +545,8 @@ describe('FieldSignature SigID constructor Test', () => {
     it('equals distinguishes fieldName and staticFlag on the ID paths', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/field-d.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Host', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Host', fileSig, null));
 
         const a = new FieldSignature('x', classSigID, UnknownType.getInstance(), false);
         const b = new FieldSignature('y', classSigID, UnknownType.getInstance(), false);
@@ -561,8 +561,8 @@ describe('FieldSignature SigID constructor Test', () => {
     it('toString prefixes [static] and resolves the declaring signature via ID', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/field-e.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('StaticHost', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('StaticHost', fileSig, null));
 
         const fs = new FieldSignature('count', classSigID, NumberType.getInstance(), true);
         expect(fs.toString()).toBe(`${fileSig.toString()}StaticHost.[static]count`);
@@ -581,26 +581,26 @@ describe('MethodSignature canonical parameter-name refresh Test', () => {
     it('declaration-first then implementation refreshes canonical parameter names', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/param-refresh-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Host', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Host', fileSig, null));
 
         // Declaration built first (interns the canonical instance with param name 'declName')
         const declaring = new MethodSignature(classSigID, new MethodSubSignature('doWork', param('declName'), UnknownType.getInstance(), false));
-        reg.methodSigCanonicalizer.getId(declaring);
+        reg.methodSigCanonicalizer.getOrCreateId(declaring);
 
         // Implementation with a different parameter name but same types -> same SigID
         const impl = new MethodSignature(classSigID, new MethodSubSignature('doWork', param('implName'), UnknownType.getInstance(), false));
-        expect(reg.methodSigCanonicalizer.getId(impl)).toBe(reg.methodSigCanonicalizer.getId(declaring));
+        expect(reg.methodSigCanonicalizer.getOrCreateId(impl)).toBe(reg.methodSigCanonicalizer.getOrCreateId(declaring));
 
         // The constructor path delegates to setImplementationSignature, so the refresh applies
         new ArkMethod(classSigID, impl);
 
         // The canonical instance now carries the implementation-side parameter name
-        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(impl))!;
+        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getOrCreateId(impl))!;
         expect(canonical.getMethodSubSignature().getParameters()[0].getName()).toBe('implName');
         // Both signatures resolve to the same canonical instance (identity unchanged by the refresh)
-        expect(reg.methodSigCanonicalizer.getId(declaring)).toBe(
-            canonical.getMethodSubSignature().getParameters()[0] ? reg.methodSigCanonicalizer.getId(impl) : -1
+        expect(reg.methodSigCanonicalizer.getOrCreateId(declaring)).toBe(
+            canonical.getMethodSubSignature().getParameters()[0] ? reg.methodSigCanonicalizer.getOrCreateId(impl) : -1
         );
         // toString is unaffected: parameter names are not part of it
         expect(canonical.toString()).toBe(declaring.toString());
@@ -609,35 +609,35 @@ describe('MethodSignature canonical parameter-name refresh Test', () => {
     it('same parameter names: no refresh path, canonical stays the single instance', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/param-refresh-b.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Host2', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Host2', fileSig, null));
 
         const declaring = new MethodSignature(classSigID, new MethodSubSignature('same', param('x'), UnknownType.getInstance(), false));
-        reg.methodSigCanonicalizer.getId(declaring);
+        reg.methodSigCanonicalizer.getOrCreateId(declaring);
         const impl = new MethodSignature(classSigID, new MethodSubSignature('same', param('x'), UnknownType.getInstance(), false));
 
         new ArkMethod(classSigID, impl);
 
-        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(impl))!;
+        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getOrCreateId(impl))!;
         expect(canonical.getMethodSubSignature().getParameters()[0].getName()).toBe('x');
-        expect(canonical).toBe(reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(declaring))!);
+        expect(canonical).toBe(reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getOrCreateId(declaring))!);
     });
 
     it('parameter count mismatch never refreshes (defensive)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/param-refresh-c.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Host3', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Host3', fileSig, null));
 
         // Note: different parameter counts produce different signatures (different SigID),
         // so the canonical instance of the impl ID is the impl itself — no refresh happens.
         const declaring = new MethodSignature(classSigID, new MethodSubSignature('arity', param('a'), UnknownType.getInstance(), false));
-        reg.methodSigCanonicalizer.getId(declaring);
+        reg.methodSigCanonicalizer.getOrCreateId(declaring);
         const impl = new MethodSignature(classSigID, new MethodSubSignature('arity', [...param('a'), ...param('b')], UnknownType.getInstance(), false));
 
         new ArkMethod(classSigID, impl);
 
-        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(impl))!;
+        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getOrCreateId(impl))!;
         expect(canonical).toBe(impl);
         expect(canonical.getMethodSubSignature().getParameters().length).toBe(2);
     });
@@ -647,9 +647,9 @@ describe('MethodSignature SigID constructor Test', () => {
     it('value-object overload is equivalent to the ClassSigID overload', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/msig-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('Host', fileSig, null);
-        const classSigID = reg.classSigCanonicalizer.getId(classSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(classSig);
         const subSig = new MethodSubSignature('work', [], UnknownType.getInstance(), false);
 
         const viaObject = new MethodSignature(classSig, subSig);
@@ -658,7 +658,7 @@ describe('MethodSignature SigID constructor Test', () => {
         expect(viaID.equals(viaObject)).toBe(true);
         expect(viaObject.equals(viaID)).toBe(true);
         expect(viaID.getHashCode()).toBe(viaObject.getHashCode());
-        expect(reg.methodSigCanonicalizer.getId(viaID)).toBe(reg.methodSigCanonicalizer.getId(viaObject));
+        expect(reg.methodSigCanonicalizer.getOrCreateId(viaID)).toBe(reg.methodSigCanonicalizer.getOrCreateId(viaObject));
         expect(viaID.toString()).toBe(viaObject.toString());
         expect(viaID.getDeclaringClassSigID()).toBe(classSigID);
         expect(viaID.getDeclaringClassSignature().equals(classSig)).toBe(true);
@@ -668,10 +668,10 @@ describe('MethodSignature SigID constructor Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSigA = new FileSignature('proj', 'src/msig-b-a.ts');
         const fileSigB = new FileSignature('proj', 'src/msig-b-b.ts');
-        reg.fileSigCanonicalizer.getId(fileSigA);
-        reg.fileSigCanonicalizer.getId(fileSigB);
-        const classSigAID = reg.classSigCanonicalizer.getId(new ClassSignature('Same', fileSigA, null));
-        const classSigBID = reg.classSigCanonicalizer.getId(new ClassSignature('Same', fileSigB, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSigA);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSigB);
+        const classSigAID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Same', fileSigA, null));
+        const classSigBID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Same', fileSigB, null));
 
         const inA = new MethodSignature(classSigAID, new MethodSubSignature('m', [], UnknownType.getInstance(), false));
         const inB = new MethodSignature(classSigBID, new MethodSubSignature('m', [], UnknownType.getInstance(), false));
@@ -687,8 +687,8 @@ describe('MethodSignature SigID constructor Test', () => {
     it('hash is stable across parameter-type mutation: re-intern after re-anchoring hits the same ID', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/msig-hash-stable.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const hostID = reg.classSigCanonicalizer.getId(new ClassSignature('HashHost', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const hostID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('HashHost', fileSig, null));
 
         const sizeBefore = reg.methodSigCanonicalizer.size();
 
@@ -698,11 +698,11 @@ describe('MethodSignature SigID constructor Test', () => {
         param.setName('c');
         param.setType(stubCb);
         const sig1 = new MethodSignature(hostID, new MethodSubSignature('run', [param], UnknownType.getInstance(), false));
-        const id1 = reg.methodSigCanonicalizer.getId(sig1);
+        const id1 = reg.methodSigCanonicalizer.getOrCreateId(sig1);
 
         // In-place mutation: inference resolves HashCb, the parameter's ClassType gets re-anchored.
         const resolvedCb = new ClassSignature('HashCb', fileSig, null);
-        reg.classSigCanonicalizer.getId(resolvedCb);
+        reg.classSigCanonicalizer.getOrCreateId(resolvedCb);
         stubCb.setClassSignature(resolvedCb);
 
         // A freshly built signature with the same (now resolved) parameter type.
@@ -724,9 +724,9 @@ describe('MethodSignature SigID constructor Test', () => {
     it('isUnclear via SigID: positive formal ID means resolved; non-positive (-1 temp, 0 DEFAULT declaring) is unclear', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/msig-c.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const clearID = reg.classSigCanonicalizer.getId(new ClassSignature('Clear', fileSig, null));
-        const unclearID = reg.classSigCanonicalizer.getId(new ClassSignature('Unclear', FileSignature.DEFAULT, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const clearID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Clear', fileSig, null));
+        const unclearID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Unclear', FileSignature.DEFAULT, null));
 
         expect(new MethodSignature(clearID, new MethodSubSignature('m', [], UnknownType.getInstance(), false)).isUnclear()).toBe(false);
         // A positive formal ID means resolved, even if the class's own file is DEFAULT
@@ -739,8 +739,8 @@ describe('MethodSignature SigID constructor Test', () => {
     it('getDeclaringClassSigID returns the interned ID directly (no lazy interning)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/msig-d.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
-        const classSigID = reg.classSigCanonicalizer.getId(new ClassSignature('Direct', fileSig, null));
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(new ClassSignature('Direct', fileSig, null));
 
         const ms = new MethodSignature(classSigID, new MethodSubSignature('m', [], UnknownType.getInstance(), false));
         expect(ms.getDeclaringClassSigID()).toBe(classSigID);
@@ -752,7 +752,7 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
     it('full injection: signature registered via setSignature inside the constructor', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-ctor-a.ts');
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const nsSig = new NamespaceSignature('Injected', fileSigID);
 
         const ns = new ArkNamespace(fileSigID, undefined, nsSig);
@@ -763,14 +763,14 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
         // Field state equals the legacy setter-chain result
         expect(ns.getDeclaringFileID()).toBe(fileSigID);
         expect(ns.getDeclaringArkNamespace()).toBeNull();
-        expect(ns.getSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getId(nsSig))!);
+        expect(ns.getSignature()).toBe(reg.namespaceSigCanonicalizer.get(reg.namespaceSigCanonicalizer.getOrCreateId(nsSig))!);
         expect(ns.getName()).toBe('Injected');
     });
 
     it('nested injection: parent namespace SigID resolves back to the parent', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-ctor-b.ts');
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const parentSig = new NamespaceSignature('Parent', fileSigID);
         const parent = new ArkNamespace(fileSigID, undefined, parentSig);
 
@@ -786,7 +786,7 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
     it('partial injection: fileID only (signature set later, cpp pattern)', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/ns-ctor-c.ts');
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
 
         const ns = new ArkNamespace(fileSigID);
 
@@ -804,8 +804,8 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSigA = new FileSignature('proj', 'src/ns-ctor-d1.ts');
         const fileSigB = new FileSignature('proj', 'src/ns-ctor-d2.ts');
-        const fileSigAID = reg.fileSigCanonicalizer.getId(fileSigA);
-        const fileSigBID = reg.fileSigCanonicalizer.getId(fileSigB);
+        const fileSigAID = reg.fileSigCanonicalizer.getOrCreateId(fileSigA);
+        const fileSigBID = reg.fileSigCanonicalizer.getOrCreateId(fileSigB);
 
         const injected = new ArkNamespace(fileSigAID, undefined, new NamespaceSignature('Same', fileSigAID));
         // eslint-disable-next-line deprecation/deprecation
@@ -814,8 +814,8 @@ describe('ArkNamespace ID-injecting constructor Test', () => {
         legacy.setDeclaringArkFile(new ArkFile(Language.TYPESCRIPT));
 
         // Same name + declaring file value -> same signature identity, same registration semantics
-        expect(injected.getNamespaceSigID()).toBe(reg.namespaceSigCanonicalizer.getId(new NamespaceSignature('Same', fileSigAID)));
-        expect(legacy.getNamespaceSigID()).toBe(reg.namespaceSigCanonicalizer.getId(new NamespaceSignature('Same', fileSigBID)));
+        expect(injected.getNamespaceSigID()).toBe(reg.namespaceSigCanonicalizer.getOrCreateId(new NamespaceSignature('Same', fileSigAID)));
+        expect(legacy.getNamespaceSigID()).toBe(reg.namespaceSigCanonicalizer.getOrCreateId(new NamespaceSignature('Same', fileSigBID)));
         expect(injected.getName()).toBe(legacy.getName());
     });
 });
@@ -879,9 +879,9 @@ describe('Unclear stub routing to temp canonicalizer Test', () => {
     it('Clear declaring signatures still resolve to formal IDs via the object path', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/stub-routing-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('ClearHost', fileSig, null);
-        const classSigID = reg.classSigCanonicalizer.getId(classSig);
+        const classSigID = reg.classSigCanonicalizer.getOrCreateId(classSig);
 
         const sub = new MethodSubSignature('m', [], UnknownType.getInstance(), false);
         const ms = new MethodSignature(classSig, sub);
@@ -1008,7 +1008,7 @@ describe('BySig lookup read-only Test', () => {
         const before = reg.classSigCanonicalizer.size();
         // Only the file signature is interned; the class value stays unregistered on purpose.
         const fileSig = new FileSignature('proj', 'src/never-a.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const unregistered = new ClassSignature('NeverRegistered', fileSig, null);
 
         expect(reg.getClassBySig(unregistered)).toBeUndefined();
@@ -1036,7 +1036,7 @@ describe('BySig lookup read-only Test', () => {
     it('getNamespaceBySig never interns and resolves registered namespaces', () => {
         const scene = new Scene();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const unregisteredNs = new NamespaceSignature('NeverRegisteredNs', reg.fileSigCanonicalizer.getId(new FileSignature('proj', 'src/never-ns.ts')));
+        const unregisteredNs = new NamespaceSignature('NeverRegisteredNs', reg.fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/never-ns.ts')));
         const before = reg.namespaceSigCanonicalizer.size();
 
         expect(reg.getNamespaceBySig(unregisteredNs)).toBeUndefined();
@@ -1048,7 +1048,7 @@ describe('BySig lookup read-only Test', () => {
         arkFile.setScene(scene);
         const fileSig = new FileSignature('proj', 'src/ns-bysig.ts');
         arkFile.setFileSignature(fileSig);
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const ns = new ArkNamespace(fileSigID, undefined, new NamespaceSignature('NsBySigHost', fileSigID));
         expect(reg.getNamespaceBySig(new NamespaceSignature('NsBySigHost', fileSigID))).toBe(ns);
     });
@@ -1086,7 +1086,7 @@ describe('Value-object overload defensive fallback Test (mode B\', work item P)'
     it('MethodSignature routes to temp when a clear declaring class signature is not interned', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/fallback-c.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         // Clear (file interned) but the class value itself was never interned → error log + tempClass fallback.
         const classSig = new ClassSignature('UninternedHost', fileSig, null);
         const sub = new MethodSubSignature('m', [], UnknownType.getInstance(), false);
@@ -1099,7 +1099,7 @@ describe('Value-object overload defensive fallback Test (mode B\', work item P)'
     it('FieldSignature routes to temp when a clear declaring class signature is not interned', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const fileSig = new FileSignature('proj', 'src/fallback-d.ts');
-        reg.fileSigCanonicalizer.getId(fileSig);
+        reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('UninternedHost', fileSig, null);
         const fieldSig = new FieldSignature('f', classSig, UnknownType.getInstance(), false);
         expect(fieldSig.isUnclear()).toBe(true);

@@ -25,7 +25,7 @@ describe('SignatureModelCanonicalizer Test', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
         const sig = new FileSignature('proj', 'src/a.ts');
         const file = new ArkFile(Language.TYPESCRIPT);
-        const id = c.getId(sig);
+        const id = c.getOrCreateId(sig);
         c.setModel(id, file);
         expect(c.getModel(id)).toBe(file);
     });
@@ -38,7 +38,7 @@ describe('SignatureModelCanonicalizer Test', () => {
 
     it('getModel returns undefined for ID 0 (DEFAULT)', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
-        c.getId(FileSignature.DEFAULT); // ID 0
+        c.getOrCreateId(FileSignature.DEFAULT); // ID 0
         expect(c.getModel(0)).toBeUndefined();
     });
 
@@ -47,9 +47,9 @@ describe('SignatureModelCanonicalizer Test', () => {
         const sig1 = new FileSignature('proj', 'src/a.ts');
         const sig2 = new FileSignature('proj', 'src/a.ts');
         const file1 = new ArkFile(Language.TYPESCRIPT);
-        const id1 = c.getId(sig1);
+        const id1 = c.getOrCreateId(sig1);
         c.setModel(id1, file1);
-        const id2 = c.getId(sig2);
+        const id2 = c.getOrCreateId(sig2);
         expect(id1).toBe(id2);
         expect(c.getModel(id2)).toBe(file1);
     });
@@ -58,7 +58,7 @@ describe('SignatureModelCanonicalizer Test', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
         const sig = new FileSignature('proj', 'src/a.ts');
         const file = new ArkFile(Language.TYPESCRIPT);
-        const id = c.getId(sig);
+        const id = c.getOrCreateId(sig);
         c.setModel(id, file);
         expect(c.getModel(id)).toBe(file);
         c.removeModel(id);
@@ -68,21 +68,21 @@ describe('SignatureModelCanonicalizer Test', () => {
     it('removeModel does not recycle ID', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
         const sig = new FileSignature('proj', 'src/a.ts');
-        const id = c.getId(sig);
+        const id = c.getOrCreateId(sig);
         c.removeModel(id);
-        const id2 = c.getId(new FileSignature('proj', 'src/b.ts'));
+        const id2 = c.getOrCreateId(new FileSignature('proj', 'src/b.ts'));
         expect(id2).toBe(id + 1); // ID continues from where it left off
     });
 
     it('getModels returns all registered models excluding undefined', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
-        c.getId(FileSignature.DEFAULT); // ID 0, no model
+        c.getOrCreateId(FileSignature.DEFAULT); // ID 0, no model
         const sig1 = new FileSignature('proj', 'src/a.ts');
         const sig2 = new FileSignature('proj', 'src/b.ts');
         const file1 = new ArkFile(Language.TYPESCRIPT);
         const file2 = new ArkFile(Language.TYPESCRIPT);
-        c.setModel(c.getId(sig1), file1);
-        c.setModel(c.getId(sig2), file2);
+        c.setModel(c.getOrCreateId(sig1), file1);
+        c.setModel(c.getOrCreateId(sig2), file2);
         const models = c.getModels();
         expect(models.length).toBe(2);
         expect(models).toContain(file1);
@@ -95,8 +95,8 @@ describe('SignatureModelCanonicalizer Test', () => {
         const sig2 = new FileSignature('proj', 'src/b.ts');
         const file1 = new ArkFile(Language.TYPESCRIPT);
         const file2 = new ArkFile(Language.TYPESCRIPT);
-        c.setModel(c.getId(sig1), file1);
-        const id2 = c.getId(sig2);
+        c.setModel(c.getOrCreateId(sig1), file1);
+        const id2 = c.getOrCreateId(sig2);
         c.setModel(id2, file2);
         c.removeModel(id2);
         const models = c.getModels();
@@ -108,7 +108,7 @@ describe('SignatureModelCanonicalizer Test', () => {
         const c = new SignatureModelCanonicalizer<FileSignature, ArkFile>();
         const sig = new FileSignature('proj', 'src/a.ts');
         const file = new ArkFile(Language.TYPESCRIPT);
-        c.setModel(c.getId(sig), file);
+        c.setModel(c.getOrCreateId(sig), file);
         expect(c.size()).toBeGreaterThan(0);
         expect(c.getModels().length).toBe(1);
         c.clear();
@@ -122,11 +122,11 @@ describe('SignatureModelCanonicalizer Test', () => {
         const fileSig = new FileSignature('proj', 'src/a.ts');
         // The value-object ClassSignature overload resolves the declaring file against the
         // GLOBAL registry — intern it there first (the local canonicalizer `c` is separate).
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig);
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
         const arkClass = new ArkClass();
         arkClass.setCategory(ClassCategory.CLASS);
-        const id = c.getId(classSig);
+        const id = c.getOrCreateId(classSig);
         expect(id).toBeGreaterThanOrEqual(0);
         c.setModel(id, arkClass);
         expect(c.getModel(id)).toBe(arkClass);

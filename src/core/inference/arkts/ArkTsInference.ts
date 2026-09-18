@@ -100,10 +100,6 @@ export class ArkTsStmtInference extends StmtInference {
         // An unclear ClassType with fully-resolved real type args still carries information
         // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
         const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
-        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
-        // "unclear"): a null/undefined right operand carries no information — never let it
-        // overwrite the left operand (protects e.g. SDK declare-var locals whose builder-time
-        // annotated types would otherwise be clobbered by declaration-initializer placeholders).
         const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;
         if ((!TypeInference.isUnclearType(rightType) && !isPlaceholderRight) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
@@ -344,16 +340,6 @@ export class ArkTSLocalInference extends LocalInference {
             }
             return undefined;
         } else if (name === SUPER_NAME) {
-            // B1 (round10): the symmetric counterpart of the this branch. Build time
-            // leaves the 'super' Local untyped (getOrCreateLocal default Unknown); the
-            // historical normalization swapped the invoke base to 'this' and re-resolved
-            // from there (a two-pass workaround that also risked hitting a subclass
-            // override). Resolve the type here ONCE to the declaring class's base class
-            // — the single source of truth: every consumer (invoke / field-ref member
-            // resolution via inferRefinedValueType) reads it through the normal
-            // base-type path, and the resolved signature's declaring side derives from
-            // it (base-class lookup, correct super semantics). Idempotent across
-            // inference rounds (preInfer goes false once typed).
             const superType = TypeInference.inferBaseType(SUPER_NAME, arkMethod.getDeclaringArkClass());
             if (superType) {
                 value.setType(superType);

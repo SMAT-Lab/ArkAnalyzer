@@ -18,7 +18,6 @@ import { Canonicalizer } from '../../utils/Canonicalizer';
 /**
  * Interface that signatures must implement to participate in hash-based canonicalization.
  *
- * Design ported from HomeFlow's fact-id-hash-collision-design (doc/design/fact-id-hash-collision-design.md).
  * The three-layer architecture:
  * - Layer 1: `getHashCode()` — 32-bit hash computed at construction time, cached in a readonly field
  * - Layer 2: `Canonicalizer<number>` with `numberWithEquality` strategy — open-addressing + chaining
@@ -51,12 +50,7 @@ export interface Canonicalizable {
  * judged unequal; and the getId() variant would blind-write unregistered
  * values into the formal space (permanent holes, see the temp-space design).
  *
- * Replaces the legacy `toMapKey()` string comparison at identity-comparison
- * sites (TypeInference.isSameType / ModelUtils.matchType): no string building,
- * no string hashing. Note that for unclear (temp-held) signatures the
- * reference-semantics temp ID participates in hash/equals by design — two
- * value-equal but distinct temp instances compare unequal (see
- * TempSignatureCanonicalizer's instance semantics).
+ * No string building, no string hashing.
  */
 export function signatureEquals(a: Canonicalizable, b: Canonicalizable): boolean {
     return a.getHashCode() === b.getHashCode() && a.equals(b);
@@ -65,8 +59,7 @@ export function signatureEquals(a: Canonicalizable, b: Canonicalizable): boolean
 /**
  * A canonicalizer that deduplicates signatures by value semantics using hash + equals.
  *
- * Replaces the previous `toMapKey()`-string-based approach with a three-layer
- * hash-collision-handling architecture:
+ * Uses a three-layer hash-collision-handling architecture:
  *
  * 1. `sig.getHashCode()` returns a cached 32-bit hash (computed once at construction)
  * 2. `Canonicalizer<S>` with `numberWithEquality` strategy uses TypedArray hash tables
@@ -94,7 +87,7 @@ export class SignatureCanonicalizer<S extends Canonicalizable> {
      * @param sig - The signature to canonicalize
      * @returns The integer ID (>= 0)
      */
-    public getId(sig: S): number {
+    public getOrCreateId(sig: S): number {
         return this.canonicalizer.getId(sig);
     }
 

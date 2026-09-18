@@ -98,10 +98,8 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
 
     const fieldName = '[' + cloneText(member.parameters[0].getText(sourceFile)) + ']';
     const fieldType = buildGenericType(tsNode2Type(member.type, sourceFile, field), field);
-    // staticFlag 与 addField 分流基准（field.isStatic()，读 modifier）保持一致——
-    // index-signature 是实例成员（obj[key] 访问）。历史硬编码 true 导致签名 flag 与
-    // isStatic() 分裂（addField 分流进 instance 数组而签名 flag=true），按名线性扫
-    // 时代被容忍，签名值直查（getFieldWithName）下必 miss。
+    // staticFlag 与 addField 分流基准（field.isStatic()，读 modifier）保持一致——index-signature 是实例成员（obj[key] 访问）。硬编码 true 会导致
+    // 签名 flag 与 isStatic() 分裂（addField 分流进 instance 数组而签名 flag=true），签名值直查（getFieldWithName）下必 miss。
     const fieldSignature = new FieldSignature(fieldName, cls.getClassSigID(), fieldType, field.isStatic());
     field.setSignature(fieldSignature);
     IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());

@@ -442,35 +442,27 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         );
 
         // Handle whether iterable is finished
-        const {
-            value: yieldValue,
-            valueOriginalPositions: yieldValuePositions,
-            stmts: yieldValueStmts,
-        } = this.generateAssignStmtForValue(valueFieldRef, valueFieldRefPositions);
-        stmts.push(...yieldValueStmts);
-        const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
-        const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
+        const yieldResult = this.generateAssignStmtForValue(valueFieldRef, valueFieldRefPositions);
+        stmts.push(...yieldResult.stmts);
+        const castExpr = new ArkCastExpr(yieldResult.value, UnknownType.getInstance());
+        const castExprPositions = [yieldResult.valueOriginalPositions[0], ...yieldResult.valueOriginalPositions];
         let declStmts: CxxAstNode = forOfStatement.inner[0];
         declStmts = declStmts.kind === AstKind.DeclStmt ? declStmts.inner[0] : declStmts;
         if (declStmts.kind === AstKind.VarDecl) {
-            const {
-                value: initValue,
-                valueOriginalPositions: initOriPos,
-                stmts: initStmts,
-            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, false);
-            const assignStmt = new ArkAssignStmt(initValue, castExpr);
-            assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
+            const initResult = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, false);
+            const assignStmt = new ArkAssignStmt(initResult.value, castExpr);
+            assignStmt.setOperandOriginalPositions([...initResult.valueOriginalPositions, ...castExprPositions]);
             stmts.push(assignStmt);
-            stmts.push(...initStmts);
+            stmts.push(...initResult.stmts);
             // Processing structured binding under cyclic conditions
         } else if (declStmts.kind === AstKind.DecompositionDecl) {
-            const { stmts: initStmts } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldValue);
+            const { stmts: initStmts } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldResult.value);
             stmts.push(...initStmts);
         } else {
-            const { value: initValue, valueOriginalPositions: initOriPos, stmts: initStmts } = this.cxxNodeToValueAndStmts(declStmts);
-            const assignStmt = new ArkAssignStmt(initValue, castExpr);
-            assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
-            stmts.push(...initStmts);
+            const initResult = this.cxxNodeToValueAndStmts(declStmts);
+            const assignStmt = new ArkAssignStmt(initResult.value, castExpr);
+            assignStmt.setOperandOriginalPositions([...initResult.valueOriginalPositions, ...castExprPositions]);
+            stmts.push(...initResult.stmts);
             stmts.push(assignStmt);
         }
         return stmts;
@@ -521,17 +513,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
 
         const baseType = base.getType();
-        // Object paths (fallback branches): the iterator stubs are unclear and are routed to
-        // the temp canonicalizer inside the constructors — no formal interning without a model.
-        // round32b：begin/end 字段类型由 BooleanType 改 UnknownType——BooleanType 是
-        // 历史 quirk（begin/end 的语义是迭代器端点而非 bool；循环条件的 boolean 语义
-        // 由 handleForRangeIterEnd 对 doneFlag 的显式 setType 承担）。BooleanType 会经
-        // 赋值传播污染迭代器 Local 的类型（IterableIterator stub → boolean），随后
-        // deref 推导走 core inferInstanceMember 的 primitive→wrapper 提升链
-        //（'boolean' → Registry.getSdkGlobal('Boolean') → lib.es5 Boolean 类），
-        // 把解引用字段的声明类错误改写为 Boolean（CI structBinding MapUsage 的
-        // `IterableIterator.*` 变 `Boolean.*` 根因）。UnknownType 不传播
-        //（transferRight2Left 的 unclear guard 拦截），迭代器保持 stub 形态。
         const beginFieldSignature =
             baseType instanceof ClassType
                 ? new FieldSignature(BuiltinCxx.ITERATOR_RESULT_BEGIN, baseType.getClassSignature(), UnknownType.getInstance(), false)

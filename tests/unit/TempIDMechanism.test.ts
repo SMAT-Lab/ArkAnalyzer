@@ -35,8 +35,8 @@ describe('Temp ID Mechanism Test', () => {
     // error log — mode B' defensive routing (work item P), no throw.
     beforeEach(() => {
         reg = SignatureCanonicalizerRegistry.getInstance();
-        reg.fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
-        reg.fileSigCanonicalizer.getId(new FileSignature('p', 'c.ts'));
+        reg.fileSigCanonicalizer.getOrCreateId(new FileSignature('p', 'f.ts'));
+        reg.fileSigCanonicalizer.getOrCreateId(new FileSignature('p', 'c.ts'));
     });
 
     it('ClassType with an unregistered clear signature does NOT intern into formal space', () => {
@@ -91,11 +91,11 @@ describe('Temp ID Mechanism Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const classSig = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const ms = new MethodSignature(
-            reg.classSigCanonicalizer.getId(classSig),
+            reg.classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('foo', [], UnknownType.getInstance(), false)
         );
         // 显式 intern 方法签名值（formal 命中路径）。
-        const internedId = reg.methodSigCanonicalizer.getId(ms);
+        const internedId = reg.methodSigCanonicalizer.getOrCreateId(ms);
         const ft = new FunctionType(ms);
         expect(ft.getMethodSigID()).toBe(internedId);
         expect(ft.getTempSigID()).toBeUndefined();
@@ -106,7 +106,7 @@ describe('Temp ID Mechanism Test', () => {
         const methodSizeBefore = reg.methodSigCanonicalizer.size();
         const classSig = new ClassSignature('B', new FileSignature('p', 'f.ts'), null);
         const ms = new MethodSignature(
-            reg.classSigCanonicalizer.getId(classSig),
+            reg.classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('bar', [], UnknownType.getInstance(), false)
         );
         // 方法签名未 intern → temp 兜底（formal 只读，不写）。
@@ -121,11 +121,11 @@ describe('Temp ID Mechanism Test', () => {
         const classSig = new ClassSignature('Enum', new FileSignature('p', 'f.ts'), null);
         const fs = new FieldSignature(
             'RED',
-            reg.classSigCanonicalizer.getId(classSig),
+            reg.classSigCanonicalizer.getOrCreateId(classSig),
             NumberType.getInstance(),
             false
         );
-        const internedId = reg.fieldSigCanonicalizer.getId(fs);
+        const internedId = reg.fieldSigCanonicalizer.getOrCreateId(fs);
         const evt = new EnumValueType(fs);
         expect(evt.getFieldSigID()).toBe(internedId);
         expect(evt.getTempSigID()).toBeUndefined();
@@ -137,7 +137,7 @@ describe('Temp ID Mechanism Test', () => {
         const classSig = new ClassSignature('Enum2', new FileSignature('p', 'f.ts'), null);
         const fs = new FieldSignature(
             'BLUE',
-            reg.classSigCanonicalizer.getId(classSig),
+            reg.classSigCanonicalizer.getOrCreateId(classSig),
             NumberType.getInstance(),
             false
         );
@@ -151,7 +151,7 @@ describe('Temp ID Mechanism Test', () => {
         const classSig = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const fs = new FieldSignature(
             'field',
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             UnknownType.getInstance(),
             false
         );
@@ -162,7 +162,7 @@ describe('Temp ID Mechanism Test', () => {
         const classSig = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const fs = new FieldSignature(
             'field',
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             UnknownType.getInstance(),
             false
         );
@@ -173,7 +173,7 @@ describe('Temp ID Mechanism Test', () => {
     it('MethodSignature.getDeclaringClassSigID returns valid ID without scene setup', () => {
         const classSig = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const ms = new MethodSignature(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('foo', [], UnknownType.getInstance(), false)
         );
         expect(ms.getDeclaringClassSigID()).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ describe('Temp ID Mechanism Test', () => {
     it('MethodSignature.getDeclaringClassSigID returns valid ID after scene setup', () => {
         const classSig = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const ms = new MethodSignature(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('foo', [], UnknownType.getInstance(), false)
         );
         const id = ms.getDeclaringClassSigID();
@@ -459,7 +459,8 @@ describe('Temp ID Mechanism Test', () => {
 describe('Temp ID Test 2', () => {
     beforeAll(() => {
         SignatureCanonicalizerRegistry.dispose();
-    })
+    });
+
     /** 在宿主 file 的类上注册一个真实方法并返回（供 invoke expr 构造签名）。
      *  fileName 仅作区分记录——宿主 FileSignature 一律用已 intern 的 'p/f.ts'
      *  （beforeEach 预注册），确保走 formal-ID 路径（未 intern 的 clear 签名经模式 B' 兜底会进 temp / 置 0）。 */

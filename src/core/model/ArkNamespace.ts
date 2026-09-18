@@ -107,16 +107,11 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
             namespace.getNamespaces().forEach(ns => existing.addNamespace(ns));
             return;
         }
-        // Model registration is guaranteed by setSignature (all production callers build the signature,
-        // thus register, before reaching here — TS via the 3-arg constructor, C++ via buildArkNamespace's internal setSignature);
-        // this method only maintains the parent namespace's top-level index.
         this.addTopNamespaceSigID(namespace.getNamespaceSigID());
     }
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
         // O(1) 归属初筛：签名的 declaringNamespaceSigID 直比本 namespace 的 SigID。
-        // 仅双方均有有效 ID（>=0）时比较——本 namespace 未设签名（-1）或签名声明为
-        // 顶层（undefined）时不能据此排除，落入下方值查找兜底。
         const declaring = namespaceSignature.getDeclaringNamespaceSigID();
         if (declaring !== undefined && declaring >= 0 && this.namespaceSigID >= 0 && declaring !== this.namespaceSigID) {
             return null;
@@ -129,10 +124,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getNamespaceWithName(namespaceName: string): ArkNamespace | null {
-        // 精确匹配：拼本容器归属签名直查（复用 canonicalizer 值索引，O(1)，对齐
-        // getClassWithName）；miss 即 null——签名归属是唯一真相。getNamespace 的
-        // 宽松归属初筛服务于 addNamespace 查重/外部传入正确签名等场景，与本路径
-        // 正交（容器自身未 intern 时此处构造的签名值必不匹配，同样 miss）。
+        // 精确匹配：拼本容器归属签名直查（复用 canonicalizer 值索引，O(1)，对齐getClassWithName）。
         if (this.namespaceSigID >= 0 && this.declaringFileID >= 0) {
             return this.getNamespace(new NamespaceSignature(namespaceName, this.declaringFileID, this.namespaceSigID));
         }
@@ -292,9 +284,10 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public setSignature(namespaceSignature: NamespaceSignature): void {
-        // 三态处理（与 ArkClass.setSignature 对齐）：新值首建 → 注册；驱逐态恢复（sig 值残留、model 已被 removeNamespace 删除）→ 补注册（否则 reload 时 getNamespaceById 查不到 model）；已有别的 model 持有该签名 → 不覆盖。已存在时直接用 existing 省一次 getId 探测。
+        // 三态处理（与 ArkClass.setSignature 对齐）：
+        // 新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model 持有该签名 → 不覆盖。
         const existing = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);
-        this.namespaceSigID = existing >= 0 ? existing : this.registry.namespaceSigCanonicalizer.getId(namespaceSignature);
+        this.namespaceSigID = existing >= 0 ? existing : this.registry.namespaceSigCanonicalizer.getOrCreateId(namespaceSignature);
         if (existing < 0 || this.registry.namespaceSigCanonicalizer.getModel(existing) === undefined) {
             this.registry.registerNamespace(this);
         }
@@ -302,6 +295,15 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     /** @internal Get the formal NamespaceSigID of this namespace. */
     public getNamespaceSigID(): number {
+        return this.namespaceSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the NamespaceSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
         return this.namespaceSigID;
     }
 
@@ -487,10 +489,8 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        // O(1) 归属初筛：签名的 declaringNamespaceSigID 直比本 namespace 的 SigID
-        //（顶层类签名该值为 undefined，直接 miss）。AliasClassSignature 的 hash/equals
-        // 继承父类三元组（originName + 双归属 SigID），与源签名值等价，
-        // getExistingId 直接命中，无需名字匹配。
+        // O(1) 归属初筛：签名的 declaringNamespaceSigID 直比本 namespace 的 SigID 顶层类签名该值为 undefined，直接 miss）。
+        // AliasClassSignature 的 hash/equals 继承父类三元组（originName + 双归属 SigID），与源签名值等价，getExistingId 直接命中，无需名字匹配。
         if (classSignature.getDeclaringNamespaceSigID() !== this.namespaceSigID) {
             return null;
         }
@@ -502,10 +502,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getClassWithName(className: string): ArkClass | null {
-        // 精确匹配：拼本容器归属签名直查（复用 canonicalizer 的值索引，O(1)），
-        // miss 即 null——签名归属是唯一真相，不做线性扫描兜底，也不做合成名前缀
-        // 模糊匹配（嵌套类/局部类的短名解析由显式作用域解析承担：core 方法链
-        // 局部类表 / cpp findClassByShortName 拼名候选链）。
+        // 精确匹配：拼本容器归属签名直查（复用 canonicalizer 的值索引，O(1)）
         if (this.namespaceSigID >= 0 && this.declaringFileID >= 0) {
             return this.getClass(new ClassSignature(className, this.declaringFileID, this.namespaceSigID));
         }

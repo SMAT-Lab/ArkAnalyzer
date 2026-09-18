@@ -62,46 +62,6 @@ export interface heritageClassWithInfo {
     access: string;
 }
 
-// --- getMethod fallback instrumentation (B1 step-2: hit counting for the narrowing decision) ---
-
-/**
- * Scene-wide counters for ArkClass.getMethod fallback activity, classified by why the
- * canonicalizer fast path missed. Data source for the B1 step-3 decision (narrowing the
- * fallback to CXX/unclear ownership); reset/snapshot are test- and benchmark-facing.
- */
-const getMethodFallbackStats = {
-    /** Signature interned but holds no model (expected residual: closure-rebuilt declares). */
-    fastPathNoModel: 0,
-    /** Model exists but belongs to another class (C++ cross-class decl/impl borrowing). */
-    fastPathForeignOwner: 0,
-    /** No method with the queried name in this class (legitimate miss). */
-    fallbackNameMiss: 0,
-    /** Fallback traversal matched a method by impl/declare signature equality. */
-    fallbackMatched: 0,
-    /** Same-name candidates exist but none matched the full signature. */
-    fallbackUnmatched: 0,
-};
-
-/** @internal Statistic keys of {@link getMethodFallbackStats}. */
-export type GetMethodFallbackStatKey = keyof typeof getMethodFallbackStats;
-
-/** @internal Increment one getMethod fallback counter. */
-export function recordGetMethodFallbackStat(key: GetMethodFallbackStatKey): void {
-    getMethodFallbackStats[key]++;
-}
-
-/** @internal Return a copy of the current counters. */
-export function snapshotGetMethodFallbackStats(): Readonly<Record<GetMethodFallbackStatKey, number>> {
-    return { ...getMethodFallbackStats };
-}
-
-/** @internal Reset all counters (for test isolation and benchmark sampling windows). */
-export function resetGetMethodFallbackStats(): void {
-    for (const key of Object.keys(getMethodFallbackStats) as GetMethodFallbackStatKey[]) {
-        getMethodFallbackStats[key] = 0;
-    }
-}
-
 /**
  * @category core/model
  */
@@ -393,7 +353,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public setSignature(classSig: ClassSignature): void {
         const existing = this.registry.classSigCanonicalizer.getExistingId(classSig);
-        this.classSigID = existing >= 0 ? existing : this.registry.classSigCanonicalizer.getId(classSig);
+        this.classSigID = existing >= 0 ? existing : this.registry.classSigCanonicalizer.getOrCreateId(classSig);
         // 新值首建 → 注册；
         // 驱逐态恢复（sig 值残留、model 已被 removeClass 删除）→ 补注册（否则 reload 时 getDeclaringArkClass 查不到 model，genDefaultArkMethod 链 NPE）；
         // 已有别的 model 持有该签名 → 不覆盖（防"后 setSignature 者顶替"写穿）。
@@ -404,6 +364,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     /** @internal Get the formal ClassSigID of this class. */
     public getClassSigID(): number {
+        return this.classSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the ClassSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
         return this.classSigID;
     }
 
@@ -547,10 +516,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return Array.from(this.heritageClasses.keys()).slice(1);
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public hasImplementedInterface(interfaceName: string): boolean {
         return this.heritageClasses.has(interfaceName) && this.getSuperClassName() !== interfaceName;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getImplementedInterface(interfaceName: string): ArkClass | null {
         const heritageClass = this.getHeritageClass(interfaceName);
         if (heritageClass && heritageClass.getCategory() === ClassCategory.INTERFACE) {
@@ -566,12 +537,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns A field. If there is no field in this class, the return will be a **null**.
      */
     public getField(fieldSignature: FieldSignature): ArkField | null {
-        // 按传入签名整体身份直查：FieldSignature 身份 = (name, declaringClassSigID,
-        // staticFlag)（type 不参与 hash/equals）。语义精确化——原实现忽略传入签名
-        // 的 staticFlag（先 instance 后 static 各扫一遍），现 staticFlag 不匹配即
-        // miss（instance 与 static 同名字段本就是两个不同身份的字段）。
-        // 归属校验（对齐 getMethod 的 Plan A 模式）：值命中的 SigID 可能是父类/
-        // 他类字段（如 ref 签名归属父类），必须确认模型归属本类，防越界命中。
         const id = this.registry.fieldSigCanonicalizer.getExistingId(fieldSignature);
         if (id !== -1) {
             const fld = this.registry.fieldSigCanonicalizer.getModel(id);
@@ -583,10 +548,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getFieldWithName(fieldName: string): ArkField | null {
-        // 精确匹配：拼本类归属签名直查（type 不参与 FieldSignature 身份，用
-        // UnknownType 占位）。全局不变量"字段签名归属 == 挂载类"已成立（顶层
-        // 全局符号 round9 多值化 + ns 级 copyNamespace round10 退役，实证违规
-        // 归零），miss 即 null——签名归属是唯一真相。
         const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), false));
         if (id !== -1) {
             return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
@@ -645,6 +606,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
     }
 
+    /** @deprecated No callers remain in the codebase; use {@link addField} per field instead. */
     public addFields(fields: ArkField[]): void {
         fields.forEach(field => {
             this.addField(field);
@@ -683,41 +645,30 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      ```
      */
     public getMethods(generated?: boolean): ArkMethod[] {
-        const result: ArkMethod[] = [];
-        const reg = this.registry;
-        const index = this.methodNameIndex;
-        if (index) {
-            for (const ids of index.values()) {
-                for (let i = 0; i < ids.length; i++) {
-                    const m = reg.methodSigCanonicalizer.getModel(ids[i]);
-                    if (m && (generated || !m.isGenerated())) {
-                        result.push(m);
-                    }
-                }
+        const ids = new Set<number>();
+        for (const entry of this.methodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                ids.add(id);
             }
         }
-        const staticIndex = this.staticMethodNameIndex;
-        if (staticIndex) {
-            for (const ids of staticIndex.values()) {
-                for (let i = 0; i < ids.length; i++) {
-                    const m = reg.methodSigCanonicalizer.getModel(ids[i]);
-                    if (m && (generated || !m.isGenerated())) {
-                        result.push(m);
-                    }
-                }
+        for (const entry of this.staticMethodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                ids.add(id);
+            }
+        }
+        const seen = new Set<ArkMethod>();
+        const result: ArkMethod[] = [];
+        for (const id of ids) {
+            const m = this.registry.methodSigCanonicalizer.getModel(id);
+            if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
+                seen.add(m);
+                result.push(m);
             }
         }
         return result;
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        // Fast path: the signature is already interned and its model registered —
-        // equals() includes the declaring class, so a value hit is authoritative.
-        // 归属守卫（方案 A）：fast path 的值查找是全局的，必须校验命中方法的
-        // declaringClassID === 本类——否则任意已注册签名（他类同名方法 / SDK 接口
-        // 声明 / 闭包旧挂载）都会越界命中（实测 100% 越界）。越界命中不直接返回，
-        // 落入下方本类遍历 fallback。闭包双签名不受影响：S2 声明的 declaringClass
-        // 恒为本类（createNewSignatureWithClosures 保留 declaringClassSigID）。
         const canonicalizer = this.registry.methodSigCanonicalizer;
         const id = canonicalizer.getExistingId(methodSignature);
         if (id !== -1) {
@@ -725,34 +676,26 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             if (mtd !== undefined && mtd.getDeclaringClassID() === this.classSigID) {
                 return mtd;
             }
-            // B1 埋点（收窄决策数据源）：fast path 落空原因二分——
-            // noModel = 签名已 intern 但无 model（全槽注册后应仅剩闭包重建等）；
-            // foreignOwner = 有 model 但归属他类（C++ 跨类借用）。
-            recordGetMethodFallbackStat(mtd === undefined ? 'fastPathNoModel' : 'fastPathForeignOwner');
         }
         // Fallback: class-local traversal with signature matching.
         // 不能删除（结构性缺口承载者）：
         // ① declare[k>0] 无 model——addMethod 只注册 impl ?? declare[0]，而
         //    matchMethodSignature 为可选参数/重载调用点选出的非首选声明签名
         //    （callgraph callee 解析主链路，PagBuilder/CallGraph/RTA 等）只能在此命中；
-        //    → B1 全槽注册后：declare 槽已注册，此缺口关闭，观察埋点残余；
+        //    → 全槽注册后 declare 槽已注册，此缺口关闭；
         // ② 闭包 declare 重建签名（updateNestedMethodWithClosures 只 intern 不注册）；
         // ③ C++ 跨类借用（声明方法借实现侧签名，fast path 归属校验失败后在此命中）。
-        // 收窄路径（独立轮次）：埋点数据（A2 基准）验证残余 → 最终收窄为 CXX/unclear 归属专属。
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
         const methodsWithSameName = this.getAllMethodsWithName(methodName);
         if (methodsWithSameName.length === 0) {
-            recordGetMethodFallbackStat('fallbackNameMiss');
             return null;
         }
         for (const mtd of methodsWithSameName) {
             let methodMatched = this.findMatchingMethod(mtd, methodSignature);
             if (methodMatched) {
-                recordGetMethodFallbackStat('fallbackMatched');
                 return methodMatched;
             }
         }
-        recordGetMethodFallbackStat('fallbackUnmatched');
         return null;
     }
 
@@ -778,12 +721,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
-    // 注：method WithName 系列（getMethodWithName / getStaticMethodWithName /
-    // getMethodsWithName / getStaticMethodsWithName / getAllMethodsWithName）不可
-    // 签名化——MethodSignature 身份含参数列表与返回类型，方法名不足以构造签名。
-    // 名字查找走类内单键名字索引（methodNameIndex / staticMethodNameIndex，
-    // 完整名精确匹配）；'%origin$outer' 组合名的裸 origin 前缀匹配语义已退役
-    //（origin 键的唯一理由 methodMatchesName 第二分支已删除，嵌套方法以完整名查询）。
     public getMethodWithName(methodName: string): ArkMethod | null {
         const sameNameMethods = this.getMethodsWithName(methodName);
         if (sameNameMethods.length === 0) {
@@ -818,8 +755,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     public addMethod(method: ArkMethod): void {
         const id = method.getMethodSigID() ?? method.getDeclareSigIDs()?.[0];
         if (id === undefined || id <= 0) {
-            // Unreachable in normal flows: builders always set an implementation or declaration
-            // signature before adding the method. Log loudly so violations surface immediately.
             logger.error(`Cannot add method (SigID=${method.getMethodSigID()}) to class (SigID=${this.getClassSigID()}): it has no interned signature.`);
             return;
         }
@@ -827,9 +762,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         // The class index is authoritative: registering here (unconditionally) marks the final
         // winner of any same-signature merge chain performed by builders.
         canonicalizer.setModel(id, method);
-        // B1 full-slot registration: the remaining declare slots also resolve to this method,
-        // so getMethod(sig) hits the canonicalizer fast path for any declared signature
-        // (previously declare[k>0] had no model and could only be matched by the fallback).
         const declareSigIDs = method.getDeclareSigIDs();
         if (declareSigIDs !== null && declareSigIDs !== undefined) {
             for (let i = 0; i < declareSigIDs.length; i++) {
@@ -1030,6 +962,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return result;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getGlobalVariable(globalMap: Map<FileSignature | NamespaceSignature, Local[]>): Local[] {
         const ns = this.getDeclaringArkNamespace();
         if (ns) {
@@ -1042,6 +975,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.anonymousMethodNumber++;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getIndexSignatureNumber(): number {
         return this.indexSignatureNumber++;
     }
@@ -1228,16 +1162,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // --- Instance field SigID index ---
 
-    /** @internal Returns the SigIDs of direct instance fields, or null if no fields exist. */
-    public getTopFieldSigIDs(): Int32Array | null {
-        return this.topFieldSigIDs?.subarray(0, this.topFieldCount) ?? null;
-    }
-
-    /** @internal Returns the number of direct instance fields. */
-    public getTopFieldCount(): number {
-        return this.topFieldCount;
-    }
-
     /** @internal Checks whether a field with the given SigID is a direct instance field. */
     public hasTopFieldWithID(id: number): boolean {
         const arr = this.topFieldSigIDs;
@@ -1251,14 +1175,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             }
         }
         return false;
-    }
-
-    /** @internal Returns the direct instance field with the given SigID, or undefined. */
-    public getTopFieldByID(id: number): ArkField | undefined {
-        if (this.hasTopFieldWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getFieldById(id);
-        }
-        return undefined;
     }
 
     /** @internal Ensures the instance field Int32Array has at least minCapacity slots. */
@@ -1298,16 +1214,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // --- Static field SigID index ---
 
-    /** @internal Returns the SigIDs of direct static fields, or null if no static fields exist. */
-    public getTopStaticFieldSigIDs(): Int32Array | null {
-        return this.topStaticFieldSigIDs?.subarray(0, this.topStaticFieldCount) ?? null;
-    }
-
-    /** @internal Returns the number of direct static fields. */
-    public getTopStaticFieldCount(): number {
-        return this.topStaticFieldCount;
-    }
-
     /** @internal Checks whether a field with the given SigID is a direct static field. */
     public hasTopStaticFieldWithID(id: number): boolean {
         const arr = this.topStaticFieldSigIDs;
@@ -1321,14 +1227,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             }
         }
         return false;
-    }
-
-    /** @internal Returns the direct static field with the given SigID, or undefined. */
-    public getTopStaticFieldByID(id: number): ArkField | undefined {
-        if (this.hasTopStaticFieldWithID(id)) {
-            return SignatureCanonicalizerRegistry.getInstance().getFieldById(id);
-        }
-        return undefined;
     }
 
     /** @internal Ensures the static field Int32Array has at least minCapacity slots. */
@@ -1367,16 +1265,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     // --- Extended class (subclass back-reference) SigID index ---
-
-    /** @internal Returns the ClassSigIDs of direct subclasses, or null if none exist. */
-    public getExtendedClassSigIDs(): Int32Array | null {
-        return this.extendedClassSigIDs?.subarray(0, this.extendedClassCount) ?? null;
-    }
-
-    /** @internal Returns the number of direct subclasses. */
-    public getExtendedClassCount(): number {
-        return this.extendedClassCount;
-    }
 
     /** @internal Checks whether a class with the given ClassSigID is a direct subclass. */
     public hasExtendedClassWithID(id: number): boolean {

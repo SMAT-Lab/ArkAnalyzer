@@ -293,8 +293,7 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
         const baseSignature = value.getFieldSignature().getDeclaringSignature();
         const baseName = baseSignature instanceof ClassSignature ? baseSignature.getClassName() : baseSignature.getNamespaceName();
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        // Multi-candidate probing: same-name global entities are probed in order until
-        // the member resolves (candidate [0] equals the legacy single-value result).
+        // Multi-candidate probing: same-name global entities are probed in order until the member resolves.
         for (const baseType of TypeInference.inferBaseTypes(baseName, arkMethod.getDeclaringArkClass())) {
             const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
             if (result) {
@@ -336,12 +335,9 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         const baseType = TypeInference.inferRefinedValueType(value.getBase(), arkMethod.getDeclaringArkFile().getScene());
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
         if (result === value) {
-            // round28-r3 批 3（isStatic 形态升级防御）：签名已解析为 static 但 expr
-            // 停留 instance 形态的残余在此收敛——正常升级依赖 inferInvokeExpr 族返回
-            // 替换 expr（invokeMatchedMethod 的 isStatic 分支），物化跟随/推导短路
-            // 等场景可能就地 set 了 static 签名却未换形态（OperandOriginalPositions
-            // 实证）。base 为 super 时保持 instance（super.staticM() 的 postInfer
-            // base 替换语义优先，staticinvoke 丢弃 receiver 虽语义等价但保守排除）。
+            // isStatic 形态升级防御：签名已解析为 static 但 expr 停留 instance 形态的残余在此收敛——正常升级依赖 inferInvokeExpr 族返回替换 expr
+            // （invokeMatchedMethod 的 isStatic 分支），物化跟随/推导短路等场景可能就地 set 了 static 签名却未换形态（OperandOriginalPositions 实证）。
+            // base 为 super 时保持 instance（super.staticM() 的 postInfer base 替换语义优先，staticinvoke 丢弃 receiver 虽语义等价但保守排除）。
             const sig = value.getMethodSignature();
             if (sig.getMethodSubSignature().isStatic() && value.getBase().getName() !== SUPER_NAME) {
                 return new ArkStaticInvokeExpr(sig, value.getArgs(), value.getRealGenericTypes(), value.getSpreadFlags());
@@ -357,16 +353,6 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
      * @param {Stmt} stmt - The statement containing the expression
      */
     public postInfer(value: ArkInstanceInvokeExpr, newValue: Value, stmt: Stmt): void {
-        // B1 (round10): the historical super→this base normalization is removed.
-        // It existed because the 'super' Local's type was never resolvable in the new
-        // chain (ArkTSLocalInference.infer's else-branch dropped the by-name
-        // inferBaseType path), so member resolution could only succeed after the base
-        // was swapped to 'this' and re-resolved from the declaring class. With the
-        // symmetric SUPER_NAME branch in ArkTSLocalInference.infer the super Local is
-        // typed to the base class directly, resolution runs in one pass from the base
-        // class (correct super lookup semantics — no subclass-override false hit), and
-        // the normalization would erase the super-vs-this distinction the printer and
-        // downstream analyses depend on.
         super.postInfer(value, newValue, stmt);
     }
 
@@ -438,8 +424,7 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
             }
             return undefined;
         }
-        // Multi-candidate probing: same-name global entities are probed in order until
-        // the invoke resolves (candidate [0] equals the legacy single-value result);
+        // Multi-candidate probing: same-name global entities are probed in order until the invoke resolves;
         // the by-name fallback chain runs only when no candidate exists at all.
         const baseTypes = this.getBaseTypes(expr, arkMethod);
         if (baseTypes.length > 0) {
@@ -544,28 +529,28 @@ export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
                 type = originType;
             }
         }
-        if (type && type instanceof ClassType) {
-            // 构造器对象升级：type 解析为构造器持有类（ns 内 declare const 的 %AC
-            // 字面量类——如 Intl.NumberFormat，或顶层 Constructor interface）时，
-            // `new` 的实例类型 = construct-signature（或 call）返回类型——对齐
-            // Expr.ArkNewExpr.inferType 的 constructorSignature 升级链。顶层场景
-            // 原靠后续赋值传播兜底（%0 初始 unclear 可覆盖）；ns 内 %AC 场景类型
-            // 构建期已明确，narrowing 哲学下传播不覆盖，必须在此显式升级。
-            const scene = arkMethod.getDeclaringArkFile().getScene();
-            let instanceType: ClassType = type;
-            const typeClass = scene.getClass(type.getClassSignature());
-            if (typeClass) {
-                const ctorReturn = typeClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType() ?? typeClass.getMethodWithName(CALL_SIGNATURE_NAME)?.getReturnType();
-                if (ctorReturn) {
-                    const replaced = TypeInference.replaceAliasType(ctorReturn);
-                    if (replaced instanceof ClassType) {
-                        instanceType = replaced;
-                    }
+        if (!(type instanceof ClassType)) {
+            return undefined;
+        }
+        // 构造器对象升级：type 解析为构造器持有类（ns 内 declare const 的 %AC 字面量类——如 Intl.NumberFormat，或顶层 Constructor interface）时，
+        // `new` 的实例类型 = construct-signature（或 call）返回类型——对齐 Expr.ArkNewExpr.inferType 的 constructorSignature 升级链。
+        // 顶层场景原靠后续赋值传播兜底（%0 初始 unclear 可覆盖）；
+        // ns 内 %AC 场景类型构建期已明确，narrowing 哲学下传播不覆盖，必须在此显式升级。
+        const scene = arkMethod.getDeclaringArkFile().getScene();
+        let instanceType: ClassType = type;
+        const typeClass = scene.getClass(type.getClassSignature());
+        if (typeClass) {
+            const ctorReturn = typeClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType() ??
+                typeClass.getMethodWithName(CALL_SIGNATURE_NAME)?.getReturnType();
+            if (ctorReturn) {
+                const replaced = TypeInference.replaceAliasType(ctorReturn);
+                if (replaced instanceof ClassType) {
+                    instanceType = replaced;
                 }
             }
-            value.getClassType().setClassSignature(instanceType.getClassSignature());
-            TypeInference.inferRealGenericTypes(value.getClassType().getRealGenericTypes(), arkMethod.getDeclaringArkClass());
         }
+        value.getClassType().setClassSignature(instanceType.getClassSignature());
+        TypeInference.inferRealGenericTypes(value.getClassType().getRealGenericTypes(), arkMethod.getDeclaringArkClass());
         return undefined;
     }
 }
@@ -735,9 +720,6 @@ export class LocalInference extends ValueInference<Local> {
     }
 
     public preInfer(value: Local): boolean {
-        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
-        // "unclear"): a local whose type is still null/undefined has not received a real
-        // type yet — treat it as needing inference, like unclear types.
         const type = value.getType();
         return TypeInference.isUnclearType(type) || type instanceof UndefinedType || type instanceof NullType;
     }

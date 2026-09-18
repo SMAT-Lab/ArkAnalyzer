@@ -387,7 +387,6 @@ export class ArkIRTransformer {
             if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkStaticInvokeExpr) {
                 const rightOp = stmt.getRightOp() as ArkStaticInvokeExpr;
                 if (rightOp.getMethodSignature().getMethodSubSignature().getMethodName() === COMPONENT_REPEAT) {
-                    // round28 M1：Repeat.create stub per-key 缓存（原每语句一行 temp）。
                     const createMethodSignature = ModelUtils.getOrCreateComponentMethodSig(COMPONENT_REPEAT, COMPONENT_CREATE_FUNCTION);
                     const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, rightOp.getArgs());
                     stmt.setRightOp(createInvokeExpr);
@@ -497,8 +496,7 @@ export class ArkIRTransformer {
             // 对于type A = {x:1, y:2}语句，当前阶段即可精确获取ClassType类型，需找到对应的ArkClass作为originalObject
             // 对于其他情况此处为UnclearReferenceTye并由类型推导进行查找和处理
             if (rightType instanceof ClassType) {
-                // TypeLiteral 的 ClassType 唯一生成路径是"构建即 addArkClass 注册、
-                // 签名即归属"，签名直查必命中，无需按名兜底
+                // TypeLiteral 的 ClassType 唯一生成路径是"构建即 addArkClass 注册、签名即归属"，签名直查必命中，无需按名兜底
                 const classObject = SignatureCanonicalizerRegistry.getInstance().getClassBySig(rightType.getClassSignature());
                 if (classObject) {
                     expr.setOriginalObject(classObject);
@@ -602,14 +600,11 @@ export class ArkIRTransformer {
             } = this.generateAssignStmtForValue(iterableValue, iterablePositions));
             iterableStmts.forEach(stmt => stmts.push(stmt));
         }
-        // round28 教训存档（r3 实证定案，勿再常量化）：iterator/next stub 必须每循环
-        // new 独立实例。共享实例（r2 常量化）的断点在 ValueInference.preInfer 守卫——
-        // 先推导的循环 retireWithReplacement 共享 temp 行后，跟随循环的 expr 在
-        // preInfer 时 getMethodSignature() 物化返回真实签名（lib.es2015）→
-        // needInfer(真实文件)=false 且 isUnclearType(IterableIterator<T>)=false（泛型
-        // 实参不参与，round13 语义）→ 整个推导被跳过 → realGenericTypes 无人设置 →
-        // item 停留形式泛参 T → unknown。"待解析"是 per-expr 语义，共享 temp 行的
-        // "已解析"状态会传染给所有共享者——与 toString/M2a/M2b 同根因（归宿垄断）。
+        // 教训存档（实证定案，勿再常量化）：iterator/next stub 必须每循环 new 独立实例。共享实例（常量化）的断点在 ValueInference.preInfer 守卫——先推导的
+        // 循环 retireWithReplacement 共享 temp 行后，跟随循环的 expr 在 preInfer 时 getMethodSignature() 物化返回真实签名（lib.es2015）→
+        // needInfer(真实文件)=false 且 isUnclearType(IterableIterator<T>)=false（泛型实参不参与）→ 整个推导被跳过 → realGenericTypes 无人设置 → item
+        // 停留形式泛参 T → unknown。
+        // "待解析"是 per-expr 语义，共享 temp 行的"已解析"状态会传染给所有共享者——与 toString / 实例缓存同根因（归宿垄断）。
         const iteratorMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_FUNCTION, [], Builtin.ITERATOR_CLASS_TYPE);
         const iteratorMethodSignature = new MethodSignature(0, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);

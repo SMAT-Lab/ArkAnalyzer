@@ -41,7 +41,7 @@ describe('JsonPrinterTest', () => {
         let printer = new JsonPrinter(arkfile);
         let json = printer.dump();
         ir = JSON.parse(json);
-    })
+    });
 
     it('ArkIR for Scene for sample.ts', () => {
         let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../../resources/save/expected_sample.json'), 'utf8'));

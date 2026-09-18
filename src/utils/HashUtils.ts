@@ -13,15 +13,6 @@
  * limitations under the License.
  */
 
-/**
- * Hash primitives ported from HomeFlow's fact-id-hash-collision-design.
- *
- * These provide better avalanche properties than the FNV-1a variant in
- * `Canonicalizer.hashString`（内部 slot 定位）。
- *
- * Reference: doc/design/fact-id-hash-collision-design.md
- */
-
 /** MurmurHash3-style string hash with full finalization mixing. */
 export function hashString32(raw: string): number {
     let h1 = 0xdeadbeef;
@@ -56,12 +47,16 @@ export function hashCombineU32(seed: number, value: number): number {
 
 /** Combine an optional number: undefined mixes 0, defined mixes (1, value). */
 export function hashCombineOptionalU32(seed: number, value: number | undefined): number {
-    if (value === undefined) return hashCombineU32(seed, 0);
+    if (value === undefined) {
+        return hashCombineU32(seed, 0);
+    }
     return hashCombineU32(hashCombineU32(seed, 1), value);
 }
 
 /** Combine an optional string: undefined/empty mixes 0, defined mixes (1, hash). */
 export function hashCombineOptionalString(seed: number, value: string | undefined): number {
-    if (!value) return hashCombineU32(seed, 0);
+    if (!value) {
+        return hashCombineU32(seed, 0);
+    }
     return hashCombineU32(hashCombineU32(seed, 1), hashString32(value));
 }

@@ -84,17 +84,9 @@ export abstract class AbstractExpr implements Value {
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
-    /**
-     * @internal formal MethodSigID。-1 = 未注册（temp-held）。
-     * 构造/setMethodSignature 时即时解析（原为惰性查询——返回值语义不变：
-     * 命中时同 ID、未注册时 -1）。route() 在构造器内首行赋值。
-     */
+    /** @internal formal MethodSigID。-1 = 未注册（temp-held）。*/
     private methodSigID!: number;
-    /**
-     * @internal temp MethodSigID（索引表）。undefined = 纯 formal 路径。
-     * 惰性物化后保留作"曾 temp"审计痕迹（methodSigID ≥ 0 && tempSigID ≠
-     * undefined = 已迁移痕迹态）。
-     */
+    /** @internal temp MethodSigID（索引表）。undefined = 纯 formal 路径。*/
     private tempMethodSigID?: number;
     private args: Value[];
     private realGenericTypes?: Type[];
@@ -110,28 +102,8 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         this.route(methodSignature);
     }
 
-    /**
-     * 两分路由（构造与 setMethodSignature 共用；B 轮批 3 起锚定退役——temp 侧
-     * 存活/取回职责由索引表 slot 承载，slot[id] === 构造时传入实例，取回逐字节
-     * 等价）：
-     *
-     * ① formal 只读命中（getExistingId，不写 formal 空间——防无 model 空洞）
-     *    → 持 formal ID；重路由场景旧 tempSigID 经 retireWithReplacement 显式
-     *    迁移（置空 slot + 记录 formal 归宿——共享该 temp 签名的其他持有者经
-     *    替换记录直达 formal）。R11 语义随批 3 实证（B2.5 插桩：真实工程 7 处
-     *    mutate 全部打 model 侧签名或 temp stub——formal 副本的 per-use 视图
-     *    无生产依赖）退役。
-     *
-     * ② 未命中（stub / 占位 / 推断中间态）→ temp 路由：索引表登记（同实例幂等
-     *    复用 ID，slot 强持有传入实例）。
-     *
-     * 注意：不做泛型双视图——invoke expr 的泛型实例化由自有的 realGenericTypes
-     * 字段承担（getType() 读取时动态替换），签名自身保持定义点形态（V/T），
-     * 与 formal 中的方法模型签名天然同值。
-     */
     private route(methodSignature: MethodSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由：unclear → temp；clear + formal 命中 → formal（旧 temp 经 retireWithReplacement 显式迁移——共享持有者经替换记录直达 formal）；clear + formal miss → error log + temp 兜底。
         if (methodSignature.isUnclear()) {
             this.methodSigID = -1;
             this.tempMethodSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
@@ -177,15 +149,6 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
      strs.push('>(');
      ```
      */
-    /**
-     * 返回 invoke expr 持有的方法签名（B 轮批 3 起三级查）：
-     * ① formal（methodSigID ≥ 0）→ canonical；
-     * ② temp slot（未迁移）→ 构造时传入实例；
-     * ③ 替换记录（已迁移）→ formal 实例 + 惰性物化（写回 methodSigID，
-     *    tempSigID 保留作"曾 temp"审计痕迹）。
-     * alias 签名（U+ 一等 formal）下 canonical 即 alias 实例——
-     * getDeclaringClassSignature().getClassName() 的 display 多态直接生效。
-     */
     public getMethodSignature(): MethodSignature {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.methodSigID >= 0) {
@@ -208,11 +171,6 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         throw new Error('AbstractInvokeExpr has no signature');
     }
 
-    /**
-     * 替换签名（推断解析后的真实方法签名回写，如 inferInstanceInvokeExpr 的
-     * matchMethodSignature 产物）。两分路由同构造；旧 temp 注册经
-     * retireWithReplacement 显式迁移（共享持有者走替换记录 fallback）。
-     */
     public setMethodSignature(newMethodSignature: MethodSignature): void {
         this.route(newMethodSignature);
     }
@@ -227,12 +185,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         return this.tempMethodSigID;
     }
 
-    /**
-     * @internal 替换埋葬（round28 M3——对齐 Ref.retireTemp）：本 expr 即将从
-     * IR 被整体替换（如 replaceSuper2Constructor 的 super → 构造器签名换 expr），
-     * 替换后无任何持有者——temp 行在替换点显式 retire。纯 retire（产物签名
-     * 另有构造，无字段归宿可记）；幂等（行已划 no-op；formal 路径恒 no-op）。
-     */
+    /** @internal 纯 retire，新签名依旧是temp，且会在别处构造。*/
     public retireTemp(): void {
         if (this.methodSigID === -1 && this.tempMethodSigID !== undefined) {
             SignatureCanonicalizerRegistry.getInstance().tempMethodSigCanonicalizer.retire(this.tempMethodSigID);
@@ -586,8 +539,7 @@ export class ArkNewExpr extends AbstractExpr {
         const scene = arkMethod.getDeclaringArkFile().getScene();
         const classConstructor = scene.getClass(type.getClassSignature());
         if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
-            // interface 的 construct-signature 可能在 var 侧构造器类上（如
-            // interface Object 的构造签名在 ObjectConstructor）——多实体探测
+            // interface 的 construct-signature 可能在 var 侧构造器类上（如interface Object 的构造签名在 ObjectConstructor）——多实体探测
             const candidates = [classConstructor, ...SdkUtils.getSdkGlobalMemberClasses(classConstructor.getName())];
             for (const candidate of candidates) {
                 const returnType = candidate.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType();
@@ -1436,9 +1388,8 @@ export class AliasTypeExpr extends AbstractExpr {
             return `${typeOf}${typeObject.getSignature().toString()}<${this.getRealGenericTypes()!.join(',')}>`;
         }
         if (typeObject instanceof Type) {
-            // Prefer the inferred original type when available: unresolved stub types (e.g.
-            // builtin Object stubs living in the temp canonicalizer) are replaced by the real
-            // signatures during type inference, and the display should reflect that.
+            // Prefer the inferred original type when available: unresolved stub types (e.g. builtin Object stubs living in the temp canonicalizer)
+            // are replaced by the real signatures during type inference, and the display should reflect that.
             const inferred = this.getOriginalType();
             if (inferred && inferred !== typeObject) {
                 return `${typeOf}${inferred.toString()}`;

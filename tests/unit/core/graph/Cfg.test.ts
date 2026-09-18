@@ -322,7 +322,7 @@ describe('CfgTest', () => {
 const TS_CFG_ROOT = path.resolve(__dirname, '../../../resources/cfg');
 
 function buildScene(folderName: string): Scene {
-    SignatureCanonicalizerRegistry.dispose()
+    SignatureCanonicalizerRegistry.dispose();
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(TS_CFG_ROOT, folderName));
     let scene = new Scene();

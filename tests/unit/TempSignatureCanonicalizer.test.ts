@@ -219,4 +219,31 @@ describe('TempSignatureCanonicalizer Test', () => {
         expect(c.retired()).toBe(0);
         expect(c.getStats()).toEqual({ liveCount: 0, totalRegistered: 0, retiredCount: 0, replacedCount: 0 });
     });
+
+    it('retire of an id beyond the initial 1024-slot capacity migrates correctly (growth path)', () => {
+        const c = new TempSignatureCanonicalizer<TestSig>();
+        const beyond = 1300;
+        const ids: number[] = [];
+        for (let i = 0; i <= beyond; i++) {
+            ids.push(c.register(makeSig('sig-' + i)));
+        }
+        expect(c.totalRegistered()).toBe(beyond + 1);
+        // High ids live beyond the initial capacity — get must return the signature
+        // (the out-of-bounds read must NOT be misjudged as retired).
+        expect(c.get(ids[beyond])).toBeDefined();
+        // retireWithReplacement on a high id must migrate AND record the formal home.
+        c.retireWithReplacement(ids[beyond], 4242);
+        expect(c.get(ids[beyond])).toBeUndefined();
+        expect(c.getReplacement(ids[beyond])).toBe(4242);
+        // Three-number identity holds across the growth boundary.
+        expect(c.retired()).toBe(1);
+        expect(c.liveCount()).toBe(beyond);
+        expect(c.liveCount() + c.retired()).toBe(c.totalRegistered());
+        // A second high-id retire via the plain path (no replacement).
+        c.retire(ids[beyond - 1]);
+        expect(c.get(ids[beyond - 1])).toBeUndefined();
+        expect(c.getReplacement(ids[beyond - 1])).toBe(-1);
+        expect(c.retired()).toBe(2);
+        expect(c.liveCount() + c.retired()).toBe(c.totalRegistered());
+    });
 });

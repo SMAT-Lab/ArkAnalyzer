@@ -128,17 +128,6 @@ export class SourceTransformer {
             if (methodName === CONSTRUCTOR_NAME) {
                 return `super(${args.join(', ')})`;
             }
-            // A base named 'this' always denotes a this-receiver call (`this.foo()` or the
-            // shorthand `foo()`). An explicit `super.foo()` is built with a distinct
-            // 'super' Local (ArkValueTransformer.superExpressionToValueAndStmts) and flows
-            // into the valueToString(base) fallback below. The signature's declaring class
-            // landing on a base class only reflects member inheritance (after the def-side
-            // correction chain resolves it) — it must NOT turn a this-call into super.foo():
-            // this.foo() and super.foo() differ in both method lookup and this-binding.
-            // The historical signature-compare approximation here printed super.foo() for
-            // inherited-member this-calls; it stayed invisible only while build-time probe
-            // stubs were never corrected, and was exposed once the this-semantic guards
-            // let inference resolve them to the real (base-class) declaring signatures.
         }
         return `${this.valueToString(base)}.${methodName}${genericCode}(${args.join(', ')})`;
     }

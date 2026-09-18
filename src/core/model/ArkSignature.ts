@@ -16,10 +16,17 @@
 import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ClassType, Type, UnknownType } from '../base/Type';
 import { MethodParameter } from './builder/ArkMethodBuilder';
-import { ANONYMOUS_CLASS_PREFIX, LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER, UNKNOWN_CLASS_NAME, UNKNOWN_NAMESPACE_NAME } from '../common/Const';
+import {
+    ANONYMOUS_CLASS_PREFIX,
+    LEXICAL_ENV_NAME_PREFIX,
+    NAME_DELIMITER,
+    NESTED_CLASS_METHOD_DELIMITER,
+    UNKNOWN_CLASS_NAME,
+    UNKNOWN_NAMESPACE_NAME,
+} from '../common/Const';
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { signatureEquals } from '../common/SignatureCanonicalizer';
-import { hashString32, hashCombineU32 } from '../../utils/HashUtils';
+import { hashCombineU32, hashString32 } from '../../utils/HashUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
 export type Signature = FileSignature | NamespaceSignature | ClassSignature | MethodSignature | FieldSignature | LocalSignature | AliasTypeSignature;
@@ -68,10 +75,7 @@ export class FileSignature {
      * Kept for backward compatibility only — for identity checks use `equals()`
      * (with `getHashCode()` fast reject), for debug output use `toString()`.
      *
-     * Implementation note: identity projection (= toString, projectName + fileName are
-     * the complete identity fields) — collision-free, unlike the legacy
-     * `${hashcode}${basename}` format whose 32-bit hash could collide for
-     * same-basename files in different directories.
+     * Implementation note: identity projection (= toString, projectName + fileName are the complete identity fields) — collision-free.
      */
     public toMapKey(): string {
         return this.toString();
@@ -82,7 +86,9 @@ export class FileSignature {
     }
 
     public equals(other: FileSignature): boolean {
-        if (this === other) return true;
+        if (this === other) {
+            return true;
+        }
         return this.projectName === other.projectName && this.fileName === other.fileName;
     }
 
@@ -121,44 +127,51 @@ export class NamespaceSignature {
      */
     constructor(namespaceName: string, declaringFileSigID: number, declaringNamespaceSigID?: number);
     constructor(namespaceName: string, declaringFileOrID: FileSignature | number, declaringNSOrID?: NamespaceSignature | null | number) {
+        function computeHashCode(fileId: number, namespaceName: string, declaringNSId?: number): number {
+            let h = 0xdeadbeef;
+            h = hashCombineU32(h, fileId);
+            h = hashCombineU32(h, hashString32(namespaceName));
+            h = hashCombineU32(h, declaringNSId ?? 0);
+            return h >>> 0;
+        }
+
         this.namespaceName = namespaceName;
+        if (typeof declaringFileOrID === 'number') {
+            this.declaringFileSigID = declaringFileOrID;
+            this.declaringNamespaceSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
+            this.hashCode = computeHashCode(this.declaringFileSigID, this.namespaceName, this.declaringNamespaceSigID);
+            return;
+        }
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         let fileSigID: number;
         let nsSigID: number | undefined;
-        if (typeof declaringFileOrID === 'number') {
-            fileSigID = declaringFileOrID;
-            nsSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
+
+        // FileSignature 永不 unclear——身份根。
+        const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
+        if (fileExistingId !== -1) {
+            fileSigID = fileExistingId;
         } else {
-            const reg = SignatureCanonicalizerRegistry.getInstance();
-            // 模式 B'（FileSignature 永不 unclear——身份根）：formal 命中 → formal；miss → error log + 置 0（DEFAULT，复合签名变为 unclear 语义）。
-            const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
-            if (fileExistingId !== -1) {
-                fileSigID = fileExistingId;
+            NamespaceSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
+            fileSigID = 0;
+        }
+        // namespace 无 temp 空间。
+        if (declaringNSOrID instanceof NamespaceSignature) {
+            if (declaringNSOrID.isUnclear()) {
+                NamespaceSignature.logger.error(`Unclear NamespaceSignature — marking -1: ${declaringNSOrID.toString()}`);
+                nsSigID = -1;
             } else {
-                NamespaceSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
-                fileSigID = 0;
-            }
-            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
-            if (declaringNSOrID instanceof NamespaceSignature) {
-                if (declaringNSOrID.isUnclear()) {
-                    nsSigID = -1;
+                const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
+                if (nsExistingId !== -1) {
+                    nsSigID = nsExistingId;
                 } else {
-                    const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
-                    if (nsExistingId !== -1) {
-                        nsSigID = nsExistingId;
-                    } else {
-                        NamespaceSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
-                        nsSigID = -1;
-                    }
+                    NamespaceSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
+                    nsSigID = -1;
                 }
             }
         }
         this.declaringFileSigID = fileSigID;
         this.declaringNamespaceSigID = nsSigID;
-        let h = 0xdeadbeef;
-        h = hashCombineU32(h, fileSigID);
-        h = hashCombineU32(h, hashString32(namespaceName));
-        h = hashCombineU32(h, nsSigID ?? 0);
-        this.hashCode = h >>> 0;
+        this.hashCode = computeHashCode(this.declaringFileSigID, this.namespaceName, this.declaringNamespaceSigID);
     }
 
     public getNamespaceName(): string {
@@ -235,18 +248,19 @@ export class NamespaceSignature {
     }
 
     public equals(other: NamespaceSignature): boolean {
-        if (this === other) return true;
-        if (this.namespaceName !== other.namespaceName) return false;
-        if (this.declaringFileSigID !== other.declaringFileSigID) return false;
+        if (this === other) {
+            return true;
+        }
+        if (this.namespaceName !== other.namespaceName) {
+            return false;
+        }
+        if (this.declaringFileSigID !== other.declaringFileSigID) {
+            return false;
+        }
         return this.declaringNamespaceSigID === other.declaringNamespaceSigID;
     }
 
-    /**
-     * @internal Whether this signature's declaring file is unknown (FileSignature.DEFAULT).
-     * Direct field check (no registry lookup): unclear iff declaring file is DEFAULT (FileSigID 0)
-     * and this is not the DEFAULT placeholder itself (distinguished by the '%unk' name — any
-     * value-equal instance would intern to formal ID 0).
-     */
+    /** Whether this signature's declaring file is unknown (FileSignature.DEFAULT). */
     public isUnclear(): boolean {
         return this.declaringFileSigID === 0 && this.namespaceName !== UNKNOWN_NAMESPACE_NAME;
     }
@@ -281,44 +295,49 @@ export class ClassSignature {
      */
     constructor(className: string, declaringFileSigID: number, declaringNamespaceSigID?: number);
     constructor(className: string, declaringFileOrID: FileSignature | number, declaringNSOrID?: NamespaceSignature | null | number) {
+        function computeHashCode(fileId: number, className: string, namespaceId?: number): number {
+            let h = 0xdeadbeef;
+            h = hashCombineU32(h, fileId);
+            h = hashCombineU32(h, hashString32(className));
+            h = hashCombineU32(h, namespaceId ?? 0);
+            return h >>> 0;
+        }
+
         this.className = className;
+        if (typeof declaringFileOrID === 'number') {
+            this.declaringFileSigID = declaringFileOrID;
+            this.declaringNamespaceSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
+            this.hashCode = computeHashCode(this.declaringFileSigID, this.className, this.declaringNamespaceSigID);
+            return;
+        }
         let fileSigID: number;
         let nsSigID: number | undefined;
-        if (typeof declaringFileOrID === 'number') {
-            fileSigID = declaringFileOrID;
-            nsSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // FileSignature 永不 unclear——身份根。
+        const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
+        if (fileExistingId !== -1) {
+            fileSigID = fileExistingId;
         } else {
-            const reg = SignatureCanonicalizerRegistry.getInstance();
-            // 模式 B'（FileSignature 永不 unclear——身份根）：formal 命中 → formal；miss → error log + 置 0（DEFAULT，复合签名变为 unclear 语义）。
-            const fileExistingId = reg.fileSigCanonicalizer.getExistingId(declaringFileOrID);
-            if (fileExistingId !== -1) {
-                fileSigID = fileExistingId;
+            ClassSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
+            fileSigID = 0;
+        }
+        // namespace 无 temp 空间。
+        if (declaringNSOrID instanceof NamespaceSignature) {
+            if (declaringNSOrID.isUnclear()) {
+                nsSigID = -1;
             } else {
-                ClassSignature.logger.error(`Clear FileSignature declaring not interned — defaulting to ID 0: ${declaringFileOrID.toString()}`);
-                fileSigID = 0;
-            }
-            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
-            if (declaringNSOrID instanceof NamespaceSignature) {
-                if (declaringNSOrID.isUnclear()) {
-                    nsSigID = -1;
+                const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
+                if (nsExistingId !== -1) {
+                    nsSigID = nsExistingId;
                 } else {
-                    const nsExistingId = reg.namespaceSigCanonicalizer.getExistingId(declaringNSOrID);
-                    if (nsExistingId !== -1) {
-                        nsSigID = nsExistingId;
-                    } else {
-                        ClassSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
-                        nsSigID = -1;
-                    }
+                    ClassSignature.logger.error(`Clear NamespaceSignature declaring not interned — marking -1: ${declaringNSOrID.toString()}`);
+                    nsSigID = -1;
                 }
             }
         }
         this.declaringFileSigID = fileSigID;
         this.declaringNamespaceSigID = nsSigID;
-        let h = 0xdeadbeef;
-        h = hashCombineU32(h, fileSigID);
-        h = hashCombineU32(h, hashString32(className));
-        h = hashCombineU32(h, nsSigID ?? 0);
-        this.hashCode = h >>> 0;
+        this.hashCode = computeHashCode(this.declaringFileSigID, this.className, this.declaringNamespaceSigID);
     }
 
     /**
@@ -427,13 +446,20 @@ export class ClassSignature {
     }
 
     public equals(other: ClassSignature): boolean {
-        if (this === other) return true;
-        // U+（display 归一化）：alias 与任何普通签名值不等——alias 的身份含
-        // aliasName 维度（见 AliasClassSignature.equals），与 origin 折叠的历史
-        // 语义已退役。对称性由子类 equals 对非 alias 返回 false 共同保证。
-        if (other instanceof AliasClassSignature) return false;
-        if (this.className !== other.className) return false;
-        if (this.declaringFileSigID !== other.declaringFileSigID) return false;
+        if (this === other) {
+            return true;
+        }
+        // display 归一化：alias 与任何普通签名值不等——alias 的身份含 aliasName 维度（见 AliasClassSignature.equals）。对称性由子类 equals 对非
+        // alias 返回 false 共同保证。
+        if (other instanceof AliasClassSignature) {
+            return false;
+        }
+        if (this.className !== other.className) {
+            return false;
+        }
+        if (this.declaringFileSigID !== other.declaringFileSigID) {
+            return false;
+        }
         return this.declaringNamespaceSigID === other.declaringNamespaceSigID;
     }
 
@@ -450,25 +476,10 @@ export class ClassSignature {
 
 /**
  * `AliasClassSignature` is used to extend `ClassSignature`, preserving the actual name used during invocation.
- *
- * U+（display 归一化，round18）：alias 升格为**一等 formal 签名**，不再是"值折叠
- * 进 origin 的 display 包装"：
- * - **身份**：aliasName 参与 hash/equals——`Text` ≠ `CommonMethod` ≠ `Column`，
- *   各自 intern 为独立的 formal ClassSigID；
- * - **双注册**：构造即 intern 自身 + 将 origin 的 ArkClass model 注册到 alias ID
- *   （多 SigID 单 model，round12 declare 全槽同构先例）——按 alias 签名的值查
- *   （scene.getClass / getMethod）直命中真实模型；
- * - **display 自持**：formal canonical 即本实例，`getClassName()` 多态即 display
- *   ——消费方（ViewTree 层级匹配、PrinterUtils 组件判断）零改动，expr 侧
- *   "formal 命中仍锚定传入实例"的 display 载体特殊逻辑随之退役（B 轮统一清理）。
- *
- * 推导引擎兼容（实证）：alias 的 declaring file 恒为真实文件（如 common.d.ts），
- * `IRInference.inferStaticInvokeExpr` 的 fileSigID≠0 短路使其零推导处理——display
- * 不会被推导替换破坏。
  */
 export class AliasClassSignature extends ClassSignature {
     private readonly aliasName: string;
-    /** U+：alias 身份 hash（与父类同构公式，className → aliasName）。 */
+    /** alias 身份 hash（与父类同构公式，className → aliasName）。 */
     private readonly aliasHashCode: number;
 
     constructor(aliasName: string, signature: ClassSignature) {
@@ -483,7 +494,7 @@ export class AliasClassSignature extends ClassSignature {
         // ——组件 pop 构建、Interface 替换——的前提都是真实类已注册）；origin model
         // 缺失时 alias 条目暂无 model（Validator M3 将暴露该形态）。
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const aliasID = reg.classSigCanonicalizer.getId(this);
+        const aliasID = reg.classSigCanonicalizer.getOrCreateId(this);
         const originID = reg.classSigCanonicalizer.getExistingId(signature);
         if (originID !== -1) {
             const originModel = reg.classSigCanonicalizer.getModel(originID);
@@ -507,31 +518,38 @@ export class AliasClassSignature extends ClassSignature {
         return super.getClassName();
     }
 
-    /** U+：alias 身份 hash（aliasName 替代 origin className 参与）。 */
+    /** alias 身份 hash（aliasName 替代 origin className 参与）。 */
     public getHashCode(): number {
         return this.aliasHashCode;
     }
 
-    /** U+：alias↔alias 比较 aliasName + origin 维度；alias 与普通签名永不相等。 */
+    /** 比较 aliasName + origin 维度；alias 与普通签名永不相等。 */
     public equals(other: ClassSignature): boolean {
-        if (this === other) return true;
-        if (!(other instanceof AliasClassSignature)) return false;
-        if (this.aliasName !== other.aliasName) return false;
-        if (this.getDeclaringFileSigID() !== other.getDeclaringFileSigID()) return false;
+        if (this === other) {
+            return true;
+        }
+        if (!(other instanceof AliasClassSignature)) {
+            return false;
+        }
+        if (this.aliasName !== other.aliasName) {
+            return false;
+        }
+        if (this.getDeclaringFileSigID() !== other.getDeclaringFileSigID()) {
+            return false;
+        }
         return this.getDeclaringNamespaceSigID() === other.getDeclaringNamespaceSigID();
     }
 }
 
 /**
- * U+（display 归一化）：将 alias MethodSignature intern 进 methodSig formal 空间
- * 并双注册 origin 的 ArkMethod model（与 AliasClassSignature 构造器的 class 侧
- * 双注册对称）。产生点（组件 pop 构建 / Interface 替换）在把签名交给 expr 之前
- * 调用——expr 的 route() formal 命中持 SigID，scene.getMethod 经 getModel 直命中
+ * @internal
+ * display 归一化：将 alias MethodSignature intern 进 methodSig formal 空间并双注册 origin 的 ArkMethod model（与 AliasClassSignature 构造器的 class 侧双注册
+ * 对称）。产生点（组件 pop 构建 / Interface 替换）在把签名交给 expr 之前调用——expr 的 route() formal 命中持 SigID，scene.getMethod 经 getModel 直命中
  * 真实方法（callgraph/ViewTree findMethod 全链路无需 fallback）。
  */
 export function internAliasMethodSignature(aliasSignature: MethodSignature, originSignature: MethodSignature): void {
     const reg = SignatureCanonicalizerRegistry.getInstance();
-    const aliasID = reg.methodSigCanonicalizer.getId(aliasSignature);
+    const aliasID = reg.methodSigCanonicalizer.getOrCreateId(aliasSignature);
     const originID = reg.methodSigCanonicalizer.getExistingId(originSignature);
     if (originID === -1) {
         return;
@@ -629,7 +647,6 @@ export class FieldSignature {
         this.declaringNamespaceSigID = undefined;
         const reg = SignatureCanonicalizerRegistry.getInstance();
         if (declaringOrID instanceof ClassSignature) {
-            // 模式 B'：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底（不 throw）。
             if (declaringOrID.isUnclear()) {
                 this.declaringClassSigID = -1;
                 this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringOrID);
@@ -644,7 +661,7 @@ export class FieldSignature {
                 }
             }
         } else {
-            // 模式 B'（namespace 无 temp 空间[§2.3]）：unclear → 标记 -1；clear + formal 命中 → formal；clear + formal miss → error log + 标记 -1。
+            // namespace 无 temp 空间。
             if (declaringOrID.isUnclear()) {
                 FieldSignature.logger.error(`Clear ClassSignature declaring not interned — routing to temp: ${declaringOrID.toString()}`);
                 this.declaringNamespaceSigID = -1;
@@ -672,9 +689,8 @@ export class FieldSignature {
     }
 
     /**
-     * @internal A2 批 4：参数式就地演进原语——不经过中间实例 N，直接按参数赋值
-     * 字段 + 解析 declaring + 重算 hash（编号不变）。供持有者更新入口的参数式
-     * 路径（决策表"未毕业抄写"分支的零分配版）使用。
+     * @internal 参数式就地演进原语——不经过中间实例 N，直接按参数赋值字段 + 解析 declaring + 重算 hash（编号不变）。供持有者更新入口的参数式路径
+     * （决策表"未毕业抄写"分支的零分配版）使用。
      */
     public applyFields(fieldName: string, declaringOrID: BaseSignature | number, type: Type, staticFlag: boolean, namespaceDeclared: boolean = false): void {
         this.fieldName = fieldName;
@@ -697,13 +713,6 @@ export class FieldSignature {
                 return sig;
             }
         } else if (this.declaringClassTempSigID !== undefined) {
-            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移）。
-            // 纯读：不写回 declaringClassSigID——物化写回曾让实例变成 (formalId,
-            // tempSigID 残留) 的中间态，同时破坏 hash 契约（hashCode 仍是构造/
-            // applyFields 时按旧字段值算的）与 equals 契约（与新构造的
-            // (formalId, undefined) 正式签名判不等）。字段保持构造时形态终身一致；
-            // 已迁移实例每次多一次 getReplacement 的 Map 查找（O(1)），
-            // isUnclear 保持 true（已迁移仍 unclear——推导空转幂等）。
             const sig = reg.tempClassSigCanonicalizer.get(this.declaringClassTempSigID);
             if (sig !== undefined) {
                 return sig;
@@ -792,10 +801,18 @@ export class FieldSignature {
     }
 
     public equals(other: FieldSignature): boolean {
-        if (this === other) return true;
-        if (this.fieldName !== other.fieldName) return false;
-        if (this.staticFlag !== other.staticFlag) return false;
-        return this.declaringClassSigID === other.declaringClassSigID && this.declaringNamespaceSigID === other.declaringNamespaceSigID && this.declaringClassTempSigID === other.declaringClassTempSigID;
+        if (this === other) {
+            return true;
+        }
+        if (this.fieldName !== other.fieldName) {
+            return false;
+        }
+        if (this.staticFlag !== other.staticFlag) {
+            return false;
+        }
+        return this.declaringClassSigID === other.declaringClassSigID &&
+            this.declaringNamespaceSigID === other.declaringNamespaceSigID &&
+            this.declaringClassTempSigID === other.declaringClassTempSigID;
     }
 
     /**
@@ -886,23 +903,24 @@ export class MethodSubSignature {
 }
 
 /**
- * @internal Value-semantic equality between two MethodSubSignatures, semantically
- * equivalent to `a.toString() === b.toString()` plus return-type equality (the legacy
- * MethodSignature.equals semantics), but short-circuits from cheap to expensive with
- * NO string building in the common mismatch cases:
- * staticFlag (boolean) → methodName (string ===, V8 length/reference short-circuit) →
- * parameter count → per-parameter type (reference short-circuit for singleton types,
- * then toString — Type has no hash infrastructure) → return type.
- * Parameter types that are undefined/null compare as UnknownType (preserving the
- * `MethodSubSignature.toString` projection semantics).
+ * @internal Value-semantic equality between two MethodSubSignatures, semantically equivalent to `a.toString() === b.toString()` plus return-type equality,
+ * but short-circuits from cheap to expensive with NO string building in the common mismatch cases.
  */
 function methodSubSignatureValueEquals(a: MethodSubSignature, b: MethodSubSignature): boolean {
-    if (a === b) return true;
-    if (a.isStatic() !== b.isStatic()) return false;
-    if (a.getMethodName() !== b.getMethodName()) return false;
+    if (a === b) {
+        return true;
+    }
+    if (a.isStatic() !== b.isStatic()) {
+        return false;
+    }
+    if (a.getMethodName() !== b.getMethodName()) {
+        return false;
+    }
     const ap = a.getParameters();
     const bp = b.getParameters();
-    if (ap.length !== bp.length) return false;
+    if (ap.length !== bp.length) {
+        return false;
+    }
     for (let i = 0; i < ap.length; i++) {
         const at = ap[i]?.getType();
         const bt = bp[i]?.getType();
@@ -925,13 +943,6 @@ export class MethodSignature {
 
     /** @internal Formal ClassSigID for the declaring class. -1 = unclear (temp-held). */
     private declaringClassSigID: number;
-    /**
-     * @internal Temp ClassSigID for the unclear declaring class (reference-semantics).
-     * B 轮（索引表）后是唯一的 temp 侧状态——取回走 slot、迁移经替换记录惰性
-     * 物化（tempSigID 保留作痕迹）。历史 display 锚（declaringClassSignatureDisplay）
-     * 已删：U+ 后 alias declaring 是独立 formal 条目自持 display，普通场景
-     * canonical 与传入实例值等价。
-     */
     private declaringClassTempSigID?: number;
 
     private static readonly logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'MethodSignature');
@@ -958,7 +969,6 @@ export class MethodSignature {
             this.declaringClassTempSigID = declaringClassTempSigID;
         } else {
             const reg = SignatureCanonicalizerRegistry.getInstance();
-            // 模式 B'：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底（不 throw）。
             if (declaringClassOrID.isUnclear()) {
                 this.declaringClassSigID = -1;
                 this.declaringClassTempSigID = reg.tempClassSigCanonicalizer.register(declaringClassOrID);
@@ -973,20 +983,8 @@ export class MethodSignature {
                 }
             }
         }
-        // Hash inputs are lifetime-stable identity fields ONLY: declaring SigIDs, method
-        // name, parameter count, static flag. Parameter TYPES and the return type are
-        // deliberately excluded — they are mutable in place during inference (a
-        // parameter's ClassType gets re-anchored once its class resolves;
-        // setReturnType rewrites return types), and a hash over mutable state breaks the
-        // "equals-equal ⇒ hash-equal" contract across mutation windows: the table-stored
-        // entry's bucket reflects its construction-time state while a freshly built
-        // value-equal signature hashes differently → getExistingId misses → spurious
-        // re-registration (duplicate IDs, temp-ID sequence drift). The looser hash
-        // merges overload groups (same class, same name, same param count) into one
-        // bucket — equals remains the sole semantic discriminator on the collision chain,
-        // the same legal-superset principle already applied to the return type below.
-        // This also removes the construction-time toString() concatenation (per-parameter
-        // Type string building) from the hot constructor path entirely.
+        // Hash inputs are lifetime-stable identity fields ONLY: declaring SigIDs, method name, parameter count, static flag.
+        // Parameter TYPES and the return type are deliberately excluded — they are mutable in place during inference.
         let h = 0xdeadbeef;
         h = hashCombineU32(h, this.declaringClassSigID);
         h = hashCombineU32(h, this.declaringClassTempSigID ?? 0);
@@ -1005,14 +1003,6 @@ export class MethodSignature {
      * A namespace signature can indicate its **string** name of namespace and its file signature.
      * - Class Name: the **string** name of this class.
      * @returns The declaring class signature.
-     * @example
-     * 1. get class signature from ArkMethod.
-
-  ```typescript
-  let methodSignature = expr.getMethodSignature();
-  let name = methodSignature.getDeclaringClassSignature().getClassName();
-  ```
-     *
      */
     public getDeclaringClassSignature(): ClassSignature {
         const reg = SignatureCanonicalizerRegistry.getInstance();
@@ -1022,12 +1012,6 @@ export class MethodSignature {
                 return sig;
             }
         } else if (this.declaringClassTempSigID !== undefined) {
-            // B 轮（索引表）三级查：temp slot（未迁移）→ 替换记录 formal（已迁移）。
-            // 纯读（与 FieldSignature.getDeclaringSignature 同款决策）：不写回
-            // declaringClassSigID——物化写回会同时破坏 hash 契约（hash 一次算定，
-            // 含锚点字段，写回后陈旧）与 equals 契约（equals 逐字段含
-            // declaringClassTempSigID，中间态 (formalId, tempSigID 残留) 与新构造的
-            // 正式签名判不等）。
             const sig = reg.tempClassSigCanonicalizer.get(this.declaringClassTempSigID);
             if (sig !== undefined) {
                 return sig;
@@ -1090,40 +1074,23 @@ export class MethodSignature {
     }
 
     public equals(other: MethodSignature): boolean {
-        if (this === other) return true;
-        if (this.declaringClassSigID !== other.declaringClassSigID) return false;
-        if (this.declaringClassTempSigID !== other.declaringClassTempSigID) return false;
-        // Both the parameter types and the return type participate in equality (like
-        // isMatch) so that overloads differing in either intern to distinct IDs. Both are
-        // intentionally NOT part of the cached hash: type inference mutates them in place
-        // (parameter ClassTypes get re-anchored once their classes resolve; return types
-        // get rewritten), and keeping the hash stable allows re-interning a mutated
-        // value-equal signature to the same ID (hash-equal is a legal superset of
-        // equals-equal). Overload groups sharing name + param count land in one bucket;
-        // this equals call is the sole semantic discriminator on that collision chain.
+        if (this === other) {
+            return true;
+        }
+        if (this.declaringClassSigID !== other.declaringClassSigID) {
+            return false;
+        }
+        if (this.declaringClassTempSigID !== other.declaringClassTempSigID) {
+            return false;
+        }
         return methodSubSignatureValueEquals(this.methodSubSignature, other.methodSubSignature);
     }
 
-    /**
-     * @internal Whether the declaring class is unclear (temp-held, unresolved).
-     * Direct field check (no registry lookup, no declaring class chain traversal):
-     * declaringClassSigID is non-positive — -1 means explicitly unclear (temp-held, set by
-     * mode B' temp path); 0 means the DEFAULT class is the declaring side ("method on an
-     * unknown class" — stub builders like ArkSignatureBuilder.buildMethodSignatureFromMethodName
-     * pass 0 directly, and value-object construction over ClassSignature.DEFAULT resolves
-     * to 0). A positive formal declaring ID implies the declaring class went through the
-     * formal path — the method is not unclear.
-     */
     public isUnclear(): boolean {
         return this.declaringClassSigID === -1 || this.declaringClassSigID === 0;
     }
 
     public isMatch(signature: MethodSignature): boolean {
-        // Declaring comparison is VALUE-semantic (signatureEquals: cached-hash reject +
-        // equals verdict) — equivalent to the legacy `toString() === toString()` since
-        // ClassSignature.toString is an identity projection, and it preserves isMatch's
-        // lenient semantics for unclear stubs (two value-equal stub instances still match,
-        // unlike equals' strict tempSigID reference semantics).
         if (!signatureEquals(this.getDeclaringClassSignature(), signature.getDeclaringClassSignature())) {
             return false;
         }
@@ -1182,23 +1149,18 @@ export class AliasTypeSignature {
 }
 
 /**
- * Legacy free-function comparators — kept for API compatibility (external callers may
- * exist). Internally modernized from the legacy toString()-building / Type-reference
- * comparisons to the hash+equals value protocol; behavior now aligns with the
- * corresponding signature classes' `equals()`:
- * - classSignatureCompare now also compares the declaring namespace (the legacy
- *   implementation silently ignored it, misjudging same-name classes in different
- *   namespaces as equal);
- * - methodSubSignatureCompare now compares parameter/return types by value (the legacy
- *   implementation used `===` reference comparison, misjudging value-equal distinct
- *   Type instances as different).
+ * Legacy free-function comparators — kept for API compatibility (external callers may exist).
+ * Behavior aligns with the corresponding signature classes' `equals()`:
+ * - classSignatureCompare compares the declaring namespace (silently ignoring it misjudges same-name classes in different namespaces as equal);
+ * - methodSubSignatureCompare compares parameter/return types by value (`===` reference comparison misjudges value-equal distinct Type instances as different).
  */
 export function fieldSignatureCompare(leftSig: FieldSignature, rightSig: FieldSignature): boolean {
     return signatureEquals(leftSig.getDeclaringSignature(), rightSig.getDeclaringSignature()) && leftSig.getFieldName() === rightSig.getFieldName();
 }
 
 export function methodSignatureCompare(leftSig: MethodSignature, rightSig: MethodSignature): boolean {
-    return signatureEquals(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) && methodSubSignatureValueEquals(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature());
+    return signatureEquals(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) &&
+        methodSubSignatureValueEquals(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature());
 }
 
 export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig: MethodSubSignature): boolean {

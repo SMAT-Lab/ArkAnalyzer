@@ -34,45 +34,45 @@ describe('Scene Canonicalizer Integration Test', () => {
         new Scene();
         const sig1 = new FileSignature('proj', 'src/a.ts');
         const sig2 = new FileSignature('proj', 'src/a.ts');
-        const id1 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(sig1);
-        const id2 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(sig2);
+        const id1 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(sig1);
+        const id2 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(sig2);
         expect(id1).toBe(id2);
         expect(id1).toBeGreaterThan(0);
     });
 
     it('internFileSig returns different IDs for different FileSignature values', () => {
         new Scene();
-        const id1 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('proj', 'src/a.ts'));
-        const id2 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('proj', 'src/b.ts'));
+        const id1 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/a.ts'));
+        const id2 = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/b.ts'));
         expect(id1).not.toBe(id2);
     });
 
     it('internClassSig returns same ID for same ClassSignature value', () => {
         new Scene();
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig);
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig);
         const sig1 = new ClassSignature('MyClass', fileSig, null);
         const sig2 = new ClassSignature('MyClass', fileSig, null);
-        expect(SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(sig1)).toBe(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(sig2)
+        expect(SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(sig1)).toBe(
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(sig2)
         );
     });
 
     it('internMethodSig returns same ID for same MethodSignature value', () => {
         new Scene();
         const fileSig = new FileSignature('proj', 'src/a.ts');
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig);
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig);
         const classSig = new ClassSignature('MyClass', fileSig, null);
         const ms1 = new MethodSignature(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('foo', [], UnknownType.getInstance(), false)
         );
         const ms2 = new MethodSignature(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig),
             new MethodSubSignature('foo', [], UnknownType.getInstance(), false)
         );
-        expect(SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getId(ms1)).toBe(
-            SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getId(ms2)
+        expect(SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getOrCreateId(ms1)).toBe(
+            SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getOrCreateId(ms2)
         );
     });
 
@@ -80,10 +80,10 @@ describe('Scene Canonicalizer Integration Test', () => {
         new Scene();
         const fileSig = new FileSignature('proj', 'src/a.ts');
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        const fileSigID = reg.fileSigCanonicalizer.getId(fileSig);
+        const fileSigID = reg.fileSigCanonicalizer.getOrCreateId(fileSig);
         const sig1 = new NamespaceSignature('MyNS', fileSigID);
         const sig2 = new NamespaceSignature('MyNS', fileSigID);
-        expect(reg.namespaceSigCanonicalizer.getId(sig1)).toBe(reg.namespaceSigCanonicalizer.getId(sig2));
+        expect(reg.namespaceSigCanonicalizer.getOrCreateId(sig1)).toBe(reg.namespaceSigCanonicalizer.getOrCreateId(sig2));
     });
 
     it('filesMap uses integer keys after internFileSig', () => {
@@ -92,7 +92,7 @@ describe('Scene Canonicalizer Integration Test', () => {
         const fileSig = new FileSignature('proj', 'src/test.ts');
         arkFile.setFileSignature(fileSig);
         scene.setFile(arkFile);
-        const id = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(fileSig);
+        const id = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(fileSig);
         expect(id).toBeGreaterThan(0);
         scene.addSdkArkFile(arkFile);
         expect(scene.getFile(fileSig)).toBe(arkFile);
@@ -100,8 +100,8 @@ describe('Scene Canonicalizer Integration Test', () => {
 
     it('dispose clears all canonicalizers', () => {
         const scene = new Scene();
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('proj', 'src/a.ts'));
-        SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(new ClassSignature('C', new FileSignature('proj', 'src/a.ts'), null));
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/a.ts'));
+        SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(new ClassSignature('C', new FileSignature('proj', 'src/a.ts'), null));
         expect(scene.getFileSigCanonicalizer().size()).toBeGreaterThan(1);
         expect(scene.getClassSigCanonicalizer().size()).toBeGreaterThan(1);
         scene.dispose();
@@ -111,7 +111,7 @@ describe('Scene Canonicalizer Integration Test', () => {
 
     it('clear resets canonicalizers and re-interns DEFAULTs', () => {
         const scene = new Scene();
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('proj', 'src/a.ts'));
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(new FileSignature('proj', 'src/a.ts'));
         expect(scene.getFileSigCanonicalizer().size()).toBeGreaterThan(1);
         scene.clear();
         expect(scene.getFileSigCanonicalizer().size()).toBe(1);
@@ -127,12 +127,12 @@ describe('Scene Canonicalizer Integration Test', () => {
     it('getId+get returns canonical single instance', () => {
         const scene = new Scene();
         // The earlier dispose/clear cases wiped prior registrations: re-intern the file value.
-        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(new FileSignature('p', 'f.ts'));
+        SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(new FileSignature('p', 'f.ts'));
         const sig1 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const sig2 = new ClassSignature('A', new FileSignature('p', 'f.ts'), null);
         const c = scene.getClassSigCanonicalizer();
-        const a = c.get(c.getId(sig1))!;
-        const b = c.get(c.getId(sig2))!;
+        const a = c.get(c.getOrCreateId(sig1))!;
+        const b = c.get(c.getOrCreateId(sig2))!;
         expect(a).toBe(b);
         expect(a).toBe(sig1);
     });

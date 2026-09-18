@@ -67,7 +67,7 @@ describe('object literal to SDK type: field isolation Test', () => {
         // ⑤ 匿名类字段身份一致：fieldSigID 与类索引中的 ID 相同（无两 ID 分裂）。
         expect(anonClass!.hasTopFieldWithID(anonAlbum!.getFieldSigID())).toBe(true);
 
-        // ⑥ init stmt 的 fieldRef 仍持有 SDK 字段签名（master 兼容的 IR 形态）。
+        // ⑥ init stmt 的 fieldRef 仍持有 SDK 字段签名。
         const initStmt = anonAlbum!.getInitializer()[anonAlbum!.getInitializer().length - 1];
         const leftOp = (initStmt as { getLeftOp?: () => unknown }).getLeftOp?.() as { getFieldSignature?: () => { toString(): string } } | undefined;
         expect(leftOp?.getFieldSignature?.()?.toString()).toBe(sdkAlbum!.getSignature().toString());

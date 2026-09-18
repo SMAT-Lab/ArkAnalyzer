@@ -579,11 +579,9 @@ export class TypeInference {
      * @returns true if the type is unclear, otherwise false
      */
     public static isUnclearType(type: Type | null | undefined): boolean {
-        // Thin delegate to the polymorphic Type.isUnclear() — the cpp-specific instanceof
-        // chain (including the PointerType/ReferenceType recursion, now owned by those
-        // classes) has converged with the core semantics. Note: the historical cpp twin
-        // skipped TypeQueryExpr.generateTypes; the unified implementation checks them
-        // (core semantics), which is the only intentional behavioral convergence.
+        // Thin delegate to the polymorphic Type.isUnclear() — the cpp-specific instanceof chain (including the PointerType/ReferenceType recursion,
+        // now owned by those classes) has converged with the core semantics. The unified implementation checks TypeQueryExpr.generateTypes
+        // (intentional convergence with core semantics).
         return type === null || type === undefined ? true : type.isUnclear();
     }
 

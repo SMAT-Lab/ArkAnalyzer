@@ -498,8 +498,6 @@ export class StmtInference extends ArkModelInference {
     }
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
-        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
-        // "unclear"): a null/undefined right operand carries no information — never propagate.
         if (TypeInference.isUnclearType(rightType) || rightType instanceof UndefinedType || rightType instanceof NullType) {
             return undefined;
         }
@@ -515,9 +513,6 @@ export class StmtInference extends ArkModelInference {
      */
     public updateValueType(target: Value, srcType: Type, method: ArkMethod): Stmt[] | undefined {
         const type = target.getType();
-        // Placeholder semantics (explicit, formerly carried by NullType/UndefinedType being
-        // "unclear"): a target whose type is still null/undefined has never received a real
-        // type — treat it as overridable, like unclear types.
         if (type !== srcType && (TypeInference.isUnclearType(type) || type instanceof UndefinedType || type instanceof NullType)) {
             if (target instanceof Local) {
                 target.setType(srcType);

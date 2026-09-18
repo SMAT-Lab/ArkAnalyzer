@@ -76,7 +76,7 @@ describe('CanonicalizerValidator file space Test', () => {
 
         // R4: mount a model whose getFileSigID() points elsewhere.
         const otherSig = new FileSignature('proj', 'src/val-other.ts');
-        const otherID = reg.fileSigCanonicalizer.getId(otherSig);
+        const otherID = reg.fileSigCanonicalizer.getOrCreateId(otherSig);
         const confused = new ArkFile(Language.TYPESCRIPT);
         confused.setFileSignature(new FileSignature('proj', 'src/val-confused.ts'));
         const confusedID = confused.getFileSigID();
@@ -84,7 +84,7 @@ describe('CanonicalizerValidator file space Test', () => {
 
         // R6: the same ArkFile instance mounted at a second ID.
         const dupSig = new FileSignature('proj', 'src/val-dup.ts');
-        const dupID = reg.fileSigCanonicalizer.getId(dupSig);
+        const dupID = reg.fileSigCanonicalizer.getOrCreateId(dupSig);
         reg.fileSigCanonicalizer.setModel(dupID, confused); // confused now mounted twice
 
         try {
@@ -239,12 +239,12 @@ describe('CanonicalizerValidator namespace space Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const file = setupHostFile('src/ns-val-host.ts');
         const otherSig = new NamespaceSignature('OtherNS', file.getFileSigID());
-        const otherID = reg.namespaceSigCanonicalizer.getId(otherSig);
+        const otherID = reg.namespaceSigCanonicalizer.getOrCreateId(otherSig);
         const confusedSig = new NamespaceSignature('ConfusedNS', file.getFileSigID());
         const confused = new ArkNamespace(file.getFileSigID(), undefined, confusedSig);
         reg.namespaceSigCanonicalizer.setModel(otherID, confused); // 回指 confusedID ≠ otherID
         const dupSig = new NamespaceSignature('DupNS', file.getFileSigID());
-        const dupID = reg.namespaceSigCanonicalizer.getId(dupSig);
+        const dupID = reg.namespaceSigCanonicalizer.getOrCreateId(dupSig);
         reg.namespaceSigCanonicalizer.setModel(dupID, confused); // 双挂载
         try {
             const violations = CanonicalizerValidator.validateNamespaceSpace();
@@ -264,7 +264,7 @@ describe('CanonicalizerValidator namespace space Test', () => {
         // 注意 NamespaceSignature.getNamespaceSigID() 是只读的（未注册返回 -1），
         // 惰性 intern 不存在，无 model 条目只能经显式 getId 产生。
         const parentSig = new NamespaceSignature('ParentNoModel', fileID);
-        const parentID = reg.namespaceSigCanonicalizer.getId(parentSig);
+        const parentID = reg.namespaceSigCanonicalizer.getOrCreateId(parentSig);
         // 子：真实注册（构造器内 setSignature），declaring 指向无 model 的父。
         const childSig = new NamespaceSignature('ChildOfNoModel', fileID, parentID);
         const child = new ArkNamespace(fileID, parentID, childSig);
@@ -325,7 +325,7 @@ describe('CanonicalizerValidator namespace space Test', () => {
         // 显式 getId intern（无 model —— N3 报告过）。注：NamespaceSignature.getNamespaceSigID()
         // 为只读字段不回写 -1，真实无 model 的目标只能经显式 getId 创建（tests 未覆盖上游错误的真实态）。
         const sig = new NamespaceSignature('HealNS', fileID);
-        const id = reg.namespaceSigCanonicalizer.getId(sig);
+        const id = reg.namespaceSigCanonicalizer.getOrCreateId(sig);
         expect(CanonicalizerValidator.validateNamespaceSpace().some(v => v.includes(`N3: ID ${id}`))).toBe(true);
         // 真实 ArkNamespace 挂载：setSignature 三态处理（三态对齐后）——驱逐态补注册，
         // N3 不再报告（model 已恢复，与 ArkClass.setSignature 行为一致）。
@@ -383,7 +383,7 @@ describe('CanonicalizerValidator class space Test', () => {
         //（formal 只写入口 = internDefaults + ArkClass.setSignature），该形态
         // 只能经 tests 手工构造或未来新代码产生，C3 持续守护。
         const sig = new ClassSignature('HoleCls', file.getFileSignature());
-        const id = reg.classSigCanonicalizer.getId(sig);
+        const id = reg.classSigCanonicalizer.getOrCreateId(sig);
         expect(CanonicalizerValidator.validateClassSpace().some(v => v.includes(`C3: ID ${id}`))).toBe(true);
     });
 
@@ -391,13 +391,13 @@ describe('CanonicalizerValidator class space Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const file = setupHostFile('src/cls-val-host.ts');
         const otherSig = new ClassSignature('OtherCls', file.getFileSignature());
-        const otherID = reg.classSigCanonicalizer.getId(otherSig);
+        const otherID = reg.classSigCanonicalizer.getOrCreateId(otherSig);
         const confusedSig = new ClassSignature('ConfusedCls', file.getFileSignature());
         const confused = new ArkClass(file.getFileSigID());
         confused.setSignature(confusedSig);
         reg.classSigCanonicalizer.setModel(otherID, confused); // 回指 confusedID ≠ otherID
         const dupSig = new ClassSignature('DupCls', file.getFileSignature());
-        const dupID = reg.classSigCanonicalizer.getId(dupSig);
+        const dupID = reg.classSigCanonicalizer.getOrCreateId(dupSig);
         reg.classSigCanonicalizer.setModel(dupID, confused); // 双挂载
         try {
             const violations = CanonicalizerValidator.validateClassSpace();
@@ -415,7 +415,7 @@ describe('CanonicalizerValidator class space Test', () => {
         const fileID = file.getFileSigID();
         // 父 ns：显式 getId intern（无 model 形态）。
         const parentSig = new NamespaceSignature('ParentNoModelNS', fileID);
-        const parentID = reg.namespaceSigCanonicalizer.getId(parentSig);
+        const parentID = reg.namespaceSigCanonicalizer.getOrCreateId(parentSig);
         // 子类：declaring 指向无 model 的父 ns（构造器内 setSignature 注册 model）。
         const cls = new ArkClass(fileID, parentID);
         cls.setSignature(new ClassSignature('NestedOfNoModel', file.getFileSignature(), new NamespaceSignature('ParentNoModelNS', fileID)));
@@ -514,13 +514,13 @@ describe('CanonicalizerValidator field space Test', () => {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         const { cls } = setupField('src/fld-val-host.ts', 'FldValHost', 'hostField');
         const otherSig = new FieldSignature('otherField', cls.getClassSigID(), NumberType.getInstance(), false);
-        const otherID = reg.fieldSigCanonicalizer.getId(otherSig);
+        const otherID = reg.fieldSigCanonicalizer.getOrCreateId(otherSig);
         const confusedSig = new FieldSignature('confusedField', cls.getClassSigID(), NumberType.getInstance(), false);
         const confused = new ArkField(cls.getClassSigID());
         confused.setSignature(confusedSig);
         reg.fieldSigCanonicalizer.setModel(otherID, confused); // 回指 confusedID ≠ otherID
         const dupSig = new FieldSignature('dupField', cls.getClassSigID(), NumberType.getInstance(), false);
-        const dupID = reg.fieldSigCanonicalizer.getId(dupSig);
+        const dupID = reg.fieldSigCanonicalizer.getOrCreateId(dupSig);
         reg.fieldSigCanonicalizer.setModel(dupID, confused); // 双挂载
         try {
             const violations = CanonicalizerValidator.validateFieldSpace();
@@ -582,7 +582,7 @@ describe('CanonicalizerValidator field space Test', () => {
         cls.getDeclaringArkFile().addArkClass(bareCls);
         // 签名声明 bareCls（无索引挂载），model 为原 field 实例（回指一致但链断）。
         const unindexedSig = new FieldSignature('unindexedField', bareCls.getClassSigID(), NumberType.getInstance(), false);
-        const unindexedID = reg.fieldSigCanonicalizer.getId(unindexedSig);
+        const unindexedID = reg.fieldSigCanonicalizer.getOrCreateId(unindexedSig);
         reg.fieldSigCanonicalizer.setModel(unindexedID, field);
         try {
             const violations = CanonicalizerValidator.validateFieldSpace();
@@ -623,7 +623,7 @@ describe('CanonicalizerValidator method space Test', () => {
         const { cls } = setupMethod('src/mtd-val-m3.ts', 'MtdM3Host', 'declOnly');
         // 显式 intern 一条同 class 的声明签名（不注册 model）——declaring class 存活 → 合法跳过。
         const declSig = new MethodSignature(cls.getClassSigID(), new MethodSubSignature('declOnly', [], NumberType.getInstance(), false));
-        reg.methodSigCanonicalizer.getId(declSig);
+        reg.methodSigCanonicalizer.getOrCreateId(declSig);
         expect(CanonicalizerValidator.validateMethodSpace().some(v => v.includes('M3:'))).toBe(false);
     });
 
@@ -635,7 +635,7 @@ describe('CanonicalizerValidator method space Test', () => {
             cls.getClassSigID(),
             new MethodSubSignature('orphanDecl', [new MethodParameter()], NumberType.getInstance(), false)
         );
-        const id = reg.methodSigCanonicalizer.getId(declSig);
+        const id = reg.methodSigCanonicalizer.getOrCreateId(declSig);
         // 删 class model（模拟驱逐后 class 不在）→ declare-only 不再合法。
         SignatureCanonicalizerRegistry.getInstance().removeClassModel(cls);
         try {
@@ -671,7 +671,7 @@ describe('CanonicalizerValidator method space Test', () => {
         const { cls } = setupMethod('src/mtd-val-m4b.ts', 'MtdM4bHost', 'orphanHost');
         // 手造孤儿：一个别的实例注册到无人持有的签名 ID 上。
         const orphanSig = new MethodSignature(cls.getClassSigID(), new MethodSubSignature('orphanMounted', [], NumberType.getInstance(), false));
-        const orphanID = reg.methodSigCanonicalizer.getId(orphanSig);
+        const orphanID = reg.methodSigCanonicalizer.getOrCreateId(orphanSig);
         const orphan = new ArkMethod(cls.getClassSigID());
         orphan.setImplementationSignature(orphanSig);
         // setImplementationSignature 在仲裁中已把 orphan 注册到 orphanID（self-id 持有）——
@@ -839,7 +839,7 @@ describe('CanonicalizerValidator temp spaces Test', () => {
         const stub = new ClassSignature('T1StaleStub', 0, undefined);
         reg.tempClassSigCanonicalizer.register(stub);
         // ... then the same value lands in formal (real model registration).
-        reg.classSigCanonicalizer.getId(stub);
+        reg.classSigCanonicalizer.getOrCreateId(stub);
         const violations = CanonicalizerValidator.validateTempSpaces();
         expect(violations.some(v => v.includes('[temp-class] T1'))).toBe(true);
         expect(violations.some(v => v.includes('stale temp registration'))).toBe(true);

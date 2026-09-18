@@ -157,7 +157,7 @@ describe('ArkModule tests', () => {
             module.addFile(arkFile);
             const filesMap = module.getFilesMap();
             expect(filesMap.size).toBe(1);
-            const expectedKey = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getId(arkFile.getFileSignature());
+            const expectedKey = SignatureCanonicalizerRegistry.getInstance().fileSigCanonicalizer.getOrCreateId(arkFile.getFileSignature());
             expect(filesMap.has(expectedKey)).toBe(true);
             expect(filesMap.get(expectedKey)).toBe(arkFile);
         });

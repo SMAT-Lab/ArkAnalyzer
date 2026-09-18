@@ -69,6 +69,7 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     } else {
         logger.warn('JSDocNamespaceDeclaration found.');
     }
+    declaringInstance.addNamespace(ns);
 }
 
 function genNamespaceName(name: string, declaringInstance: ArkFile | ArkNamespace): string {
@@ -103,7 +104,6 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             case AstKind.NamespaceDecl: {
                 let childNs: ArkNamespace = new ArkNamespace(namespace.getDeclaringFileID(), namespace.getNamespaceSigID());
                 buildArkNamespace(child, namespace, childNs, sourceFile);
-                namespace.addNamespace(childNs);
                 return;
             }
             case AstKind.CXXRecordDecl:

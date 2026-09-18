@@ -223,7 +223,6 @@ export class AbcFieldRefInference extends FieldRefInference {
                     const fieldSignature = new FieldSignature(value.getFieldSignature().getFieldName(), cls.getClassSigID(), UnknownType.getInstance());
                     field.setSignature(fieldSignature);
                     cls.addField(field);
-                    // A2 快路径：field.setSignature 已 intern（formalId 可得）——
                     // 终点确定，graduateToFormal 直达。
                     value.graduateToFormal(field.getFieldSigID());
                 }
@@ -291,28 +290,29 @@ export class AbcExceptionRefInference extends ValueInference<ArkCaughtExceptionR
     }
 
     public infer(value: ArkCaughtExceptionRef, stmt: Stmt): Value | undefined {
-        if (!AbcExceptionRefInference.ERROR_TYPE) {
-            const scene = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getScene();
-            const errFile = scene.getSdkArkFiles().find(e => e.getName().endsWith(OHOS_BASE_FILE));
-            // 签名直查：file 顶层 → 各 namespace（与 getClassWithName 的递归顺序一致），
-            // 免线性扫描与前缀模糊匹配
-            let err: ArkClass | null = null;
-            if (errFile) {
-                err = errFile.getClass(new ClassSignature(BUSINESS_ERROR, errFile.getFileSigID()));
-                if (!err) {
-                    for (const ns of errFile.getAllNamespacesUnderThisFile()) {
-                        err = ns.getClass(new ClassSignature(BUSINESS_ERROR, ns.getDeclaringFileID(), ns.getNamespaceSigID()));
-                        if (err) {
-                            break;
-                        }
-                    }
+        if (AbcExceptionRefInference.ERROR_TYPE) {
+            value.setType(AbcExceptionRefInference.ERROR_TYPE);
+            return undefined;
+        }
+        const scene = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getScene();
+        const errFile = scene.getSdkArkFiles().find(e => e.getName().endsWith(OHOS_BASE_FILE));
+        if (!errFile) {
+            return undefined;
+        }
+        // 签名直查：file 顶层 → 各 namespace（与 getClassWithName 的递归顺序一致），
+        // 免线性扫描与前缀模糊匹配
+        let err: ArkClass | null = null;
+        err = errFile.getClass(new ClassSignature(BUSINESS_ERROR, errFile.getFileSigID()));
+        if (!err) {
+            for (const ns of errFile.getAllNamespacesUnderThisFile()) {
+                err = ns.getClass(new ClassSignature(BUSINESS_ERROR, ns.getDeclaringFileID(), ns.getNamespaceSigID()));
+                if (err) {
+                    break;
                 }
             }
-            if (err instanceof ArkClass) {
-                AbcExceptionRefInference.ERROR_TYPE = new ClassType(err.getSignature(), err.getGenericsTypes());
-                value.setType(AbcExceptionRefInference.ERROR_TYPE);
-            }
-        } else {
+        }
+        if (err instanceof ArkClass) {
+            AbcExceptionRefInference.ERROR_TYPE = new ClassType(err.getSignature(), err.getGenericsTypes());
             value.setType(AbcExceptionRefInference.ERROR_TYPE);
         }
         return undefined;

@@ -22,7 +22,6 @@ import { ArkField } from '../../src/core/model/ArkField';
 import { ArkMethod } from '../../src/core/model/ArkMethod';
 import { ArkBody } from '../../src/core/model/ArkBody';
 import { Cfg } from '../../src/core/graph/Cfg';
-import { resetGetMethodFallbackStats, snapshotGetMethodFallbackStats } from '../../src/core/model/ArkClass';
 import { FileSignature, ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../src/core/model/ArkSignature';
 import { UnknownType } from '../../src/core/base/Type';
 import { MethodParameter } from '../../src/core/model/builder/ArkMethodBuilder';
@@ -85,7 +84,7 @@ describe('Model Relationship ID Test', () => {
 
         const field = new ArkField(arkClass.getClassSigID());
         field.setSignature(
-            new FieldSignature('myField', SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(classSig), UnknownType.getInstance(), false)
+            new FieldSignature('myField', SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(classSig), UnknownType.getInstance(), false)
         );
 
         const classID = field.getDeclaringClassID();
@@ -759,13 +758,13 @@ describe('ArkMethod ID-injecting constructor Test', () => {
             arkClass.getClassSigID(),
             new MethodSubSignature('refresh', [newParam('declName')], UnknownType.getInstance(), false)
         );
-        reg.methodSigCanonicalizer.getId(declaring);
+        reg.methodSigCanonicalizer.getOrCreateId(declaring);
 
         // Implementation with a different parameter name -> the constructor path must refresh
         const impl = new MethodSignature(arkClass.getClassSigID(), new MethodSubSignature('refresh', [newParam('implName')], UnknownType.getInstance(), false));
         new ArkMethod(arkClass.getClassSigID(), impl);
 
-        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getId(impl))!;
+        const canonical = reg.methodSigCanonicalizer.get(reg.methodSigCanonicalizer.getOrCreateId(impl))!;
         expect(canonical.getMethodSubSignature().getParameters()[0].getName()).toBe('implName');
 
         function newParam(name: string) {
@@ -814,16 +813,8 @@ describe('B1 Full-slot Registration Test', () => {
         expect(idB).toBeGreaterThan(0);
         expect(reg.methodSigCanonicalizer.getModel(idB)).toBe(method);
 
-        resetGetMethodFallbackStats();
         expect(arkClass.getMethod(sigA)).toBe(method);
         expect(arkClass.getMethod(sigB)).toBe(method);
-        // Fast-path hits produce no fallback activity
-        const snap = snapshotGetMethodFallbackStats();
-        expect(snap.fastPathNoModel).toBe(0);
-        expect(snap.fastPathForeignOwner).toBe(0);
-        expect(snap.fallbackMatched).toBe(0);
-        expect(snap.fallbackUnmatched).toBe(0);
-        expect(snap.fallbackNameMiss).toBe(0);
     });
 
     it('non-primary declare slot: a body-carrying holder is never evicted by a body-less method', () => {
@@ -885,34 +876,6 @@ describe('B1 Full-slot Registration Test', () => {
         expect(arkClass.removeMethod(method)).toBe(true);
         expect(reg.methodSigCanonicalizer.getModel(idA)).toBeUndefined();
         expect(reg.methodSigCanonicalizer.getModel(idB)).toBeUndefined();
-    });
-
-    it('fallback counters classify fast-path misses', () => {
-        const scene = new Scene();
-        const arkClass = setupClass(scene, 'CounterHost');
-        const reg = SignatureCanonicalizerRegistry.getInstance();
-
-        // A same-name method with a different signature exists in the class
-        const present = new ArkMethod(arkClass.getClassSigID(), makeSig(arkClass, 'counted', 1));
-        arkClass.addMethod(present);
-
-        // A signature that is interned but holds no model: fast path reports noModel,
-        // fallback finds the same-name candidate but no signature match
-        const internedOnly = makeSig(arkClass, 'counted', 2);
-        reg.methodSigCanonicalizer.getId(internedOnly);
-        resetGetMethodFallbackStats();
-        expect(arkClass.getMethod(internedOnly)).toBeNull();
-        let snap = snapshotGetMethodFallbackStats();
-        expect(snap.fastPathNoModel).toBe(1);
-        expect(snap.fallbackUnmatched).toBe(1);
-
-        // A never-interned signature whose name does not exist in the class: name miss
-        const unknownSig = makeSig(arkClass, 'neverAdded', 1);
-        resetGetMethodFallbackStats();
-        expect(arkClass.getMethod(unknownSig)).toBeNull();
-        snap = snapshotGetMethodFallbackStats();
-        expect(snap.fallbackNameMiss).toBe(1);
-        expect(snap.fallbackMatched).toBe(0);
     });
 });
 

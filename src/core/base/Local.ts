@@ -67,18 +67,7 @@ export class Local implements Value, ArkExport {
         return this;
     }
 
-    /**
-     * Returns the name of local value.
-     * @returns The name of local value.
-     * @example
-     * 1. get the name of local value.
-
-      ```typescript
-      arkMethod.getBody().getLocals().forEach(local => {
-      console.log(local.getName());
-      });
-      ```
-      */
+    /** Returns the name of local value. */
     public getName(): string {
         return this.name;
     }

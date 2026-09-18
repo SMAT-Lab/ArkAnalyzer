@@ -111,17 +111,8 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             }
         }
         // TODO: Check
-        else if (ts.isMethodDeclaration(child)) {
+        else if (ts.isMethodDeclaration(child) || ts.isFunctionDeclaration(child)) {
             logger.trace('This is a MethodDeclaration in ArkNamespace.');
-            const defaultClass = namespace.getDefaultClass();
-            let mthd: ArkMethod = new ArkMethod(defaultClass.getClassSigID());
-
-            buildArkMethodFromArkClass(child, defaultClass, mthd, sourceFile);
-
-            if (mthd.isExported()) {
-                namespace.addExportInfo(buildExportInfo(mthd, namespace.getDeclaringArkFile(), FullPosition.buildFromNode(child, sourceFile)));
-            }
-        } else if (ts.isFunctionDeclaration(child)) {
             const defaultClass = namespace.getDefaultClass();
             let mthd: ArkMethod = new ArkMethod(defaultClass.getClassSigID());
 

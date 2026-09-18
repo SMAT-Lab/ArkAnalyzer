@@ -119,7 +119,7 @@ describe('ArkClass Test', () => {
         assert.isNotNull(arkMethod);
         const clsSignature = new ClassSignature('newClass', (arkClass as ArkClass).getDeclaringArkFile().getFileSignature());
         const unmatchedSignature = new MethodSignature(
-            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getId(clsSignature),
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(clsSignature),
             (arkMethod as ArkMethod).getSubSignature()
         );
         const method = arkClass?.getMethod(unmatchedSignature);

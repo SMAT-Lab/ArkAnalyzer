@@ -33,7 +33,7 @@ describe('Stmt Source Code and Position Test', () => {
         beforeAll((): void => {
             const method = defaultClass?.getMethodWithName('getA');
             stmts = method?.getBody()?.getCfg().getStmts();
-        })
+        });
 
         it('test getOriginPositionInfo for return stmt', async () => {
             const returnStmt = stmts?.find(stmt => stmt instanceof ArkReturnStmt) as ArkReturnStmt;
@@ -72,7 +72,7 @@ describe('Stmt Source Code and Position Test', () => {
         beforeAll((): void => {
             const method = defaultClass?.getMethodWithName('paramInitializerWithIfBranch');
             stmts = method?.getBody()?.getCfg().getStmts();
-        })
+        });
 
         it('test getOriginPositionInfo for assign stmt (a = 3)', async () => {
             const assignStmt = stmts?.filter(stmt => stmt instanceof ArkAssignStmt && stmt.toString() === 'a = 3')[0] as ArkAssignStmt;
@@ -177,7 +177,7 @@ describe('switch statement line numbers', () => {
     beforeAll((): void => {
         const switchScene = buildScene(path.join(__dirname, '../../../resources/cfg/switch'), false);
         switchFile = switchScene.getFiles().find(f => f.getName().endsWith('SwitchSample.ts'));
-    })
+    });
 
     it('ifStmt generated from switch case should have correct line number and column', () => {
         const method = switchFile?.getDefaultClass().getMethodWithName('case1');
@@ -220,9 +220,13 @@ describe('switch statement line numbers', () => {
     });
 
     describe('getInvokeFullPosition', () => {
-        const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
-        const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
-        const callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
+        let callStmts: Stmt[] | undefined;
+
+        beforeAll((): void => {
+            const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+            const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
+            callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
+        });
 
         function findStmtByOriginalText(text: string): Stmt {
             const stmt = callStmts?.find((s) => s.getOriginalText() === text);

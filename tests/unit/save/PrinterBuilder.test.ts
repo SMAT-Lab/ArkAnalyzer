@@ -41,7 +41,7 @@ describe('PrinterBuilderTest', () => {
         scene = buildScene();
         arkfile = scene.getFiles().find((file) => file.getName() == 'namespaces.ts');
         printer = new PrinterBuilder(outputDir);
-    })
+    });
 
     it('case1: dumpToDot', () => {
         if (arkfile == null) {

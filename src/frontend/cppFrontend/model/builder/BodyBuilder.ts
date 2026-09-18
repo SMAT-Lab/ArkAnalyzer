@@ -631,8 +631,7 @@ export class CxxBodyBuilder {
                 local.setType(closure.getType());
             }
             index++;
-            const captureType =
-                explicitCaptureTypeMap.get(closure.getName()) ??
+            const captureType = explicitCaptureTypeMap.get(closure.getName()) ??
                 (defaultCaptureType === CxxClosureCaptureType.BY_REF ? CxxClosureCaptureType.BY_REF : CxxClosureCaptureType.BY_VALUE);
             const closureFieldRef = new CxxClosureFieldRef(closuresLocal, closure.getName(), closure.getType(), captureType);
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);

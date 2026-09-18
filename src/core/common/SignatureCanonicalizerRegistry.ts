@@ -42,7 +42,7 @@ import { TempSignatureCanonicalizer } from './TempSignatureCanonicalizer';
 export interface TempSpaceStats {
     /** 未迁移（非空 slot）的签名数——含 Builtin stub 池等常驻基线与推导中间垃圾。 */
     liveCount: number;
-    /** 历史注册总量（= nextId，永不复用）。 */
+    /** 累计注册总量（= nextId，永不复用）。 */
     totalRegistered: number;
     /** 已迁移（retire 置空）总量。三数自洽：totalRegistered = liveCount + retiredCount。 */
     retiredCount: number;
@@ -91,18 +91,6 @@ export class SignatureCanonicalizerRegistry {
      * 后全局符号仍可解析，与旧 Scene 字段语义一致）。
      */
     public sdkGlobalMap: Map<string, ArkExport[]> = new Map();
-
-    // --- SDK global symbol queries (owner of sdkGlobalMap) ---
-    // 加载边约束：Registry 处于依赖图最底层（一切模块 import 它）。模型类
-    //（ArkClass/ArkNamespace/Local 等）的 import 仅可用于**类型位置**（泛型参数、
-    // 方法签名）——编译器 elision 会剥离这些 import，不构成运行时加载边；
-    // **禁止值使用**（方法实现内的 new/instanceof/静态访问）——esbuild 会把含
-    // 值使用的 import 真实化为运行时加载边，接通 Registry → 模型深链（模型类 →
-    // … → cpp/base/Type 的顶层 extends），翻转 ESM 循环进入方向，实测触发
-    // "Class extends value undefined"。历史上的实体判别需求（duck-typing 结构
-    // helper）已随工作项 L 迁移至 SdkUtils（上层可自由 instanceof）——本类现在
-    // 只保存 sdkGlobalMap 字段（dispose 生命周期聚合），全部查询入口（单值/
-    // 多值/成员探测）统一在 SdkUtils。
 
     // --- Project/SDK file ID boundary ---
 
@@ -196,16 +184,6 @@ export class SignatureCanonicalizerRegistry {
         };
     }
 
-    /**
-     * 返回 temp 索引表空间的精确统计。
-     *
-     * B 轮（三版索引表）后统计**同步即精确**（slot 强持有、增量计数，无弱表的
-     * KeepDuringJob pending-dead 窗口）——历史上的 gc × job 边界轮次（促使
-     * FinalizationRegistry 清理死条目）已随弱表机制退役。async 签名保留仅为
-     * 调用方兼容（await 无成本）；适合在 inferTypes 完成后、生成报告前调用。
-     *
-     * @returns 三空间统计（结构与 {@link getTempSpacesStats} 相同）。
-     */
     public async settleTempSpaces(): Promise<{
         class: TempSpaceStats;
         method: TempSpaceStats;
@@ -436,10 +414,10 @@ export class SignatureCanonicalizerRegistry {
      */
     private internDefaults(): void {
         const fileDefault = new FileSignature(UNKNOWN_PROJECT_NAME, UNKNOWN_FILE_NAME);
-        this.fileSigCanonicalizer.getId(fileDefault);
-        this.classSigCanonicalizer.getId(new ClassSignature(UNKNOWN_CLASS_NAME, 0, undefined));
-        this.namespaceSigCanonicalizer.getId(new NamespaceSignature(UNKNOWN_NAMESPACE_NAME, 0, undefined));
-        this.fieldSigCanonicalizer.getId(new FieldSignature(UNKNOWN_FIELD_NAME, 0, UnknownType.getInstance(), false));
-        this.methodSigCanonicalizer.getId(new MethodSignature(0, new MethodSubSignature(UNKNOWN_METHOD_NAME, [], UnknownType.getInstance(), false)));
+        this.fileSigCanonicalizer.getOrCreateId(fileDefault);
+        this.classSigCanonicalizer.getOrCreateId(new ClassSignature(UNKNOWN_CLASS_NAME, 0, undefined));
+        this.namespaceSigCanonicalizer.getOrCreateId(new NamespaceSignature(UNKNOWN_NAMESPACE_NAME, 0, undefined));
+        this.fieldSigCanonicalizer.getOrCreateId(new FieldSignature(UNKNOWN_FIELD_NAME, 0, UnknownType.getInstance(), false));
+        this.methodSigCanonicalizer.getOrCreateId(new MethodSignature(0, new MethodSubSignature(UNKNOWN_METHOD_NAME, [], UnknownType.getInstance(), false)));
     }
 }

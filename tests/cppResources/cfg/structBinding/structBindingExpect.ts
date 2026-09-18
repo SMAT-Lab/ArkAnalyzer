@@ -154,14 +154,7 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 4,
             stmts: [
-                // round32c：期望由 operator*.* 改为 IterableIterator.*——operator*.* 是
-                // round13 前窄谓词 isUnclear 时代的产物（next 的 returnType stub
-                //（ITERATOR_RESULT_CLASS_TYPE = ClassType('operator*')，unclear 占位）
-                // 被 typeSpread 传播给迭代器 + deref 经 impactedStmts 二次推导改写
-                // declaring）。round13 语义统一后 ClassType stub 判 unclear →
-                // "占位不传播"设计原则（Intl 链/X|null Nullable 实证保护）拦截该
-                // 传播，形态不可达；迭代器保持降级构造的 IterableIterator stub
-                //（与 loop1 同构——同一 handleForRangeIterResult 构造，形态统一）。
+                // ClassType stub 判 unclear → "占位不传播"设计原则（Intl 链/X|null Nullable 实证保护）拦截该传播，形态不可达；迭代器保持降级构造的 IterableIterator stub
                 '%10 = %8.<@%unk/%unk: IterableIterator.*>',
                 'name = %10[0]',
                 'score = %10[1]',

@@ -88,8 +88,6 @@ export class TypeQueryExpr extends AbstractTypeExpr {
             return false;
         }
         visited.add(this);
-        // Core semantics (the cpp-side twin historically skipped generateTypes — unified
-        // here): both the queried type and any generated type may carry the uncertainty.
         if (this.getType().isUnclearWithVisited(visited)) {
             return true;
         }

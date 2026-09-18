@@ -37,7 +37,14 @@ import {
 } from '../base/Type';
 import { Local } from '../base/Local';
 import { TypeInference } from './TypeInference';
-import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
+import {
+    AbstractExpr,
+    AbstractInvokeExpr,
+    AliasTypeExpr,
+    ArkInstanceInvokeExpr,
+    ArkPtrInvokeExpr,
+    ArkStaticInvokeExpr
+} from '../base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
@@ -58,7 +65,14 @@ import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from 
 import { Builtin } from './Builtin';
 import { ArkBody } from '../model/ArkBody';
 import { ArkAssignStmt } from '../base/Stmt';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../base/Ref';
+import {
+    AbstractFieldRef,
+    AbstractRef,
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkStaticFieldRef
+} from '../base/Ref';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import {
@@ -82,6 +96,31 @@ import { SdkUtils } from './SdkUtils';
 import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
+
+export interface GetterFieldResolution {
+    kind: 'getter';
+    value: AbstractInvokeExpr;
+}
+
+export interface FormalFieldResolution {
+    kind: 'formal';
+    formalId: number | null;
+    staticFlag: boolean;
+    type: Type;
+}
+
+export interface ParamsFieldResolution {
+    kind: 'params';
+    fieldName: string;
+    declaringOrID: BaseSignature | number;
+    type: Type;
+    staticFlag: boolean;
+    namespaceDeclared: boolean;
+}
+
+export type FieldSigResolution = FormalFieldResolution | ParamsFieldResolution | null;
+
+export type FieldPropertyResolution = GetterFieldResolution | FormalFieldResolution | ParamsFieldResolution | null;
 
 export class IRInference {
     public static inferExportInfos(file: ArkFile): void {
@@ -223,13 +262,6 @@ export class IRInference {
         return expr;
     }
 
-    /**
-     * Resolve a bare callee name to the nested method declared inside the calling method or
-     * one of its enclosing methods (lexical scope chain). Nested methods are stored under
-     * their composed name `%origin$outer` — the historical origin-prefix name matching was
-     * retired (B2), so the composed name is constructed explicitly per scope level, which
-     * is strictly more precise than the old prefix semantics (it cannot cross scopes).
-     */
     private static getNestedMethodInScopeChain(methodName: string, arkMethod: ArkMethod): ArkMethod | null {
         let scope: ArkMethod | null | undefined = arkMethod;
         while (scope !== undefined && scope !== null) {
@@ -282,64 +314,65 @@ export class IRInference {
         this.inferBase(ref, arkMethod);
         const baseType: Type = TypeInference.replaceAliasType(ref.getBase().getType());
         if (baseType instanceof ArrayType && ref.getFieldName() !== 'length') {
-            // 替换埋葬（round27）：本 ref 即将被 ArkArrayRef 替换——temp 行随之
-            // retire（数组访问无字段归宿，纯 retire；dynamic ref 独占行无共享者）。
+            // 本 ref 即将被 ArkArrayRef 替换——temp 行随之 retire（数组访问无字段归宿，纯 retire；dynamic ref 独占行无共享者）。
             ref.retireTemp();
             return new ArkArrayRef(ref.getBase(), ValueUtil.createConst(ref.getFieldName()));
         }
 
-        // A2 推广：判别联合消费——定义点（终点确定）走 graduateToFormal 快路径，
-        // 新构造值（终点不确定）走 updateFieldSignature 决策表；static 为新建持有者
+        // 判别联合消费——定义点（终点确定）走 graduateToFormal 快路径，新构造值（终点不确定）走 updateFieldSignature 决策表；static 为新建持有者
         // 保留构造（formal 分支持 canonical，params 分支构造实例）。
         const resolution = this.generateNewFieldSignature(ref, arkMethod.getDeclaringArkClass(), baseType);
-        if (resolution !== null) {
-            if ('formalId' in resolution) {
-                if (resolution.formalId <= 0) {
-                    return ref;
-                }
-                if (resolution.staticFlag) {
-                    // 替换埋葬：static 形态转换（instance → static ref 替换）——产物为
-                    // formal canonical（归宿已知，带替换记录 retire；cpp 侧同分支
-                    // graduateToFormal 前置的对称补齐）。
-                    ref.retireTempTo(resolution.formalId);
-                    const canonical = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(resolution.formalId);
-                    return new ArkStaticFieldRef(canonical!);
-                }
-                ref.graduateToFormal(resolution.formalId);
+        return this.applyFieldResolution(ref, resolution);
+    }
+
+    /**
+     * @internal 终态执行——formal 分支（graduateToFormal 快路径 / static 形态替换）与
+     * params 分支（static probe 转换 / 就地演进）的统一收敛。static params 转换前
+     * probe 字段空间：miss 时 params 携带值空间成员（ns 导出的 class/enum、字段式
+     * static 方法引用），无 formal 归宿——直接转换会走 clear+miss error 路由并
+     * 多占一个 slot；miss 落入 updateFieldSignature（就地演进，上下文保留）。
+     */
+    public static applyFieldResolution(ref: AbstractFieldRef, resolution: FieldSigResolution): AbstractFieldRef {
+        if (resolution === null) {
+            return ref;
+        }
+        if (resolution.kind === 'formal') {
+            const formalId = resolution.formalId ?? 0;
+            if (formalId <= 0) {
+                return ref;
+            }
+            if (resolution.staticFlag) {
+                ref.retireTempTo(formalId);
+                const canonical = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(formalId);
+                return new ArkStaticFieldRef(canonical!);
+            }
+            ref.graduateToFormal(formalId);
+            return ref;
+        }
+        if (resolution.staticFlag) {
+            let staticSig: FieldSignature;
+            if (typeof resolution.declaringOrID === 'number') {
+                staticSig = resolution.namespaceDeclared
+                    ? new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, true)
+                    : new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
             } else {
-                const params = resolution;
-                if (params.staticFlag) {
-                    let staticSig: FieldSignature;
-                    if (typeof params.declaringOrID === 'number') {
-                        staticSig = params.namespaceDeclared
-                            ? new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, true)
-                            : new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
-                    } else {
-                        staticSig = new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
-                    }
-                    // Probe before converting (twin of updateRefSignature's static params
-                    // branch): on a miss the params carry a value-space member (namespace
-                    // class/enum reference, field-style static-method reference) with no
-                    // formal home in the field space — converting would hit the clear+miss
-                    // error route and allocate an extra slot. Fall through to
-                    // updateFieldSignature (in-place temp evolution, context preserved).
-                    if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
-                        // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
-                        ref.retireTemp();
-                        return new ArkStaticFieldRef(staticSig);
-                    }
-                }
-                ref.updateFieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, params.namespaceDeclared);
+                staticSig = new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
+            }
+            if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
+                // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
+                ref.retireTemp();
+                return new ArkStaticFieldRef(staticSig);
             }
         }
+        ref.updateFieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, resolution.namespaceDeclared);
         return ref;
     }
 
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
         const base = instance.getBase();
         if (base.getName() === THIS_NAME) {
-            const name =
-                instance instanceof ArkInstanceFieldRef ? instance.getFieldName() : instance.getMethodSignature().getMethodSubSignature().getMethodName();
+            const name = instance instanceof ArkInstanceFieldRef ? instance.getFieldName() :
+                instance.getMethodSignature().getMethodSubSignature().getMethodName();
             if (name.includes('.')) {
                 return;
             }
@@ -536,26 +569,20 @@ export class IRInference {
         if (result) {
             return result;
         }
-        // 候选 declaredClass 序：签名归属实体优先（scene.getClass 值直查），再补该
-        // 名字的全部全局成员提供者（同名实体 + declare var 的构造器侧类——等价旧
-        // copyMembers 合并的成员并集）。成员签名自然归属真实声明实体。
-        const declaredClasses: ArkClass[] = [];
-        const bySig = scene.getClass(baseType.getClassSignature());
+        // 候选 declaredClass 序：签名归属实体优先（scene.getClass 值直查），再补该名字的全部全局成员提供者。
+        const declaredClasses: Set<ArkClass> = new Set();
+        const bySig = SignatureCanonicalizerRegistry.getInstance().getClassById(baseType.getClassSigID());
         if (bySig instanceof ArkClass) {
-            declaredClasses.push(bySig);
+            declaredClasses.add(bySig);
         }
         for (const c of SdkUtils.getSdkGlobalMemberClasses(baseType.getClassSignature().getClassName())) {
-            if (!declaredClasses.includes(c)) {
-                declaredClasses.push(c);
-            }
+            declaredClasses.add(c);
         }
         // ns 兄弟类候选：跨文件同名 namespace（Intl 系）中后续文件的同名类持有该文件
         // 声明的成员（等价旧 copyNamespace 互拷可见性；登记序 = DFS 文件序）。
         if (bySig instanceof ArkClass) {
             for (const sibling of SdkUtils.getNamespacedSiblingClasses(bySig)) {
-                if (!declaredClasses.includes(sibling)) {
-                    declaredClasses.push(sibling);
-                }
+                declaredClasses.add(sibling);
             }
         }
         if (methodName === CONSTRUCTOR_NAME) {
@@ -627,7 +654,7 @@ export class IRInference {
      */
     private static invokeConstructorOnClasses(
         expr: AbstractInvokeExpr,
-        declaredClasses: ArkClass[],
+        declaredClasses: Set<ArkClass>,
         baseType: ClassType,
         methodName: string
     ): AbstractInvokeExpr {
@@ -641,17 +668,15 @@ export class IRInference {
             }
         }
         // No-constructor fallback (built-in lib classes behind the var-side XxxConstructor
-        // pattern, declare-only classes, ...): never register new models during inference —
-        // SDK-side constructors are ensured inside the SDK build stage (before the
-        // project/SDK ID boundary is marked), and registering here would land SDK models on
-        // the project side of the boundary. Only swap in the resolved-shape signature when
-        // it already exists formally; otherwise keep the expr's build-time temp stub (the
-        // declaring context survives, no clear+miss error route).
+        // pattern, declare-only classes, C++ structs with an implicit default constructor, ...):
+        // swap in the resolved-sh signature unconditionally — the declaring side is the
+        // resolved baseType's class signature, so the MethodSignature object overload routes
+        // the declaring class through the formal hit path (no clear+miss error route), and
+        // no model registration happens here. Guarding this with a formal probe would strand
+        // the expr on its build-time %unk stub whenever the constructor has no declaration
+        // (C++ includeInScope MyStruct regression).
         const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
-        const resolvedSignature = new MethodSignature(baseType.getClassSignature(), subSignature);
-        if (SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getExistingId(resolvedSignature) !== -1) {
-            expr.setMethodSignature(resolvedSignature);
-        }
+        expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
         return expr;
     }
 
@@ -690,12 +715,10 @@ export class IRInference {
             }
         }
         if (methodSignature) {
-            const ptr =
-                method instanceof Local
-                    ? method
-                    : expr instanceof ArkInstanceInvokeExpr
-                      ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
-                      : new ArkStaticFieldRef(method.getSignature());
+            const ptr = method instanceof Local ? method :
+                expr instanceof ArkInstanceInvokeExpr
+                    ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
+                    : new ArkStaticFieldRef(method.getSignature());
             return new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
         }
         return null;
@@ -705,9 +728,7 @@ export class IRInference {
         let realTypes;
         const tmp: Type[] = [];
         if (method?.getGenericTypes()) {
-            expr.getMethodSignature()
-                .getMethodSubSignature()
-                .getParameters()
+            expr.getMethodSignature().getMethodSubSignature().getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
                     if (TypeInference.checkType(p.getType(), t => t instanceof GenericType)) {
@@ -728,8 +749,7 @@ export class IRInference {
     public static replaceMethodSignature(init: MethodSignature, declared: MethodSignature): MethodSignature {
         const className = init.getDeclaringClassSignature().getClassName();
         let classSignature;
-        // U+（display 归一化）：仅当 init 类名有信息量（非 %unk——组件 create/pop 的
-        // init 由组件名直构）时包 alias。普通 interface 解析（init 为 %unk stub，
+        // display 归一化：仅当 init 类名有信息量（非 %unk——组件 create/pop 的 init 由组件名直构）时包 alias。普通 interface 解析（init 为 %unk stub，
         // 如 TestInterface.callf）直接用 declared——alias 会把显示退化为 %unk。
         if (className !== UNKNOWN_CLASS_NAME && declared.getDeclaringClassSignature().getClassName().endsWith('Interface')) {
             classSignature = new AliasClassSignature(className, declared.getDeclaringClassSignature());
@@ -737,9 +757,8 @@ export class IRInference {
         let newSubSignature;
         if (classSignature || newSubSignature) {
             const result = new MethodSignature(classSignature ?? declared.getDeclaringClassSignature(), newSubSignature ?? declared.getMethodSubSignature());
-            // U+（display 归一化）：alias 产物 intern formal + 双注册 declared 的
-            // ArkMethod model——expr 的 route() formal 命中持 SigID（display 由
-            // formal canonical 自持，不再依赖 expr 锚定传入实例）。
+            // display 归一化：alias 产物 intern formal + 双注册 declared 的 ArkMethod model——expr 的 route() formal 命中持 SigID（display 由 formal
+            // canonical 自持，不再依赖 expr 锚定传入实例）。
             if (classSignature !== undefined) {
                 internAliasMethodSignature(result, declared);
             }
@@ -786,12 +805,8 @@ export class IRInference {
         }
     }
 
-    public static inferInstanceMember<T extends U, U extends Value>(
-        baseType: Type,
-        value: T,
-        arkMethod: ArkMethod,
-        inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null
-    ): U | null {
+    public static inferInstanceMember<T extends U, U extends Value>(baseType: Type, value: T, arkMethod: ArkMethod,
+                                                                    inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null): U | null {
         if (baseType instanceof PrimitiveType) {
             // Convert primitive types to their wrapper class types
             const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
@@ -822,19 +837,14 @@ export class IRInference {
         return inferMember(baseType, value, arkMethod);
     }
 
-    public static generateNewFieldSignature(
-        ref: AbstractFieldRef,
-        arkClass: ArkClass,
-        baseType: Type
-    ): { formalId: number; staticFlag: boolean; type: Type } | ReturnType<typeof IRInference.genFieldSigParams> | null {
+    public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSigResolution {
         if (baseType instanceof UnionType) {
             for (let type of baseType.flatType()) {
                 if (type instanceof UndefinedType || type instanceof NullType) {
                     continue;
                 }
                 let resolution = this.generateNewFieldSignature(ref, arkClass, type);
-                // A2 推广：Union 试探按 resolution.type 判 unclear（formal 分支带
-                // 定义点 type，params 分支即构造 type——零实例读取）。
+                // Union 试探按 resolution.type 判 unclear（formal 分支带定义点 type，params 分支即构造 type——零实例读取）。
                 if (resolution !== null && !TypeInference.isUnclearType(resolution.type)) {
                     return resolution;
                 }
@@ -854,22 +864,17 @@ export class IRInference {
     public static updateRefSignature(baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): AbstractRef | null {
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');
         if (baseType instanceof TupleType) {
-            const n = Number(fieldName);
-            if (!isNaN(n) && n < baseType.getTypes().length) {
-                ref.getFieldSignature().setType(baseType.getTypes()[n]);
-            }
-            return ref;
-        } else if (baseType instanceof ArrayType) {
+            return this.updateTupleElementType(ref, fieldName, baseType);
+        }
+        if (baseType instanceof ArrayType) {
             if (ref instanceof ArkInstanceFieldRef && ref.isDynamic()) {
-                const index = TypeInference.getLocalFromMethodBody(fieldName, arkMethod);
-                // 替换埋葬（round27）：dynamic ref 被 ArkArrayRef 替换——纯 retire。
+                // dynamic ref 被 ArkArrayRef 替换——纯 retire。
                 ref.retireTemp();
-                return new ArkArrayRef(ref.getBase(), index ?? ValueUtil.createConst(fieldName));
-            } else {
-                const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
-                if (arrayClass instanceof ArkClass) {
-                    baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
-                }
+                return new ArkArrayRef(ref.getBase(), TypeInference.getLocalFromMethodBody(fieldName, arkMethod) ?? ValueUtil.createConst(fieldName));
+            }
+            const arrayClass = SdkUtils.getSdkGlobal(Builtin.ARRAY);
+            if (arrayClass instanceof ArkClass) {
+                baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
             }
         } else if (baseType instanceof FunctionType) {
             const arrayClass = SdkUtils.getSdkGlobal(Builtin.FUNCTION);
@@ -877,145 +882,89 @@ export class IRInference {
                 baseType = new ClassType(arrayClass.getSignature());
             }
         }
-        const { staticFlag, signature, formalId, value, params } = IRInference.genFieldSignature(fieldName, baseType, ref, arkMethod);
-        if (value) {
+        const resolution = IRInference.genFieldSignature(fieldName, baseType, ref, arkMethod);
+        if (resolution === null || (resolution.kind === 'formal' && (resolution.formalId ?? 0) <= 0)) {
+            return null;
+        }
+        if (resolution.kind === 'getter') {
             // 替换埋葬：getter 裸引用被 invokeExpr 替换——纯 retire（产物无字段归宿）。
             ref.retireTemp();
-            return value;
+            return resolution.value;
         }
-        if (params) {
-            // A2 批 4：新构造值走参数式（零中间实例）——static 场景为新建持有者
-            // 保留 new（首路径登记），非 static 就地演进 S。
-            if (params.staticFlag) {
-                let staticSig: FieldSignature;
-                if (typeof params.declaringOrID === 'number') {
-                    staticSig = params.namespaceDeclared
-                        ? new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, true)
-                        : new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
-                } else {
-                    staticSig = new FieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag);
-                }
-                // Probe before converting to a static ref: the params form also fires for
-                // value-space members carried in a field-signature shape — a namespace's
-                // exported class/enum (e.g. `ns.EnumName`, the intermediate ref of
-                // `ns.EnumName.MEMBER`) or a field-style reference to a static method
-                // (`const f = C.sm`). Those signatures have NO formal home in the field
-                // space (the member is a class/method, not a field) — converting would
-                // route clear+miss into the error + temp fallback, plus an extra slot.
-                // On a hit (real static / namespace-declared field) keep the historical
-                // new-holder conversion; on a miss fall through to updateFieldSignature,
-                // which writes the params (declaring + [static] flag + type) into the
-                // existing temp row in place — context preserved, no error, no extra slot.
+        if (resolution.kind === 'params') {
+            if (resolution.staticFlag) {
+                const staticSig =
+                    typeof resolution.declaringOrID === 'number' && resolution.namespaceDeclared
+                        ? new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, true)
+                        : new FieldSignature(resolution.fieldName, resolution.declaringOrID as BaseSignature, resolution.type, resolution.staticFlag);
                 if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
-                    // 替换埋葬：static params 形态替换——旧 ref 纯 retire。
                     ref.retireTemp();
                     return new ArkStaticFieldRef(staticSig);
                 }
             }
-            ref.updateFieldSignature(params.fieldName, params.declaringOrID, params.type, params.staticFlag, params.namespaceDeclared);
+            ref.updateFieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, resolution.namespaceDeclared);
             return ref;
         }
-        // 定义点分支（params 分流后 signature 必为 ArkField 定义点 canonical）：
-        // A2 快路径——graduateToFormal（终点确定：换编号 + 划行 + declaring 联动，
-        // formalId 由 genFieldSignature 从 property.getFieldSigID() 直读）。
-        if (formalId === null || formalId <= 0) {
-            return null;
-        }
-        if (staticFlag) {
-            // 替换埋葬：static formal 形态替换——归宿已知（带替换记录 retire）。
+        const formalId = resolution.formalId ?? 0;
+        if (resolution.staticFlag) {
             ref.retireTempTo(formalId);
-            // static 场景为新建持有者（首路径构造，formal 签名直传）。
-            return new ArkStaticFieldRef(signature!);
+            return new ArkStaticFieldRef(SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(formalId)!);
         }
         ref.graduateToFormal(formalId);
         return ref;
     }
 
-    /** A2 批 4：新构造签名的参数元组（推导链主路径不再构造中间实例 N）。 */
-    private static genFieldSigParams(
-        fieldName: string,
-        declaringOrID: BaseSignature | number,
-        type: Type,
-        staticFlag: boolean,
-        namespaceDeclared: boolean = false
-    ): {
-        fieldName: string;
-        declaringOrID: BaseSignature | number;
-        type: Type;
-        staticFlag: boolean;
-        namespaceDeclared: boolean;
-    } {
-        return { fieldName, declaringOrID, type, staticFlag, namespaceDeclared };
+    /** TupleType 前置：元组索引字段的类型直写（'0'/'1' → 对应元素类型）。 */
+    private static updateTupleElementType(ref: AbstractFieldRef, fieldName: string, baseType: TupleType): AbstractRef {
+        const n = Number(fieldName);
+        if (!isNaN(n) && n < baseType.getTypes().length) {
+            ref.getFieldSignature().setType(baseType.getTypes()[n]);
+        }
+        return ref;
     }
 
-    private static genFieldSignature(
-        fieldName: string,
-        baseType: Type,
-        ref: AbstractFieldRef,
-        arkMethod: ArkMethod
-    ): {
-        staticFlag: boolean;
-        signature: FieldSignature | null;
-        /** 定义点分支的 formal FieldSigID（property.getFieldSigID() 直读）；null = 非定义点。 */
-        formalId: number | null;
-        value?: AbstractInvokeExpr;
-        params?: ReturnType<typeof IRInference.genFieldSigParams>;
-    } {
+    private static genFieldSignature(fieldName: string, baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): FieldPropertyResolution {
         const arkClass = arkMethod.getDeclaringArkClass();
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
-        let staticFlag: boolean = false;
-        let signature: FieldSignature | null = null;
-        let formalId: number | null = null;
-        let params: ReturnType<typeof IRInference.genFieldSigParams> | undefined;
         if (baseType instanceof ClassType) {
             const property = propertyAndType?.[0] ?? IRInference.findPropertyFormChildrenClass(fieldName, arkClass, baseType);
             if (property instanceof ArkMethod && property.getName().startsWith(GETTER_PREFIX) && ref instanceof ArkInstanceFieldRef) {
                 const expr = property.isStatic()
                     ? new ArkStaticInvokeExpr(property.getSignature(), [])
                     : new ArkInstanceInvokeExpr(ref.getBase(), property.getSignature(), []);
-                return { staticFlag: staticFlag, signature: signature, formalId: formalId, value: expr };
+                return { kind: 'getter', value: expr };
             }
-            staticFlag =
+            const staticFlag =
                 baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER) {
-                // R 轮（泛型表示迁移）：非泛型与泛型字段统一用定义点签名（formal 身份）。
-                // 泛型字段（定义点 type 为 GenericType）的使用点实例化由 ref.realFieldTypes
-                // 承载（Expr.realGenericTypes 同构，getType() 动态组合）——原"构造使用点
-                // 形态签名走 temp 双视图"退役。实参表从 baseType 提取（与 inferFieldType
-                // 的 replaceTypeWithReal 同源）。实参表残留无害：getType 的 Generic/Any
-                // 守卫使非泛型 type 不受影响。
-                signature = property.getSignature();
-                formalId = property.getFieldSigID();
+                // 非泛型与泛型字段统一用定义点签名（formal 身份）。泛型字段（定义点 type 为 GenericType）的使用点实例化由 ref.realFieldTypes 承载
+                // （Expr.realGenericTypes 同构，getType() 动态组合）。实参表从 baseType 提取（与 inferFieldType 的 replaceTypeWithReal 同源）。
+                // 实参表残留无害：getType 的 Generic/Any 守卫使非泛型 type 不受影响。
                 if (property.getType() instanceof GenericType) {
                     ref.setRealFieldTypes(baseType.getRealGenericTypes());
                 }
-            } else {
-                // getClassSignature() (not getClassSigID()): the class may still be unclear and
-                // live in the temp canonicalizer; the object overload interns it properly.
-                // A2 批 4：参数元组替代 new FieldSignature（消费方按 static/更新分流）。
-                const baseSignature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : baseType.getClassSignature();
-                params = IRInference.genFieldSigParams(fieldName, baseSignature, propertyType ?? ref.getType(), staticFlag);
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag, type: property.getType() };
             }
+            // getClassSignature() (not getClassSigID()): the class may still be unclear and
+            // live in the temp canonicalizer; the object overload interns it properly.
+            const baseSignature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : baseType.getClassSignature();
+            return { kind: 'params', fieldName, declaringOrID: baseSignature, type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: false };
         } else if (baseType instanceof AnnotationNamespaceType) {
-            staticFlag = true;
-            params = IRInference.genFieldSigParams(
+            return {
+                kind: 'params',
                 fieldName,
-                baseType.getNamespaceSignature().getNamespaceSigID(),
-                propertyType ?? ref.getType(),
-                staticFlag,
-                true
-            );
+                declaringOrID: baseType.getNamespaceSignature().getNamespaceSigID(),
+                type: propertyType ?? ref.getType(),
+                staticFlag: true,
+                namespaceDeclared: true,
+            };
         }
-        return { staticFlag, signature, formalId, params };
+        return null;
     }
 
-    private static getFieldSignature(
-        ref: AbstractFieldRef,
-        baseType: Type,
-        arkClass: ArkClass
-    ): { formalId: number; staticFlag: boolean; type: Type } | ReturnType<typeof IRInference.genFieldSigParams> | null {
+    private static getFieldSignature(ref: AbstractFieldRef, baseType: Type, arkClass: ArkClass): FieldSigResolution {
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
@@ -1029,16 +978,14 @@ export class IRInference {
                     property = subField;
                 }
             } else if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER) {
-                // R 轮（泛型表示迁移）：非泛型与泛型字段统一返回定义点签名；泛型字段的
-                // 使用点实例化由 ref.realFieldTypes 承载（与 genFieldSignature 分支同构）。
+                // 非泛型与泛型字段统一返回定义点签名；泛型字段的使用点实例化由 ref.realFieldTypes 承载（与 genFieldSignature 分支同构）。
                 if (property.getType() instanceof GenericType) {
                     ref.setRealFieldTypes(baseType.getRealGenericTypes());
                 }
-                // A2 推广：定义点 canonical——formalId 直读（终点确定）。
-                return { formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
+                // 定义点 canonical——formalId 直读（终点确定）。
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
             }
-            staticFlag =
-                baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
+            staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             // Note: baseType.getClassSignature() (not getClassSigID()) — the class may still be
             // unclear and live in the temp canonicalizer (classSigID === -1); the object overload
@@ -1047,8 +994,8 @@ export class IRInference {
         } else if (baseType instanceof ArrayType) {
             const property = propertyAndType?.[0];
             if (property instanceof ArkField) {
-                // A2 推广：定义点 canonical（Array 字段）。
-                return { formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
+                // 定义点 canonical（Array 字段）。
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
             }
             return null;
         } else if (baseType instanceof AnnotationNamespaceType) {
@@ -1059,8 +1006,8 @@ export class IRInference {
         }
         // 新构造值（终点不确定）——参数元组。
         return signature instanceof NamespaceSignature
-            ? IRInference.genFieldSigParams(fieldName, signature.getNamespaceSigID(), propertyType ?? ref.getType(), staticFlag, true)
-            : IRInference.genFieldSigParams(fieldName, signature, propertyType ?? ref.getType(), staticFlag);
+            ? { kind: 'params', fieldName, declaringOrID: signature.getNamespaceSigID(), type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: true }
+            : { kind: 'params', fieldName, declaringOrID: signature, type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: false };
     }
 
     private static findPropertyFormChildrenClass(fieldName: string, arkClass: ArkClass, baseType: ClassType): ArkField | ArkMethod | null {

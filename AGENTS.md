@@ -20,7 +20,7 @@ ArkAnalyzer 是一个基于 TypeScript 的静态分析框架，支持 ArkTS/Type
 
 说明：
 
-- C++ 侧测试（`tests/unit/cppCore`）需要本机配置 LLVM/Clang 环境，未配置时跳过。
+- C++ 侧测试（`tests/unit/cppCore`）需要本机配置环境，未配置时跳过。
 - 修改 `src/` 下代码后，至少运行 `npx tsc --noEmit` 与受影响模块的定向测试，再跑全量。
 - 基线：全量回归应保持仅存既有环境问题（ModuleBuilder symlink EPERM），不引入新失败。
 
@@ -55,7 +55,8 @@ ArkAnalyzer 是一个基于 TypeScript 的静态分析框架，支持 ArkTS/Type
 - 修复 bug 时应附上能复现该 bug 的最小用例（资源 + 断言），防止回归。
 - 全局单例（`SignatureCanonicalizerRegistry`）在多 Scene 测试间需要手动 `dispose()`，参见 `tests/unit/common.ts` 的 `buildScene` 模式。
 
-## 其他约束
+## API兼容性约束
 
 - 公共 API 变更需保持向后兼容；废弃接口标 `@deprecated` 并说明替代方案。
-- 不要主动提交代码，除非用户明确要求。
+- 仅内部使用的 API 标 `@internal`。
+- 非必要不在 `index.ts` 中新增对外暴露的接口。

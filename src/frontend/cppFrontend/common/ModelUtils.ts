@@ -538,11 +538,9 @@ export class CxxModelUtils {
         if (!shortName || shortName.includes(NAME_DELIMITER)) {
             return null;
         }
-        // Enclosing-name chain: 'I2$Outer' -> ['I2$Outer', 'Outer']; top-level 'Outer' -> ['Outer'].
-        // round32：`%dflt`（file 级函数的容器）放行——cpp 方法局部类挂载约定为
-        // `short$%dflt.method`，排除它会使顶层函数上下文的局部类候选链恒空
-        //（structBinding Person %unk 实证）。其余 % 前缀合成名（%AC0 匿名类等）
-        // 仍排除；%dflt 无 $ 分隔符，下钻循环自然终止。
+        // Enclosing-name chain: 'I2$Outer' -> ['I2$Outer', 'Outer']; top-level 'Outer' -> ['Outer']. `%dflt`（file 级函数的容器）放行——cpp 方法局部类
+        // 挂载约定为 `short$%dflt.method`，排除它会使顶层函数上下文的局部类候选链恒空（structBinding Person %unk 实证）。其余 % 前缀合成名
+        // （%AC0 匿名类等）仍排除；%dflt 无 $ 分隔符，下钻循环自然终止。
         const enclosingChain: string[] = [];
         let scopeName: string | undefined = ctxClass.getName();
         while (scopeName && scopeName.length > 0 && (!scopeName.startsWith('%') || scopeName === DEFAULT_ARK_CLASS_NAME)) {
@@ -562,9 +560,7 @@ export class CxxModelUtils {
         const nsSigID = ns ? ns.getNamespaceSigID() : undefined;
         const tryCandidates = (candidates: string[]): ArkClass | null => {
             for (const candidate of candidates) {
-                const cls = ns
-                    ? ns.getClass(new ClassSignature(candidate, fileID, nsSigID))
-                    : file.getClass(new ClassSignature(candidate, fileID));
+                const cls = ns ? ns.getClass(new ClassSignature(candidate, fileID, nsSigID)) : file.getClass(new ClassSignature(candidate, fileID));
                 if (cls) {
                     return cls;
                 }

@@ -48,7 +48,7 @@ import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
 import { Canonicalizer } from './utils/Canonicalizer';
 import { ModuleDepGraph } from './core/graph/ModuleDepGraph';
-import { SignatureCanonicalizerRegistry, TempSpaceStats } from './core/common/SignatureCanonicalizerRegistry';
+import { SignatureCanonicalizerRegistry } from './core/common/SignatureCanonicalizerRegistry';
 import { CanonicalizerValidator } from './core/common/CanonicalizerValidator';
 import { ArkSignatureBuilder } from './core/model/builder/ArkSignatureBuilder';
 import { StageName, StageStatistics, StageStatisticsData } from './statistics/StageStatistics';
@@ -56,7 +56,7 @@ import { StageStatisticsReporter } from './statistics/StageStatisticsReporter';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
-// P1 迁移：枚举与 ModuleScene 已拆至 frontend 独立文件（解 Scene↔frontend 值导入循环），
+// 枚举与 ModuleScene 已拆至 frontend 独立文件（解 Scene↔frontend 值导入循环），
 // 此处 re-export 保持对外兼容。
 export { SceneBuildStage } from './frontend/SceneBuildStage';
 export { ModuleScene } from './frontend/ModuleScene';
@@ -83,11 +83,6 @@ export class Scene {
     // values that are visible in curr scope
     private visibleValue: VisibleValue = new VisibleValue();
 
-    // signature string to model — Maps removed, now stored in SignatureCanonicalizerRegistry.
-    /**
-     * SDK 全局符号多值表已迁 Registry（sdkGlobalMap，随 Registry.dispose 生命周期
-     * 清理）——Scene 经 getSdkGlobal/getSdkGlobals/getSdkGlobalMap 委托访问。
-     */
     private overRides: Map<string, string> = new Map();
     private overRideDependencyMap: Map<string, unknown> = new Map();
 
@@ -100,10 +95,9 @@ export class Scene {
     private sceneConfig?: SceneConfig;
 
     /**
-     * 构建期一次性上下文（P2 迁移）：完整构建路径的全部构建机械与工作态都在
-     * {@link SceneBuilder} 上。构建入口创建/复用，构建结束由入口方法释放（置
-     * undefined，随 GC 回收）——构建工作态不再驻留 Scene。模块化增量路径
-     * （analyseByModule/loadModule）不经此上下文。
+     * 构建期一次性上下文：完整构建路径的全部构建机械与工作态都在 {@link SceneBuilder} 上。
+     * 构建入口创建/复用，构建结束由入口方法释放（置undefined，随 GC 回收）——构建工作态不再驻留 Scene。
+     * 模块化增量路径（analyseByModule/loadModule）不经此上下文。
      */
     private activeBuilder?: SceneBuilder;
 
@@ -135,11 +129,8 @@ export class Scene {
     /**
      * project 文件的构建完成序（setFile 时记录的 FileSigID 序列）。
      *
-     * 构建走 {@link getDependencyFilesDeeply}（DFS）：每个文件在自己的全部
-     * import/export 依赖构建完成之后才 setFile（后序）——因此本序列是严格的
-     * 拓扑序（被依赖者在前）。这是推断期零排序遍历的事实源（见 {@link inferTypes}）。
-     * 注意 FileSigID 本身的前序 intern 序不具拓扑性质（多入口/菱形场景依赖方
-     * 可能晚于被依赖方 intern），不可用于排序。
+     * 构建走 {@link getDependencyFilesDeeply}（DFS）：每个文件在自己的全部 import/export 依赖构建完成之后才 setFile（后序）——因此本序列是严格的拓扑序（被依赖者在前）。
+     * 这是推断期零排序遍历的事实源（见 {@link inferTypes}）。注意 FileSigID 本身的前序 intern 序不具拓扑性质（多入口/菱形场景依赖方可能晚于被依赖方 intern），不可用于排序。
      */
     private builtFileOrder: number[] = [];
 
@@ -164,12 +155,7 @@ export class Scene {
         return this.activeBuilder;
     }
 
-    /**
-     * @internal 释放构建期上下文：完整构建入口（buildSceneFromProjectDir /
-     * buildSceneFromFiles / buildScene4HarmonyProject）在构建机械全部完成后调用，
-     * 工作态随上下文被 GC 回收——"构建完成后释放"的落地点。失败文件摘要等产物
-     * 已在 Scene 字段上（unhandledFilePaths 共享引用 / builtFileOrder 等）。
-     */
+    /** @internal 释放构建期上下文：在构建机械全部完成后调用，工作态随上下文被 GC 回收。*/
     private releaseSceneBuilder(): void {
         this.activeBuilder = undefined;
     }
@@ -257,12 +243,7 @@ export class Scene {
         return this.overRideDependencyMap;
     }
 
-    /**
-     * @deprecated Use {@link dispose} instead. clear() and dispose() had overlapping
-     * responsibilities (both cleared the Registry and builder state) with inconsistent
-     * coverage — this method now delegates to dispose() for a single cleanup path.
-     * This method will be removed in a future release.
-     */
+    /** @deprecated Use {@link dispose} instead. */
     public clear(): void {
         this.dispose();
     }
@@ -340,22 +321,11 @@ export class Scene {
         this.ccjsonPath = sceneConfig.getCcjsonPath();
         this.cppAstPath = sceneConfig.getCppAstPath();
 
-        // 构建机械已全部迁 SceneBuilder（构建期上下文）：配置解析 + SDK 构建与推断
-        // + 边界标记，工作态随上下文回收。
         const builder = this.getOrCreateSceneBuilder(sceneConfig);
         builder.parseProjectConfigs();
         builder.buildSdkStage();
     }
 
-    /**
-     * 构建 project 文件的统一入口（buildSceneFromProjectDir / buildSceneFromFiles 共用）。
-     *
-     * DFS 与 body 构建均已迁 SceneBuilder（构建期上下文）：对每个 projectFile 执行
-     * DFS——完整构建自己（intern FileSigID）→ 递归拉入 import/export 依赖 → 全部
-     * 依赖完成后 setFile。**setFile 后序 = 严格拓扑序**（被依赖者在前，多入口/菱形/
-     * 环均成立），由 builtFileOrder 记录，推断期按其正序遍历即零排序（见 {@link inferTypes}）。
-     * 注意：FileSigID 前序 intern 序不具拓扑性质，不可用于排序。
-     */
     private genArkFiles(): void {
         const builder = this.getOrCreateSceneBuilder();
         builder.buildProjectFiles();
@@ -366,8 +336,6 @@ export class Scene {
      * Build the scene for harmony project. It resolves the file path of the project first, and then fetches
      * dependencies from this file. Next, build a `ModuleScene` for this project to generate {@link ArkFile}. Finally,
      * it build bodies of all methods, generate extended classes, and add DefaultConstructors.
-     *
-     * 构建机械已迁 SceneBuilder（构建期上下文）；两段式完整构建终点，结束后释放上下文。
      */
     public buildScene4HarmonyProject(): void {
         this.getOrCreateSceneBuilder().buildScene4HarmonyProject();
@@ -375,8 +343,7 @@ export class Scene {
     }
 
     /**
-     * 单模块构建（增量式入口，可连续调用构建多个模块）：ohpkg 依赖递归 + 模块
-     * DFS + body 构建，全部经构建期上下文。此处不释放上下文（连续构建共享工作态）。
+     * 单模块构建（增量式入口，可连续调用构建多个模块）：ohpkg 依赖递归 + 模块 DFS + body 构建，全部经构建期上下文。此处不释放上下文（连续构建共享工作态）。
      */
     public buildModuleScene(moduleName: string, modulePath: string, supportFileExts: string[]): void {
         this.getOrCreateSceneBuilder().buildModuleScene(moduleName, modulePath, supportFileExts);
@@ -424,10 +391,7 @@ export class Scene {
         }
     }
 
-    /**
-     * @internal 供构建期上下文（SceneBuilder）打点使用：返回统计收集器，
-     * 未启用统计时为 undefined（各打点调用自动 no-op）。
-     */
+    /** @internal 供构建期上下文（SceneBuilder）打点使用：返回统计收集器，未启用统计时为 undefined（各打点调用自动 no-op）。 */
     public getStageStatisticsCollector(): StageStatistics | undefined {
         return this.stageStatistics;
     }
@@ -582,19 +546,12 @@ export class Scene {
         return this.projectName;
     }
 
-    /**
-     * @deprecated Compatibility delegate only — no longer used internally. Use
-     * {@link SdkUtils.getSdkGlobal} instead (the sdk global
-     * map lives in the registry).
-     */
+    /** @deprecated Compatibility delegate only — no longer used internally. Use {@link SdkUtils.getSdkGlobal} instead. */
     public getSdkGlobal(globalName: string): ArkExport | null {
         return SdkUtils.getSdkGlobal(globalName);
     }
 
-    /**
-     * @deprecated Compatibility delegate only — no longer used internally. Use
-     * `SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap` instead.
-     */
+    /** @deprecated Compatibility delegate only — no longer used internally. Use `SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap` instead. */
     public getSdkGlobalMap(): Map<string, ArkExport[]> {
         return SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap;
     }
@@ -646,14 +603,7 @@ export class Scene {
         return this.unhandledSdkFilePaths;
     }
 
-    /**
-     * 注册协议（project 文件）：设置归属 Scene + projectFile 标志 + 追加构建完成序
-     * （后序 = 拓扑序，见 builtFileOrder 与 inferTypes）。
-     *
-     * @internal 非用户 API——使用方限于 frontend 构建通道（SceneBuilder DFS /
-     * ModuleBuilder 增量 shell 注册 / cpp builder）与 PTA dummy-main 注入
-     * （DummyMainCreater）。
-     */
+    /** @internal 非用户 API。*/
     public setFile(file: ArkFile): void {
         file.setScene(this);
         file.setProjectFile(true);
@@ -666,17 +616,9 @@ export class Scene {
         return this.builtFileOrder;
     }
 
-    /**
-     * 注册协议（SDK 文件）：设置归属 Scene + SDK 标志（fileSigCanonicalizer model
-     * 挂载在 setFileSignature 内完成）。
-     *
-     * @internal 非用户 API——使用方限于 frontend 构建通道（SceneBuilder SDK 阶段 /
-     * ModuleBuilder SDK 模块注册）。
-     */
+    /** @internal 非用户 API。*/
     public addSdkArkFile(arkFile: ArkFile): void {
         // 防御断言：边界已设置后不应再注册 SDK 文件（构建时序破坏，理论不可达）。
-        // warn 而非 throw：parseAndRegisterSdkFile 的 try/catch 会吞掉 throw 使语义模糊；
-        // warn 即时可见且带调用栈，与 validator 的 R7（事后全量体检）互补。
         if (this.registry.getFirstProjectFileSigID() !== -1) {
             logger.warn(`SDK file registered after the project/SDK ID boundary was marked: ${arkFile.getName()}`);
         }
@@ -699,11 +641,6 @@ export class Scene {
 
     /**
      * 获取全部 project 文件（不含 SDK 文件）。
-     *
-     * 基于 Registry 的 project/SDK FileSigID 边界做范围切分：[firstProjectFileSigID, size)。
-     * 与旧实现（getModels().filter(isProjectFile)）语义等价：结果按 FileSigID 升序、
-     * 驱逐态条目（disposeModule 后 sig 在、model 无）自动跳过、ID 0（DEFAULT）不参与。
-     * 边界未设置（未执行完整构建流程 buildBasicInfo）时返回空数组。
      */
     public getFiles(): ArkFile[] {
         const first = this.registry.getFirstProjectFileSigID();
@@ -730,12 +667,7 @@ export class Scene {
         this.fileLanguages = fileLanguages;
     }
 
-    /**
-     * 获取全部 SDK 文件。
-     *
-     * 范围切分 [1, firstProjectFileSigID)：ID 0（DEFAULT）不属于任何一侧故显式排除；
-     * 驱逐态条目自动跳过；结果按 FileSigID 升序。边界未设置时返回空数组。
-     */
+    /** 获取全部 SDK 文件。 */
     public getSdkArkFiles(): ArkFile[] {
         const first = this.registry.getFirstProjectFileSigID();
         if (first === -1) {
@@ -761,10 +693,6 @@ export class Scene {
 
     /**
      * Returns the namespace according to the input namespace signature.
-     *
-     * 全局注册表值查（签名 → ID → model，O(1)）：不做“挂在文件树上”的归属校验——
-     * 正常 builder 流程中挂树（addNamespace）与注册 model（setSignature）成对发生，
-     * 两者仅在不一致态下有差异。与 getClass 的 project 快路径同构。
      * @param namespaceSignature - signature of the namespace to be obtained.
      * @returns A namespace, or null when the signature was never interned.
      */
@@ -776,17 +704,7 @@ export class Scene {
         return this.registry.namespaceSigCanonicalizer.getModel(id) ?? null;
     }
 
-    /**
-     * 获取全部 project 文件的 ArkNamespace（不含 SDK，含嵌套层级摊平）。
-     *
-     * 直接平面遍历 namespaceSigCanonicalizer（registry 为事实源），过滤规则：
-     * ① getModel(id) 为 undefined 跳过（ID 0 = DEFAULT 保留位、无 model 条目）；
-     * ② 非 project 文件跳过（SDK namespace，按 file 的 projectFile 标志判定）。
-     * 嵌套 namespace 实例均独立注册 model（ArkFile.addNamespace /
-     * ArkNamespace.addNamespace / ArkNamespace.setSignature 三处注册点），
-     * 平面遍历即全量，等价于旧的 file→ns 递归摊平（getAllNamespacesUnderThisFile）。
-     * 顺序从结构序变为 namespaceSigID 升序。
-     */
+    /** 获取全部 project 文件的 ArkNamespace（不含 SDK，含嵌套层级摊平）。*/
     public getNamespaces(): ArkNamespace[] {
         const reg = this.registry;
         const size = reg.namespaceSigCanonicalizer.size();
@@ -806,13 +724,6 @@ export class Scene {
 
     /**
      * Returns the class according to the input class signature.
-     *
-     * 全局注册表值查（签名 → ID → model，无条件）：model 注册面全覆盖（ArkClass.
-     * setSignature 为一切类构建主路径，含 SDK；addArkClass 挂树时补注册），原
-     * isProject 守卫 + ns/file 树 fallback 是注册面补全前的历史遗迹——树路径终点
-     * 与本值查相同（classSigCanonicalizer.getModel），归属校验只能砍不能加。删除后
-     * 唯一行为变化：签名已注册 model 但未挂树的类（builder 不一致态/手工构造）从
-     * null 变为返回实体（宽松化，与消费方"按签名找类"语义一致）。
      * @param classSignature - signature of the class to be obtained.
      * @returns A class, or null when the signature was never interned.
      */
@@ -832,22 +743,7 @@ export class Scene {
         return this.registry.customComponentMap;
     }
 
-    /**
-     * 获取全部 project 文件的 ArkClass（不含 SDK 类）。
-     *
-     * 直接平面遍历 classSigCanonicalizer（registry 为事实源），过滤规则：
-     * ① getModel(id) 为 undefined 跳过（ID 0 = DEFAULT 保留位、无 model 条目）；
-     * ② 非 project 文件跳过（SDK 类，按 file 的 projectFile 标志判定）。
-     *
-     * 挂载完备性：代码库不存在 class→class 挂载树（ArkClass 无 addArkClass），
-     * 全部类（含匿名类、default class）均挂载于 file 或 namespace 的 top 列表并
-     * 注册 model（ArkFile.addArkClass / ArkNamespace.addArkClass / ArkClass.setSignature
-     * 三处注册点），平面遍历即全量，等价于旧的 file.top + ns.top 结构遍历。
-     *
-     * 已知边缘差异：仅 setSignature 未挂载 top 列表的类（测试手工构造形态）也会被
-     * 收入——Scene 级查询以 registry 为事实源，语义上更正确。
-     * 顺序从结构序变为 classSigID 升序。
-     */
+    /** 获取全部 project 文件的 ArkClass（不含 SDK 类）。*/
     public getClasses(): ArkClass[] {
         const reg = this.registry;
         const size = reg.classSigCanonicalizer.size();
@@ -867,9 +763,6 @@ export class Scene {
 
     /**
      * Returns the method associated with the method signature (implementation or declaration).
-     * Resolution order: O(1) canonicalizer reverse lookup (any registered signature), then
-     * class traversal with signature matching. Both paths are read-only: no interning
-     * and no model back-fill (query paths must not write).
      * @param methodSignature - the signature of method.
      * @returns The method associated with the method signature, or null if not found.
      */
@@ -946,11 +839,6 @@ export class Scene {
             }
             for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
                 this.registry.removeClassModel(cls);
-                // 驱逐 field model（P0）：不清则 field model 残留为 stale 形态
-                //（class model 已删而 field model 还挂，getDeclaringArkClass 经
-                // getModel()! 静默返回 undefined，消费方链式 NPE + validate F4/F6/F7
-                // 违规）。reload 自愈由 ArkClass.addField 的兜底注册负责。
-                // 此刻 class 索引未清（clearAllReferences 在 unload 后半），遍历安全。
                 for (const fld of cls.getFields()) {
                     this.registry.removeField(fld);
                 }
@@ -1039,11 +927,6 @@ export class Scene {
         } else if (times > 5) {
             times = 5;
         }
-        // 构建期保证：builtFileOrder（setFile 后序记录，见字段注释）为拓扑序——
-        // 被依赖者在前，正序遍历即可，推断期无需再做依赖排序。
-        // 驱逐态条目（model 无）跳过；SDK 文件不在序列中（已在更早阶段推断）。
-        // 边界声明：analyseByModule/loadModule 增量路径不走本循环（用模块内
-        // fileDepGraph 拓扑序，见 inferModuleTypes）。
         while (times > 0) {
             this.stageStatistics?.startStage(StageName.InferTypes);
             for (const fileSigID of this.builtFileOrder) {
@@ -1074,19 +957,6 @@ export class Scene {
         this.stageStatistics?.recordSignatureStats('post-infer');
     }
 
-    /**
-     * @internal
-     * Check completeness of temp signature migration after type inference.
-     *
-     * temp 空间为索引表（slot 强持有，见 TempSignatureCanonicalizer）：
-     * - live（未迁移）：非空 slot 的签名数——含未成功推导的活签名、推导中间
-     *   垃圾（持有者已死未 retire，全保留语义钉活到 dispose）与 Builtin stub
-     *   池等常驻基线；
-     * - retired（已迁移）：持有者显式重路由 formal 时置空的量（其中 replaced
-     *   子集有 formal 归宿记录，供共享持有者三级查 fallback）。
-     * 读数同步即精确（B 轮后无弱表 pending-dead 窗口）。live > 0 时打 warning
-     * （非错误，未解析签名保持原状）。
-     */
     private checkTempSignatureCompleteness(): void {
         const stats = this.registry.getTempSpacesStats();
         const liveTotal = stats.class.liveCount + stats.method.liveCount + stats.field.liveCount;
@@ -1098,18 +968,6 @@ export class Scene {
             };
             logger.warn(`Unresolved signatures still alive after type inference (index-table exact stats): ${JSON.stringify(brief)}`);
         }
-    }
-
-    /**
-     * 返回 temp 索引表空间的精确统计（B 轮后同步即精确，async 签名保留为兼容）。
-     * 适合在 inferTypes 完成后、生成报告前调用。
-     */
-    public async settleTempSignatureStats(): Promise<{
-        class: TempSpaceStats;
-        method: TempSpaceStats;
-        field: TempSpaceStats;
-    }> {
-        return this.registry.settleTempSpaces();
     }
 
     /**
@@ -1135,24 +993,7 @@ export class Scene {
         SdkUtils.dispose();
     }
 
-    /**
-     * Iterate all assignment statements in methods,
-     * and set the type of left operand based on the type of right operand
-     * if the left operand is a local variable as well as an unknown.
-     *
-     * @deprecated 请改用 {@link inferTypes}（完整类型推断含 simple type 推断能力）。
-     * 本方法仅做赋值语句的简单类型传播，且依赖 file→class→method 结构骨架遍历，
-     * 与 registry 事实源化方向不一致。存量调用方（SourceTrap/SourceViewTree 测试）
-     * 迁移后计划删除。
-     * @example
-     * 1. Infer simple type when scene building.
-
-    ```typescript
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferSimpleTypes();
-    ```
-    */
+    /** @deprecated 请改用 {@link inferTypes}（完整类型推断含 simple type 推断能力）。 */
     public inferSimpleTypes(): void {
         for (let arkFile of this.getFiles()) {
             for (let arkClass of arkFile.getClasses()) {
@@ -1260,14 +1101,7 @@ export class Scene {
         }
     }
 
-    /**
-     * 构建 File/namespace 签名 → 可见类集合的映射（含 import/export 传播与父子 namespace 继承）。
-     *
-     * @deprecated 全库无调用方，且依赖 file→ns→class 结构骨架遍历，与 registry
-     * 事实源化的方向不一致。如需全部 project 类请使用 {@link getClasses}；
-     * 可见性传播逻辑如有需要应基于 canonicalizer 重新实现。计划随后续清理删除
-     * （连同私有 helper addNSClasses / addNSExportedClasses / addFileImportedClasses）。
-     */
+    /** @deprecated 如需全部 project 类请使用 {@link getClasses}。*/
     public getClassMap(): Map<FileSignature | NamespaceSignature, ArkClass[]> {
         const classMap: Map<FileSignature | NamespaceSignature, ArkClass[]> = new Map();
         for (const file of this.getFiles()) {
@@ -1414,14 +1248,7 @@ export class Scene {
         }
     }
 
-    /**
-     * 构建 File/namespace 签名 → 全局变量（Local）集合的映射（含 export 传播与父子 namespace 继承）。
-     *
-     * @deprecated 全库无调用方，且依赖 file→ns→class 结构骨架遍历，与 registry
-     * 事实源化的方向不一致。全局变量信息如需使用应基于 methodSigCanonicalizer /
-     * defaultArkMethod 重新实现。计划随后续清理删除（连同私有 helper addNSLocals /
-     * addNSExportedLocals / handleNestedNSLocals / addFileImportLocals）。
-     */
+    /** @deprecated 依赖 file→ns→class 结构骨架遍历，与 registry 事实源化的方向不一致。*/
     public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
         const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
         for (const file of this.getFiles()) {

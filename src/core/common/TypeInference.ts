@@ -127,7 +127,6 @@ export class TypeInference {
         }
         if (fieldType) {
             arkField.getSignature().setType(fieldType);
-            // A2 快路径：定义点 canonical 回写（ID 直读，graduateToFormal）。
             fieldRef?.graduateToFormal(arkField.getFieldSigID());
         } else if (rightType && this.isUnclearType(beforeType) && !this.isUnclearType(rightType)) {
             arkField.getSignature().setType(rightType);
@@ -306,10 +305,6 @@ export class TypeInference {
             ) {
                 stmt.replaceUse(expr, newExpr);
             }
-            // B1 (round10): the super.foo() → this.foo() base swap is removed — the
-            // 'super' Local keeps its identity and is typed to the base class by the
-            // Local-layer SUPER_NAME branch (ArkTSLocalInference.infer); see the twin
-            // removal note in InstanceInvokeExprInference.postInfer.
         }
         if (stmt instanceof ArkAliasTypeDefineStmt && this.isUnclearType(stmt.getAliasType().getOriginalType())) {
             stmt.getAliasType().setOriginalType(stmt.getAliasTypeExpr().getType());
@@ -494,9 +489,8 @@ export class TypeInference {
     }
 
     public static isUnclearType(type: Type | null | undefined): boolean {
-        // Thin delegate to the polymorphic Type.isUnclear() (each subclass owns its own
-        // criteria; the historical instanceof chain lived here and in the cpp twin — the
-        // two have now converged). Null/undefined inputs stay unclear, as before.
+        // Thin delegate to the polymorphic Type.isUnclear() (each subclass owns its own criteria).
+        // Null/undefined inputs stay unclear.
         return type === null || type === undefined ? true : type.isUnclear();
     }
 
@@ -715,17 +709,7 @@ export class TypeInference {
                 return EMPTY_STRING;
             });
             if (i === 0) {
-                if (arkMethod) {
-                    // Local-class references resolve deterministically along the method
-                    // scope chain before falling back to the file-level name search.
-                    const localClass = ModelUtils.findLocalClassInMethodChain(name, arkMethod);
-                    if (localClass) {
-                        type = new ClassType(localClass.getSignature());
-                    }
-                }
-                if (!type) {
-                    type = singleNames.length > 1 ? this.inferBaseType(name, arkClass) : this.inferTypeByName(name, arkClass);
-                }
+                type = this.inferFirstNameType(name, singleNames.length > 1, arkClass, arkMethod);
             } else if (type) {
                 type = this.inferFieldType(type, name, arkClass)?.[1];
             }
@@ -745,6 +729,19 @@ export class TypeInference {
             }
         }
         return type;
+    }
+
+    /** 首段名解析：方法作用域链局部类优先（确定性查找），未命中回落限定名/单名的通用解析。 */
+    private static inferFirstNameType(name: string, isQualifiedName: boolean, arkClass: ArkClass, arkMethod?: ArkMethod): Type | null {
+        if (arkMethod) {
+            // Local-class references resolve deterministically along the method
+            // scope chain before falling back to the file-level name search.
+            const localClass = ModelUtils.findLocalClassInMethodChain(name, arkMethod);
+            if (localClass) {
+                return new ClassType(localClass.getSignature());
+            }
+        }
+        return isQualifiedName ? this.inferBaseType(name, arkClass) : this.inferTypeByName(name, arkClass);
     }
 
     /**
@@ -809,23 +806,24 @@ export class TypeInference {
             // 侧类）上时逐实体查找——命中者签名自然归属真实声明类（等价旧 copyMembers
             // 合并的成员可见性，但成员物理留在声明类）。
             for (const e of SdkUtils.getSdkGlobalMemberClasses(arkClass.getName())) {
-                if (e !== arkClass) {
-                    property = ModelUtils.findPropertyInClass(fieldName, e);
-                    if (property) {
-                        ownerClass = e;
-                        break;
-                    }
+                if (e === arkClass) {
+                    continue;
+                }
+                property = ModelUtils.findPropertyInClass(fieldName, e);
+                if (property) {
+                    ownerClass = e;
+                    break;
                 }
             }
-            // ns 兄弟类探测：跨文件同名 namespace（Intl 系）中，后续文件的同名类持有
-            // 该文件声明的成员（等价旧 copyNamespace 互拷的可见性）。
-            if (!property) {
-                for (const sibling of SdkUtils.getNamespacedSiblingClasses(arkClass)) {
-                    property = ModelUtils.findPropertyInClass(fieldName, sibling);
-                    if (property) {
-                        ownerClass = sibling;
-                        break;
-                    }
+        }
+        // ns 兄弟类探测：跨文件同名 namespace（Intl 系）中，后续文件的同名类持有
+        // 该文件声明的成员（等价旧 copyNamespace 互拷的可见性）。
+        if (!property) {
+            for (const sibling of SdkUtils.getNamespacedSiblingClasses(arkClass)) {
+                property = ModelUtils.findPropertyInClass(fieldName, sibling);
+                if (property) {
+                    ownerClass = sibling;
+                    break;
                 }
             }
         }
@@ -920,8 +918,7 @@ export class TypeInference {
      * augmented across lib.es20XX files). Member resolution should probe each
      * candidate until a member is found — the hit entity's signature carries the
      * real declaring file. The file-local / import tiers stay single-valued (they
-     * resolve to one symbol by scope semantics); candidate [0] equals the legacy
-     * single-value result.
+     * resolve to one symbol by scope semantics).
      */
     public static inferBaseTypes(baseName: string, arkClass: ArkClass): Type[] {
         if (SUPER_NAME === baseName) {
@@ -1165,8 +1162,6 @@ export class TypeInference {
 
     public static isSameType(type1: Type, type2: Type): boolean {
         if (type1 instanceof ClassType && type2 instanceof ClassType) {
-            // Value-semantic identity comparison: cached-hash fast reject + equals verdict
-            // (replaces the legacy toMapKey() string comparison — no string building).
             return signatureEquals(type1.getClassSignature(), type2.getClassSignature());
         } else if (type1 instanceof LiteralType) {
             return typeof type1.getLiteralName() === type2.toString();

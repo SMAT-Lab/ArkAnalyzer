@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,33 +86,11 @@ export abstract class Type {
 
     protected abstract getTypeString(visited?: Set<Type>): string;
 
-    /**
-     * Whether this type is unresolvable / not yet settled, i.e. type inference cannot
-     * extract a concrete structure from it. Polymorphic counterpart of the historical
-     * `TypeInference.isUnclearType` instanceof chain; each subclass owns its own criteria
-     * (unclear reference, unknown, null, undefined, generic, unclear-declared class,
-     * containers propagating the check into their items).
-     *
-     * Cycle-safe: recursion through container types shares one visited set.
-     * Semantically final: subclasses must override {@link isUnclearWithVisited} instead —
-     * overriding this entry would break visited-set sharing across container recursion.
-     */
     public isUnclear(): boolean {
         return this.isUnclearWithVisited(new Set<Type>());
     }
 
-    /**
-     * @internal Cycle-safe variant of {@link isUnclear}. ABSTRACT by design: every
-     * subclass must state its own semantics explicitly:
-     * - concrete leaf types (numbers, strings, ...): `return false;`
-     * - inherently unclear leaves (unknown, unclear reference, generic): `return true;`
-     * - container types (union/array/class-generics/...): recurse into children with the
-     *   same visited set (register self first, cycle-safe).
-     * A container is unclear iff any child is unclear. Placeholder signalling that the
-     * inference engine formerly derived from null/undefined being "unclear" is now
-     * explicit at the consumer sites (LocalInference.preInfer, ModelInference
-     * updateValueType/transferRight2Left, ArkTsInference.transferRight2Left).
-     */
+    /** @internal */
     public abstract isUnclearWithVisited(visited: Set<Type>): boolean;
 }
 
@@ -223,8 +201,8 @@ export abstract class PrimitiveType extends Type {
         return this.name;
     }
 
-    // Transit implementation: concrete primitives are never unclear; only the inherently
-    // unclear leaves (see NullType/UndefinedType notes) override isUnclearWithVisited.
+    // Transit implementation: concrete primitives are never unclear;
+    // only the inherently unclear leaves (see NullType/UndefinedType notes) override isUnclearWithVisited.
     public isUnclearWithVisited(_visited: Set<Type>): boolean {
         return false;
     }
@@ -519,11 +497,6 @@ export class FunctionType extends Type {
     private methodSigID: number;
     private realGenericTypes?: Type[];
 
-    /**
-     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
-     * B 轮（索引表）后是唯一的 temp 侧状态——取回走 slot（惰性物化经替换记录
-     * 直达 formal，tempSigID 保留作痕迹）。
-     */
     private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
@@ -533,7 +506,6 @@ export class FunctionType extends Type {
     constructor(methodSignature: MethodSignature, realGenericTypes?: Type[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。不写 formal 空间。
         if (methodSignature.isUnclear()) {
             this.methodSigID = -1;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
@@ -549,10 +521,6 @@ export class FunctionType extends Type {
             }
         }
         this.realGenericTypes = realGenericTypes;
-    }
-
-    public get methodSignature(): MethodSignature {
-        return this.getMethodSignature();
     }
 
     public getMethodSignature(): MethodSignature {
@@ -594,18 +562,12 @@ export class FunctionType extends Type {
 
     public isUnclearWithVisited(_visited: Set<Type>): boolean {
         // 恒为 false，三层理由：
-        // 1. 语义层：FunctionType 表示函数类型本身（结构描述：参数列表+返回类型），
-        //    不是对函数实体的引用——"引用可解析性"的判定职责由 ClassType 承担。
-        //    "该签名对应哪个真实方法"的解析在消费点有专门机制（canonicalizer 值
-        //    查找 + fallback 遍历），从不依赖本判定。
-        // 2. 结构层：ClassType 的检查项（%unk stub 文件、PROMISE 无泛型）各对应
-        //    一种真实残缺形态（temp 兜底、未定型泛型）；而 MethodSignature 永远是
-        //    完整值——即使声明方 unclear，签名作为值（名字+参数+返回类型）仍然
-        //    完整，构造时总能 intern。函数类型没有"残缺形态"需要暴露。
-        // 3. 实证层：泛型实参传播版（Fn<Unclear> 判 true）曾在语义统一工程中实施，
-        //    被全量回归否决（keyof-typeof 推导链退化：Fn<T> 声明处的形式泛参被
-        //    误判为未解析）后回退。函数内容的不确定性（参数/返回/泛型实参）由
-        //    消费点按需处理，类型层传播已被实证会破坏推导链。
+        // 1. 语义层：FunctionType 表示函数类型本身（结构描述：参数列表+返回类型），不是对函数实体的引用——"引用可解析性"的判定职责由 ClassType 承担。
+        //    "该签名对应哪个真实方法"的解析在消费点有专门机制（canonicalizer 值查找 + fallback 遍历），从不依赖本判定。
+        // 2. 结构层：ClassType 的检查项（%unk stub 文件、PROMISE 无泛型）各对应一种真实残缺形态（temp 兜底、未定型泛型）；
+        //    而 MethodSignature 永远是完整值——即使声明方 unclear，签名作为值（名字+参数+返回类型）仍然完整，构造时总能 intern。函数类型没有"残缺形态"需要暴露。
+        // 3. 实证：泛型实参传播版（Fn<Unclear> 判 true）曾被全量回归否决（keyof-typeof 推导链退化），勿再尝试。
+        //    函数内容的不确定性（参数/返回/泛型实参）由消费点按需处理，类型层传播已被实证会破坏推导链。
         return false;
     }
 
@@ -650,12 +612,6 @@ export class ClassType extends Type {
     private classSigID: number;
     private realGenericTypes?: Type[];
 
-    /**
-     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
-     * B 轮（索引表）后是**唯一**的 temp 侧状态——存活/取回职责由 slot 承载
-     * （slot[id] === 构造时传入实例）。惰性物化后保留作"曾 temp"审计痕迹
-     * （formalID ≥ 0 && tempSigID ≠ undefined = 已迁移痕迹态）。
-     */
     private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
@@ -669,7 +625,6 @@ export class ClassType extends Type {
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由（isUnclear 优先）：unclear → temp（声明链文件未知，需推导解析）；clear + formal 命中 → formal ID；clear + formal miss → error log + temp 兜底（编程异常，不 throw）。Type 构造器不写 formal 空间（不调 getId）。
         if (classSignature.isUnclear()) {
             this.classSigID = -1;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
@@ -686,10 +641,6 @@ export class ClassType extends Type {
         this.realGenericTypes = realGenericTypes;
     }
 
-    public get classSignature(): ClassSignature {
-        return this.getClassSignature();
-    }
-
     public getClassSignature(): ClassSignature {
         const reg = SignatureCanonicalizerRegistry.getInstance();
         if (this.classSigID >= 0) {
@@ -700,8 +651,7 @@ export class ClassType extends Type {
             if (sig !== undefined) {
                 return sig;
             }
-            // 惰性物化：已迁移（slot 置空）→ 替换记录直达 formal（"下一处直接
-            // 使用 formal ID"）；tempSigID 保留作"曾 temp"审计痕迹。
+            // 惰性物化：已迁移（slot 置空）→ 替换记录直达 formal（"下一处直接使用 formal ID"）；tempSigID 保留作"曾 temp"审计痕迹。
             const formalId = reg.tempClassSigCanonicalizer.getReplacement(this.tempSigID);
             if (formalId !== -1) {
                 const formalSig = reg.classSigCanonicalizer.get(formalId);
@@ -716,7 +666,6 @@ export class ClassType extends Type {
 
     public setClassSignature(newClassSignature: ClassSignature): void {
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由（与构造器同构）：unclear → temp；clear + formal 命中 → formal（旧 temp 经 retireWithReplacement 显式迁移——置空 slot + 记录 formal 归宿，共享该 temp 签名的其他持有者经替换记录直达 formal）；clear + formal miss → error log + temp 兜底。
         if (newClassSignature.isUnclear()) {
             this.classSigID = -1;
             this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
@@ -755,16 +704,7 @@ export class ClassType extends Type {
     }
 
     public isUnclearWithVisited(_visited: Set<Type>): boolean {
-        // The class reference's own resolvability only. Generic type arguments do NOT
-        // propagate: Foo<T> (formal parameter) / Foo<Whatever> — the referenced class
-        // itself is resolved (kept from the historical top-level semantics; the
-        // "Foo<Unclear> propagates" variant regressed keyof/typeof-optional inference —
-        // see tasks.md B5 unification work).
         const classSignature = this.getClassSignature();
-        // ID 快判：%unk 文件 ⟺ FileSigID 0。FileSignature.DEFAULT 是 internDefaults()
-        // 固化的 formal sigID 0（唯一 fileName='%unk' 的来源），故字段级数字比较与旧的
-        // "fileName includes '%unk'" 语义等价，且省去 fileSigCanonicalizer Map 查找
-        // 与字符串比较（temp 兜底锚点与 formal 签名走同一构造器，字段值同构）。
         if (classSignature.getDeclaringFileSigID() === 0) {
             return true;
         }
@@ -1171,16 +1111,11 @@ export class LexicalEnvType extends Type {
     private nestedMethodSigID: number;
     private closures: Local[];
 
-    /**
-     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
-     * B 轮（索引表）后是唯一的 temp 侧状态（取回/物化语义见 FunctionType）。
-     */
     private tempSigID?: number;
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。
         if (nestedMethod.isUnclear()) {
             this.nestedMethodSigID = -1;
             this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
@@ -1196,10 +1131,6 @@ export class LexicalEnvType extends Type {
             }
         }
         this.closures = closures ?? [];
-    }
-
-    public get nestedMethodSignature(): MethodSignature {
-        return this.getNestedMethod();
     }
 
     public getNestedMethod(): MethodSignature {
@@ -1256,16 +1187,11 @@ export class EnumValueType extends Type {
     private fieldSigID: number;
     private constant?: Constant;
 
-    /**
-     * @internal temp 兜底登记的 tempSigID（对象恒等 ID，活对象内稳定）。
-     * B 轮（索引表）后是唯一的 temp 侧状态（取回/物化语义见 FunctionType）。
-     */
     private tempSigID?: number;
 
     constructor(signature: FieldSignature, constant?: Constant) {
         super();
         const reg = SignatureCanonicalizerRegistry.getInstance();
-        // 模式 B' 路由（与 ClassType 同构）：unclear → temp；clear + formal 命中 → formal；clear + formal miss → error log + temp 兜底。
         if (signature.isUnclear()) {
             this.fieldSigID = -1;
             this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
@@ -1281,10 +1207,6 @@ export class EnumValueType extends Type {
             }
         }
         this.constant = constant;
-    }
-
-    public get signature(): FieldSignature {
-        return this.getFieldSignature();
     }
 
     public getFieldSignature(): FieldSignature {
