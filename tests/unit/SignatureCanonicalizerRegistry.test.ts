@@ -24,7 +24,7 @@ import {
     FieldSignature,
     AliasClassSignature,
 } from '../../src/core/model/ArkSignature';
-import { UnknownType, NumberType } from '../../src/core/base/Type';
+import { ClassType, UnknownType, NumberType } from '../../src/core/base/Type';
 import { ArkMethod } from '../../src/core/model/ArkMethod';
 import { MethodParameter } from '../../src/core/model/builder/ArkMethodBuilder';
 import { ArkNamespace } from '../../src/core/model/ArkNamespace';
@@ -682,6 +682,43 @@ describe('MethodSignature SigID constructor Test', () => {
         const r2 = new MethodSignature(classSigAID, new MethodSubSignature('m', [], UnknownType.getInstance(), false));
         expect(r1.equals(r2)).toBe(false);
         expect(r1.getHashCode()).toBe(inA.getHashCode());
+    });
+
+    it('hash is stable across parameter-type mutation: re-intern after re-anchoring hits the same ID', () => {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const fileSig = new FileSignature('proj', 'src/msig-hash-stable.ts');
+        reg.fileSigCanonicalizer.getId(fileSig);
+        const hostID = reg.classSigCanonicalizer.getId(new ClassSignature('HashHost', fileSig, null));
+
+        const sizeBefore = reg.methodSigCanonicalizer.size();
+
+        // Build-time state: parameter type is an unresolved stub ClassType.
+        const stubCb = new ClassType(new ClassSignature('HashCb', 0));
+        const param = new MethodParameter();
+        param.setName('c');
+        param.setType(stubCb);
+        const sig1 = new MethodSignature(hostID, new MethodSubSignature('run', [param], UnknownType.getInstance(), false));
+        const id1 = reg.methodSigCanonicalizer.getId(sig1);
+
+        // In-place mutation: inference resolves HashCb, the parameter's ClassType gets re-anchored.
+        const resolvedCb = new ClassSignature('HashCb', fileSig, null);
+        reg.classSigCanonicalizer.getId(resolvedCb);
+        stubCb.setClassSignature(resolvedCb);
+
+        // A freshly built signature with the same (now resolved) parameter type.
+        const param2 = new MethodParameter();
+        param2.setName('c');
+        param2.setType(stubCb);
+        const sig2 = new MethodSignature(hostID, new MethodSubSignature('run', [param2], UnknownType.getInstance(), false));
+
+        // equals-equal ⇒ hash-equal (the contract a mutation-window re-intern depends on):
+        // the hash covers only lifetime-stable identity fields, so the re-anchoring above
+        // does not split the two constructions into different buckets.
+        expect(sig1.equals(sig2)).toBe(true);
+        expect(sig2.getHashCode()).toBe(sig1.getHashCode());
+        expect(reg.methodSigCanonicalizer.getExistingId(sig2)).toBe(id1);
+        // Exactly one registration — no spurious duplicate from a cross-window miss.
+        expect(reg.methodSigCanonicalizer.size()).toBe(sizeBefore + 1);
     });
 
     it('isUnclear via SigID: positive formal ID means resolved; non-positive (-1 temp, 0 DEFAULT declaring) is unclear', () => {

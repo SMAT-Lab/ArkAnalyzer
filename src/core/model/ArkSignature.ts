@@ -973,10 +973,26 @@ export class MethodSignature {
                 }
             }
         }
+        // Hash inputs are lifetime-stable identity fields ONLY: declaring SigIDs, method
+        // name, parameter count, static flag. Parameter TYPES and the return type are
+        // deliberately excluded — they are mutable in place during inference (a
+        // parameter's ClassType gets re-anchored once its class resolves;
+        // setReturnType rewrites return types), and a hash over mutable state breaks the
+        // "equals-equal ⇒ hash-equal" contract across mutation windows: the table-stored
+        // entry's bucket reflects its construction-time state while a freshly built
+        // value-equal signature hashes differently → getExistingId misses → spurious
+        // re-registration (duplicate IDs, temp-ID sequence drift). The looser hash
+        // merges overload groups (same class, same name, same param count) into one
+        // bucket — equals remains the sole semantic discriminator on the collision chain,
+        // the same legal-superset principle already applied to the return type below.
+        // This also removes the construction-time toString() concatenation (per-parameter
+        // Type string building) from the hot constructor path entirely.
         let h = 0xdeadbeef;
         h = hashCombineU32(h, this.declaringClassSigID);
         h = hashCombineU32(h, this.declaringClassTempSigID ?? 0);
-        h = hashCombineU32(h, hashString32(methodSubSignature.toString()));
+        h = hashCombineU32(h, hashString32(methodSubSignature.getMethodName()));
+        h = hashCombineU32(h, methodSubSignature.getParameters().length);
+        h = hashCombineU32(h, methodSubSignature.isStatic() ? 1 : 0);
         this.hashCode = h >>> 0;
     }
 
@@ -1077,13 +1093,14 @@ export class MethodSignature {
         if (this === other) return true;
         if (this.declaringClassSigID !== other.declaringClassSigID) return false;
         if (this.declaringClassTempSigID !== other.declaringClassTempSigID) return false;
-        // The return type participates in equality (like isMatch) so that overloads differing
-        // only in return type intern to distinct IDs. It is intentionally NOT part of the
-        // cached hash: type inference mutates return types in place, and keeping the hash
-        // stable allows re-interning the mutated signature to the same ID (hash-equal is a
-        // legal superset of equals-equal).
-        // Field-level short-circuit (was: methodSubSignature.toString() !== ... — string
-        // building on every equals call); see methodSubSignatureValueEquals.
+        // Both the parameter types and the return type participate in equality (like
+        // isMatch) so that overloads differing in either intern to distinct IDs. Both are
+        // intentionally NOT part of the cached hash: type inference mutates them in place
+        // (parameter ClassTypes get re-anchored once their classes resolve; return types
+        // get rewritten), and keeping the hash stable allows re-interning a mutated
+        // value-equal signature to the same ID (hash-equal is a legal superset of
+        // equals-equal). Overload groups sharing name + param count land in one bucket;
+        // this equals call is the sole semantic discriminator on that collision chain.
         return methodSubSignatureValueEquals(this.methodSubSignature, other.methodSubSignature);
     }
 
