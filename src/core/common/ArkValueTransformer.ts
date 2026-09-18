@@ -69,9 +69,11 @@ import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } 
 import { Value } from '../base/Value';
 import {
     COMMON_METHOD,
+    COMPONENT_BRANCH_FUNCTION,
     COMPONENT_CREATE_FUNCTION,
     COMPONENT_CUSTOMVIEW,
     COMPONENT_FOR_EACH,
+    COMPONENT_IF,
     COMPONENT_LAZY_FOR_EACH,
     COMPONENT_POP_FUNCTION,
     isEtsSystemComponent,
@@ -239,6 +241,10 @@ export class ArkValueTransformer {
     }
 
     private conditionalExpressionToValueAndStmts(conditionalExpression: ts.ConditionalExpression): ValueAndStmts {
+        if (ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
+            return this.builderConditionalExpressionToValueAndStmts(conditionalExpression);
+        }
+
         const stmts: Stmt[] = [];
         const currConditionalOperatorIndex = this.conditionalOperatorNo++;
         const {
@@ -275,6 +281,92 @@ export class ArkValueTransformer {
         assignStmt.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
         stmts.push(assignStmt);
         stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_END_STMT + currConditionalOperatorIndex));
+        return {
+            value: resultLocal,
+            valueOriginalPositions: resultLocalPosition,
+            stmts: stmts,
+        };
+    }
+
+    /**
+     * In ArkUI builder methods, lower `a ? b : c` like statement if:
+     * If.create / If.branch(0) / true / If.branch(1) / false / If.pop, still yielding a result local.
+     * Stays linear (no CFG diamond); ViewTree reads the If.create protocol.
+     */
+    private builderConditionalExpressionToValueAndStmts(conditionalExpression: ts.ConditionalExpression): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        const {
+            value: conditionExpr,
+            valueOriginalPositions: conditionExprPositions,
+            stmts: conditionStmts,
+        } = this.conditionToValueAndStmts(conditionalExpression.condition);
+        conditionStmts.forEach(stmt => stmts.push(stmt));
+
+        const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+            COMPONENT_IF,
+            COMPONENT_CREATE_FUNCTION
+        );
+        const {
+            value: conditionLocal,
+            valueOriginalPositions: conditionLocalPositions,
+            stmts: assignConditionStmts,
+        } = this.arkIRTransformer.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
+        assignConditionStmts.forEach(stmt => stmts.push(stmt));
+
+        const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, [conditionLocal]);
+        const createInvokeExprPositions = [conditionLocalPositions[0], ...conditionLocalPositions];
+        const { stmts: createStmts } = this.arkIRTransformer.generateAssignStmtForValue(
+            createInvokeExpr,
+            createInvokeExprPositions
+        );
+        createStmts.forEach(stmt => stmts.push(stmt));
+
+        const branchTrueMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+            COMPONENT_IF,
+            COMPONENT_BRANCH_FUNCTION
+        );
+        const branchTrueInvokeExpr = new ArkStaticInvokeExpr(
+            branchTrueMethodSignature,
+            [ValueUtil.getOrCreateNumberConst(0)]
+        );
+        const branchTrueInvokeStmt = new ArkInvokeStmt(branchTrueInvokeExpr);
+        branchTrueInvokeStmt.setOperandOriginalPositions([conditionLocalPositions[0], FullPosition.DEFAULT]);
+        stmts.push(branchTrueInvokeStmt);
+
+        const {
+            value: whenTrueValue,
+            valueOriginalPositions: whenTruePositions,
+            stmts: whenTrueStmts,
+        } = this.tsNodeToValueAndStmts(conditionalExpression.whenTrue);
+        whenTrueStmts.forEach(stmt => stmts.push(stmt));
+        const resultLocal = this.generateTempLocal();
+        const resultLocalPosition: FullPosition[] = [whenTruePositions[0]];
+        const assignStmtWhenTrue = new ArkAssignStmt(resultLocal, whenTrueValue);
+        assignStmtWhenTrue.setOperandOriginalPositions([...resultLocalPosition, ...whenTruePositions]);
+        stmts.push(assignStmtWhenTrue);
+
+        const branchFalseInvokeExpr = new ArkStaticInvokeExpr(
+            branchTrueMethodSignature,
+            [ValueUtil.getOrCreateNumberConst(1)]
+        );
+        const branchFalseInvokeStmt = new ArkInvokeStmt(branchFalseInvokeExpr);
+        branchFalseInvokeStmt.setOperandOriginalPositions([
+            FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile),
+            FullPosition.DEFAULT,
+        ]);
+        stmts.push(branchFalseInvokeStmt);
+
+        const {
+            value: whenFalseValue,
+            valueOriginalPositions: whenFalsePositions,
+            stmts: whenFalseStmts,
+        } = this.tsNodeToValueAndStmts(conditionalExpression.whenFalse);
+        whenFalseStmts.forEach(stmt => stmts.push(stmt));
+        const assignStmtWhenFalse = new ArkAssignStmt(resultLocal, whenFalseValue);
+        assignStmtWhenFalse.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
+        stmts.push(assignStmtWhenFalse);
+
+        stmts.push(this.generateComponentPopStmts(COMPONENT_IF));
         return {
             value: resultLocal,
             valueOriginalPositions: resultLocalPosition,

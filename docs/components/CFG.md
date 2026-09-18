@@ -306,7 +306,7 @@ preheader → condition → body → increment → condition (回边)
 3. 若占位之后还有别的 Stmt，再切一个"continuation"块。
 4. 用 `linkPredecessorsOfBasicBlock` 把原块的所有前驱迁移到 top 块、把所有后继迁移到 bottom 块。
 
-ArkUI 构建器场景（`isArkUIBuilder=true`）则简化处理：直接 `deleteDummyConditionalOperatorStmt`，不切块，因为 ViewTree 不需要这种细粒度边。
+ArkUI `build()` / `@Builder` 里的三元一律降成与语句 `if` 相同的线性施工协议：`If.create` / `If.branch` / `If.pop`（仍产出结果局部量供后续使用），**不**再切 CFG 菱形。`ConditionBuilder` 对 builder 仍只删可能残留的 DummyStmt。普通方法里的 `?:` 继续走 DummyStmt + 切块。
 
 ### 4.4 异常处理
 
