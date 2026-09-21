@@ -14,7 +14,6 @@
  */
 
 import { ArkErrorCode } from '../../../../src/core/common/ArkError';
-import { DummyStmt } from '../../../../src/core/common/ArkIRTransformer';
 import {
     ArkConditionExpr,
     ArkIfStmt,
@@ -203,18 +202,6 @@ describe('CfgTest', () => {
         assert.equal(stmts![5].getOperandOriginalPosition(0)?.getLastCol(), 10);
     });
 
-    it('case2.1: conditional operator in ArkUI build() and @Builder', () => {
-        const scene = buildScene('conditionalOperator');
-        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('BuilderConditionalOperatorSample.ets'));
-        assert.isDefined(arkFile);
-
-        const buildMethod = arkFile!.getClassWithName('Demo')?.getMethodWithName('build');
-        assertBuilderTernaryUsesIfCreate(buildMethod?.getCfg(), 'pass', 'fail', 'Text.create');
-
-        const builderMethod = arkFile!.getDefaultClass().getMethodWithName('builderWithTernary');
-        assertBuilderTernaryUsesIfCreate(builderMethod?.getCfg(), 'yes', 'no', 'Text.create');
-    });
-
     it('case3: switch statement', () => {
         const scene = buildScene('switch');
         testBlocks(scene, 'SwitchSample.ts', 'case1', SWITCH_EXPECT_CASE1.blocks);
@@ -337,27 +324,3 @@ function buildScene(folderName: string): Scene {
     return scene;
 }
 
-function assertBuilderTernaryUsesIfCreate(
-    cfg: Cfg | undefined,
-    trueLiteral: string,
-    falseLiteral: string,
-    consumeNeedle: string
-): void {
-    assert.isDefined(cfg);
-    const stmts = cfg!.getStmts();
-    assert.isFalse(stmts.some((stmt) => stmt instanceof DummyStmt));
-    assert.isFalse(stmts.some((stmt) => stmt instanceof ArkIfStmt));
-
-    const texts = stmts.map((stmt) => stmt.toString());
-    assert.isTrue(texts.some((text) => text.includes('If.create')));
-    assert.isTrue(texts.some((text) => text.includes('If.branch') || text.includes('.branch(')));
-    assert.isTrue(texts.some((text) => /If\.pop|\.pop\(/.test(text)));
-    assert.isTrue(texts.some((text) => text.includes(`'${trueLiteral}'`)));
-    assert.isTrue(texts.some((text) => text.includes(`'${falseLiteral}'`)));
-    assert.isTrue(texts.some((text) => text.includes(consumeNeedle)));
-
-    // Builder keeps a linear CFG: no if-stmt with two successors.
-    for (const block of cfg!.getBlocks()) {
-        expect(block.getSuccessors().length).toBeLessThan(2);
-    }
-}

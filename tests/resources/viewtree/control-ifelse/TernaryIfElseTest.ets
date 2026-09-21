@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+@Builder
+function builderWithTernary(ok: boolean) {
+  Text(ok ? 'yes' : 'no')
+}
+
 @Entry
 @Component
 struct TernaryIfElseTest {
@@ -33,6 +38,9 @@ struct TernaryIfElseTest {
 
       // value ternary in component arg — also If.create/branch, then Text.create(result)
       Text(this.flag ? 'pass' : 'fail')
+
+      // @Builder with value ternary in component arg
+      builderWithTernary(this.flag)
     }
   }
 }

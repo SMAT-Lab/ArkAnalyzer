@@ -250,5 +250,28 @@ export const TernaryIfElseTest_Expect_ViewTree = {
             name: 'Text',
             children: [],
         },
+        {
+            name: 'Builder',
+            children: [
+                {
+                    name: 'If',
+                    children: [
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                    ],
+                },
+                {
+                    name: 'Text',
+                    children: [],
+                },
+            ],
+            stateValues: ['flag'],
+        },
     ],
 };

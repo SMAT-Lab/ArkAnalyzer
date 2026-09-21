@@ -201,7 +201,7 @@ describe('control-ifelse Test', () => {
         testClassViewTree(scene, 'IfElseTest3', IfElseTest3_Expect_ViewTree);
     });
 
-    it('test ternary ifelse (UI / mixed / nested / value-in-arg)', async () => {
+    it('test ternary ifelse (UI / mixed / nested / value-in-arg / @Builder)', async () => {
         testClassViewTree(scene, 'TernaryIfElseTest', TernaryIfElseTest_Expect_ViewTree);
     });
 });
