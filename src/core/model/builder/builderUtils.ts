@@ -90,13 +90,13 @@ export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression
 
 export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<Decorator> {
     let decorators: Set<Decorator> = new Set();
-    ts.getAllDecorators(node).forEach(decoratorNode => {
+    for (const decoratorNode of ts.getAllDecorators(node)) {
         let decorator = parseDecorator(decoratorNode);
         if (decorator) {
             decorator.setContent(cloneText(decoratorNode.expression.getText(sourceFile)));
             decorators.add(decorator);
         }
-    });
+    }
     return decorators;
 }
 
@@ -129,9 +129,12 @@ export function buildModifiers(node: ts.Node): number {
     let modifiers: number = 0;
 
     if (ts.canHaveModifiers(node)) {
-        ts.getModifiers(node)?.forEach(modifier => {
-            modifiers |= modifierKind2Enum(modifier.kind);
-        });
+        const nodeModifiers = ts.getModifiers(node);
+        if (nodeModifiers) {
+            for (const modifier of nodeModifiers) {
+                modifiers |= modifierKind2Enum(modifier.kind);
+            }
+        }
     }
 
     return modifiers;
