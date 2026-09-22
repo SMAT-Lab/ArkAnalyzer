@@ -211,7 +211,10 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
         logger.error(`Failed to read file: ${error}`);
         return;
     }
-    arkFile.setCode(sourceText);
+    const eagerLoad = arkFile.getScene().getOptions().saveSourceCodeByDefault ?? false;
+    if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
     const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     buildImportExportInfo(arkFile, sourceFile);
 }
