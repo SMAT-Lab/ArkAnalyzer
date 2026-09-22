@@ -40,6 +40,26 @@ export class ModulePath {
     }
 }
 
+/**
+ * Directory entry names, memoized per directory: extension resolution scans the parent directory of
+ * every candidate path, and the same directory is scanned for many distinct specifiers. The listing
+ * is read-only within a build (the file table is fixed before signature loading), so a bounded cache
+ * is safe; {@link ModuleUtils.dispose} clears it.
+ */
+const DIR_ENTRY_NAMES = new Map<string, string[]>();
+const MAX_CACHED_DIRS = 8192;
+
+function readDirEntryNames(dir: string): string[] {
+    const cached = DIR_ENTRY_NAMES.get(dir);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const names = fs.readdirSync(dir);
+    if (DIR_ENTRY_NAMES.size < MAX_CACHED_DIRS) {
+        DIR_ENTRY_NAMES.set(dir, names);
+    }
+    return names;
+}
 
 export class ModuleUtils {
     private static readonly FILE_EXT = new Map<string, number>([['.ets', 0], ['.ts', 1], ['.d.ets', 2], ['.d.ts', 3], ['.js', 4]]);
@@ -53,6 +73,7 @@ export class ModuleUtils {
     public static dispose(): void {
         clearLRUCache(ModuleUtils, 'getFileRealPath');
         this.MODULES.clear();
+        DIR_ENTRY_NAMES.clear();
     }
 
     /**
@@ -71,14 +92,13 @@ export class ModuleUtils {
             const stats = fs.statSync(srcPath, { throwIfNoEntry: false });
             const dir = stats?.isDirectory() ? srcPath : path.dirname(srcPath);
             const baseName = stats?.isDirectory() ? 'index' : path.basename(srcPath);
-            const files = fs.readdirSync(dir, { withFileTypes: true });
+            const files = readDirEntryNames(dir);
             let bestOrder = Number.POSITIVE_INFINITY;
             let bestName = '';
             const length = baseName.length;
-            for (const file of files) {
-                const name = file.name;
-                const regex = new RegExp(`^${baseName}`, 'i');
-                if (!regex.test(name)) {
+            const prefixPattern = new RegExp(`^${baseName}`, 'i');
+            for (const name of files) {
+                if (!prefixPattern.test(name)) {
                     continue;
                 }
                 const suffix = name.slice(length);
