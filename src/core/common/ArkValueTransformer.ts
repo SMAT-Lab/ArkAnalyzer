@@ -301,37 +301,20 @@ export class ArkValueTransformer {
             stmts: conditionStmts,
         } = this.conditionToValueAndStmts(conditionalExpression.condition);
         conditionStmts.forEach(stmt => stmts.push(stmt));
-
-        const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-            COMPONENT_IF,
-            COMPONENT_CREATE_FUNCTION
-        );
         const {
             value: conditionLocal,
             valueOriginalPositions: conditionLocalPositions,
             stmts: assignConditionStmts,
         } = this.arkIRTransformer.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
         assignConditionStmts.forEach(stmt => stmts.push(stmt));
-
-        const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, [conditionLocal]);
-        const createInvokeExprPositions = [conditionLocalPositions[0], ...conditionLocalPositions];
-        const { stmts: createStmts } = this.arkIRTransformer.generateAssignStmtForValue(
-            createInvokeExpr,
-            createInvokeExprPositions
+        const { stmts: createStmts } = this.generateComponentCreationStmts(
+            COMPONENT_IF,
+            [conditionLocal],
+            conditionLocalPositions[0],
+            conditionLocalPositions
         );
         createStmts.forEach(stmt => stmts.push(stmt));
-
-        const branchTrueMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-            COMPONENT_IF,
-            COMPONENT_BRANCH_FUNCTION
-        );
-        const branchTrueInvokeExpr = new ArkStaticInvokeExpr(
-            branchTrueMethodSignature,
-            [ValueUtil.getOrCreateNumberConst(0)]
-        );
-        const branchTrueInvokeStmt = new ArkInvokeStmt(branchTrueInvokeExpr);
-        branchTrueInvokeStmt.setOperandOriginalPositions([conditionLocalPositions[0], FullPosition.DEFAULT]);
-        stmts.push(branchTrueInvokeStmt);
+        stmts.push(this.generateBuilderIfBranch(0, conditionLocalPositions[0]));
 
         const {
             value: whenTrueValue,
@@ -345,16 +328,12 @@ export class ArkValueTransformer {
         assignStmtWhenTrue.setOperandOriginalPositions([...resultLocalPosition, ...whenTruePositions]);
         stmts.push(assignStmtWhenTrue);
 
-        const branchFalseInvokeExpr = new ArkStaticInvokeExpr(
-            branchTrueMethodSignature,
-            [ValueUtil.getOrCreateNumberConst(1)]
+        stmts.push(
+            this.generateBuilderIfBranch(
+                1,
+                FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile)
+            )
         );
-        const branchFalseInvokeStmt = new ArkInvokeStmt(branchFalseInvokeExpr);
-        branchFalseInvokeStmt.setOperandOriginalPositions([
-            FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile),
-            FullPosition.DEFAULT,
-        ]);
-        stmts.push(branchFalseInvokeStmt);
 
         const {
             value: whenFalseValue,
@@ -582,7 +561,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private generateComponentCreationStmts(
+    public generateComponentCreationStmts(
         componentName: string,
         createArgs: Value[],
         componentExpressionPosition: FullPosition,
@@ -601,6 +580,17 @@ export class ArkValueTransformer {
             valueOriginalPositions: componentPositions,
             stmts: componentStmts,
         };
+    }
+
+    public generateBuilderIfBranch(index: number, position: FullPosition = FullPosition.DEFAULT): Stmt {
+        const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+            COMPONENT_IF,
+            COMPONENT_BRANCH_FUNCTION
+        );
+        const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [ValueUtil.getOrCreateNumberConst(index)]);
+        const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
+        branchInvokeStmt.setOperandOriginalPositions([position, FullPosition.DEFAULT]);
+        return branchInvokeStmt;
     }
 
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {

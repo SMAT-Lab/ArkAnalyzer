@@ -323,4 +323,3 @@ function buildScene(folderName: string): Scene {
     scene.buildSceneFromProjectDir(config);
     return scene;
 }
-
