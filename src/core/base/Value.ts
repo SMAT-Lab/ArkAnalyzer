@@ -22,9 +22,12 @@ export interface Value {
     /**
      * Return a list of values which are contained in this {@link Value}.
      * Value is a core interface in ArkAnalyzer, which may represent any value or expression.
+     * @param acc - Optional accumulator to append into instead of allocating a fresh array. Threading
+     *              one accumulator through a traversal avoids the transient array per node that a
+     *              recursive concat allocates.
      * @returns An **array** of values used by this value.
      */
-    getUses(): Value[];
+    getUses(acc?: Value[]): Value[];
 
     /**
      * Return the type of this value. The interface is encapsulated in {@link Value}. 

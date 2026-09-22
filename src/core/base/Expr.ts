@@ -71,8 +71,10 @@ function isCxxLikeFileName(fileName: string): boolean {
 /**
  * @category core/base/expr
  */
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+
 export abstract class AbstractExpr implements Value {
-    abstract getUses(): Value[];
+    abstract getUses(acc?: Value[]): Value[];
 
     abstract getType(): Type;
 
@@ -233,7 +235,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     public getType(): Type {
         const type = this.getMethodSignature().getType();
-        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realGenericTypes) {
+        if (TypeInference.checkType(type, IS_GENERIC_OR_ANY) && this.realGenericTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realGenericTypes);
         }
         return type;
@@ -253,13 +255,12 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         return this.spreadFlags;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(...this.args);
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(...this.args);
         for (const arg of this.args) {
-            uses.push(...arg.getUses());
+            arg.getUses(acc);
         }
-        return uses;
+        return acc;
     }
 
     /**
@@ -310,15 +311,14 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
      * For {@link ArkInstanceInvokeExpr}, the return also contains the caller base and uses of base.
      * @returns An **array** of arguments used in the invoke expression.
      */
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.base);
-        uses.push(...this.base.getUses());
-        uses.push(...this.getArgs());
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.base);
+        this.base.getUses(acc);
+        acc.push(...this.getArgs());
         for (const arg of this.getArgs()) {
-            uses.push(...arg.getUses());
+            arg.getUses(acc);
         }
-        return uses;
+        return acc;
     }
 
     public toString(): string {
@@ -461,14 +461,13 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         return strs.join('');
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.getFuncPtrLocal());
-        uses.push(...this.getArgs());
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.getFuncPtrLocal());
+        acc.push(...this.getArgs());
         for (const arg of this.getArgs()) {
-            uses.push(...arg.getUses());
+            arg.getUses(acc);
         }
-        return uses;
+        return acc;
     }
 }
 
@@ -484,8 +483,8 @@ export class ArkNewExpr extends AbstractExpr {
         return this.classType;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public getType(): Type {
@@ -598,10 +597,10 @@ export class ArkNewArrayExpr extends AbstractExpr {
         return this;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [this.size];
-        uses.push(...this.size.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.size);
+        this.size.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -634,11 +633,10 @@ export class ArkDeleteExpr extends AbstractExpr {
         return BooleanType.getInstance();
     }
 
-    public getUses(): Value[] {
-        const uses: Value[] = [];
-        uses.push(this.field);
-        uses.push(...this.field.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.field);
+        this.field.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -671,11 +669,10 @@ export class ArkAwaitExpr extends AbstractExpr {
         return this;
     }
 
-    public getUses(): Value[] {
-        const uses: Value[] = [];
-        uses.push(this.promise);
-        uses.push(...this.promise.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.promise);
+        this.promise.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -704,11 +701,10 @@ export class ArkYieldExpr extends AbstractExpr {
         return this.yieldValue.getType();
     }
 
-    public getUses(): Value[] {
-        const uses: Value[] = [];
-        uses.push(this.yieldValue);
-        uses.push(...this.yieldValue.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.yieldValue);
+        this.yieldValue.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -825,13 +821,12 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         return this.type;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op1);
-        uses.push(...this.op1.getUses());
-        uses.push(this.op2);
-        uses.push(...this.op2.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op1);
+        this.op1.getUses(acc);
+        acc.push(this.op2);
+        this.op2.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -1030,11 +1025,10 @@ export class ArkTypeOfExpr extends AbstractExpr {
         this.op = newOp;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 
     public getType(): Type {
@@ -1083,11 +1077,10 @@ export class ArkInstanceOfExpr extends AbstractExpr {
         return BooleanType.getInstance();
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -1125,11 +1118,10 @@ export class ArkCastExpr extends AbstractExpr {
         this.op = newOp;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 
     public getType(): Type {
@@ -1166,10 +1158,9 @@ export class ArkPhiExpr extends AbstractExpr {
         this.argToBlock = new Map();
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(...this.args);
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(...this.args);
+        return acc;
     }
 
     public getArgs(): Local[] {
@@ -1227,11 +1218,10 @@ export class ArkUnopExpr extends AbstractExpr {
         this.operator = operator;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 
     public getOp(): Value {
@@ -1370,11 +1360,12 @@ export class AliasTypeExpr extends AbstractExpr {
      * Returns all used values which mainly used for def-use chain analysis.
      * @returns Always returns empty array because her is the alias type definition which has no relationship with value flow.
      */
-    public getUses(): Value[] {
+    public getUses(acc: Value[] = []): Value[] {
         if (this.originalObject instanceof Local) {
-            return [this.originalObject];
+            acc.push(this.originalObject);
+            return acc;
         }
-        return [];
+        return acc;
     }
 
     public toString(): string {

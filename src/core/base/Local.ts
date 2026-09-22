@@ -126,8 +126,8 @@ export class Local implements Value, ArkExport {
      * Returns an **array** of values which are contained in this local.
      * @returns An **array** of values used by this local.
      */
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public addUsedStmt(usedStmt: Stmt): void {

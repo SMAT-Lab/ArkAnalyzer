@@ -37,8 +37,8 @@ export class Constant implements Value {
         return this.value;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     /**

@@ -53,8 +53,8 @@ export abstract class Stmt {
     }
 
     /** Return a list of values which are uesd in this statement */
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public replaceUse(oldUse: Value, newUse: Value): void {
@@ -93,7 +93,7 @@ export abstract class Stmt {
         if (def) {
             defAndUses.push(def);
         }
-        defAndUses.push(...this.getUses());
+        this.getUses(defAndUses);
         return defAndUses;
     }
 
@@ -446,12 +446,11 @@ export class ArkAssignStmt extends Stmt {
         return this.leftOp;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(...this.leftOp.getUses());
-        uses.push(this.rightOp);
-        uses.push(...this.rightOp.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        this.leftOp.getUses(acc);
+        acc.push(this.rightOp);
+        this.rightOp.getUses(acc);
+        return acc;
     }
 }
 
@@ -476,11 +475,10 @@ export class ArkInvokeStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.invokeExpr);
-        uses.push(...this.invokeExpr.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.invokeExpr);
+        this.invokeExpr.getUses(acc);
+        return acc;
     }
 }
 
@@ -526,11 +524,10 @@ export class ArkIfStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.conditionExpr);
-        uses.push(...this.conditionExpr.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.conditionExpr);
+        this.conditionExpr.getUses(acc);
+        return acc;
     }
 }
 
@@ -559,11 +556,10 @@ export class ArkReturnStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 }
 
@@ -603,11 +599,10 @@ export class ArkThrowStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 }
 
@@ -657,11 +652,12 @@ export class ArkAliasTypeDefineStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        const values: Value[] = [];
-        this.getTypeExprs().forEach(e => e.getUses().forEach(use => values.push(use)));
-        values.push(this.aliasTypeExpr);
-        return values;
+    public getUses(acc: Value[] = []): Value[] {
+        for (const e of this.getTypeExprs()) {
+            e.getUses(acc);
+        }
+        acc.push(this.aliasTypeExpr);
+        return acc;
     }
 
     public getTypeExprs(): AbstractTypeExpr[] {

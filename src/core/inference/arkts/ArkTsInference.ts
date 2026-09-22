@@ -80,6 +80,8 @@ class ArkTsMethodInference extends MethodInference {
     }
 }
 
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+
 export class ArkTsStmtInference extends StmtInference {
     constructor(valueInferences: ValueInference<Value>[]) {
         super(valueInferences);
@@ -290,7 +292,7 @@ export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
         }
         if (type) {
             const realGenericTypes = value.getRealGenericTypes();
-            if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && realGenericTypes && realGenericTypes.length > 0) {
+            if (TypeInference.checkType(type, IS_GENERIC_OR_ANY) && realGenericTypes && realGenericTypes.length > 0) {
                 TypeInference.inferRealGenericTypes(realGenericTypes, arkMethod.getDeclaringArkClass());
                 type = TypeInference.replaceTypeWithReal(type, realGenericTypes);
             }

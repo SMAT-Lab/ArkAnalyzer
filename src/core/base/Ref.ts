@@ -29,8 +29,10 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Ref');
 /**
  * @category core/base/ref
  */
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+
 export abstract class AbstractRef implements Value {
-    abstract getUses(): Value[];
+    abstract getUses(acc?: Value[]): Value[];
 
     abstract getType(): Type;
 
@@ -111,13 +113,12 @@ export class ArkArrayRef extends AbstractRef {
         }
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.base);
-        uses.push(...this.base.getUses());
-        uses.push(this.index);
-        uses.push(...this.index.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.base);
+        this.base.getUses(acc);
+        acc.push(this.index);
+        this.index.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -348,7 +349,7 @@ export abstract class AbstractFieldRef extends AbstractRef {
 
     public getType(): Type {
         const type = this.getFieldSignature().getType();
-        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realFieldTypes) {
+        if (TypeInference.checkType(type, IS_GENERIC_OR_ANY) && this.realFieldTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realFieldTypes);
         }
         return type;
@@ -399,11 +400,10 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
         this.base = newBase;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.base);
-        uses.push(...this.base.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.base);
+        this.base.getUses(acc);
+        return acc;
     }
 
     public toString(): string {
@@ -420,8 +420,8 @@ export class ArkStaticFieldRef extends AbstractFieldRef {
         super(fieldSignature);
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public toString(): string {
@@ -459,8 +459,8 @@ export class ArkParameterRef extends AbstractRef {
         return IRInference.inferParameterRef(this, arkMethod);
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public toString(): string {
@@ -480,8 +480,8 @@ export class ArkThisRef extends AbstractRef {
         return this.type;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public toString(): string {
@@ -505,8 +505,8 @@ export class ArkCaughtExceptionRef extends AbstractRef {
         this.type = newType;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public toString(): string {
@@ -530,8 +530,9 @@ export class GlobalRef extends AbstractRef {
         return this.name;
     }
 
-    public getUses(): Value[] {
-        return this.ref?.getUses() || [];
+    public getUses(acc: Value[] = []): Value[] {
+        this.ref?.getUses(acc);
+        return acc;
     }
 
     public getType(): Type {
@@ -575,8 +576,8 @@ export class ClosureFieldRef extends AbstractRef {
         this.type = type;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 
     public getBase(): Local {

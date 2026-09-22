@@ -36,7 +36,7 @@ import { TypeInference } from '../common/TypeInference';
  *  ```
  */
 export abstract class AbstractTypeExpr extends Type {
-    abstract getUses(): Value[];
+    abstract getUses(acc?: Value[]): Value[];
 
     abstract getType(): Type;
 
@@ -101,15 +101,14 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         this.genericTypes.push(gType);
     }
 
-    public getUses(): Value[] {
+    public getUses(acc: Value[] = []): Value[] {
         const opValue = this.getOpValue();
         if (opValue instanceof ArkBaseModel) {
-            return [];
+            return acc;
         }
-        let uses: Value[] = [];
-        uses.push(opValue);
-        uses.push(...opValue.getUses());
-        return uses;
+        acc.push(opValue);
+        opValue.getUses(acc);
+        return acc;
     }
 
     public getType(): Type {
@@ -177,12 +176,11 @@ export class KeyofTypeExpr extends AbstractTypeExpr {
         return this.getOpType().isUnclearWithVisited(visited);
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
+    public getUses(acc: Value[] = []): Value[] {
         if (this.getOpType() instanceof TypeQueryExpr) {
-            uses.push(...(this.getOpType() as TypeQueryExpr).getUses());
+            (this.getOpType() as TypeQueryExpr).getUses(acc);
         }
-        return uses;
+        return acc;
     }
 
     public getType(): Type {

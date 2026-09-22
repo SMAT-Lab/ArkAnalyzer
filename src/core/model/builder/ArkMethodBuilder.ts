@@ -323,8 +323,8 @@ export class MethodParameter implements Value {
         this.arrayElements = arrayElements;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc: Value[] = []): Value[] {
+        return acc;
     }
 }
 

@@ -123,6 +123,9 @@ export type FieldSigResolution = FormalFieldResolution | ParamsFieldResolution |
 
 export type FieldPropertyResolution = GetterFieldResolution | FormalFieldResolution | ParamsFieldResolution | null;
 
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+const IS_GENERIC = (t: Type): boolean => t instanceof GenericType;
+
 export class IRInference {
     public static inferExportInfos(file: ArkFile): void {
         file.getExportInfos().forEach(exportInfo => {
@@ -706,7 +709,7 @@ export class IRInference {
 
     private static changePtrInvokeExpr(method: ArkField | Local, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
         let type: Type | undefined = method.getType();
-        if (expr.getRealGenericTypes() && TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType)) {
+        if (expr.getRealGenericTypes() && TypeInference.checkType(type, IS_GENERIC_OR_ANY)) {
             type = TypeInference.replaceTypeWithReal(type, expr.getRealGenericTypes());
         }
         if (type instanceof UnionType) {
@@ -744,7 +747,7 @@ export class IRInference {
             expr.getMethodSignature().getMethodSubSignature().getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
-                    if (TypeInference.checkType(p.getType(), t => t instanceof GenericType)) {
+                    if (TypeInference.checkType(p.getType(), IS_GENERIC)) {
                         tmp.push(expr.getArg(i).getType());
                     }
                 });

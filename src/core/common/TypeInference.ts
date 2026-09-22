@@ -95,6 +95,19 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 // so a single entry covers both unresolved references and builtin stubs.
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME];
 
+const IS_ANY = (t: Type): boolean => t instanceof AnyType;
+const IS_UNCLEAR_REF_OR_GENERIC = (t: Type): boolean => t instanceof UnclearReferenceType || t instanceof GenericType;
+const CAN_RECURSE = (t: Type): boolean =>
+    t instanceof ClassType ||
+    t instanceof FunctionType ||
+    t instanceof UnionType ||
+    t instanceof IntersectionType ||
+    t instanceof TupleType ||
+    t instanceof ArrayType ||
+    t instanceof AliasType ||
+    t instanceof KeyofTypeExpr ||
+    t instanceof TypeQueryExpr;
+
 export class TypeInference {
     public static inferTypeInArkField(arkField: ArkField): void {
         const arkClass = arkField.getDeclaringArkClass();
@@ -495,12 +508,16 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
-        if (visited.has(type)) {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited?: Set<Type>): boolean {
+        if (visited === undefined) {
+            if (!CAN_RECURSE(type)) {
+                return check(type);
+            }
+            visited = new Set<Type>();
+        } else if (visited.has(type)) {
             return false;
-        } else {
-            visited.add(type);
         }
+        visited.add(type);
         if (check(type)) {
             return true;
         } else if (type instanceof ClassType || type instanceof FunctionType) {
@@ -1127,7 +1144,7 @@ export class TypeInference {
         } else if (type instanceof AliasType) {
             return this.isTypeCanBeOverride(type.getOriginalType()) || !!type.getRealGenericTypes()?.find(r => this.isTypeCanBeOverride(r));
         } else if (type instanceof ArrayType) {
-            return TypeInference.checkType(type.getBaseType(), t => t instanceof UnclearReferenceType || t instanceof GenericType);
+            return TypeInference.checkType(type.getBaseType(), IS_UNCLEAR_REF_OR_GENERIC);
         }
         return false;
     }
@@ -1186,7 +1203,7 @@ export class TypeInference {
             return rightType;
         }
         let leftType = value.getType();
-        if (rightType && this.checkType(leftType, t => t instanceof AnyType)) {
+        if (rightType && this.checkType(leftType, IS_ANY)) {
             return rightType;
         }
         if (!rightType || this.isAnonType(rightType, scene.getProjectName())) {
