@@ -688,7 +688,29 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
  * import xx from '@ohos.xx'
  * @param im importInfo or exportInfo
  */
+/**
+ * Positive resolutions of a from-info's target file, memoized by the from-info object.
+ *
+ * Only successful resolutions are cached: a miss can be a transient "not yet" - an import queried
+ * before the module map, SDK maps and file table are all in place - and those are retried by later
+ * queries. The lookups this memo fans out to (scene table, module map, SDK import map, SDK globals)
+ * do cache their own misses, so a repeat query only re-pays this function's own path work.
+ */
+const resolvedArkFile = new WeakMap<FromInfo, ArkFile>();
+
 export function getArkFile(im: FromInfo): ArkFile | null {
+    const memoized = resolvedArkFile.get(im);
+    if (memoized !== undefined) {
+        return memoized;
+    }
+    const resolved = resolveArkFile(im);
+    if (resolved !== null) {
+        resolvedArkFile.set(im, resolved);
+    }
+    return resolved;
+}
+
+function resolveArkFile(im: FromInfo): ArkFile | null {
     // TODO: 这个方法的性能很差，需要结合id化后的架构进行重构。
     const from = im.getFrom();
     if (!from) {
@@ -815,21 +837,58 @@ export function findArkExportInFile(name: string, declaringArkFile: ArkFile, vis
     return arkExport || null;
 }
 
-function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
-    const realPath = ModuleUtils.getFileRealPath(originPath);
-    const fileName = path.relative(im.getDeclaringArkFile().getProjectDir(), realPath);
-    const fromSignature = new FileSignature(im.getDeclaringArkFile().getProjectName(), fileName);
-    const scene = im.getDeclaringArkFile().getScene();
-    return scene.getFile(fromSignature);
+/**
+ * Scene-lifetime memo of resolved target files, keyed by declaring project dir + origin path.
+ *
+ * The resolution is a pure function of those two inputs within a scene: the file table is fixed
+ * once the shells exist (project files and SDK files are registered before signature loading), so
+ * the memo caches misses as well as hits - a specifier that names no file names none for the rest
+ * of the build. Keyed by scene so a disposed scene's entries die with it.
+ */
+const resolvedSceneFiles = new WeakMap<object, Map<string, ArkFile | null>>();
+
+function sceneFileMemo(scene: object, store: WeakMap<object, Map<string, ArkFile | null>> = resolvedSceneFiles): Map<string, ArkFile | null> {
+    let memo = store.get(scene);
+    if (memo === undefined) {
+        memo = new Map<string, ArkFile | null>();
+        store.set(scene, memo);
+    }
+    return memo;
 }
 
-function getArkFileFormSDK(sdk: Sdk, from: string, scene: Scene): ArkFile | null {
-    const realPath = ModuleUtils.getFileRealPath(path.resolve(sdk.path, from));
-    if (!realPath) {
-        return null;
+function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
+    const declaringFile = im.getDeclaringArkFile();
+    const scene = declaringFile.getScene();
+    const memo = sceneFileMemo(scene);
+    const key = declaringFile.getProjectDir() + '\u0000' + originPath;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
     }
-    const fromSignature = new FileSignature(sdk.name, path.relative(sdk.path, realPath));
-    return scene.getFile(fromSignature);
+    const realPath = ModuleUtils.getFileRealPath(originPath);
+    const fileName = path.relative(declaringFile.getProjectDir(), realPath);
+    const fromSignature = new FileSignature(declaringFile.getProjectName(), fileName);
+    const file = scene.getFile(fromSignature) ?? null;
+    memo.set(key, file);
+    return file;
+}
+
+/** Same scene-lifetime memo, for the custom-SDK lookup: its inputs are (sdk, from) and nothing else. */
+const resolvedSdkFiles = new WeakMap<object, Map<string, ArkFile | null>>();
+
+function getArkFileFormSDK(sdk: Sdk, from: string, scene: Scene): ArkFile | null {
+    const memo = sceneFileMemo(scene, resolvedSdkFiles);
+    const key = sdk.name + '\u0000' + sdk.path + '\u0000' + from;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
+    }
+    const realPath = ModuleUtils.getFileRealPath(path.resolve(sdk.path, from));
+    let file: ArkFile | null = null;
+    if (realPath) {
+        const fromSignature = new FileSignature(sdk.name, path.relative(sdk.path, realPath));
+        file = scene.getFile(fromSignature) ?? null;
+    }
+    memo.set(key, file);
+    return file;
 }
 
 export function findExportInfoInfile(
@@ -898,6 +957,12 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     if (!from || ModuleUtils.MODULES.size === 0) {
         return null;
     }
+    const declaringFile = fromInfo.getDeclaringArkFile();
+    const memo = sceneFileMemo(declaringFile.getScene());
+    const key = declaringFile.getProjectDir() + '\u0000' + from;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
+    }
     //find file by given from like '@ohos/module/src/xxx' 'module/src/xxx'
     const parts = from.split(PATH_DELIMITER);
     const candidate = from.startsWith(SCOPE_PREFIX) ? parts.slice(0, 2).join(PATH_DELIMITER) : parts[0];
@@ -908,5 +973,7 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     const suffix = from.substring(candidate.length + 1).trim();
     const middle = suffix.startsWith(ETS_CODE_PATH) ? PATH_BE_OMITTED : '';
     const filePath = suffix.length > 1 ? path.join(modulePath.path, middle, suffix) : modulePath.main;
-    return getArkFileFromScene(fromInfo, filePath);
+    const file = getArkFileFromScene(fromInfo, filePath);
+    memo.set(key, file);
+    return file;
 }
