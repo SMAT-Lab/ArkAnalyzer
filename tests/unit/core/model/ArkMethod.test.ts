@@ -35,17 +35,6 @@ import { getLineNo, getColNo } from '../../../../src/core/base/Position';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
 import { buildScene } from '../../common';
 
-let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir(path.join(__dirname, '../../../resources/model/method'));
-let projectScene: Scene = new Scene();
-projectScene.buildSceneFromProjectDir(config);
-projectScene.inferTypes();
-
-let arkFile = projectScene.getFiles().find(file => file.getName() == 'method.ts');
-let arkDefaultClass = arkFile?.getDefaultClass();
-let nestedTestClass = arkFile?.getClassWithName('NestedTestClass');
-let testNamespace = arkFile?.getNamespaceWithName('ConstructorTest');
-
 const MethodParamWithDefaultValue = `paramWithInitializer(a: string, x?: number, y?: unknown, z?: number): number {
   label0:
     a = parameter0: string
@@ -311,6 +300,20 @@ const methodWithNestedTernaryDefault = `paramInitializerWithNestedTernaryDefault
 }
 `;
 
+let arkDefaultClass: ArkClass | undefined;
+let arkFile: ArkFile | undefined;
+
+beforeAll(() => {
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, '../../../resources/model/method'));
+    let projectScene: Scene = new Scene();
+    projectScene.buildSceneFromProjectDir(config);
+    projectScene.inferTypes();
+
+    arkFile = projectScene.getFiles().find(file => file.getName() == 'method.ts');
+    arkDefaultClass = arkFile?.getDefaultClass();
+});
+
 describe('ArkMethod Test', () => {
     it('test dotDotDot parameter', async () => {
         let method = arkDefaultClass?.getMethodWithName('testDotDotDotToken');
@@ -533,6 +536,12 @@ describe('Recursive Method', () => {
 });
 
 describe('Nested Method in Class', () => {
+    let nestedTestClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        nestedTestClass = arkFile?.getClassWithName('NestedTestClass');
+    });
+
     it('test nested method', async () => {
         const method1 = nestedTestClass?.getMethodWithName('%innerFunction1$outerMethod');
         assert.isDefined(method1);
@@ -662,7 +671,11 @@ describe('Optional Method', () => {
 });
 
 describe('Method Param with Default Value', () => {
-    const method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
+    let method: ArkMethod | undefined | null;
+
+    beforeAll(() => {
+        method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
+    });
 
     it('case1: param without default value', async () => {
         const param = method?.getSubSignature().getParameters()[0];
@@ -908,6 +921,7 @@ describe('Empty Function constructor()', () => {
 
 describe('Empty Function constructor()', () => {
     it('should execute without errors and have no side effects', () => {
+        let testNamespace = arkFile?.getNamespaceWithName('ConstructorTest');
         const method = testNamespace?.getDefaultClass()?.getMethodWithName('constructor');
         assert.isDefined(method);
         const stmts = method?.getCfg()?.getStmts();

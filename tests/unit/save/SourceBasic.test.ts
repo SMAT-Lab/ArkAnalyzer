@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { DEFAULT_ARK_METHOD_NAME, Scene, SceneConfig, SourceClassPrinter, SourceMethodPrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { ArkClass, ArkFile, DEFAULT_ARK_METHOD_NAME, Scene, SceneConfig, SourceClassPrinter, SourceMethodPrinter } from '../../../src';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const SourceBasicTest_CASE1_EXPECT = `class Person {
@@ -184,17 +184,22 @@ const SourceBasicTest_CASE10_EXPECT = `function controlTest(): void {
 `;
 
 describe('SourceBasicTest', () => {
-    let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
+    let defaultClass: ArkClass | undefined;
+    let arkfile: ArkFile | undefined;
 
-    let arkfile = scene.getFiles().find(value => {
-        return value.getName().endsWith('basic.ts');
-    });
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
 
-    let defaultClass = arkfile?.getClasses().find(value => {
-        return value.isDefaultArkClass();
+        arkfile = scene.getFiles().find(value => {
+            return value.getName().endsWith('basic.ts');
+        });
+
+        defaultClass = arkfile?.getClasses().find(value => {
+            return value.isDefaultArkClass();
+        });
     });
 
     it('case1: class-field-init-function-ref', () => {

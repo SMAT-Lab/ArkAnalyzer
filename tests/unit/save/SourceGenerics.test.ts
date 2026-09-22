@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Scene, SceneConfig, SourceClassPrinter, SourceFilePrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { ArkFile, Scene, SceneConfig, SourceClassPrinter, SourceFilePrinter } from '../../../src';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const CASE1_EXPECT = `/*
@@ -82,14 +82,17 @@ const CASE2_EXPECT = `class GenericNumber<T> {
 `;
 
 describe('SourceGenericsTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let arkfile: ArkFile | undefined;
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let arkfile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('generics.ts');
+        arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('generics.ts');
+        });
     });
 
     it('case1: whole file', () => {

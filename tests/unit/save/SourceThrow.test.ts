@@ -40,19 +40,16 @@ class ThrowTest {
 `;
 
 describe('SourceThrowTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    let arkfile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('throw.ts');
-    });
-
     it('case1: whole file', () => {
-        if (!arkfile) {
-            return;
-        }
-        let printer = new SourceFilePrinter(arkfile);
+        let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        let arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('throw.ts');
+        });
+
+        let printer = new SourceFilePrinter(arkfile!);
         let source = printer.dump();
         expect(source).eq(CASE1_EXPECT);
     });

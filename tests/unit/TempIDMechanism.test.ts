@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, beforeEach, beforeAll } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { Scene } from '../../src/Scene';
 import { ClassSignature, FileSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../src/core/model/ArkSignature';
 import { ClassType, FunctionType, EnumValueType, GenericType, UnknownType, NumberType, StringType, Type } from '../../src/core/base/Type';
@@ -53,6 +53,9 @@ describe('Temp ID Mechanism Test', () => {
     it('ClassType with a registered signature resolves the formal ID read-only', () => {
         const scene = new Scene();
         const fileSig = new FileSignature('p', 'f.ts');
+        // new Scene() 已 dispose 全局 registry（beforeEach 的预注册随之失效）：
+        // 先重新 intern 宿主文件，ClassSignature 才能拿到正式 fileSigID（否则 B' 兜底 ID 0 → temp 路由）。
+        scene.getFileSigCanonicalizer().getOrCreateId(fileSig);
         const classSig = new ClassSignature('A', fileSig, null);
         // 真实模型注册：ArkClass.setSignature 是 formal 空间的唯一写入点。
         const arkClass = new ArkClass(scene.getFileSigCanonicalizer().getExistingId(fileSig));
@@ -457,10 +460,6 @@ describe('Temp ID Mechanism Test', () => {
 });
 
 describe('Temp ID Test 2', () => {
-    beforeAll(() => {
-        SignatureCanonicalizerRegistry.dispose();
-    });
-
     /** 在宿主 file 的类上注册一个真实方法并返回（供 invoke expr 构造签名）。
      *  fileName 仅作区分记录——宿主 FileSignature 一律用已 intern 的 'p/f.ts'
      *  （beforeEach 预注册），确保走 formal-ID 路径（未 intern 的 clear 签名经模式 B' 兜底会进 temp / 置 0）。 */
@@ -483,8 +482,9 @@ describe('Temp ID Test 2', () => {
     }
 
     it('invokeExpr with a registered method signature resolves the formal ID read-only', () => {
-        const reg = SignatureCanonicalizerRegistry.getInstance();
         const { method } = setupMethodWith('src/ivk-formal.ts', 'InvokeHost', 'invokeMethod', NumberType.getInstance());
+        // setupMethodWith 内部 new Scene() 会 dispose 并重建全局 registry：之后捕获的才是活实例（与 method 同一 ID 空间）。
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         // 值相等的签名（同 class 同 subSig——ID 重载构造，值与 formal 相同）。
         const sig = new MethodSignature(
             method.getSignature().getDeclaringClassSigID(),
@@ -503,9 +503,14 @@ describe('Temp ID Test 2', () => {
     it('invokeExpr setMethodSignature migrates temp to formal when the real method registers later', () => {
         const scene = new Scene();
         const fileSig = new FileSignature('p', 'f.ts');
+        // 挂宿主 ArkFile：setFileSignature 在 new Scene() 重建后的 registry 上重新 intern 并注册
+        // file model，addMethod → getDeclaringArkFile 才能解析（否则 fileID = -1 → TypeError）。
+        const hostFile = new ArkFile(Language.TYPESCRIPT);
+        hostFile.setFileSignature(fileSig);
         const fileID = scene.getFileSigCanonicalizer().getExistingId(fileSig);
         const arkClass = new ArkClass(fileID);
         arkClass.setSignature(new ClassSignature('LateInvokeHost', fileSig, null));
+        hostFile.addArkClass(arkClass);
         const pendingSubSig = new MethodSubSignature('lateInvoke', [], NumberType.getInstance(), false);
         const pendingSig = new MethodSignature(arkClass.getClassSigID(), pendingSubSig);
 
@@ -547,8 +552,9 @@ describe('Temp ID Test 2', () => {
     });
 
     it('R10 shared temp signature: one holder migrates, the other resolves via replacement record', () => {
-        const reg = SignatureCanonicalizerRegistry.getInstance();
         const { method } = setupMethodWith('src/ivk-r10.ts', 'R10Host', 'sharedMethod', NumberType.getInstance());
+        // 同上：setupMethodWith 内部 new Scene() 重建 registry，之后捕获活实例再断言 temp 空间。
+        const reg = SignatureCanonicalizerRegistry.getInstance();
         // A、B 两个 expr 持同一 stub 实例（值未注册 formal → temp 路由，同实例
         // 复用同一 tempSigID——R10 共享场景）。
         const stubSig = ArkSignatureBuilder.buildMethodSignatureFromMethodName('sharedMethod');

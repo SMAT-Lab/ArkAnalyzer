@@ -14,7 +14,7 @@
  */
 
 import { Scene, SceneConfig, SourceClassPrinter, SourceFilePrinter, SourceNamespacePrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const CASE1_EXPECT = `@Component
@@ -317,11 +317,15 @@ export default class SongItemBuilder {
 `;
 
 describe('SourceViewTreeTest', () => {
-    let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/viewtree'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferSimpleTypes();
+    let scene: Scene;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/viewtree'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferSimpleTypes();
+    });
 
     it('case1: class build', () => {
         let arkfile = scene.getFiles().find(value => {

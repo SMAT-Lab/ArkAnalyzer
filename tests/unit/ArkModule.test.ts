@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -24,8 +24,6 @@ import { ModuleBuilder } from '../../src/frontend/common/ModuleBuilder';
 import { ModuleDepGraph } from '../../src/core/graph/ModuleDepGraph';
 import { Scene } from '../../src/Scene';
 import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
-
-const STUB_SCENE = new Scene();
 
 /** Create a real Scene for getDependencies/getDependents tests (ArkModule queries the Scene). */
 function makeStubScene(): Scene {
@@ -55,6 +53,12 @@ function injectDepGraph(scene: Scene, builder: ModuleBuilder, edges: Array<[Modu
 }
 
 describe('ArkModule tests', () => {
+    let STUB_SCENE: Scene;
+
+    beforeEach(() => {
+        STUB_SCENE = new Scene();
+    });
+
     describe('constructor defaults', () => {
         it('initializes loadState, moduleType and filesMap with default values', () => {
             const module = new ArkModule(STUB_SCENE);

@@ -170,7 +170,9 @@ export class Scene {
         return this.modulePath2NameMap;
     }
 
-    constructor() {}
+    constructor() {
+        SignatureCanonicalizerRegistry.dispose();
+    }
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.

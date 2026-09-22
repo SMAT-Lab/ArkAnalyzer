@@ -20,19 +20,16 @@ import { Scene } from '../../src/Scene';
 import { FileSignature } from '../../src/core/model/ArkSignature';
 
 describe("build scene Test", () => {
-
-    const config: SceneConfig = new SceneConfig();
-    const singleFile = path.join(__dirname, "../resources/inferType/Target.ets");
-    config.buildConfig('must','',[],[singleFile]);
-    const projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypes();
     it('build case', () => {
+        const config: SceneConfig = new SceneConfig();
+        const singleFile = path.join(__dirname, "../resources/inferType/Target.ets");
+        config.buildConfig('must','',[],[singleFile]);
+        const projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+        projectScene.inferTypes();
+
         const fileId = new FileSignature(projectScene.getProjectName(), "Target.ets", );
         const file = projectScene.getFile(fileId);
         assert.isDefined(file);
-
-    })
-
-
-})
+    });
+});

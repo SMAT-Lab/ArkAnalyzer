@@ -13,22 +13,27 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import { SceneConfig, Scene, CallGraph, CallGraphBuilder, CallGraphNode } from '../../../src';
 
 describe('RTA test', () => {
-    const config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
+    let scene: Scene;
+    let cg: CallGraph;
 
-    const scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        const config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
 
-    const cg = new CallGraph(scene);
-    const cgBuilder = new CallGraphBuilder(cg, scene);
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    const mainMethod = scene.getMethods().find(m => m.getName() === 'main')!;
-    cgBuilder.buildRapidTypeCallGraph([mainMethod.getSignature()], true);
+        cg = new CallGraph(scene);
+        const cgBuilder = new CallGraphBuilder(cg, scene);
+
+        const mainMethod = scene.getMethods().find(m => m.getName() === 'main')!;
+        cgBuilder.buildRapidTypeCallGraph([mainMethod.getSignature()], true);
+    });
 
     it('case1: inheritance test (RTA) - should include instantiated subclasses', () => {
         const makeSoundMethod = scene.getMethods().find(m => m.getName() === 'makeSound')!;
@@ -81,16 +86,21 @@ describe('RTA test', () => {
 });
 
 describe('RTA whole-project (projectStart)', () => {
-    const config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
+    let cg: CallGraph;
+    let scene: Scene;
 
-    const scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    beforeAll(() => {
+        const config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
 
-    const cg = new CallGraph(scene);
-    const cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildRTA4WholeProject(true);
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+
+        cg = new CallGraph(scene);
+        const cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildRTA4WholeProject(true);
+    });
 
     it('builds without preset entries and still resolves instantiated virtual callees', () => {
         const entries = cg.getEntries();

@@ -825,17 +825,17 @@ export {ExtendedAdder};
 
 
 describe('ArkIRPrinterTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
-
-    let arkfile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('basic.ts');
-    });
-
     it('case1: ', () => {
+        let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+
+        let arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('basic.ts');
+        });
+
         let printer: Printer = new ArkIRFilePrinter(arkfile!);
         let ir = printer.dump();
         expect(ir).eq(CASE1_EXPECT);

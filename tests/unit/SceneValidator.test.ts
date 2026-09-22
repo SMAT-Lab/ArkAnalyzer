@@ -29,11 +29,12 @@ ConsoleLogger.configure('', LOG_LEVEL.INFO, LOG_LEVEL.INFO, true);
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Test');
 
 describe('Anonymous Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/validator'));
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
     it('iter inst', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/validator'));
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+
         let mgr = new SceneValidator();
         let summary = mgr.validate(projectScene);
         logger.info('summary', projectScene.getProjectName());

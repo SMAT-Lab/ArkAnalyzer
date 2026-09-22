@@ -18,13 +18,11 @@ import { SceneConfig } from '../../src/Config';
 import { Scene } from '../../src/Scene';
 import { ArkClass } from '../../src';
 import * as fileBuilder from '../../src/core/model/builder/ArkFileBuilder';
-import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
 describe('build scene by files Test', () => {
     let scene: Scene;
 
     beforeAll(() => {
-        SignatureCanonicalizerRegistry.dispose();
         const filesPath: string[] = ['./'];
         const projectDir = './tests/resources/dependency/exampleProject/MyApplication4Files';
         const projectName = 'MyApplication4Files';
@@ -79,7 +77,6 @@ describe('build scene by files With Circular Dependency', () => {
     let spy: any;
 
     beforeAll(() => {
-        SignatureCanonicalizerRegistry.dispose();
         spy = vi.spyOn(fileBuilder, 'buildArkFileFromFile');
         const filesPath: string[] = ['./'];
         const projectDir = './tests/resources/dependency/exampleProject/CircularDependency';

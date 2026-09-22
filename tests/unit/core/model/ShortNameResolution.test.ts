@@ -22,7 +22,6 @@ import { ClassCategory } from '../../../../src/core/model/ArkClass';
 import { Scene } from '../../../../src/Scene';
 import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature, NamespaceSignature } from '../../../../src/core/model/ArkSignature';
 import { UnknownType } from '../../../../src/core/base/Type';
-import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 import { CxxModelUtils } from '../../../../src/frontend/cppFrontend/common/ModelUtils';
 
 /**
@@ -63,7 +62,6 @@ describe('Short-name resolution without fuzzy prefix matching', () => {
     }
 
     beforeEach(() => {
-        SignatureCanonicalizerRegistry.dispose();
         scene = new Scene();
     });
 

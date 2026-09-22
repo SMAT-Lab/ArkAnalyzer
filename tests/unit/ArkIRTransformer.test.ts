@@ -17,11 +17,13 @@ import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     ANONYMOUS_METHOD_PREFIX,
+    ArrayType,
     ArkAssignStmt,
     ArkClass,
     ArkFile,
     ArkMethod,
     ArkStaticFieldRef,
+    ClassType,
     DEFAULT_ARK_CLASS_NAME,
     GlobalRef,
     Local,
@@ -30,6 +32,7 @@ import {
     NAME_DELIMITER,
     NAME_PREFIX,
     Scene,
+    SignatureCanonicalizerRegistry,
     Value,
 } from '../../src';
 import {
@@ -957,5 +960,78 @@ describe('closure in anonymous class Test', () => {
         const stmts = method?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         expect(stmts!.length).toEqual(2);
+    });
+});
+
+describe('field ref type refinement Test', () => {
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'));
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('MethodReference.ts'));
+    });
+
+    it('static method reference is represented as temp-held static field refs after inference', () => {
+        const method = arkFile?.getDefaultClass().getDefaultArkMethod();
+        assert.isDefined(method);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const staticRefs = stmts!
+            .map(stmt => (stmt instanceof ArkAssignStmt ? stmt.getRightOp() : undefined))
+            .filter((op): op is ArkStaticFieldRef => op instanceof ArkStaticFieldRef);
+        expect(staticRefs.length).toEqual(2);
+        for (const ref of staticRefs) {
+            expect(ref.getFieldSignature().toString()).toEqual('@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic');
+            expect(ref.getType().toString()).toEqual('@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic()');
+        }
+        const registry = SignatureCanonicalizerRegistry.getInstance();
+        for (let i = 0; i < registry.fieldSigCanonicalizer.size(); i++) {
+            const sig = registry.fieldSigCanonicalizer.get(i);
+            expect(sig?.toString().includes('unboundStatic')).toBe(false);
+        }
+    });
+
+    it('instance method reference and bare function reference keep their existing forms', () => {
+        const method = arkFile?.getDefaultClass().getDefaultArkMethod();
+        assert.isDefined(method);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const texts = stmts!.map(stmt => stmt.toString());
+        expect(texts.some(text => text.includes('%0.<@expression/MethodReference.ts: ContainsMethods.unbound>'))).toBe(true);
+        expect(texts.some(text => text.trim() === 'a = foo')).toBe(true);
+        expect(texts.some(text => text.includes('ptrinvoke staticUnbound<@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic()>'))).toBe(true);
+    });
+});
+
+describe('declared type unify with initializer Test', () => {
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'), false);
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('UnresolvedTypeUnify.ts'));
+    });
+
+    it('field declared with an unresolved name is unified to the initializer stub ClassType at build time', () => {
+        const cls = arkFile?.getClassWithName('FieldHost');
+        assert.isDefined(cls);
+        const arrType = cls!.getFieldWithName('arr')!.getType();
+        assert.isTrue(arrType instanceof ArrayType);
+        const elemType = (arrType as ArrayType).getBaseType();
+        assert.isTrue(elemType instanceof ClassType);
+        expect((elemType as ClassType).getClassSignature().getClassName()).toEqual('SharedArr');
+    });
+
+    it('local declared with an unresolved name is unified to the initializer stub ClassType at build time', () => {
+        const method = arkFile?.getClassWithName('FieldHost')?.getMethodWithName('useLocal');
+        assert.isDefined(method);
+        const local = method!.getBody()?.getLocals().get('local');
+        assert.isDefined(local);
+        const localType = local!.getType();
+        assert.isTrue(localType instanceof ArrayType);
+        const elemType = (localType as ArrayType).getBaseType();
+        assert.isTrue(elemType instanceof ClassType);
+        expect((elemType as ClassType).getClassSignature().getClassName()).toEqual('SharedArr');
     });
 });

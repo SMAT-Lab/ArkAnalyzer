@@ -14,7 +14,7 @@
  */
 
 import { Scene, SceneConfig, SourceClassPrinter, SourceFilePrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const SourceClassesTest_CASE1_EXPECT = `/*
@@ -166,11 +166,15 @@ interface Updatable {
 `;
 
 describe('SourceClassesTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
 
     it('case1: whole file', () => {
         let arkfile = scene.getFiles().find((value) => {

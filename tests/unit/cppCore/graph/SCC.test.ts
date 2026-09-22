@@ -17,21 +17,22 @@ import { SCCDetection, SceneConfig, Scene, CallGraph, CallGraphBuilder, getCxxSo
 import { describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {
-    let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
-    config.buildFromProjectDir('./tests/cppResources/scc');
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypesOld();
-
-    let cg = new CallGraph(projectScene);
-    let cgBuilder = new CallGraphBuilder(cg, projectScene);
-    cgBuilder.buildDirectCallGraphForScene();
-
-    let scc = new SCCDetection<CallGraph>(cg);
-    scc.find();
-    let topo = scc.getTopoAndCollapsedNodeStack();
-    console.log(topo);
     it('case1: patching interface', () => {
+        let config: SceneConfig = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
+        config.buildFromProjectDir('./tests/cppResources/scc');
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+        projectScene.inferTypesOld();
+
+        let cg = new CallGraph(projectScene);
+        let cgBuilder = new CallGraphBuilder(cg, projectScene);
+        cgBuilder.buildDirectCallGraphForScene();
+
+        let scc = new SCCDetection<CallGraph>(cg);
+        scc.find();
+        let topo = scc.getTopoAndCollapsedNodeStack();
+        console.log(topo);
+
         expect(topo.length).eq(4);
         expect(topo.reverse().toString()).eq('5,2,1,0'); //b,e,g,%dflt
         expect(Array.from(scc.getMySCCNodes(2)).toString()).eq('2,3,4,7'); //e,d,c,f

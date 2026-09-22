@@ -135,11 +135,12 @@ class InstCounter extends Dispatcher {
 }
 
 describe('Anonymous Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/anonymous'));
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
     it('iter inst', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/anonymous'));
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+
         let mgr = new ScenePassMgr({
             passes: {
                 file: [FileCounter], klass: [ClassCounter], method: [MethodCounter],

@@ -21,7 +21,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import ts, { ClassElement, EnumMember, ParameterDeclaration, TypeElement } from 'ohos-typescript';
 import { ArkClass, ClassCategory } from '../ArkClass';
 import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod, checkAndUpdateMethod } from './ArkMethodBuilder';
-import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type } from './builderUtils';
+import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type, unifyDeclaredTypeWithInitializer } from './builderUtils';
 import { cloneText } from '../../common/StringUtils';
 import { buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
@@ -575,6 +575,12 @@ function getInitStmts(
     const assignStmt = new ArkAssignStmt(fieldRef, initValue);
     assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
     stmts.push(assignStmt);
+
+    const declaredType = field.getSignature().getType();
+    const unifiedType = unifyDeclaredTypeWithInitializer(declaredType, initValue.getType());
+    if (unifiedType !== declaredType) {
+        field.getSignature().setType(unifiedType);
+    }
 
     setFieldInitPositionInfo(field, stmts, initValue);
 }

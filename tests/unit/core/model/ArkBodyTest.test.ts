@@ -15,7 +15,7 @@
 
 import path from 'path';
 import { ArkArrayRef, ArkAssignStmt, ArkClass, INSTANCE_INIT_METHOD_NAME, NumberType, Scene, SceneConfig, STATIC_INIT_METHOD_NAME } from '../../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { Trap } from '../../../../src/core/base/Trap';
 import {
     TRAP_EXPECT_CASE1,
@@ -44,7 +44,11 @@ import { NumberConstant } from '../../../../src/core/base/Constant';
 const BASE_DIR = path.join(__dirname, '../../../../tests/resources/model/body');
 
 describe('trap Test', () => {
-    const scene = buildScene('trap');
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene('trap');
+    });
 
     it('trap case1', async () => {
         testTraps(scene, 'TrapTest.ts', 'case1', TRAP_EXPECT_CASE1.traps);
@@ -136,7 +140,11 @@ describe('trap Test', () => {
 });
 
 describe('Local Test', () => {
-    const scene = buildScene('local');
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene('local');
+    });
 
     it('locals in generated method', async () => {
         assertLocalsInGeneratedMethodEqual(scene, 'LocalsInGeneratedMethod.ts', 'Case1', Local_Expect_In_Generated_Method.case1);

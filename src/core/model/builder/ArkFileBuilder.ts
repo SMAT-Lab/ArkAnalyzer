@@ -78,7 +78,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     const options = arkFile.getScene().getOptions();
@@ -208,7 +208,7 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     arkFile.setCode(sourceText);
@@ -262,7 +262,7 @@ export function buildArkFileSignaturesFromFile(arkFile: ArkFile): void {
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);

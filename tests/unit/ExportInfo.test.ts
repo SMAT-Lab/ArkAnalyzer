@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     AliasClassSignature,
@@ -64,8 +64,6 @@ function buildScene(): Scene {
     return projectScene;
 }
 
-let projectScene = buildScene();
-
 function compareModifiers(arkModel: ArkBaseModel | ArkExport, expectedModifiers: any): void {
     if (expectedModifiers.includes('EXPORT')) {
         assert.isTrue(arkModel.containsModifier(ModifierType.EXPORT));
@@ -104,6 +102,12 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
     }
 }
 
+let projectScene: Scene;
+
+beforeAll(() => {
+    projectScene = buildScene();
+});
+
 describe("export Test", () => {
 
     it('debug case', () => {
@@ -122,12 +126,13 @@ describe("export Test", () => {
         assert.isNotEmpty(stmts);
         if (stmts) {
             assert.equal(stmts[10].toString(), 'staticinvoke <@exports/exportSample.ts: %dflt.write()>()');
-            // static-probe (round10): value-space members carried in a field-signature
-            // shape (file-level exports referenced through a base) no longer convert to
-            // a base-less static ref via the clear+miss error route — the ref keeps its
-            // base and the signature (declaring + [static] flag) is preserved in place.
-            assert.equal(stmts[2].toString(), '%0 = t.<@exports/exportSample.ts: %dflt.[static]z>');
-            assert.equal(stmts[9].toString(), '%2 = t.<@exports/exportSample.ts: %dflt.[static]MyNameSpace>');
+            // static-probe: value-space members carried in a field-signature shape (file-level
+            // exports referenced through a base) convert to a base-less static ref when the
+            // formal miss occurs — an unclear stub registers into the temp space via the
+            // standard route and is evolved in place, unifying the shape with the formal-hit
+            // path (no clear+miss error route, no formal entry).
+            assert.equal(stmts[2].toString(), '%0 = @exports/exportSample.ts: %dflt.[static]z');
+            assert.equal(stmts[9].toString(), '%2 = @exports/exportSample.ts: %dflt.[static]MyNameSpace');
         }
     })
 
@@ -236,9 +241,9 @@ describe("export Test", () => {
         const stmts = file?.getClassWithName('test')?.getMethodWithName('type')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
         if (stmts) {
-            // static-probe (round10): see the note in the namespace export case — the
-            // file-referenced class member keeps its base and in-place signature.
-            assert.equal(stmts[3].toString(), 'be = file.<@etsSdk/api/@ohos.base.d.ts: %dflt.[static]BusinessError>');
+            // static-probe: see the note in the namespace export case — the file-referenced
+            // class member converts to a base-less static ref (temp-held, evolved in place).
+            assert.equal(stmts[3].toString(), 'be = @etsSdk/api/@ohos.base.d.ts: %dflt.[static]BusinessError');
         }
     })
 

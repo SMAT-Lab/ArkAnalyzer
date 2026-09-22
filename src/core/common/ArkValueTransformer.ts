@@ -67,6 +67,7 @@ import {
     VoidType,
 } from '../base/Type';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
+import { unifyDeclaredTypeWithInitializer } from '../model/builder/builderUtils';
 import { cloneText } from './StringUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from './TSConst';
 import { AliasClassSignature, ClassSignature, FieldSignature, internAliasMethodSignature, MethodSignature } from '../model/ArkSignature';
@@ -1828,56 +1829,53 @@ export class ArkValueTransformer {
 
     private assignmentToValueAndStmts(leftOpNode: ts.Node, rightOpNode: ts.Node | undefined, variableDefFlag: boolean,
         isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
-        let leftValueAndStmts: ValueAndStmts;
+        let leftResult: ValueAndStmts;
         if (ts.isIdentifier(leftOpNode)) {
-            leftValueAndStmts = this.identifierToValueAndStmts(leftOpNode, variableDefFlag);
+            leftResult = this.identifierToValueAndStmts(leftOpNode, variableDefFlag);
         } else if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode)) {
             // In declaration, it is ArrayBindingPattern. And in assignment, it is ArrayLiteralExpression.
-            leftValueAndStmts = this.arrayDestructuringToValueAndStmts(leftOpNode, isConst);
+            leftResult = this.arrayDestructuringToValueAndStmts(leftOpNode, isConst);
         } else if (ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)) {
             // In declaration, it is ObjectBindingPattern. And in assignment, it is ObjectLiteralExpression.
-            leftValueAndStmts = this.objectDestructuringToValueAndStmts(leftOpNode, isConst);
+            leftResult = this.objectDestructuringToValueAndStmts(leftOpNode, isConst);
         } else {
-            leftValueAndStmts = this.tsNodeToValueAndStmts(leftOpNode);
+            leftResult = this.tsNodeToValueAndStmts(leftOpNode);
         }
-        const { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = leftValueAndStmts;
 
         let stmts: Stmt[] = [];
         if (needRightOp) {
-            const {
-                value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts,
-            } = this.assignmentRightOpToValueAndStmts(rightOpNode, leftValue);
-            if (leftValue instanceof Local) {
+            const rightResult = this.assignmentRightOpToValueAndStmts(rightOpNode, leftResult.value);
+            if (leftResult.value instanceof Local) {
                 if (variableDefFlag) {
-                    leftValue.setConstFlag(isConst);
-                    leftValue.setType(declarationType);
+                    leftResult.value.setConstFlag(isConst);
+                    leftResult.value.setType(declarationType);
                 }
-                if (leftValue.getType() instanceof UnknownType && !(rightValue.getType() instanceof UnknownType) &&
-                    !(rightValue.getType() instanceof UndefinedType)) {
-                    leftValue.setType(rightValue.getType());
+                if (leftResult.value.getType() instanceof UnknownType && !(rightResult.value.getType() instanceof UnknownType) &&
+                    !(rightResult.value.getType() instanceof UndefinedType)) {
+                    leftResult.value.setType(rightResult.value.getType());
+                }
+                const unifiedType = unifyDeclaredTypeWithInitializer(leftResult.value.getType(), rightResult.value.getType());
+                if (unifiedType !== leftResult.value.getType()) {
+                    leftResult.value.setType(unifiedType);
                 }
             }
-            const assignStmt = new ArkAssignStmt(leftValue, rightValue);
-            assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
+            const assignStmt = new ArkAssignStmt(leftResult.value, rightResult.value);
+            assignStmt.setOperandOriginalPositions([...leftResult.valueOriginalPositions, ...rightResult.valueOriginalPositions]);
             if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode) ||
                 ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)
             ) {
-                rightStmts.forEach(stmt => stmts.push(stmt));
+                rightResult.stmts.forEach(stmt => stmts.push(stmt));
                 stmts.push(assignStmt);
-                leftStmts.forEach(stmt => stmts.push(stmt));
+                leftResult.stmts.forEach(stmt => stmts.push(stmt));
             } else {
-                rightStmts.forEach(stmt => stmts.push(stmt));
-                leftStmts.forEach(stmt => stmts.push(stmt));
+                rightResult.stmts.forEach(stmt => stmts.push(stmt));
+                leftResult.stmts.forEach(stmt => stmts.push(stmt));
                 stmts.push(assignStmt);
             }
         } else {
-            stmts = leftStmts;
+            stmts = leftResult.stmts;
         }
-        return {
-            value: leftValue,
-            valueOriginalPositions: leftPositions,
-            stmts: stmts,
-        };
+        return { value: leftResult.value, valueOriginalPositions: leftResult.valueOriginalPositions, stmts: stmts };
     }
 
     private assignmentRightOpToValueAndStmts(rightOpNode: ts.Node | undefined, leftValue: Value): ValueAndStmts {

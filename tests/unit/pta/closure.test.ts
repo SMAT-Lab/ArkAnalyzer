@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, PointerAnalysisConfig } from '../../../src';
 import { Sdk } from '../../../src/Config';
 
@@ -46,11 +46,17 @@ function test(): PointerAnalysis {
     return pta;
 }
 
-let pta = test();
-const mainMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() === 'main')[0];
+let pta: PointerAnalysis;
+
+beforeAll(() => {
+    pta = test();
+});
+
 
 describe('Basic Test', () => {
     it('basic method 1', () => {
+        const mainMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() === 'main')[0];
+
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'basicOuterMethod1');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===

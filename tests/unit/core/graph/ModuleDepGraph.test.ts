@@ -19,9 +19,8 @@ import { ArkModule } from '../../../../src/core/model/ArkModule';
 import { Canonicalizer } from '../../../../src/utils/Canonicalizer';
 import { Scene } from '../../../../src/Scene';
 
-const STUB_SCENE: Scene = new Scene();
-
 function makeModule(path: string, name: string): ArkModule {
+    const STUB_SCENE: Scene = new Scene();
     const module = new ArkModule(STUB_SCENE);
     module.setModulePath(path);
     module.setModuleName(name);

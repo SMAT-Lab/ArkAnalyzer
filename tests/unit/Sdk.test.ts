@@ -14,7 +14,7 @@
  */
 
 import { SdkUtils } from '../../src/core/common/SdkUtils';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import { ArkClass, ArkMethod, MethodSignature, Scene, SceneConfig, } from '../../src';
 import { Sdk } from '../../src/Config';
@@ -36,7 +36,11 @@ describe('SDK Global Map Test', () => {
         path: SDK_DIR,
         moduleName: ''
     };
-    const scene = buildScene([sdk]);
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene([sdk]);
+    });
 
     it('test common sdk signature', async () => {
         const sdks = scene.getSdkArkFiles();

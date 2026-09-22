@@ -13,20 +13,25 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import { SceneConfig, Scene, CallGraph, CallGraphBuilder, CallGraphNode } from '../../../src';
 
 describe('CHA test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
+    let cg: CallGraph;
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    const mainMethod = scene.getMethods().find(m => m.getName() === 'main')!;
-    cgBuilder.buildClassHierarchyCallGraph([mainMethod.getSignature()]);
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/callgraph/cha_rta_test');
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+
+        cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        const mainMethod = scene.getMethods().find(m => m.getName() === 'main')!;
+        cgBuilder.buildClassHierarchyCallGraph([mainMethod.getSignature()]);
+    });
 
     it('case1: inheritance test', () => {
         const makeSoundMethod = scene.getMethods().find(m => m.getName() === 'makeSound')!;

@@ -15,22 +15,27 @@
 
 import { SceneConfig } from '../../../src/Config';
 import * as ty from '../../../src/core/base/Type';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { Scene } from '../../../src/Scene';
 import path from 'path';
-import { SourceClassPrinter } from '../../../src';
+import { ArkClass, SourceClassPrinter } from '../../../src';
 import { SourceTransformer } from '../../../src/save/source/SourceTransformer';
 import { PrinterUtils } from '../../../src/save/base/PrinterUtils';
 
 
 describe('PrinterUtilsTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    let arkClass = scene.getClasses().find((cls) => cls.getName() == 'Animal');
-    let clsPrinter = new SourceClassPrinter(arkClass!);
-    let transformer = new SourceTransformer(clsPrinter);
+    let transformer: SourceTransformer;
+    let arkClass: ArkClass | undefined;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        arkClass = scene.getClasses().find((cls) => cls.getName() == 'Animal');
+        let clsPrinter = new SourceClassPrinter(arkClass!);
+        transformer = new SourceTransformer(clsPrinter);
+    });
 
     it('LiteralType case', () => {
         let type = new ty.LiteralType('BooleanKeyword');

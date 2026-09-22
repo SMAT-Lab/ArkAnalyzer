@@ -15,7 +15,7 @@
 
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, Scene, SceneConfig, Stmt } from '../../../../src';
 import path from 'path';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { ArkClass } from '../../../../src/core/model/ArkClass';
 import { ArkMethod } from '../../../../src/core/model/ArkMethod';
 import { ArkNamespace } from '../../../../src/core/model/ArkNamespace';
@@ -23,7 +23,11 @@ import { ArkMetadataKind, CommentsMetadata, JSDocMetadata, JSDocTagItem } from '
 import { Stmt_Metadata_Expected } from '../../../resources/model/metadata/MetadataExpect';
 
 describe('metadata Test', () => {
-    const scene = buildScene('');
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene('');
+    });
 
     it('test stmt metadata', async () => {
         assertStmtsMetadataEqual(scene, 'MetadataTest.ts', Stmt_Metadata_Expected.stmts);

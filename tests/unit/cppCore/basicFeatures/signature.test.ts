@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { Scene, SceneConfig, ClassType, getCxxSourceFileExtensions } from '../../../../src';
 import path from 'path';
 
@@ -27,7 +27,11 @@ function buildScene(folderName: string): Scene {
 }
 
 describe('Signature Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../cppResources/basicFeatures/signature'));
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../cppResources/basicFeatures/signature'));
+    });
 
     it('case1: file signature test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));

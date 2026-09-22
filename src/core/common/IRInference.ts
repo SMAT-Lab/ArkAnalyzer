@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 import { ArkMethod } from '../model/ArkMethod';
+import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -321,8 +322,8 @@ export class IRInference {
 
         // 判别联合消费——定义点（终点确定）走 graduateToFormal 快路径，新构造值（终点不确定）走 updateFieldSignature 决策表；static 为新建持有者
         // 保留构造（formal 分支持 canonical，params 分支构造实例）。
-        const resolution = this.generateNewFieldSignature(ref, arkMethod.getDeclaringArkClass(), baseType);
-        return this.applyFieldResolution(ref, resolution);
+        const res = this.generateNewFieldSignature(ref, arkMethod.getDeclaringArkClass(), baseType);
+        return this.applyFieldResolution(ref, res);
     }
 
     /**
@@ -332,16 +333,16 @@ export class IRInference {
      * static 方法引用），无 formal 归宿——直接转换会走 clear+miss error 路由并
      * 多占一个 slot；miss 落入 updateFieldSignature（就地演进，上下文保留）。
      */
-    public static applyFieldResolution(ref: AbstractFieldRef, resolution: FieldSigResolution): AbstractFieldRef {
-        if (resolution === null) {
+    public static applyFieldResolution(ref: AbstractFieldRef, res: FieldSigResolution): AbstractFieldRef {
+        if (res === null) {
             return ref;
         }
-        if (resolution.kind === 'formal') {
-            const formalId = resolution.formalId ?? 0;
+        if (res.kind === 'formal') {
+            const formalId = res.formalId ?? 0;
             if (formalId <= 0) {
                 return ref;
             }
-            if (resolution.staticFlag) {
+            if (res.staticFlag) {
                 ref.retireTempTo(formalId);
                 const canonical = SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.get(formalId);
                 return new ArkStaticFieldRef(canonical!);
@@ -349,23 +350,35 @@ export class IRInference {
             ref.graduateToFormal(formalId);
             return ref;
         }
-        if (resolution.staticFlag) {
-            let staticSig: FieldSignature;
-            if (typeof resolution.declaringOrID === 'number') {
-                staticSig = resolution.namespaceDeclared
-                    ? new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, true)
-                    : new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
-            } else {
-                staticSig = new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
-            }
-            if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
-                // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
-                ref.retireTemp();
-                return new ArkStaticFieldRef(staticSig);
-            }
+        if (res.staticFlag) {
+            return IRInference.applyStaticParamsResolution(ref, res);
         }
-        ref.updateFieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, resolution.namespaceDeclared);
+        ref.updateFieldSignature(res.fieldName, res.declaringOrID, res.type, res.staticFlag, res.namespaceDeclared);
         return ref;
+    }
+
+    /** params+static 分支的统一收敛（applyFieldResolution 与 updateRefSignature 共用）。 */
+    private static applyStaticParamsResolution(ref: AbstractFieldRef, resolution: ParamsFieldResolution): AbstractFieldRef {
+        let staticSig: FieldSignature;
+        if (typeof resolution.declaringOrID === 'number') {
+            staticSig = resolution.namespaceDeclared
+                ? new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, true)
+                : new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
+        } else {
+            staticSig = new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag);
+        }
+        const registry = SignatureCanonicalizerRegistry.getInstance();
+        const existingId = registry.fieldSigCanonicalizer.getExistingId(staticSig);
+        if (existingId !== -1) {
+            // 替换埋葬：static params 形态（新 ref 自走首路径，旧 ref 纯 retire）。
+            ref.retireTemp();
+            return new ArkStaticFieldRef(registry.fieldSigCanonicalizer.get(existingId)!);
+        }
+        // formal miss：unclear stub 经 route 干净注册 temp，再就地演进（clear declaring/type 入 temp 行，不入 formal），形态与 formal 命中路径统一。
+        const staticRef = new ArkStaticFieldRef(ArkSignatureBuilder.buildFieldSignatureFromFieldName(resolution.fieldName, true));
+        staticRef.updateFieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, resolution.namespaceDeclared);
+        ref.retireTemp();
+        return staticRef;
     }
 
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
@@ -893,14 +906,7 @@ export class IRInference {
         }
         if (resolution.kind === 'params') {
             if (resolution.staticFlag) {
-                const staticSig =
-                    typeof resolution.declaringOrID === 'number' && resolution.namespaceDeclared
-                        ? new FieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, true)
-                        : new FieldSignature(resolution.fieldName, resolution.declaringOrID as BaseSignature, resolution.type, resolution.staticFlag);
-                if (SignatureCanonicalizerRegistry.getInstance().fieldSigCanonicalizer.getExistingId(staticSig) !== -1) {
-                    ref.retireTemp();
-                    return new ArkStaticFieldRef(staticSig);
-                }
+                return IRInference.applyStaticParamsResolution(ref, resolution);
             }
             ref.updateFieldSignature(resolution.fieldName, resolution.declaringOrID, resolution.type, resolution.staticFlag, resolution.namespaceDeclared);
             return ref;
@@ -945,7 +951,11 @@ export class IRInference {
                 if (property.getType() instanceof GenericType) {
                     ref.setRealFieldTypes(baseType.getRealGenericTypes());
                 }
-                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag, type: property.getType() };
+                let fieldType = property.getType();
+                if (TypeInference.isUnclearType(fieldType)) {
+                    fieldType = this.refineFieldTypeFromBaseInitializer(ref, property, fieldName, fieldType, arkMethod);
+                }
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag, type: fieldType };
             }
             // getClassSignature() (not getClassSigID()): the class may still be unclear and
             // live in the temp canonicalizer; the object overload interns it properly.
@@ -982,8 +992,12 @@ export class IRInference {
                 if (property.getType() instanceof GenericType) {
                     ref.setRealFieldTypes(baseType.getRealGenericTypes());
                 }
+                let fieldType = property.getType();
+                if (TypeInference.isUnclearType(fieldType)) {
+                    fieldType = this.refineFieldTypeFromBaseInitializer(ref, property, fieldName, fieldType);
+                }
                 // 定义点 canonical——formalId 直读（终点确定）。
-                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: fieldType };
             }
             staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
@@ -1008,6 +1022,60 @@ export class IRInference {
         return signature instanceof NamespaceSignature
             ? { kind: 'params', fieldName, declaringOrID: signature.getNamespaceSigID(), type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: true }
             : { kind: 'params', fieldName, declaringOrID: signature, type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: false };
+    }
+
+    /**
+     * 声明类型路径的字段类型 unclear（如 interface 无标注字段的声明类型路径）时的值类型精化：
+     * base local 的初始化 stmt（declaringStmt）右值类型是 clear ClassType（对象字面量匿名类等）
+     * 时，取值类型上同名字段的定义点类型回填。fieldSig 保持声明锚定不变，仅经精度栅栏单向
+     * 精化 formal canonical 的类型（unclear → clear，与 AbstractFieldRef.route 的栅栏同语义）。
+     * base 是全局变量的使用点 local（无方法内定义 stmt）时，经 findDeclaredLocal 桥接文件级
+     * def local（顶层 const 的初始化在 default 方法中）。
+     */
+    private static refineFieldTypeFromBaseInitializer(
+        ref: AbstractFieldRef,
+        property: ArkField,
+        fieldName: string,
+        unclearType: Type,
+        arkMethod?: ArkMethod
+    ): Type {
+        if (!(ref instanceof ArkInstanceFieldRef)) {
+            return unclearType;
+        }
+        const base = ref.getBase();
+        if (!(base instanceof Local)) {
+            return unclearType;
+        }
+        let declaringStmt = base.getDeclaringStmt();
+        if (!(declaringStmt instanceof ArkAssignStmt) && arkMethod !== undefined) {
+            const declaredLocal = ModelUtils.findDeclaredLocal(base, arkMethod, 1);
+            const declaredStmt = declaredLocal?.getDeclaringStmt();
+            if (declaredStmt instanceof ArkAssignStmt) {
+                declaringStmt = declaredStmt;
+            }
+        }
+        if (!(declaringStmt instanceof ArkAssignStmt)) {
+            return unclearType;
+        }
+        const valueType = declaringStmt.getRightOp().getType();
+        if (!(valueType instanceof ClassType) || TypeInference.isUnclearType(valueType)) {
+            return unclearType;
+        }
+        const registry = SignatureCanonicalizerRegistry.getInstance();
+        const valueClass = registry.getClassById(valueType.getClassSigID());
+        const valueField = valueClass?.getFieldWithName(fieldName);
+        if (!valueField) {
+            return unclearType;
+        }
+        const refinedType = valueField.getType();
+        if (TypeInference.isUnclearType(refinedType)) {
+            return unclearType;
+        }
+        const canonical = registry.fieldSigCanonicalizer.get(property.getFieldSigID());
+        if (canonical !== undefined && canonical.getType().isUnclear()) {
+            canonical.setType(refinedType);
+        }
+        return refinedType;
     }
 
     private static findPropertyFormChildrenClass(fieldName: string, arkClass: ArkClass, baseType: ClassType): ArkField | ArkMethod | null {

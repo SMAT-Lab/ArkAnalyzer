@@ -23,21 +23,32 @@ import { PointerAnalysis } from "../../src/callgraph/pointerAnalysis/PointerAnal
 import { ContextType, PointerAnalysisConfig, PtaAnalysisScale } from "../../src/callgraph/pointerAnalysis/PointerAnalysisConfig";
 import { PtsCollectionType } from "../../src/callgraph/pointerAnalysis/PtsDS";
 
-let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir('./tests/unit/save');
-let scene = new Scene();
-scene.buildSceneFromProjectDir(config);
 describe("PointerAnalysisAlgorithm Test", () => {
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
-
-    let pag = new Pag();
-    let entry = cg.getEntries()
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite)
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig)
-    pta.setEntries(entry)
     it('normal case', () => {
-        pta.start()
-    })
-})
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/unit/save');
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
+
+        let pag = new Pag();
+        let entry = cg.getEntries();
+        let ptaConfig = PointerAnalysisConfig.create(
+            2,
+            './out',
+            true,
+            true,
+            true,
+            PtaAnalysisScale.WholeProgram,
+            PtsCollectionType.BitVector,
+            ContextType.CallSite
+        );
+        let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(entry);
+
+        pta.start();
+    });
+});

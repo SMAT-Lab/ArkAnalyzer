@@ -616,3 +616,24 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
     }
     return expr;
 }
+
+/**
+ * 构建期同名载体统一：声明类型为 UnclearReferenceType（未解析标注，类别未知）且初始化器类型为
+ * 同名 ClassType（如 `new SharedArr()` 的 stub——new 语义保证类别是类）时，声明侧统一到初始化器
+ * 的 ClassType 实例。仅限纯名字标注（无泛型实参）——带实参的标注（如 `Set<string>`）有完整的
+ * 推断期名字解析路径（实参树全链解析），构建期统一反而引入实参形态中间态。统一后与 new 表达式/
+ * 构造器 invoke 共享同一 stub 的 temp class 行，目标类后续注册时可一次毕业全链收敛。ArrayType
+ * 按 dimension 一致做元素级递归；其余组合一律声明优先（零行为变化）。统一产物仍是 unclear
+ * （stub declaring 为 %unk），不影响后续推断路径。
+ */
+export function unifyDeclaredTypeWithInitializer(declared: Type, initializer: Type): Type {
+    if (declared instanceof ArrayType && initializer instanceof ArrayType && declared.getDimension() === initializer.getDimension()) {
+        const unified = unifyDeclaredTypeWithInitializer(declared.getBaseType(), initializer.getBaseType());
+        return unified !== declared.getBaseType() ? new ArrayType(unified, declared.getDimension()) : declared;
+    }
+    if (initializer instanceof ClassType && declared instanceof UnclearReferenceType &&
+        declared.getGenericTypes().length === 0 && initializer.getClassSignature().getClassName() === declared.getName()) {
+        return initializer;
+    }
+    return declared;
+}

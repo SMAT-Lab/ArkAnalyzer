@@ -70,8 +70,10 @@ export class ModelUtils {
     public static popMethodSignatureCache = new Map<string, MethodSignature>();
     /** @internal */
     public static componentMethodSigCache = new Map<string, MethodSignature>();
-    /** @internal Get the Registry singleton. */
-    private static registry: SignatureCanonicalizerRegistry = SignatureCanonicalizerRegistry.getInstance();
+    /** @internal Get the Registry singleton (dynamic: dispose 后重建的实例不可被静态字段缓存，否则推断期查空 registry)。 */
+    private static get registry(): SignatureCanonicalizerRegistry {
+        return SignatureCanonicalizerRegistry.getInstance();
+    }
 
     /**
      * @internal 取或建组件方法 stub 签名（缓存入口；className 必须在组件白名单内——调用面 generateComponentCreationStmts / ArkIRTransformer 的
