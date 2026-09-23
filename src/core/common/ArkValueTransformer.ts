@@ -326,9 +326,7 @@ export class ArkValueTransformer {
         const assignStmtWhenTrue = new ArkAssignStmt(resultLocal, whenTrueValue);
         assignStmtWhenTrue.setOperandOriginalPositions([...resultLocalPosition, ...whenTruePositions]);
         stmts.push(assignStmtWhenTrue);
-        stmts.push(
-            this.generateBuilderIfBranch(1, FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile))
-        );
+        stmts.push(this.generateBuilderIfBranch(1, FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile)));
         const {
             value: whenFalseValue,
             valueOriginalPositions: whenFalsePositions,
