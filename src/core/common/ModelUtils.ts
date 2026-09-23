@@ -689,26 +689,46 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
  * @param im importInfo or exportInfo
  */
 /**
- * Positive resolutions of a from-info's target file, memoized by the from-info object.
- *
- * Only successful resolutions are cached: a miss can be a transient "not yet" - an import queried
- * before the module map, SDK maps and file table are all in place - and those are retried by later
- * queries. The lookups this memo fans out to (scene table, module map, SDK import map, SDK globals)
- * do cache their own misses, so a repeat query only re-pays this function's own path work.
+ * Resolutions of a from-info's target file, memoized by the from-info object. Hits live here, misses
+ * in {@link unresolvedArkFile} - each miss carrying the table state it was decided under.
  */
 const resolvedArkFile = new WeakMap<FromInfo, ArkFile>();
+
+/**
+ * Monotonic sum of the registration tables this resolution reads: registered file signatures, the SDK
+ * global map, the module map and the SDK import map. A miss is stored with the sum it saw and
+ * re-resolved once the sum changes, so a "no file" answer given before a later registration - the
+ * window the resolution contract cares about - answers again afterwards. Every part only grows, so
+ * equal sums mean equal parts and a change in one of them cannot hide behind another.
+ */
+function resolutionTableState(): number {
+    const registry = SignatureCanonicalizerRegistry.getInstance();
+    return registry.fileSigCanonicalizer.size() + registry.sdkGlobalMap.size + ModuleUtils.MODULES.size + SdkUtils.getSdkImportMapSize();
+}
+
+/** From-infos whose resolution found no file, with the {@link resolutionTableState} they saw. */
+const unresolvedArkFile = new WeakMap<FromInfo, number>();
 
 export function getArkFile(im: FromInfo): ArkFile | null {
     const memoized = resolvedArkFile.get(im);
     if (memoized !== undefined) {
         return memoized;
     }
+    const missedAt = unresolvedArkFile.get(im);
+    if (missedAt !== undefined && missedAt === resolutionTableState()) {
+        return null;
+    }
+    const tableState = resolutionTableState();
     const resolved = resolveArkFile(im);
     if (resolved !== null) {
         resolvedArkFile.set(im, resolved);
+    } else {
+        unresolvedArkFile.set(im, tableState);
     }
     return resolved;
 }
+
+const RELATIVE_PATH_PATTERN = /^\.\.?\/|^\.$/;
 
 function resolveArkFile(im: FromInfo): ArkFile | null {
     // TODO: 这个方法的性能很差，需要结合id化后的架构进行重构。
@@ -716,7 +736,7 @@ function resolveArkFile(im: FromInfo): ArkFile | null {
     if (!from) {
         return null;
     }
-    if (/^\.\.?\/|^\.$/.test(from)) {
+    if (RELATIVE_PATH_PATTERN.test(from)) {
         //relative path
         return getArkFileFromScene(im, path.resolve(path.dirname(im.getDeclaringArkFile().getFilePath()), from));
     } else if (from.startsWith(ETS_CODE_PATH)) {
@@ -737,10 +757,13 @@ function resolveArkFile(im: FromInfo): ArkFile | null {
         return module.getDeclaringArkFile();
     }
     // custom sdk
-    let sdks = Array.from(scene.getProjectSdkMap().values());
-    const len = sdks.length > DEFAULT_SDK_NUMS ? DEFAULT_SDK_NUMS : sdks.length - 1;
-    sdks = sdks.slice(len);
-    for (const sdk of sdks) {
+    const sdkMap = scene.getProjectSdkMap();
+    const skip = sdkMap.size > DEFAULT_SDK_NUMS ? DEFAULT_SDK_NUMS : sdkMap.size - 1;
+    let seen = 0;
+    for (const sdk of sdkMap.values()) {
+        if (seen++ < skip) {
+            continue;
+        }
         const arkFile = getArkFileFormSDK(sdk, from, scene);
         if (arkFile) {
             return arkFile;
@@ -964,8 +987,14 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
         return memo.get(key) ?? null;
     }
     //find file by given from like '@ohos/module/src/xxx' 'module/src/xxx'
-    const parts = from.split(PATH_DELIMITER);
-    const candidate = from.startsWith(SCOPE_PREFIX) ? parts.slice(0, 2).join(PATH_DELIMITER) : parts[0];
+    const firstDelimiter = from.indexOf(PATH_DELIMITER);
+    let candidate: string;
+    if (from.startsWith(SCOPE_PREFIX) && firstDelimiter >= 0) {
+        const secondDelimiter = from.indexOf(PATH_DELIMITER, firstDelimiter + 1);
+        candidate = secondDelimiter < 0 ? from : from.substring(0, secondDelimiter);
+    } else {
+        candidate = firstDelimiter < 0 ? from : from.substring(0, firstDelimiter);
+    }
     const modulePath = ModuleUtils.MODULES.get(candidate);
     if (!modulePath) {
         return null;

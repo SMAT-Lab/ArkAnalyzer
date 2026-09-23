@@ -136,6 +136,14 @@ export class SdkUtils {
         }
     }
 
+    /**
+     * Entry count of the SDK import map, read as part of the resolution table state that decides
+     * whether a cached "no file" answer is still valid.
+     */
+    public static getSdkImportMapSize(): number {
+        return this.sdkImportMap.size;
+    }
+
     public static getImportSdkFile(from: string): ArkFile | undefined {
         const fileSigID = this.sdkImportMap.get(from);
         if (fileSigID === undefined) {
