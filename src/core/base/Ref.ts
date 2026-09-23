@@ -25,6 +25,7 @@ import { Stmt } from './Stmt';
 import { IRInference } from '../common/IRInference';
 
 const EMPTY_USES: Value[] = [];
+const EMPTY_USED_STMTS: Stmt[] = [];
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Ref');
 
@@ -549,7 +550,7 @@ export class GlobalRef extends AbstractRef {
     }
 
     public getUsedStmts(): Stmt[] {
-        return (this.usedStmts ??= []);
+        return this.usedStmts ?? EMPTY_USED_STMTS;
     }
 
     public addUsedStmts(usedStmts: Stmt | Stmt[]): void {

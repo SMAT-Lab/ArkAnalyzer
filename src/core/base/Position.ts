@@ -61,6 +61,20 @@ export function setLineCol(lineNo: number, colNo: number): LineCol {
     return lineCol;
 }
 
+function lineIndexOfPosition(lineStarts: readonly number[], position: number): number {
+    let lo = 0;
+    let hi = lineStarts.length - 1;
+    while (lo < hi) {
+        const mid = (lo + hi + 1) >>> 1;
+        if (lineStarts[mid] <= position) {
+            lo = mid;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return lo;
+}
+
 export function getLineNo(lineCol: LineCol): number {
     let line = lineCol >>> LOW_BITS_SIZE;
     if (line === MIN_NUMBER) {
@@ -98,9 +112,11 @@ export class LineColPosition {
     }
 
     public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): LineColPosition {
-        let { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
+        const lineStarts = sourceFile.getLineStarts();
+        const offset = node.getStart(sourceFile);
+        const line = lineIndexOfPosition(lineStarts, offset);
         // line start from 1.
-        return new LineColPosition(line + 1, character + 1);
+        return new LineColPosition(line + 1, offset - lineStarts[line] + 1);
     }
 
     /**
@@ -141,13 +157,15 @@ export class FullPosition {
         return getColNo(this.last);
     }
 
-
     public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): FullPosition {
-        const { line: startLine, character: startCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
-        const { line: endLine, character: endCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getEnd());
+        const lineStarts = sourceFile.getLineStarts();
+        const startOffset = node.getStart(sourceFile);
+        const startLine = lineIndexOfPosition(lineStarts, startOffset);
+        const endOffset = node.getEnd();
+        const endLine = lineIndexOfPosition(lineStarts, endOffset);
 
         // line start from 1
-        return new FullPosition(startLine + 1, startCharacter + 1, endLine + 1, endCharacter + 1);
+        return new FullPosition(startLine + 1, startOffset - lineStarts[startLine] + 1, endLine + 1, endOffset - lineStarts[endLine] + 1);
     }
 
     /**
@@ -162,8 +180,7 @@ export class FullPosition {
         const startLine = begin?.line ?? 0;
         const startCharacter = begin?.col ?? 0;
         const endLine = end?.line ?? startLine;
-        const endCharacter = (end && end.tokLen) ? end.col + end.tokLen :
-            (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
+        const endCharacter = end && end.tokLen ? end.col + end.tokLen : begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter;
         return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
 
@@ -176,4 +193,3 @@ export class FullPosition {
         );
     }
 }
-

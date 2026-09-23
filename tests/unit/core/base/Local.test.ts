@@ -92,6 +92,19 @@ describe('Local Test', () => {
         expect(used[2]).toBe(s3);
     });
 
+    it('getUsedStmts without any add returns a shared empty array and materializes on add', () => {
+        const a = new Local('a');
+        const b = new Local('b');
+        expect(a.getUsedStmts().length).toBe(0);
+        expect(a.getUsedStmts()).toBe(b.getUsedStmts());
+        const stmt = new ArkReturnVoidStmt();
+        a.addUsedStmt(stmt);
+        const used = a.getUsedStmts();
+        expect(used).toHaveLength(1);
+        expect(used[0]).toBe(stmt);
+        expect(b.getUsedStmts().length).toBe(0);
+    });
+
     it('toString returns the local name', () => {
         const a = new Local('myLocal');
         expect(a.toString()).toBe('myLocal');

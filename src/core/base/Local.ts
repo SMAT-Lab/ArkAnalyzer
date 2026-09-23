@@ -26,6 +26,7 @@ import { ModelUtils } from '../common/ModelUtils';
 import { THIS_NAME } from '../common/TSConst';
 
 const EMPTY_USES: Value[] = [];
+const EMPTY_USED_STMTS: Stmt[] = [];
 
 /**
  * @category core/base
@@ -145,7 +146,7 @@ export class Local implements Value, ArkExport {
      * @returns An array of statements used by the local.
      */
     public getUsedStmts(): Stmt[] {
-        return (this.usedStmts ??= []);
+        return this.usedStmts ?? EMPTY_USED_STMTS;
     }
 
     /**
