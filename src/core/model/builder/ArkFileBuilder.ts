@@ -19,7 +19,7 @@ import ts from 'ohos-typescript';
 import { ArkFile, Language } from '../ArkFile';
 import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile, ClassLikeNode } from './ArkClassBuilder';
+import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile, ClassLikeNode, registerTypeAliasTypeLiteral } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass, MethodLikeNode } from './ArkMethodBuilder';
 import { buildImportInfo } from './ArkImportBuilder';
 import {
@@ -108,6 +108,9 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
  */
 function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport: boolean = false): void {
     for (const child of astRoot.statements) {
+        if (ts.isTypeAliasDeclaration(child)) {
+            registerTypeAliasTypeLiteral(child);
+        }
         if (ts.isModuleDeclaration(child)) {
             buildAndCollectNamespace(child, arkFile, astRoot);
         } else if (ts.isClassDeclaration(child) || ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child) || ts.isStructDeclaration(child)) {
