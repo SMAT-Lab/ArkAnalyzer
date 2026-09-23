@@ -209,11 +209,29 @@ export class FrontendBuilder {
     }
 
     /**
+     * Build the body of every class's default method (%dflt) in the file and free its builder.
+     * %dflt methods hold the file-level (or namespace-level) top-level statements and their
+     * builder is mounted on a node that a re-parse cannot address by position (the file or
+     * namespace node itself), so they are built while the signature round's AST is still mounted.
+     * All other method builders are untouched.
+     */
+    public static buildDefaultMethodBodies(arkFile: ArkFile): void {
+        for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
+            const defaultMethod = cls.getDefaultArkMethod();
+            if (!defaultMethod) {
+                continue;
+            }
+            defaultMethod.buildBody();
+            defaultMethod.freeBodyBuilder();
+        }
+    }
+
+    /**
      * Release the BodyBuilders mounted during signature building so the ArkFile retains only
      * signatures (no ArkBody/CFG) and does not retain AST/build context in memory. Mirrors the
      * release pattern in {@link Scene.parseAndRegisterSdkFile}.
      */
-    private static freeBodyBuildersInFile(arkFile: ArkFile): void {
+    public static freeBodyBuildersInFile(arkFile: ArkFile): void {
         for (const method of ModelUtils.getAllMethodsInFile(arkFile)) {
             FrontendBuilder.freeMethodBodyBuilder(method);
         }
