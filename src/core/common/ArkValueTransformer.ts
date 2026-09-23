@@ -315,7 +315,6 @@ export class ArkValueTransformer {
         );
         createStmts.forEach(stmt => stmts.push(stmt));
         stmts.push(this.generateBuilderIfBranch(0, conditionLocalPositions[0]));
-
         const {
             value: whenTrueValue,
             valueOriginalPositions: whenTruePositions,
@@ -327,14 +326,9 @@ export class ArkValueTransformer {
         const assignStmtWhenTrue = new ArkAssignStmt(resultLocal, whenTrueValue);
         assignStmtWhenTrue.setOperandOriginalPositions([...resultLocalPosition, ...whenTruePositions]);
         stmts.push(assignStmtWhenTrue);
-
         stmts.push(
-            this.generateBuilderIfBranch(
-                1,
-                FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile)
-            )
+            this.generateBuilderIfBranch(1, FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile))
         );
-
         const {
             value: whenFalseValue,
             valueOriginalPositions: whenFalsePositions,
@@ -344,7 +338,6 @@ export class ArkValueTransformer {
         const assignStmtWhenFalse = new ArkAssignStmt(resultLocal, whenFalseValue);
         assignStmtWhenFalse.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
         stmts.push(assignStmtWhenFalse);
-
         stmts.push(this.generateComponentPopStmts(COMPONENT_IF));
         return {
             value: resultLocal,
@@ -561,6 +554,7 @@ export class ArkValueTransformer {
         };
     }
 
+    /** @internal Emit a component create invocation assigned to a temporary local. */
     public generateComponentCreationStmts(
         componentName: string,
         createArgs: Value[],
@@ -582,6 +576,7 @@ export class ArkValueTransformer {
         };
     }
 
+    /** @internal Emit an If.branch invocation for the given branch index. */
     public generateBuilderIfBranch(index: number, position: FullPosition = FullPosition.DEFAULT): Stmt {
         const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
             COMPONENT_IF,
@@ -593,6 +588,7 @@ export class ArkValueTransformer {
         return branchInvokeStmt;
     }
 
+    /** @internal Emit a component pop invocation that closes the matching create. */
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
         let popMethodSignature = ModelUtils.popMethodSignatureCache.get(componentName);
         if (!popMethodSignature) {
