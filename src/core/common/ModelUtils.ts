@@ -780,7 +780,9 @@ function resolveArkFile(im: FromInfo): ArkFile | null {
 export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | null {
     let file = getArkFile(fromInfo);
     if (!file) {
-        logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+        if (Logger.isWarnEnabled(logger)) {
+            logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+        }
         return null;
     }
     if (fromInfo.getOriginName() === ALL) {
@@ -834,8 +836,10 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
     if (arkExport) {
         exportInfo.setArkExport(arkExport);
     } else {
-        const file = exportInfo.getDeclaringArkFile().getFileSignature().toString();
-        logger.warn(`${exportInfo.getExportClauseName()} get arkExport fail from ${exportInfo.getFrom()} at ${file}`);
+        if (Logger.isWarnEnabled(logger)) {
+            const file = exportInfo.getDeclaringArkFile().getFileSignature().toString();
+            logger.warn(`${exportInfo.getExportClauseName()} get arkExport fail from ${exportInfo.getFrom()} at ${file}`);
+        }
     }
     return arkExport || null;
 }

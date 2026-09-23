@@ -281,7 +281,9 @@ export class TypeInference {
             this.resolveArkAssignStmt(stmt, arkMethod);
             this.resolveArkReturnStmt(stmt, arkMethod);
         } catch (e) {
-            logger.warn('stmt is not correct: ' + stmt.toString());
+            if (Logger.isWarnEnabled(logger)) {
+                logger.warn('stmt is not correct: ' + stmt.toString());
+            }
         }
     }
 
@@ -807,7 +809,9 @@ export class TypeInference {
                 }
             }
         } else {
-            logger.warn('infer unclear reference type fail: ' + fieldName);
+            if (Logger.isWarnEnabled(logger)) {
+                logger.warn('infer unclear reference type fail: ' + fieldName);
+            }
         }
         return propertyAndType;
     }

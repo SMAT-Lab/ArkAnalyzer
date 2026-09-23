@@ -101,7 +101,10 @@ export abstract class ImportInfoInference extends ArkModelInference {
     public infer(fromInfo: ImportInfo): ExportInfo | null {
         const file = this.fromFile;
         if (!file) {
-            logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+            if (Logger.isWarnEnabled(logger)) {
+                const signature = fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString();
+                logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${signature}`);
+            }
             return null;
         }
         if (file.getFileSigID() === fromInfo.getDeclaringArkFile().getFileSigID()) {
@@ -115,7 +118,9 @@ export abstract class ImportInfoInference extends ArkModelInference {
         }
         let exportInfo = findExportInfoInfile(fromInfo, file) || null;
         if (exportInfo === null) {
-            logger.warn('export info not found, ' + fromInfo.getFrom() + ' in file: ' + fromInfo.getDeclaringArkFile().getFileSignature().toString());
+            if (Logger.isWarnEnabled(logger)) {
+                logger.warn('export info not found, ' + fromInfo.getFrom() + ' in file: ' + fromInfo.getDeclaringArkFile().getFileSignature().toString());
+            }
             return null;
         }
         const arkExport = findArkExport(exportInfo);
@@ -444,7 +449,9 @@ export class StmtInference extends ArkModelInference {
         const name = value.constructor.name;
         const valueInference = this.valueInferences.get(name);
         if (!valueInference) {
-            logger.debug(name + ' valueInference not found');
+            if (Logger.isDebugEnabled(logger)) {
+                logger.debug(name + ' valueInference not found');
+            }
             return;
         }
         const type = value.getType();
