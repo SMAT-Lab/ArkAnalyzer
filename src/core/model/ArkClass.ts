@@ -668,6 +668,38 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return result;
     }
 
+    /**
+     * @internal Iterates the class methods in {@link getMethods} order without building the
+     * result array (one dedup set per call instead of the index set, array and dedup set of
+     * getMethods). Return false from the callback to stop early. Use getMethods when the
+     * caller needs the array itself (e.g. to sort it).
+     */
+    public forEachMethod(callback: (method: ArkMethod) => boolean, generated?: boolean): void {
+        const seen = new Set<ArkMethod>();
+        for (const entry of this.methodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                const m = this.registry.methodSigCanonicalizer.getModel(id);
+                if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
+                    seen.add(m);
+                    if (!callback(m)) {
+                        return;
+                    }
+                }
+            }
+        }
+        for (const entry of this.staticMethodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                const m = this.registry.methodSigCanonicalizer.getModel(id);
+                if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
+                    seen.add(m);
+                    if (!callback(m)) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         const canonicalizer = this.registry.methodSigCanonicalizer;
         const id = canonicalizer.getExistingId(methodSignature);

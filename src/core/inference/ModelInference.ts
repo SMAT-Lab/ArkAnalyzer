@@ -210,9 +210,10 @@ export class ClassInference extends ArkModelInference {
      * @param {ArkClass} arkClass
      */
     public infer(arkClass: ArkClass): void {
-        arkClass.getMethods(true).forEach(method => {
+        arkClass.forEachMethod(method => {
             this.methodInference.doInfer(method);
-        });
+            return true;
+        }, true);
     }
 }
 
@@ -358,6 +359,8 @@ export class MethodInference extends ArkModelInference {
 }
 
 export class StmtInference extends ArkModelInference {
+    private readonly defAndUsesScratch: Value[] = [];
+
     private valueInferences: Map<string, ValueInference<Value>>;
 
     constructor(valueInferences: ValueInference<Value>[]) {
@@ -373,7 +376,8 @@ export class StmtInference extends ArkModelInference {
      */
     public infer(stmt: Stmt): Type | undefined {
         const defType = stmt.getDef()?.getType();
-        const values = stmt.getDefAndUses();
+        this.defAndUsesScratch.length = 0;
+        const values = stmt.getDefAndUses(this.defAndUsesScratch);
         for (const value of values) {
             this.inferValue(value, stmt);
         }

@@ -266,14 +266,12 @@ export class BodyBuilder {
 
     private generateNestedMethodChains(outerMethod: ArkMethod): NestedMethodChain {
         let candidateMethods: ArkMethod[] = [];
-        outerMethod
-            .getDeclaringArkClass()
-            .getMethods()
-            .forEach(method => {
-                if (method.getName().startsWith(NAME_PREFIX) && method.getName().endsWith(`${NAME_DELIMITER}${outerMethod.getName()}`)) {
-                    candidateMethods.push(method);
-                }
-            });
+        outerMethod.getDeclaringArkClass().forEachMethod(method => {
+            if (method.getName().startsWith(NAME_PREFIX) && method.getName().endsWith(`${NAME_DELIMITER}${outerMethod.getName()}`)) {
+                candidateMethods.push(method);
+            }
+            return true;
+        });
         const childrenChains = this.getNestedChildrenChains(outerMethod, candidateMethods);
         if (childrenChains.length > 0) {
             return { parent: outerMethod, children: childrenChains };
@@ -433,11 +431,12 @@ export class BodyBuilder {
         if (oldSigID === undefined || oldSigID <= 0 || newSigID === undefined) {
             return;
         }
-        for (const method of parent.getDeclaringArkClass().getMethods()) {
+        parent.getDeclaringArkClass().forEachMethod(method => {
             if (method !== parent && method.getOuterMethodSigID() === oldSigID) {
                 method.setOuterMethodSigID(newSigID);
             }
-        }
+            return true;
+        });
     }
 
     private updateOuterMethodWithClosures(outerMethod: ArkMethod, nestedMethod: ArkMethod, closuresLocal: Local): void {

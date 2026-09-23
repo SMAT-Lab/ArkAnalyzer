@@ -90,8 +90,8 @@ export abstract class Stmt {
         stmtDefReplacer.caseStmt(this);
     }
 
-    public getDefAndUses(): Value[] {
-        const defAndUses: Value[] = [];
+    public getDefAndUses(acc?: Value[]): Value[] {
+        const defAndUses = acc ?? [];
         const def = this.getDef();
         if (def) {
             defAndUses.push(def);

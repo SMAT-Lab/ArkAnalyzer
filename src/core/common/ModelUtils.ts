@@ -252,7 +252,10 @@ export class ModelUtils {
     public static getAllMethodsInFile(arkFile: ArkFile): ArkMethod[] {
         const allMethods: ArkMethod[] = [];
         this.getAllClassesInFile(arkFile).forEach(cls => {
-            allMethods.push(...cls.getMethods());
+            cls.forEachMethod(method => {
+                allMethods.push(method);
+                return true;
+            });
         });
         return allMethods;
     }
@@ -647,7 +650,13 @@ export class ModelUtils {
         if (noMatchedField) {
             return false;
         }
-        const mustMethods = paramClass.getMethods().filter(f => !f.isStatic() && !f.getQuestionToken());
+        const mustMethods: ArkMethod[] = [];
+        paramClass.forEachMethod(f => {
+            if (!f.isStatic() && !f.getQuestionToken()) {
+                mustMethods.push(f);
+            }
+            return true;
+        });
         const noMatchedMethod = mustMethods.find(f => !argClass.getMethodWithName(f.getName()));
         if (noMatchedMethod) {
             return false;
@@ -657,7 +666,14 @@ export class ModelUtils {
             if (excessField) {
                 return false;
             }
-            const excessMethod = argClass.getMethods().find(f => !paramClass.getMethodWithName(f.getName()));
+            let excessMethod: ArkMethod | undefined;
+            argClass.forEachMethod(f => {
+                if (!paramClass.getMethodWithName(f.getName())) {
+                    excessMethod = f;
+                    return false;
+                }
+                return true;
+            });
             if (excessMethod) {
                 return false;
             }
