@@ -24,6 +24,8 @@ import { ArkMethod } from '../model/ArkMethod';
 import { Stmt } from './Stmt';
 import { IRInference } from '../common/IRInference';
 
+const EMPTY_USES: Value[] = [];
+
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Ref');
 
 /**
@@ -270,9 +272,9 @@ export abstract class AbstractFieldRef extends AbstractRef {
         namespaceDeclared: boolean
     ): FieldSignature {
         if (typeof declaringOrID === 'number') {
-            return namespaceDeclared ?
-                new FieldSignature(fieldName, declaringOrID, type, staticFlag, true) :
-                new FieldSignature(fieldName, declaringOrID, type, staticFlag);
+            return namespaceDeclared
+                ? new FieldSignature(fieldName, declaringOrID, type, staticFlag, true)
+                : new FieldSignature(fieldName, declaringOrID, type, staticFlag);
         }
         return new FieldSignature(fieldName, declaringOrID, type, staticFlag);
     }
@@ -420,8 +422,8 @@ export class ArkStaticFieldRef extends AbstractFieldRef {
         super(fieldSignature);
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public toString(): string {
@@ -459,8 +461,8 @@ export class ArkParameterRef extends AbstractRef {
         return IRInference.inferParameterRef(this, arkMethod);
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public toString(): string {
@@ -480,8 +482,8 @@ export class ArkThisRef extends AbstractRef {
         return this.type;
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public toString(): string {
@@ -505,8 +507,8 @@ export class ArkCaughtExceptionRef extends AbstractRef {
         this.type = newType;
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public toString(): string {
@@ -577,8 +579,8 @@ export class ClosureFieldRef extends AbstractRef {
         this.type = type;
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public getBase(): Local {

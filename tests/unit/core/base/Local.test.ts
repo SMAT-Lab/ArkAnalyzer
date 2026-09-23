@@ -14,14 +14,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-    ArkReturnVoidStmt,
-    Local,
-    NumberType,
-    StringType,
-    UnknownType,
-} from '../../../../src';
+import { ArkReturnVoidStmt, Local, NumberType, StringType, UnknownType } from '../../../../src';
 import { NumberConstant } from '../../../../src/core/base/Constant';
+import { Value } from '../../../../src/core/base/Value';
 import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 import { ExportType } from '../../../../src/core/model/ArkExport';
 import { LocalSignature } from '../../../../src/core/model/ArkSignature';
@@ -65,6 +60,19 @@ describe('Local Test', () => {
     it('getUses() always returns an empty array', () => {
         const a = new Local('a');
         expect(a.getUses()).toEqual([]);
+    });
+
+    it('getUses() without acc returns a shared empty array', () => {
+        const a = new Local('a');
+        expect(a.getUses().length).toBe(0);
+        expect(a.getUses()).toBe(a.getUses());
+    });
+
+    it('getUses(acc) returns the caller-provided accumulator', () => {
+        const a = new Local('a');
+        const acc: Value[] = [];
+        expect(a.getUses(acc)).toBe(acc);
+        expect(acc).toEqual([]);
     });
 
     it('addUsedStmt appends to getUsedStmts and preserves order', () => {

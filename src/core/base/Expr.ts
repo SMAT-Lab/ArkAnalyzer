@@ -54,6 +54,8 @@ import { ArkAssignStmt } from './Stmt';
 import { FullPosition } from './Position';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
+const EMPTY_USES: Value[] = [];
+
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Expr');
 
 const CXX_SOURCE_EXTENSION_SET = getCxxSourceFileExtensionSet();
@@ -483,8 +485,8 @@ export class ArkNewExpr extends AbstractExpr {
         return this.classType;
     }
 
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public getType(): Type {

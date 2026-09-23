@@ -26,6 +26,9 @@ import { AliasType, ArrayType, IntersectionType, TupleType, Type, UnionType } fr
 import { ModifierType } from '../model/ArkBaseModel';
 import { AbstractTypeExpr } from './TypeExpr';
 
+const EMPTY_USES: Value[] = [];
+const usesScratch: Value[] = [];
+
 /**
  * @category core/base/stmt
  */
@@ -53,8 +56,8 @@ export abstract class Stmt {
     }
 
     /** Return a list of values which are uesd in this statement */
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public replaceUse(oldUse: Value, newUse: Value): void {
@@ -138,7 +141,9 @@ export abstract class Stmt {
     }
 
     public containsInvokeExpr(): boolean {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof AbstractInvokeExpr) {
                 return true;
             }
@@ -158,7 +163,9 @@ export abstract class Stmt {
      ```
      */
     public getInvokeExpr(): AbstractInvokeExpr | undefined {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof AbstractInvokeExpr) {
                 return use as AbstractInvokeExpr;
             }
@@ -200,7 +207,9 @@ export abstract class Stmt {
     }
 
     public containsArrayRef(): boolean {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof ArkArrayRef) {
                 return true;
             }
@@ -212,7 +221,9 @@ export abstract class Stmt {
     }
 
     public getArrayRef(): ArkArrayRef | undefined {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof ArkArrayRef) {
                 return use as ArkArrayRef;
             }
@@ -226,7 +237,9 @@ export abstract class Stmt {
     }
 
     public containsFieldRef(): boolean {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof AbstractFieldRef) {
                 return true;
             }
@@ -239,7 +252,9 @@ export abstract class Stmt {
     }
 
     public getFieldRef(): AbstractFieldRef | undefined {
-        for (const use of this.getUses()) {
+        usesScratch.length = 0;
+        this.getUses(usesScratch);
+        for (const use of usesScratch) {
             if (use instanceof AbstractFieldRef) {
                 return use as AbstractFieldRef;
             }
@@ -317,9 +332,7 @@ export abstract class Stmt {
      * @deprecated Source text is now stored on ArkFile only. This method has no effect.
      * @param originalText - The source text (ignored).
      */
-    public setOriginalText(originalText: string): void {
-        
-    }
+    public setOriginalText(originalText: string): void {}
     /**
      * Returns the source text of this statement extracted from the declaring ArkFile
      * using the statement's origin position. Implements lazy loading with caching.

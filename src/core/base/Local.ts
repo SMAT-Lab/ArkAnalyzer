@@ -25,6 +25,8 @@ import { ArkMethod } from '../model/ArkMethod';
 import { ModelUtils } from '../common/ModelUtils';
 import { THIS_NAME } from '../common/TSConst';
 
+const EMPTY_USES: Value[] = [];
+
 /**
  * @category core/base
  */
@@ -52,14 +54,16 @@ export class Local implements Value, ArkExport {
             const declaringArkClass = arkMethod.getDeclaringArkClass();
             this.type = new ClassType(declaringArkClass.getSignature(), declaringArkClass.getRealTypes());
         } else if (!this.name.startsWith(NAME_PREFIX) && TypeInference.isUnclearType(this.type)) {
-            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ??
-                ModelUtils.findDeclaredLocal(this, arkMethod)?.getType();
+            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ?? ModelUtils.findDeclaredLocal(this, arkMethod)?.getType();
             if (type) {
                 this.type = type;
             }
         }
         if (this.type instanceof FunctionType) {
-            this.type.getMethodSignature().getMethodSubSignature().getParameters()
+            this.type
+                .getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
                 .forEach(p => TypeInference.inferParameterType(p, arkMethod));
             TypeInference.inferSignatureReturnType(this.type.getMethodSignature(), arkMethod);
         }
@@ -125,8 +129,8 @@ export class Local implements Value, ArkExport {
      * Returns an **array** of values which are contained in this local.
      * @returns An **array** of values used by this local.
      */
-    public getUses(acc: Value[] = []): Value[] {
-        return acc;
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public addUsedStmt(usedStmt: Stmt): void {
@@ -177,13 +181,7 @@ export class Local implements Value, ArkExport {
     }
 
     public getSignature(): LocalSignature {
-        return (
-            this.signature ??
-            new LocalSignature(
-                this.name,
-                MethodSignature.DEFAULT
-            )
-        );
+        return this.signature ?? new LocalSignature(this.name, MethodSignature.DEFAULT);
     }
 
     public setSignature(signature: LocalSignature): void {

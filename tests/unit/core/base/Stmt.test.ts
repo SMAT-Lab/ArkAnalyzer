@@ -23,7 +23,7 @@ describe('Stmt Source Code and Position Test', () => {
 
     beforeAll((): void => {
         const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'method.ts');
         defaultClass = arkFile?.getDefaultClass();
     });
 
@@ -38,7 +38,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginPositionInfo for return stmt', async () => {
             const returnStmt = stmts?.find(stmt => stmt instanceof ArkReturnStmt) as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const positionInfo = returnStmt.getOriginPositionInfo();
             expect(positionInfo.getLineNo()).eq(116);
             expect(positionInfo.getColNo()).eq(5);
@@ -47,7 +47,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginFullPosition for return stmt', async () => {
             const returnStmt = stmts?.find(stmt => stmt instanceof ArkReturnStmt) as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const position = returnStmt.getOriginFullPosition();
             assert.isDefined(position);
             expect(position!.getFirstLine()).eq(116);
@@ -59,7 +59,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginalText for return stmt', async () => {
             const returnStmt = stmts?.find(stmt => stmt instanceof ArkReturnStmt) as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const originalText = returnStmt.getOriginalText();
             assert.isDefined(originalText);
             expect(originalText).eq('return 1;');
@@ -77,7 +77,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginPositionInfo for assign stmt (a = 3)', async () => {
             const assignStmt = stmts?.filter(stmt => stmt instanceof ArkAssignStmt && stmt.toString() === 'a = 3')[0] as ArkAssignStmt;
             assert.isDefined(assignStmt);
-            
+
             const positionInfo = assignStmt.getOriginPositionInfo();
             expect(positionInfo.getLineNo()).eq(125);
             expect(positionInfo.getColNo()).eq(39);
@@ -86,7 +86,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginFullPosition for assign stmt (a = 3)', async () => {
             const assignStmt = stmts?.filter(stmt => stmt instanceof ArkAssignStmt && stmt.toString() === 'a = 3')[0] as ArkAssignStmt;
             assert.isDefined(assignStmt);
-            
+
             const position = assignStmt.getOriginFullPosition();
             assert.isDefined(position);
             expect(position!.getFirstLine()).eq(125);
@@ -98,7 +98,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginalText for assign stmt (a = 3)', async () => {
             const assignStmt = stmts?.filter(stmt => stmt instanceof ArkAssignStmt && stmt.toString() === 'a = 3')[0] as ArkAssignStmt;
             assert.isDefined(assignStmt);
-            
+
             const originalText = assignStmt.getOriginalText();
             assert.isDefined(originalText);
             expect(originalText).eq('a = 3');
@@ -107,7 +107,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginPositionInfo for return stmt (return a)', async () => {
             const returnStmt = stmts?.filter(stmt => stmt instanceof ArkReturnStmt && stmt.toString() === 'return a')[0] as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const positionInfo = returnStmt.getOriginPositionInfo();
             expect(positionInfo.getLineNo()).eq(127);
             expect(positionInfo.getColNo()).eq(9);
@@ -116,7 +116,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginFullPosition for return stmt (return a)', async () => {
             const returnStmt = stmts?.filter(stmt => stmt instanceof ArkReturnStmt && stmt.toString() === 'return a')[0] as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const position = returnStmt.getOriginFullPosition();
             assert.isDefined(position);
             expect(position!.getFirstLine()).eq(127);
@@ -128,7 +128,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginalText for return stmt (return a)', async () => {
             const returnStmt = stmts?.filter(stmt => stmt instanceof ArkReturnStmt && stmt.toString() === 'return a')[0] as ArkReturnStmt;
             assert.isDefined(returnStmt);
-            
+
             const originalText = returnStmt.getOriginalText();
             assert.isDefined(originalText);
             expect(originalText).eq('return a;');
@@ -137,7 +137,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginPositionInfo for if stmt', async () => {
             const ifStmt = stmts?.filter(stmt => stmt instanceof ArkIfStmt && stmt.toString() === 'if a > 0')[0] as ArkIfStmt;
             assert.isDefined(ifStmt);
-            
+
             const positionInfo = ifStmt.getOriginPositionInfo();
             expect(positionInfo.getLineNo()).eq(126);
             expect(positionInfo.getColNo()).eq(5);
@@ -146,7 +146,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginFullPosition for if stmt', async () => {
             const ifStmt = stmts?.filter(stmt => stmt instanceof ArkIfStmt && stmt.toString() === 'if a > 0')[0] as ArkIfStmt;
             assert.isDefined(ifStmt);
-            
+
             const position = ifStmt.getOriginFullPosition();
             assert.isDefined(position);
             expect(position!.getFirstLine()).eq(126);
@@ -158,7 +158,7 @@ describe('Stmt Source Code and Position Test', () => {
         it('test getOriginalText for if stmt', async () => {
             const ifStmt = stmts?.filter(stmt => stmt instanceof ArkIfStmt && stmt.toString() === 'if a > 0')[0] as ArkIfStmt;
             assert.isDefined(ifStmt);
-            
+
             const originalText = ifStmt.getOriginalText();
             assert.isDefined(originalText);
             const expectedText = `if (a > 0) {
@@ -224,18 +224,18 @@ describe('switch statement line numbers', () => {
 
         beforeAll((): void => {
             const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
-            const callFile = callScene.getFiles().find((file) => file.getName() === 'CallExpressionTest.ts');
+            const callFile = callScene.getFiles().find(file => file.getName() === 'CallExpressionTest.ts');
             callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
         });
 
         function findStmtByOriginalText(text: string): Stmt {
-            const stmt = callStmts?.find((s) => s.getOriginalText() === text);
+            const stmt = callStmts?.find(s => s.getOriginalText() === text);
             assert.isDefined(stmt);
             return stmt!;
         }
 
         function findStmtByIrText(substr: string): Stmt {
-            const stmt = callStmts?.find((s) => s.toString().includes(substr));
+            const stmt = callStmts?.find(s => s.toString().includes(substr));
             assert.isDefined(stmt);
             return stmt!;
         }
@@ -323,7 +323,7 @@ describe('switch statement line numbers', () => {
         });
 
         it('matches generic type arguments with > inside a string literal', () => {
-            const stmt = findStmtByOriginalText('strGeneric<\'a>b\'>();');
+            const stmt = findStmtByOriginalText("strGeneric<'a>b'>();");
             expectFullPos(stmt.getInvokeFullPosition(), 52, 1, 52, 20);
         });
 
@@ -343,9 +343,9 @@ describe('switch statement line numbers', () => {
         });
 
         it('returns distinct positions for same-name call chain fooSame().fooSame()', () => {
-            const sameNameStmts = callStmts?.filter((s) => s.toString().includes('fooSame')) ?? [];
-            const first = sameNameStmts.find((s) => s instanceof ArkAssignStmt);
-            const second = sameNameStmts.find((s) => s instanceof ArkInvokeStmt);
+            const sameNameStmts = callStmts?.filter(s => s.toString().includes('fooSame')) ?? [];
+            const first = sameNameStmts.find(s => s instanceof ArkAssignStmt);
+            const second = sameNameStmts.find(s => s instanceof ArkInvokeStmt);
             assert.isDefined(first);
             assert.isDefined(second);
             expectFullPos(first!.getInvokeFullPosition(), 57, 1, 57, 10);
@@ -386,8 +386,8 @@ describe('switch statement line numbers', () => {
             expectFullPos(stmt.getInvokeFullPosition(), 66, 5, 66, 11);
         });
 
-        it('starts at string literal key for obj[\'lit\']()', () => {
-            const stmt = findStmtByOriginalText('obj[\'lit\']();');
+        it("starts at string literal key for obj['lit']()", () => {
+            const stmt = findStmtByOriginalText("obj['lit']();");
             expectFullPos(stmt.getInvokeFullPosition(), 67, 5, 67, 13);
         });
 
@@ -398,6 +398,47 @@ describe('switch statement line numbers', () => {
         it('returns DEFAULT when statement has no invoke', () => {
             const stmt = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
             expect(stmt.getInvokeFullPosition()).toBe(FullPosition.DEFAULT);
+        });
+    });
+
+    describe('convenient accessors with scratch reuse', () => {
+        let callStmts: Stmt[] | undefined;
+
+        beforeAll((): void => {
+            const callScene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+            const callFile = callScene.getFiles().find(file => file.getName() === 'CallExpressionTest.ts');
+            callStmts = callFile?.getDefaultClass().getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getCfg()?.getStmts();
+        });
+
+        it('getInvokeExpr and containsInvokeExpr stay stable across repeated and interleaved calls', () => {
+            const invokeStmt = callStmts?.find(s => s.getOriginalText() === 'call10();');
+            assert.isDefined(invokeStmt);
+            for (let i = 0; i < 3; i++) {
+                expect(invokeStmt!.containsInvokeExpr()).toBe(true);
+                expect(invokeStmt!.getInvokeExpr()).toBeDefined();
+                expect(invokeStmt!.getInvokeExpr()).toBe(invokeStmt!.getInvokeExpr());
+            }
+        });
+
+        it('a no-invoke statement does not corrupt the scratch of a following invoke statement', () => {
+            const plain = new ArkAssignStmt(new Local('lhs'), new Local('rhs'));
+            const invokeStmt = callStmts?.find(s => s.getOriginalText() === 'call10();');
+            assert.isDefined(invokeStmt);
+            expect(plain.getInvokeExpr()).toBeUndefined();
+            expect(plain.containsInvokeExpr()).toBe(false);
+            expect(invokeStmt!.getInvokeExpr()).toBeDefined();
+            expect(invokeStmt!.containsInvokeExpr()).toBe(true);
+        });
+
+        it('containsFieldRef and getFieldRef stay stable across repeated calls', () => {
+            const anyStmt = callStmts?.[0];
+            assert.isDefined(anyStmt);
+            for (let i = 0; i < 3; i++) {
+                expect(anyStmt!.containsFieldRef()).toBe(anyStmt!.containsFieldRef());
+                expect(anyStmt!.getFieldRef()).toBe(anyStmt!.getFieldRef());
+                expect(anyStmt!.containsArrayRef()).toBe(anyStmt!.containsArrayRef());
+                expect(anyStmt!.getArrayRef()).toBe(anyStmt!.getArrayRef());
+            }
         });
     });
 });
