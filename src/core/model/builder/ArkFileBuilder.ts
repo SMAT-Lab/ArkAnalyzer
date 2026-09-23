@@ -35,6 +35,7 @@ import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { FullPosition } from '../../base/Position';
 import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
+import { parseArkSourceFile } from '../../../utils/parseArkSourceFile';
 import { FileSignature } from '../ArkSignature';
 import { ARKTS_STATIC_MARK } from '../../common/Const';
 import { cloneText } from '../../common/StringUtils';
@@ -86,7 +87,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setCode(sourceText);
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     // save ast source file, if enabled ast and file is from the project (not from sdk)
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
@@ -215,7 +216,7 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
     if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setCode(sourceText);
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     buildImportExportInfo(arkFile, sourceFile);
 }
 
@@ -268,7 +269,7 @@ export function buildArkFileSignaturesFromFile(arkFile: ArkFile): void {
         logger.error(`Failed to read file: ${error}`);
         return;
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
     }
