@@ -517,13 +517,12 @@ export class ArkCaughtExceptionRef extends AbstractRef {
 export class GlobalRef extends AbstractRef {
     private name: string;
     private ref: Value | null;
-    private usedStmts: Stmt[];
+    private usedStmts?: Stmt[];
 
     constructor(name: string, ref?: Value) {
         super();
         this.name = name;
         this.ref = ref ?? null;
-        this.usedStmts = [];
     }
 
     public getName(): string {
@@ -548,14 +547,16 @@ export class GlobalRef extends AbstractRef {
     }
 
     public getUsedStmts(): Stmt[] {
-        return this.usedStmts;
+        return (this.usedStmts ??= []);
     }
 
     public addUsedStmts(usedStmts: Stmt | Stmt[]): void {
         if (usedStmts instanceof Stmt) {
-            this.usedStmts.push(usedStmts);
+            (this.usedStmts ??= []).push(usedStmts);
         } else {
-            usedStmts.forEach(stmt => this.usedStmts.push(stmt));
+            for (const stmt of usedStmts) {
+                (this.usedStmts ??= []).push(stmt);
+            }
         }
     }
 

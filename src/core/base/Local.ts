@@ -35,7 +35,7 @@ export class Local implements Value, ArkExport {
     private originalValue: Value | null;
 
     private declaringStmt: Stmt | null;
-    private usedStmts: Stmt[];
+    private usedStmts?: Stmt[];
     private signature?: LocalSignature;
     private constFlag?: boolean;
 
@@ -45,7 +45,6 @@ export class Local implements Value, ArkExport {
 
         this.originalValue = null;
         this.declaringStmt = null;
-        this.usedStmts = [];
     }
 
     public inferType(arkMethod: ArkMethod): Local {
@@ -131,7 +130,7 @@ export class Local implements Value, ArkExport {
     }
 
     public addUsedStmt(usedStmt: Stmt): void {
-        this.usedStmts.push(usedStmt);
+        (this.usedStmts ??= []).push(usedStmt);
     }
 
     /**
@@ -142,7 +141,7 @@ export class Local implements Value, ArkExport {
      * @returns An array of statements used by the local.
      */
     public getUsedStmts(): Stmt[] {
-        return this.usedStmts;
+        return (this.usedStmts ??= []);
     }
 
     /**

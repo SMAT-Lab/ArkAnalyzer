@@ -257,7 +257,9 @@ export class TypeInference {
             if (value instanceof GlobalRef && !value.getRef()) {
                 const arkExport = ModelUtils.findGlobalRef(key, arkMethod);
                 if (arkExport instanceof Local) {
-                    arkExport.getUsedStmts().push(...value.getUsedStmts());
+                    for (const usedStmt of value.getUsedStmts()) {
+                        arkExport.addUsedStmt(usedStmt);
+                    }
                     value.setRef(arkExport);
                 }
             }
