@@ -37,6 +37,7 @@ import {
     IfElseTest1_Expect_ViewTree,
     IfElseTest2_Expect_ViewTree,
     IfElseTest3_Expect_ViewTree,
+    TernaryIfElseTest_Expect_ViewTree,
 } from '../resources/viewtree/control-ifelse/ExpectView';
 import { LazyForEachTest_Expect_ViewTree } from '../resources/viewtree/control-lazyforeach/ExpectView';
 import {
@@ -198,6 +199,10 @@ describe('control-ifelse Test', () => {
 
     it('test ifelse3', async () => {
         testClassViewTree(scene, 'IfElseTest3', IfElseTest3_Expect_ViewTree);
+    });
+
+    it('test ternary ifelse (UI / mixed / nested / value-in-arg / @Builder)', async () => {
+        testClassViewTree(scene, 'TernaryIfElseTest', TernaryIfElseTest_Expect_ViewTree);
     });
 });
 

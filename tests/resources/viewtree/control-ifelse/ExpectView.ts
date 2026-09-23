@@ -171,3 +171,107 @@ export const IfElseTest3_Expect_ViewTree =
         { name: 'Button', children: [], stateValues: ['count'] }
     ]
 };
+
+export const TernaryIfElseTest_Expect_ViewTree = {
+    name: 'Column',
+    children: [
+        {
+            name: 'If',
+            children: [
+                {
+                    name: 'IfBranch',
+                    children: [{ name: 'Text', children: [] }],
+                },
+                {
+                    name: 'IfBranch',
+                    children: [{ name: 'Text', children: [] }],
+                },
+            ],
+            stateValues: ['flag'],
+        },
+        {
+            name: 'If',
+            children: [
+                {
+                    name: 'IfBranch',
+                    children: [],
+                },
+                {
+                    name: 'IfBranch',
+                    children: [{ name: 'Text', children: [] }],
+                },
+            ],
+            stateValues: ['flag'],
+        },
+        {
+            name: 'If',
+            children: [
+                {
+                    name: 'IfBranch',
+                    children: [
+                        {
+                            name: 'If',
+                            children: [
+                                {
+                                    name: 'IfBranch',
+                                    children: [{ name: 'Text', children: [] }],
+                                },
+                                {
+                                    name: 'IfBranch',
+                                    children: [{ name: 'Text', children: [] }],
+                                },
+                            ],
+                            stateValues: ['nested'],
+                        },
+                    ],
+                },
+                {
+                    name: 'IfBranch',
+                    children: [{ name: 'Text', children: [] }],
+                },
+            ],
+            stateValues: ['flag'],
+        },
+        {
+            name: 'If',
+            children: [
+                {
+                    name: 'IfBranch',
+                    children: [],
+                },
+                {
+                    name: 'IfBranch',
+                    children: [],
+                },
+            ],
+            stateValues: ['flag'],
+        },
+        {
+            name: 'Text',
+            children: [],
+        },
+        {
+            name: 'Builder',
+            children: [
+                {
+                    name: 'If',
+                    children: [
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                    ],
+                },
+                {
+                    name: 'Text',
+                    children: [],
+                },
+            ],
+            stateValues: ['flag'],
+        },
+    ],
+};

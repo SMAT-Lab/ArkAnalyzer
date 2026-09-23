@@ -20,12 +20,26 @@ export const TabBuilder_Expect_ViewTree = {
             name: 'Column',
             children: [
                 {
+                    name: 'If',
+                    children: [
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                        {
+                            name: 'IfBranch',
+                            children: [],
+                        },
+                    ],
+                    stateValues: ['selectIndex'],
+                },
+                {
                     name: 'Text',
-                    children: []
-                }
-            ]
-        }
-    ]
+                    children: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const TabBar_Expect_ViewTree = {

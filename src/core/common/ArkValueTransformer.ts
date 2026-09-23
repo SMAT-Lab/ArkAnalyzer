@@ -70,9 +70,11 @@ import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } 
 import { Value } from '../base/Value';
 import {
     COMMON_METHOD,
+    COMPONENT_BRANCH_FUNCTION,
     COMPONENT_CREATE_FUNCTION,
     COMPONENT_CUSTOMVIEW,
     COMPONENT_FOR_EACH,
+    COMPONENT_IF,
     COMPONENT_LAZY_FOR_EACH,
     COMPONENT_POP_FUNCTION,
     isEtsSystemComponent,
@@ -240,6 +242,10 @@ export class ArkValueTransformer {
     }
 
     private conditionalExpressionToValueAndStmts(conditionalExpression: ts.ConditionalExpression): ValueAndStmts {
+        if (ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
+            return this.builderConditionalExpressionToValueAndStmts(conditionalExpression);
+        }
+
         const stmts: Stmt[] = [];
         const currConditionalOperatorIndex = this.conditionalOperatorNo++;
         const {
@@ -276,6 +282,62 @@ export class ArkValueTransformer {
         assignStmt.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
         stmts.push(assignStmt);
         stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_END_STMT + currConditionalOperatorIndex));
+        return {
+            value: resultLocal,
+            valueOriginalPositions: resultLocalPosition,
+            stmts: stmts,
+        };
+    }
+
+    /**
+     * In ArkUI builder methods, lower `a ? b : c` like statement if:
+     * If.create / If.branch(0) / true / If.branch(1) / false / If.pop, still yielding a result local.
+     * Stays linear (no CFG diamond); ViewTree reads the If.create protocol.
+     */
+    private builderConditionalExpressionToValueAndStmts(conditionalExpression: ts.ConditionalExpression): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        const {
+            value: conditionExpr,
+            valueOriginalPositions: conditionExprPositions,
+            stmts: conditionStmts,
+        } = this.conditionToValueAndStmts(conditionalExpression.condition);
+        conditionStmts.forEach(stmt => stmts.push(stmt));
+        const {
+            value: conditionLocal,
+            valueOriginalPositions: conditionLocalPositions,
+            stmts: assignConditionStmts,
+        } = this.arkIRTransformer.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
+        assignConditionStmts.forEach(stmt => stmts.push(stmt));
+        const { stmts: createStmts } = this.generateComponentCreationStmts(
+            COMPONENT_IF,
+            [conditionLocal],
+            conditionLocalPositions[0],
+            conditionLocalPositions
+        );
+        createStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(this.generateBuilderIfBranch(0, conditionLocalPositions[0]));
+        const {
+            value: whenTrueValue,
+            valueOriginalPositions: whenTruePositions,
+            stmts: whenTrueStmts,
+        } = this.tsNodeToValueAndStmts(conditionalExpression.whenTrue);
+        whenTrueStmts.forEach(stmt => stmts.push(stmt));
+        const resultLocal = this.generateTempLocal();
+        const resultLocalPosition: FullPosition[] = [whenTruePositions[0]];
+        const assignStmtWhenTrue = new ArkAssignStmt(resultLocal, whenTrueValue);
+        assignStmtWhenTrue.setOperandOriginalPositions([...resultLocalPosition, ...whenTruePositions]);
+        stmts.push(assignStmtWhenTrue);
+        stmts.push(this.generateBuilderIfBranch(1, FullPosition.buildFromNode(conditionalExpression.whenFalse, this.sourceFile)));
+        const {
+            value: whenFalseValue,
+            valueOriginalPositions: whenFalsePositions,
+            stmts: whenFalseStmts,
+        } = this.tsNodeToValueAndStmts(conditionalExpression.whenFalse);
+        whenFalseStmts.forEach(stmt => stmts.push(stmt));
+        const assignStmtWhenFalse = new ArkAssignStmt(resultLocal, whenFalseValue);
+        assignStmtWhenFalse.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
+        stmts.push(assignStmtWhenFalse);
+        stmts.push(this.generateComponentPopStmts(COMPONENT_IF));
         return {
             value: resultLocal,
             valueOriginalPositions: resultLocalPosition,
@@ -493,7 +555,8 @@ export class ArkValueTransformer {
         };
     }
 
-    private generateComponentCreationStmts(
+    /** @internal Emit a component create invocation assigned to a temporary local. */
+    public generateComponentCreationStmts(
         componentName: string,
         createArgs: Value[],
         componentExpressionPosition: FullPosition,
@@ -514,6 +577,19 @@ export class ArkValueTransformer {
         };
     }
 
+    /** @internal Emit an If.branch invocation for the given branch index. */
+    public generateBuilderIfBranch(index: number, position: FullPosition = FullPosition.DEFAULT): Stmt {
+        const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+            COMPONENT_IF,
+            COMPONENT_BRANCH_FUNCTION
+        );
+        const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [ValueUtil.getOrCreateNumberConst(index)]);
+        const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
+        branchInvokeStmt.setOperandOriginalPositions([position, FullPosition.DEFAULT]);
+        return branchInvokeStmt;
+    }
+
+    /** @internal Emit a component pop invocation that closes the matching create. */
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
         let popMethodSignature = ModelUtils.popMethodSignatureCache.get(componentName);
         if (!popMethodSignature) {

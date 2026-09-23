@@ -38,7 +38,7 @@ import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
+import { COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
 import { FullPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
@@ -695,20 +695,15 @@ export class ArkIRTransformer {
         if (this.inBuilderMethod) {
             this.tsNodeToStmts(ifStatement.thenStatement).forEach(stmt => stmts.push(stmt));
             if (ifStatement.elseStatement) {
-                const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-                    COMPONENT_IF,
-                    COMPONENT_BRANCH_FUNCTION
+                stmts.push(
+                    this.arkValueTransformer.generateBuilderIfBranch(
+                        1,
+                        FullPosition.buildFromNode(ifStatement.elseStatement, this.sourceFile)
+                    )
                 );
-                const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [ValueUtil.getOrCreateNumberConst(1)]);
-                const branchElseInvokeExprPositions = [FullPosition.buildFromNode(ifStatement.elseStatement, this.sourceFile), FullPosition.DEFAULT];
-                const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
-                branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
-                stmts.push(branchElseInvokeStmt);
-
                 this.tsNodeToStmts(ifStatement.elseStatement).forEach(stmt => stmts.push(stmt));
             }
-            const popInvokeStmt = this.arkValueTransformer.generateComponentPopStmts(COMPONENT_IF);
-            stmts.push(popInvokeStmt);
+            stmts.push(this.arkValueTransformer.generateComponentPopStmts(COMPONENT_IF));
         }
         return stmts;
     }
@@ -744,37 +739,28 @@ export class ArkIRTransformer {
 
     private conditionToStmts(expression: ts.Expression): Stmt[] {
         const stmts: Stmt[] = [];
+        const {
+            value: conditionExpr,
+            valueOriginalPositions: conditionExprPositions,
+            stmts: conditionStmts,
+        } = this.arkValueTransformer.conditionToValueAndStmts(expression);
+        conditionStmts.forEach(stmt => stmts.push(stmt));
         if (this.inBuilderMethod) {
-            const {
-                value: conditionExpr,
-                valueOriginalPositions: conditionExprPositions,
-                stmts: conditionStmts,
-            } = this.arkValueTransformer.conditionToValueAndStmts(expression);
-            conditionStmts.forEach(stmt => stmts.push(stmt));
-            const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_CREATE_FUNCTION);
             const {
                 value: conditionLocal,
                 valueOriginalPositions: conditionLocalPositions,
                 stmts: assignConditionStmts,
             } = this.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
             assignConditionStmts.forEach(stmt => stmts.push(stmt));
-            const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, [conditionLocal]);
-            const createInvokeExprPositions = [conditionLocalPositions[0], ...conditionLocalPositions];
-            const { stmts: createStmts } = this.generateAssignStmtForValue(createInvokeExpr, createInvokeExprPositions);
+            const { stmts: createStmts } = this.arkValueTransformer.generateComponentCreationStmts(
+                COMPONENT_IF,
+                [conditionLocal],
+                conditionLocalPositions[0],
+                conditionLocalPositions
+            );
             createStmts.forEach(stmt => stmts.push(stmt));
-            const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
-            const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [ValueUtil.getOrCreateNumberConst(0)]);
-            const branchInvokeExprPositions = [conditionLocalPositions[0], FullPosition.DEFAULT];
-            const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
-            branchInvokeStmt.setOperandOriginalPositions(branchInvokeExprPositions);
-            stmts.push(branchInvokeStmt);
+            stmts.push(this.arkValueTransformer.generateBuilderIfBranch(0, conditionLocalPositions[0]));
         } else {
-            const {
-                value: conditionExpr,
-                valueOriginalPositions: conditionExprPositions,
-                stmts: conditionStmts,
-            } = this.arkValueTransformer.conditionToValueAndStmts(expression);
-            conditionStmts.forEach(stmt => stmts.push(stmt));
             const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionExprPositions);
             stmts.push(ifStmt);
