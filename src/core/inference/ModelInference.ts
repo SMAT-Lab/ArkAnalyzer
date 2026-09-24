@@ -295,19 +295,23 @@ export class MethodInference extends ArkModelInference {
             }
         }
 
-        const workList = new Set<Stmt>();
+        const workList: Stmt[] = [];
         for (const block of body.getCfg().getBlocks()) {
-            for (const stmt of block.getStmts()) {
-                workList.add(stmt);
+            const blockStmts = block.getStmts();
+            for (let i = 0; i < blockStmts.length; i++) {
+                workList.push(blockStmts[i]);
             }
         }
-        for (let stmt of workList) {
+        let nextIdx = 0;
+        while (nextIdx < workList.length) {
+            const stmt = workList[nextIdx];
             if (Date.now() - startTime > MethodInference.TIMEOUT_MS) {
                 logger.error(`Inference timeout for method: ${method.getName()}`);
                 return modifiedStmts;
             }
             const result = this.stmtInference.doInfer(stmt);
             if (!result) {
+                nextIdx++;
                 continue;
             }
             const inferResult = result as InferStmtResult;
@@ -319,12 +323,12 @@ export class MethodInference extends ArkModelInference {
             const impactedStmts = inferResult.impactedStmts;
             if (impactedStmts) {
                 for (const s of impactedStmts) {
-                    if (!workList.has(s)) {
-                        workList.add(s);
+                    if (!workList.includes(s)) {
+                        workList.push(s);
                     }
                 }
             }
-            workList.delete(stmt);
+            workList.splice(nextIdx, 1);
         }
         return modifiedStmts;
     }
