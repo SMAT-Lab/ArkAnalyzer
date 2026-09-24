@@ -397,7 +397,7 @@ export class StmtInference extends ArkModelInference {
     public postInfer(stmt: Stmt, defType: Type | undefined): InferStmtResult | undefined {
         const method = stmt.getCfg().getDeclaringMethod();
         let replacedStmts: Stmt[] | undefined;
-        let impactedStmts: Set<Stmt> | undefined;
+        let impactedStmts: Stmt[] | undefined;
         if (stmt instanceof ArkAssignStmt && stmt.getLeftOp() instanceof AbstractInvokeExpr) {
             const invokeExpr = stmt.getLeftOp() as AbstractInvokeExpr;
             const cls = method.getDeclaringArkFile().getScene().getClass(invokeExpr.getMethodSignature().getDeclaringClassSignature());
@@ -428,16 +428,11 @@ export class StmtInference extends ArkModelInference {
             finalDef instanceof Local &&
             (method.getBody()?.getUsedGlobals()?.get(finalDef.getName()) || !finalDef.getName().startsWith(NAME_PREFIX))
         ) {
-            if (impactedStmts === undefined) {
-                impactedStmts = new Set<Stmt>();
-            }
-            for (const e of finalDef.getUsedStmts()) {
-                impactedStmts.add(e);
-            }
+            impactedStmts = this.mergeImpactedStmts(impactedStmts, finalDef.getUsedStmts());
         }
         return {
             oldStmt: stmt,
-            impactedStmts: impactedStmts && impactedStmts.size > 0 ? Array.from(impactedStmts) : undefined,
+            impactedStmts: impactedStmts,
             replacedStmts: replacedStmts,
         };
     }
@@ -488,19 +483,17 @@ export class StmtInference extends ArkModelInference {
      * Propagates types through statements and handles special cases
      * @param {Stmt} stmt - The statement to process
      * @param {ArkMethod} method - The containing method
-     * @returns {Set<Stmt>} Set of statements impacted by type propagation
+     * @returns {Stmt[] | undefined} Statements impacted by type propagation, if any
      */
-    public typeSpread(stmt: Stmt, method: ArkMethod): Set<Stmt> {
-        let impactedStmts: Set<Stmt>;
+    public typeSpread(stmt: Stmt, method: ArkMethod): Stmt[] | undefined {
+        let impactedStmts: Stmt[] | undefined;
         const invokeExpr = stmt.getInvokeExpr();
         // Handle method invocation parameter spreading
         if (invokeExpr) {
             impactedStmts = this.paramSpread(invokeExpr, method);
-        } else {
-            impactedStmts = new Set<Stmt>();
         }
         if (stmt instanceof ArkAssignStmt) {
-            this.transferTypeBidirectional(stmt, method, impactedStmts);
+            impactedStmts = this.transferTypeBidirectional(stmt, method, impactedStmts);
         } else if (stmt instanceof ArkReturnStmt) {
             // Handle return statements with async type resolution
             let returnType = method.getSignature().getType();
@@ -516,20 +509,35 @@ export class StmtInference extends ArkModelInference {
         return impactedStmts;
     }
 
+    private mergeImpactedStmts(target: Stmt[] | undefined, items: Stmt[] | undefined): Stmt[] | undefined {
+        if (items === undefined || items.length === 0) {
+            return target;
+        }
+        if (target === undefined) {
+            target = [];
+        }
+        for (const item of items) {
+            if (!target.includes(item)) {
+                target.push(item);
+            }
+        }
+        return target;
+    }
+
     /**
      * Transfers types bidirectionally in assignment statements
      * @param {ArkAssignStmt} stmt - The assignment statement
      * @param {ArkMethod} method - The containing method
-     * @param {Set<Stmt>} impactedStmts - Set to collect impacted statements
+     * @param {Stmt[] | undefined} impactedStmts - Statements collected so far, if any
      */
-    private transferTypeBidirectional(stmt: ArkAssignStmt, method: ArkMethod, impactedStmts: Set<Stmt>): void {
+    private transferTypeBidirectional(stmt: ArkAssignStmt, method: ArkMethod, impactedStmts: Stmt[] | undefined): Stmt[] | undefined {
         const rightType = stmt.getRightOp().getType();
         const leftOp = stmt.getLeftOp();
         let leftType = leftOp.getType();
         // Transfer type from left to right operand
-        this.transferLeft2Right(stmt.getRightOp(), leftType, method)?.forEach(a => impactedStmts.add(a));
+        impactedStmts = this.mergeImpactedStmts(impactedStmts, this.transferLeft2Right(stmt.getRightOp(), leftType, method));
         // Transfer type from right to left operand
-        this.transferRight2Left(leftOp, rightType, method)?.forEach(a => impactedStmts.add(a));
+        impactedStmts = this.mergeImpactedStmts(impactedStmts, this.transferRight2Left(leftOp, rightType, method));
         // Handle global this references
         if (leftOp instanceof ArkStaticFieldRef) {
             const declaringSignature = leftOp.getFieldSignature().getDeclaringSignature();
@@ -537,6 +545,7 @@ export class StmtInference extends ArkModelInference {
                 SdkUtils.computeGlobalThis(leftOp, method);
             }
         }
+        return impactedStmts;
     }
 
     public transferLeft2Right(rightOp: Value, leftType: Type, method: ArkMethod): Stmt[] | undefined {
@@ -585,15 +594,18 @@ export class StmtInference extends ArkModelInference {
      * @param {ArkMethod} method - The containing method
      * @returns {Set<Stmt>} Set of statements impacted by parameter type propagation
      */
-    private paramSpread(invokeExpr: AbstractInvokeExpr, method: ArkMethod): Set<Stmt> {
+    private paramSpread(invokeExpr: AbstractInvokeExpr, method: ArkMethod): Stmt[] | undefined {
         const realTypes: Type[] = [];
-        const result: Set<Stmt> = new Set();
+        let result: Stmt[] | undefined;
         const len = invokeExpr.getArgs().length;
-        const parameters = invokeExpr
-            .getMethodSignature()
-            .getMethodSubSignature()
-            .getParameters()
-            .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
+        const declaredParameters = invokeExpr.getMethodSignature().getMethodSubSignature().getParameters();
+        let parameters = declaredParameters;
+        for (let i = 0; i < declaredParameters.length; i++) {
+            if (declaredParameters[i].getName().startsWith(LEXICAL_ENV_NAME_PREFIX)) {
+                parameters = declaredParameters.filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
+                break;
+            }
+        }
         // Map arguments to parameters
         for (let index = 0; index < len; index++) {
             const arg = invokeExpr.getArg(index);
@@ -601,7 +613,7 @@ export class StmtInference extends ArkModelInference {
                 break;
             }
             const paramType = parameters[index].getType();
-            this.mapArgWithParam(arg, paramType, invokeExpr, method, realTypes)?.forEach(a => result.add(a));
+            result = this.mergeImpactedStmts(result, this.mapArgWithParam(arg, paramType, invokeExpr, method, realTypes));
         }
         // Set real generic types for the invocation
         if (realTypes.length > 0 && !invokeExpr.getRealGenericTypes()) {
