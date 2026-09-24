@@ -516,21 +516,39 @@ export class TypeInference {
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
     public static checkType(type: Type, check: (t: Type) => boolean, visited?: Set<Type>): boolean {
-        if (visited === undefined) {
-            if (!CAN_RECURSE(type)) {
-                return check(type);
+        if (visited !== undefined) {
+            if (visited.has(type)) {
+                return false;
             }
-            visited = new Set<Type>();
-        } else if (visited.has(type)) {
-            return false;
+            visited.add(type);
+        } else if (!CAN_RECURSE(type)) {
+            return check(type);
         }
-        visited.add(type);
         if (check(type)) {
             return true;
-        } else if (type instanceof ClassType || type instanceof FunctionType) {
-            return !!type.getRealGenericTypes()?.find(t => this.checkType(t, check, visited));
+        }
+        if (visited === undefined) {
+            visited = new Set<Type>();
+            visited.add(type);
+        }
+        if (type instanceof ClassType || type instanceof FunctionType) {
+            const realGenericTypes = type.getRealGenericTypes();
+            if (realGenericTypes !== undefined) {
+                for (let i = 0; i < realGenericTypes.length; i++) {
+                    if (this.checkType(realGenericTypes[i], check, visited)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.checkType(t, check, visited));
+            const types = type.getTypes();
+            for (let i = 0; i < types.length; i++) {
+                if (this.checkType(types[i], check, visited)) {
+                    return true;
+                }
+            }
+            return false;
         } else if (type instanceof ArrayType) {
             return this.checkType(type.getBaseType(), check, visited);
         } else if (type instanceof AliasType) {
@@ -1024,10 +1042,11 @@ export class TypeInference {
         return TypeInference.parseArkExport2Type(importInfo.getLazyExportInfo()?.getArkExport());
     }
 
-    public static replaceTypeWithReal(type: Type, realTypes?: Type[], visited: Set<Type> = new Set()): Type {
-        if (visited.has(type)) {
-            return type;
-        } else {
+    public static replaceTypeWithReal(type: Type, realTypes?: Type[], visited?: Set<Type>): Type {
+        if (visited !== undefined) {
+            if (visited.has(type)) {
+                return type;
+            }
             visited.add(type);
         }
         if (type instanceof GenericType) {
@@ -1037,7 +1056,9 @@ export class TypeInference {
             const realType = realTypes?.[0];
             return realType ?? type;
         }
-        return this.replaceRecursiveType(type, visited, realTypes);
+        const childVisited = visited ?? new Set<Type>();
+        childVisited.add(type);
+        return this.replaceRecursiveType(type, childVisited, realTypes);
     }
 
     public static replaceRecursiveType(type: Type, visited: Set<Type>, realTypes?: Type[]): Type {
