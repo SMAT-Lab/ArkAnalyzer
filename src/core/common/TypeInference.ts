@@ -741,15 +741,24 @@ export class TypeInference {
         if (!refName) {
             return null;
         }
+        if (refName.indexOf('.') < 0 && refName.indexOf(':') < 0 && refName.indexOf('-') < 0 && refName.indexOf('<') < 0) {
+            return this.inferFirstNameType(refName, false, arkClass, arkMethod);
+        }
         //split and iterate to infer each type. In C++, the operators used to access members also include :: and ->
-        const singleNames = refName.split(/\.|::|->/);
+        const singleNames = refName.indexOf(':') < 0 && refName.indexOf('-') < 0 ? refName.split('.') : refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
+            const singleName = singleNames[i];
             let genericName: string = EMPTY_STRING;
-            const name = singleNames[i].replace(/<(.+)>/, (match, group1) => {
-                genericName = group1;
-                return EMPTY_STRING;
-            });
+            let name: string;
+            const openIdx = singleName.indexOf('<');
+            const closeIdx = singleName.lastIndexOf('>');
+            if (openIdx >= 0 && closeIdx - openIdx >= 2) {
+                name = singleName.slice(0, openIdx) + singleName.slice(closeIdx + 1);
+                genericName = singleName.slice(openIdx + 1, closeIdx);
+            } else {
+                name = singleName;
+            }
             if (i === 0) {
                 type = this.inferFirstNameType(name, singleNames.length > 1, arkClass, arkMethod);
             } else if (type) {
