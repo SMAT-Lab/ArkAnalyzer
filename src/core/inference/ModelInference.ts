@@ -444,10 +444,11 @@ export class StmtInference extends ArkModelInference {
      * @param {Stmt} stmt - The containing statement
      * @param {Set<Value>} visited - Set of already visited values for cycle prevention
      */
-    private inferValue(value: Value, stmt: Stmt, visited: Set<Value> = new Set()): void {
-        if (visited.has(value)) {
-            return;
-        } else {
+    private inferValue(value: Value, stmt: Stmt, visited?: Set<Value>): void {
+        if (visited !== undefined) {
+            if (visited.has(value)) {
+                return;
+            }
             visited.add(value);
         }
         const name = value.constructor.name;
@@ -459,15 +460,24 @@ export class StmtInference extends ArkModelInference {
             return;
         }
         const type = value.getType();
+        let childVisited = visited;
         if (type instanceof AbstractTypeExpr) {
-            for (const sub of type.getUses()) {
-                this.inferValue(sub, stmt, visited);
-            }
+            childVisited = this.inferSubValues(value, type.getUses(), stmt, childVisited);
         }
-        for (const sub of value.getUses()) {
-            this.inferValue(sub, stmt, visited);
-        }
+        this.inferSubValues(value, value.getUses(), stmt, childVisited);
         valueInference.doInfer(value, stmt);
+    }
+
+    private inferSubValues(parent: Value, subValues: Value[], stmt: Stmt, visited: Set<Value> | undefined): Set<Value> | undefined {
+        if (subValues.length === 0) {
+            return visited;
+        }
+        const childVisited = visited ?? new Set();
+        childVisited.add(parent);
+        for (const sub of subValues) {
+            this.inferValue(sub, stmt, childVisited);
+        }
+        return childVisited;
     }
 
     /**
