@@ -367,6 +367,8 @@ export class StmtInference extends ArkModelInference {
 
     private valueInferences: Map<string, ValueInference<Value>>;
 
+    private valueInferencesByCtor = new Map<Function, ValueInference<Value> | null>();
+
     constructor(valueInferences: ValueInference<Value>[]) {
         super();
         this.valueInferences = new Map();
@@ -450,11 +452,15 @@ export class StmtInference extends ArkModelInference {
             }
             visited.add(value);
         }
-        const name = value.constructor.name;
-        const valueInference = this.valueInferences.get(name);
-        if (!valueInference) {
+        const ctor = value.constructor;
+        let valueInference = this.valueInferencesByCtor.get(ctor);
+        if (valueInference === undefined) {
+            valueInference = this.valueInferences.get(ctor.name) ?? null;
+            this.valueInferencesByCtor.set(ctor, valueInference);
+        }
+        if (valueInference === null) {
             if (Logger.isDebugEnabled(logger)) {
-                logger.debug(name + ' valueInference not found');
+                logger.debug(ctor.name + ' valueInference not found');
             }
             return;
         }
