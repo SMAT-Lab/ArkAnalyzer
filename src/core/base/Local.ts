@@ -55,7 +55,7 @@ export class Local implements Value, ArkExport {
             const declaringArkClass = arkMethod.getDeclaringArkClass();
             this.type = new ClassType(declaringArkClass.getSignature(), declaringArkClass.getRealTypes());
         } else if (!this.name.startsWith(NAME_PREFIX) && TypeInference.isUnclearType(this.type)) {
-            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ?? ModelUtils.findDeclaredLocal(this, arkMethod)?.getType();
+            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ?? ModelUtils.findDeclaredLocalType(this.name, arkMethod);
             if (type) {
                 this.type = type;
             }

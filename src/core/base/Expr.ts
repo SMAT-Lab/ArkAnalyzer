@@ -506,7 +506,7 @@ export class ArkNewExpr extends AbstractExpr {
         const classSignature = this.classType.getClassSignature();
         if (classSignature.getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
             const className = classSignature.getClassName();
-            let type: Type | null | undefined = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
+            let type: Type | null | undefined = ModelUtils.findDeclaredLocalType(className, arkMethod, 1);
             if (TypeInference.isUnclearType(type)) {
                 // Deterministic local-class resolution along the method scope chain before
                 // the file-level fuzzy name search.

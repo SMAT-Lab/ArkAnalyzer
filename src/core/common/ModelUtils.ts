@@ -384,9 +384,11 @@ export class ModelUtils {
         if (name === THIS_NAME || name.startsWith(TEMP_LOCAL_PREFIX)) {
             return null;
         }
-        const parameter = arkMethod.getParameters().find(p => p.getName() === name);
-        if (parameter) {
-            return new Local(parameter.getName(), parameter.getType());
+        const parameters = arkMethod.getParameters();
+        for (let i = 0; i < parameters.length; i++) {
+            if (parameters[i].getName() === name) {
+                return new Local(parameters[i].getName(), parameters[i].getType());
+            }
         }
         if (times > 0) {
             const declaredLocal = arkMethod.getBody()?.getLocals().get(name);
@@ -411,6 +413,43 @@ export class ModelUtils {
             return this.findDeclaredLocal(local, invokeMethod, ++times);
         }
         return null;
+    }
+
+    /**
+     * @internal Same walk as {@link findDeclaredLocal} for callers that only read the resolved
+     * type: matches `findDeclaredLocal(...)?.getType()` exactly (undefined when not found) but
+     * neither wraps the name into a throwaway Local nor allocates a parameter Local on hits.
+     */
+    public static findDeclaredLocalType(name: string, arkMethod: ArkMethod, times: number = 0): Type | undefined {
+        if (name === THIS_NAME || name.startsWith(TEMP_LOCAL_PREFIX)) {
+            return undefined;
+        }
+        const parameters = arkMethod.getParameters();
+        for (let i = 0; i < parameters.length; i++) {
+            if (parameters[i].getName() === name) {
+                return parameters[i].getType();
+            }
+        }
+        if (times > 0) {
+            const declaredLocal = arkMethod.getBody()?.getLocals().get(name);
+            if (
+                declaredLocal &&
+                declaredLocal.getDeclaringStmt() instanceof ArkAssignStmt &&
+                !((declaredLocal.getDeclaringStmt() as ArkAssignStmt).getRightOp() instanceof ClosureFieldRef)
+            ) {
+                return declaredLocal.getType();
+            }
+        }
+        let parentName = arkMethod.getName();
+        if (parentName === DEFAULT_ARK_METHOD_NAME) {
+            return undefined;
+        }
+        let invokeMethod: ArkMethod | null | undefined = arkMethod.getOuterMethod();
+        if (!invokeMethod) {
+            const symbol = this.findSymbolInFileWithName(name, arkMethod.getDeclaringArkClass(), true);
+            return symbol instanceof Local ? symbol.getType() : undefined;
+        }
+        return this.findDeclaredLocalType(name, invokeMethod, times + 1);
     }
 
     /**
