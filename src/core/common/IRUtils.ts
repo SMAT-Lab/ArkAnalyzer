@@ -27,6 +27,8 @@ import { Local } from '../base/Local';
 import { NAME_PREFIX } from './Const';
 import { ArkMetadataBuilder } from '../model/builder/ArkMetadataBuilder';
 
+const operandCountScratch: Value[] = [];
+
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
         if (
@@ -67,13 +69,15 @@ export class IRUtils {
 
     public static findOperandIdx(stmt: Stmt, operand: Value): number {
         let index: number = -1;
-        const operands = stmt.getDefAndUses();
+        operandCountScratch.length = 0;
+        const operands = stmt.getDefAndUses(operandCountScratch);
         for (let i = 0; i < operands.length; i++) {
             if (operands[i] === operand) {
                 index = i;
                 break;
             }
         }
+        operandCountScratch.length = 0;
         return index;
     }
 
@@ -83,9 +87,16 @@ export class IRUtils {
             return;
         }
         const operandOriginalPositionSize = operandOriginalPositions.length;
-        const defUseSize = stmt.getDefAndUses().length;
-        const oldValueUseSize = oldValue.getUses().length;
-        const newValueUseSize = newValue.getUses().length;
+        operandCountScratch.length = 0;
+        stmt.getDefAndUses(operandCountScratch);
+        const defUseSize = operandCountScratch.length;
+        operandCountScratch.length = 0;
+        oldValue.getUses(operandCountScratch);
+        const oldValueUseSize = operandCountScratch.length;
+        operandCountScratch.length = 0;
+        newValue.getUses(operandCountScratch);
+        const newValueUseSize = operandCountScratch.length;
+        operandCountScratch.length = 0;
         const oldValueIdx = IRUtils.findOperandIdx(stmt, oldValue);
         const baseValueOffset = 1;
         const fieldValueOffset = 2;
