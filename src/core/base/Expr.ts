@@ -258,9 +258,12 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
     }
 
     public getUses(acc: Value[] = []): Value[] {
-        acc.push(...this.args);
-        for (const arg of this.args) {
-            arg.getUses(acc);
+        const args = this.args;
+        for (let i = 0; i < args.length; i++) {
+            acc.push(args[i]);
+        }
+        for (let i = 0; i < args.length; i++) {
+            args[i].getUses(acc);
         }
         return acc;
     }
@@ -316,9 +319,12 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
     public getUses(acc: Value[] = []): Value[] {
         acc.push(this.base);
         this.base.getUses(acc);
-        acc.push(...this.getArgs());
-        for (const arg of this.getArgs()) {
-            arg.getUses(acc);
+        const args = this.getArgs();
+        for (let i = 0; i < args.length; i++) {
+            acc.push(args[i]);
+        }
+        for (let i = 0; i < args.length; i++) {
+            args[i].getUses(acc);
         }
         return acc;
     }
@@ -465,9 +471,12 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
 
     public getUses(acc: Value[] = []): Value[] {
         acc.push(this.getFuncPtrLocal());
-        acc.push(...this.getArgs());
-        for (const arg of this.getArgs()) {
-            arg.getUses(acc);
+        const args = this.getArgs();
+        for (let i = 0; i < args.length; i++) {
+            acc.push(args[i]);
+        }
+        for (let i = 0; i < args.length; i++) {
+            args[i].getUses(acc);
         }
         return acc;
     }
@@ -1161,7 +1170,10 @@ export class ArkPhiExpr extends AbstractExpr {
     }
 
     public getUses(acc: Value[] = []): Value[] {
-        acc.push(...this.args);
+        const args = this.args;
+        for (let i = 0; i < args.length; i++) {
+            acc.push(args[i]);
+        }
         return acc;
     }
 
