@@ -28,6 +28,7 @@ import { AbstractTypeExpr } from './TypeExpr';
 
 const EMPTY_USES: Value[] = [];
 const usesScratch: Value[] = [];
+const POSITION_HOLE = -1;
 
 /**
  * @category core/base/stmt
@@ -40,8 +41,8 @@ export abstract class Stmt {
      *  Undefined when this statement is automatically generated during IR construction. */
     protected originFullPosition?: FullPosition;
     protected cfg!: Cfg;
-    protected operandOriginalPositions?: FullPosition[]; // operandOriginalPositions correspond with
-    // def and uses one by one
+    protected operandPositionsPacked?: number[]; // interleaved [first, last] packed LineCol words,
+    // corresponding with def and uses one by one
     metadata?: ArkMetadata;
 
     public getMetadata(kind: ArkMetadataKind): ArkMetadataType | undefined {
@@ -384,11 +385,36 @@ export abstract class Stmt {
     }
 
     public setOperandOriginalPositions(operandOriginalPositions: FullPosition[]): void {
-        this.operandOriginalPositions = operandOriginalPositions.slice();
+        const packed = new Array<number>(operandOriginalPositions.length * 2);
+        for (let i = 0; i < operandOriginalPositions.length; i++) {
+            const position = operandOriginalPositions[i];
+            if (position === undefined || position === null) {
+                packed[2 * i] = POSITION_HOLE;
+                packed[2 * i + 1] = POSITION_HOLE;
+            } else {
+                packed[2 * i] = position.getFirstPacked();
+                packed[2 * i + 1] = position.getLastPacked();
+            }
+        }
+        this.operandPositionsPacked = packed;
     }
 
     public getOperandOriginalPositions(): FullPosition[] | undefined {
-        return this.operandOriginalPositions;
+        const packed = this.operandPositionsPacked;
+        if (packed === undefined) {
+            return undefined;
+        }
+        const positions = new Array<FullPosition>(packed.length >> 1);
+        for (let i = 0; i < positions.length; i++) {
+            const first = packed[2 * i];
+            positions[i] = first < 0 ? (undefined as unknown as FullPosition) : FullPosition.fromPacked(first, packed[2 * i + 1]);
+        }
+        return positions;
+    }
+
+    /** @internal Compact interleaved [first, last] storage; splice in pairs. */
+    public getOperandPositionsPacked(): number[] | undefined {
+        return this.operandPositionsPacked;
     }
 
     public getOperandOriginalPosition(indexOrOperand: number | Value): FullPosition | null {
@@ -399,10 +425,15 @@ export abstract class Stmt {
             index = indexOrOperand;
         }
 
-        if (!this.operandOriginalPositions || index < 0 || index > this.operandOriginalPositions.length) {
+        const packed = this.operandPositionsPacked;
+        if (!packed || index < 0 || index > packed.length >> 1) {
             return null;
         }
-        return this.operandOriginalPositions[index];
+        if (index === packed.length >> 1) {
+            return undefined as unknown as FullPosition;
+        }
+        const first = packed[2 * index];
+        return first < 0 ? (undefined as unknown as FullPosition) : FullPosition.fromPacked(first, packed[2 * index + 1]);
     }
 }
 

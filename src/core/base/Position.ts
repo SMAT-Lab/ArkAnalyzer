@@ -157,6 +157,21 @@ export class FullPosition {
         return getColNo(this.last);
     }
 
+    /** @internal Raw packed line/col word of the range start, for compact storage. */
+    public getFirstPacked(): LineCol {
+        return this.first;
+    }
+
+    /** @internal Raw packed line/col word of the range end, for compact storage. */
+    public getLastPacked(): LineCol {
+        return this.last;
+    }
+
+    /** @internal Rebuild a position from raw packed words produced by getFirstPacked/getLastPacked. */
+    public static fromPacked(first: LineCol, last: LineCol): FullPosition {
+        return new FullPosition(getLineNo(first), getColNo(first), getLineNo(last), getColNo(last));
+    }
+
     public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): FullPosition {
         const lineStarts = sourceFile.getLineStarts();
         const startOffset = node.getStart(sourceFile);

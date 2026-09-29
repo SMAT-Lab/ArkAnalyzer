@@ -28,6 +28,8 @@ import { NAME_PREFIX } from './Const';
 import { ArkMetadataBuilder } from '../model/builder/ArkMetadataBuilder';
 
 const operandCountScratch: Value[] = [];
+const DEFAULT_POSITION_FIRST = FullPosition.DEFAULT.getFirstPacked();
+const DEFAULT_POSITION_LAST = FullPosition.DEFAULT.getLastPacked();
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
@@ -82,11 +84,11 @@ export class IRUtils {
     }
 
     public static adjustOperandOriginalPositions(stmt: Stmt, oldValue: Value, newValue: Value): void {
-        const operandOriginalPositions = stmt.getOperandOriginalPositions();
-        if (!operandOriginalPositions) {
+        const packed = stmt.getOperandPositionsPacked();
+        if (!packed) {
             return;
         }
-        const operandOriginalPositionSize = operandOriginalPositions.length;
+        const operandOriginalPositionSize = packed.length >> 1;
         operandCountScratch.length = 0;
         stmt.getDefAndUses(operandCountScratch);
         const defUseSize = operandCountScratch.length;
@@ -103,26 +105,34 @@ export class IRUtils {
 
         if (oldValue instanceof AbstractRef && newValue instanceof AbstractRef) {
             if (newValue instanceof ArkStaticFieldRef) {
-                operandOriginalPositions.splice(oldValueIdx + baseValueOffset, oldValueUseSize - newValueUseSize);
+                packed.splice(2 * (oldValueIdx + baseValueOffset), 2 * (oldValueUseSize - newValueUseSize));
             } else if (oldValue instanceof ArkStaticFieldRef) {
-                operandOriginalPositions.splice(oldValueIdx + baseValueOffset, 0, ...IRUtils.generateDefaultPositions(newValueUseSize - oldValueUseSize));
+                packed.splice(2 * (oldValueIdx + baseValueOffset), 0, ...IRUtils.generateDefaultPositionsPacked(newValueUseSize - oldValueUseSize));
             }
 
             if (oldValue instanceof ArkInstanceFieldRef && newValue instanceof ArkArrayRef) {
                 if (operandOriginalPositionSize === defUseSize) {
                     // may not reserve positions for field name
-                    operandOriginalPositions.splice(oldValueIdx + fieldValueOffset, 0, ...IRUtils.generateDefaultPositions(newValueUseSize - oldValueUseSize));
+                    packed.splice(2 * (oldValueIdx + fieldValueOffset), 0, ...IRUtils.generateDefaultPositionsPacked(newValueUseSize - oldValueUseSize));
                 }
             } else if (oldValue instanceof ArkArrayRef && newValue instanceof ArkInstanceFieldRef) {
-                operandOriginalPositions.splice(oldValueIdx + fieldValueOffset, oldValueUseSize - newValueUseSize);
+                packed.splice(2 * (oldValueIdx + fieldValueOffset), 2 * (oldValueUseSize - newValueUseSize));
             }
         } else if (oldValue instanceof AbstractInvokeExpr && newValue instanceof AbstractInvokeExpr) {
             if (oldValueUseSize === newValueUseSize + 1) {
-                operandOriginalPositions.splice(oldValueIdx + baseValueOffset, 1);
+                packed.splice(2 * (oldValueIdx + baseValueOffset), 2);
             } else if (oldValueUseSize === newValueUseSize - 1) {
-                operandOriginalPositions.splice(oldValueIdx + baseValueOffset, 0, FullPosition.DEFAULT);
+                packed.splice(2 * (oldValueIdx + baseValueOffset), 0, DEFAULT_POSITION_FIRST, DEFAULT_POSITION_LAST);
             }
         }
+    }
+
+    public static generateDefaultPositionsPacked(count: number): number[] {
+        const packed: number[] = [];
+        for (let i = 0; i < count; i++) {
+            packed.push(DEFAULT_POSITION_FIRST, DEFAULT_POSITION_LAST);
+        }
+        return packed;
     }
 
     public static generateDefaultPositions(count: number): FullPosition[] {
