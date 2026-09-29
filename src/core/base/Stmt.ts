@@ -384,7 +384,7 @@ export abstract class Stmt {
     }
 
     public setOperandOriginalPositions(operandOriginalPositions: FullPosition[]): void {
-        this.operandOriginalPositions = operandOriginalPositions;
+        this.operandOriginalPositions = operandOriginalPositions.slice();
     }
 
     public getOperandOriginalPositions(): FullPosition[] | undefined {
