@@ -318,9 +318,7 @@ export class ArkIRTransformer {
 
     public handleExpressionValueWithTempVarIfNeeded(value: Value, positions: FullPosition[], stmts: Stmt[]): { value: Value; positions: FullPosition[] } {
         if (IRUtils.moreThanOneAddress(value)) {
-            const { value: tempValue, valueOriginalPositions: tempPositions, stmts: tempStmts } = this.generateAssignStmtForValue(value, positions);
-            tempStmts.forEach(stmt => stmts.push(stmt));
-            return { value: tempValue, positions: tempPositions };
+            return this.generateAssignStmtForValueInto(value, positions, stmts);
         }
         return { value, positions };
     }
@@ -371,8 +369,7 @@ export class ArkIRTransformer {
         if (exprValue instanceof AbstractInvokeExpr) {
             this.addInvokeStmts(exprValue, exprPositions, stmts);
         } else if (this.shouldGenerateExtraAssignStmt(exprNode)) {
-            const { stmts: exprStmts } = this.generateAssignStmtForValue(exprValue, exprPositions);
-            exprStmts.forEach(stmt => stmts.push(stmt));
+            this.generateAssignStmtForValueInto(exprValue, exprPositions, stmts);
         }
         return stmts;
     }
@@ -530,12 +527,14 @@ export class ArkIRTransformer {
 
     public switchStatementToValueAndStmts(switchStatement: ts.SwitchStatement): ValueAndStmts[] {
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
-        const exprStmts: Stmt[] = [];
-        let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.tsNodeToValueAndStmts(switchStatement.expression);
-        exprTempStmts.forEach(stmt => exprStmts.push(stmt));
+        const switchExprResult = this.tsNodeToValueAndStmts(switchStatement.expression);
+        const exprStmts: Stmt[] = switchExprResult.stmts;
+        let exprValue = switchExprResult.value;
+        let exprPositions = switchExprResult.valueOriginalPositions;
         if (IRUtils.moreThanOneAddress(exprValue)) {
-            ({ value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.generateAssignStmtForValue(exprValue, exprPositions));
-            exprTempStmts.forEach(stmt => exprStmts.push(stmt));
+            const temp = this.generateAssignStmtForValueInto(exprValue, exprPositions, exprStmts);
+            exprValue = temp.value;
+            exprPositions = temp.positions;
         }
         valueAndStmtsOfSwitchAndCases.push({
             value: exprValue,
@@ -916,22 +915,30 @@ export class ArkIRTransformer {
     }
 
     public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        const temp = this.generateAssignStmtForValueInto(value, valueOriginalPositions, stmts);
+        return {
+            value: temp.value,
+            valueOriginalPositions: temp.positions,
+            stmts,
+        };
+    }
+
+    /**
+     * Appends the temp-variable assignment (when one is needed) directly into `stmts` and
+     * returns the temp local with its position, skipping the ValueAndStmts wrapper and its
+     * single-element stmts array that generateAssignStmtForValue allocates per call.
+     */
+    public generateAssignStmtForValueInto(value: Value, valueOriginalPositions: FullPosition[], stmts: Stmt[]): { value: Value; positions: FullPosition[] } {
         const leftOp = this.arkValueTransformer.generateTempLocal(value.getType());
         if (valueOriginalPositions.length === 0) {
-            return {
-                value: leftOp,
-                valueOriginalPositions: [],
-                stmts: [],
-            };
+            return { value: leftOp, positions: [] };
         }
         const leftOpPosition = valueOriginalPositions[0];
         const assignStmt = new ArkAssignStmt(leftOp, value);
         assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
-        return {
-            value: leftOp,
-            valueOriginalPositions: [leftOpPosition],
-            stmts: [assignStmt],
-        };
+        stmts.push(assignStmt);
+        return { value: leftOp, positions: [leftOpPosition] };
     }
 
     public generateIfStmtForValues(

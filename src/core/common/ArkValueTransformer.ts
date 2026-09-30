@@ -227,14 +227,11 @@ export class ArkValueTransformer {
     }
 
     private tsNodeToSingleAddressValueAndStmts(node: ts.Node): ValueAndStmts {
-        const allStmts: Stmt[] = [];
-        const { value, valueOriginalPositions, stmts } = this.tsNodeToValueAndStmts(node);
-        stmts.forEach(stmt => allStmts.push(stmt));
-        
-        const { value: processedValue, positions: processedPositions } = 
-            this.arkIRTransformer.handleExpressionValueWithTempVarIfNeeded(value, valueOriginalPositions, allStmts);
-        
-        return { value: processedValue, valueOriginalPositions: processedPositions, stmts: allStmts };
+        const result = this.tsNodeToValueAndStmts(node);
+        const processed = this.arkIRTransformer.handleExpressionValueWithTempVarIfNeeded(result.value, result.valueOriginalPositions, result.stmts);
+        result.value = processed.value;
+        result.valueOriginalPositions = processed.positions;
+        return result;
     }
 
     private thisExpressionToValueAndStmts(thisExpression: ts.ThisExpression): ValueAndStmts {
