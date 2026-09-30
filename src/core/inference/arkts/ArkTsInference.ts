@@ -349,10 +349,10 @@ export class ArkTSLocalInference extends LocalInference {
             return undefined;
         } else if (type instanceof FunctionType) {
             const methodSignature = type.getMethodSignature();
-            methodSignature
-                .getMethodSubSignature()
-                .getParameters()
-                .forEach(p => TypeInference.inferParameterType(p, arkMethod));
+            const parameters = methodSignature.getMethodSubSignature().getParameters();
+            for (let i = 0; i < parameters.length; i++) {
+                TypeInference.inferParameterType(parameters[i], arkMethod);
+            }
             TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
             return undefined;
         } else {

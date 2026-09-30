@@ -1303,15 +1303,15 @@ export class CfgBuilder {
         basicBlockSet: Set<BasicBlock>,
         arkIRTransformer: ArkIRTransformer
     ): {
-        blocksContainLoopCondition: Set<BlockBuilder>;
+        blocksContainLoopCondition: Set<BlockBuilder> | undefined;
         blockBuildersBeforeTry: Set<BlockBuilder>;
-        blockBuildersContainSwitch: BlockBuilder[];
-        valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][];
+        blockBuildersContainSwitch: BlockBuilder[] | undefined;
+        valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][] | undefined;
     } {
-        const blocksContainLoopCondition = new Set<BlockBuilder>();
+        let blocksContainLoopCondition: Set<BlockBuilder> | undefined;
         const blockBuildersBeforeTry = new Set<BlockBuilder>();
-        const blockBuildersContainSwitch: BlockBuilder[] = [];
-        const valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][] = [];
+        let blockBuildersContainSwitch: BlockBuilder[] | undefined;
+        let valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][] | undefined;
         for (let i = 0; i < this.blocks.length; i++) {
             const blockInCfg = new BasicBlock();
             blockInCfg.setId(this.blocks[i].id);
@@ -1326,11 +1326,11 @@ export class CfgBuilder {
             }
             for (const statementBuilder of this.blocks[i].stmts) {
                 if (statementBuilder.type === 'loopStatement') {
-                    blocksContainLoopCondition.add(this.blocks[i]);
+                    (blocksContainLoopCondition ??= new Set<BlockBuilder>()).add(this.blocks[i]);
                 } else if (statementBuilder instanceof SwitchStatementBuilder) {
-                    blockBuildersContainSwitch.push(this.blocks[i]);
+                    (blockBuildersContainSwitch ??= []).push(this.blocks[i]);
                     const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmts(statementBuilder.astNode as ts.SwitchStatement);
-                    valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
+                    (valueAndStmtsOfSwitchAndCasesAll ??= []).push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
@@ -1374,16 +1374,20 @@ export class CfgBuilder {
 
     private adjustBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
-        blocksContainLoopCondition: Set<BlockBuilder>,
+        blocksContainLoopCondition: Set<BlockBuilder> | undefined,
         basicBlockSet: Set<BasicBlock>,
-        blockBuildersContainSwitch: BlockBuilder[],
-        valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
+        blockBuildersContainSwitch: BlockBuilder[] | undefined,
+        valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][] | undefined,
         arkIRTransformer: ArkIRTransformer
     ): void {
-        const loopBuilder = new LoopBuilder();
-        loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
-        const switchBuilder = new SwitchBuilder();
-        switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
+        if (blocksContainLoopCondition !== undefined) {
+            const loopBuilder = new LoopBuilder();
+            loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
+        }
+        if (blockBuildersContainSwitch !== undefined) {
+            const switchBuilder = new SwitchBuilder();
+            switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll!, arkIRTransformer, basicBlockSet);
+        }
         const conditionalBuilder = new ConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(
             blockBuilderToCfgBlock,

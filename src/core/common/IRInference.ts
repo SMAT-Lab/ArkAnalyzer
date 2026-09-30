@@ -423,7 +423,7 @@ export class IRInference {
     public static inferArgs(expr: AbstractInvokeExpr, arkMethod: ArkMethod): void {
         const scene = arkMethod.getDeclaringArkFile().getScene();
         const parameters = expr.getMethodSignature().getMethodSubSignature().getParameters();
-        let realTypes: Type[] = [];
+        let realTypes: Type[] | undefined;
         const len = expr.getArgs().length;
         for (let index = 0; index < len; index++) {
             const arg = expr.getArg(index);
@@ -432,44 +432,57 @@ export class IRInference {
             }
             const argType = arg.getType();
             const paramType = parameters[index].getType();
-            this.inferArg(expr, argType, paramType, scene, realTypes);
+            realTypes = this.inferArg(expr, argType, paramType, scene, realTypes);
         }
-        if (realTypes.length > 0 && !expr.getRealGenericTypes()) {
+        if (realTypes !== undefined && realTypes.length > 0 && !expr.getRealGenericTypes()) {
             expr.setRealGenericTypes(realTypes);
         }
     }
 
-    public static inferArg(expr: AbstractInvokeExpr, argType: Type, paramType: Type, scene: Scene, realTypes: Type[]): void {
+    public static inferArg(expr: AbstractInvokeExpr, argType: Type, paramType: Type, scene: Scene, realTypes?: Type[]): Type[] | undefined {
         if (paramType instanceof UnionType) {
-            paramType.getTypes().forEach(t => this.inferArg(expr, argType, t, scene, realTypes));
+            const unionTypes = paramType.getTypes();
+            for (let i = 0; i < unionTypes.length; i++) {
+                realTypes = this.inferArg(expr, argType, unionTypes[i], scene, realTypes);
+            }
         } else if (paramType instanceof AliasType) {
-            this.inferArg(expr, argType, paramType.getOriginalType(), scene, realTypes);
+            realTypes = this.inferArg(expr, argType, paramType.getOriginalType(), scene, realTypes);
         } else if (paramType instanceof ArrayType && argType instanceof ArrayType) {
-            this.inferArg(expr, argType.getBaseType(), paramType.getBaseType(), scene, realTypes);
+            realTypes = this.inferArg(expr, argType.getBaseType(), paramType.getBaseType(), scene, realTypes);
         } else if (expr instanceof ArkInstanceInvokeExpr && expr.getBase().getType() instanceof ArrayType) {
             if (paramType instanceof ArrayType && paramType.getBaseType() instanceof GenericType) {
-                this.inferArg(expr, argType, (expr.getBase().getType() as ArrayType).getBaseType(), scene, realTypes);
+                realTypes = this.inferArg(expr, argType, (expr.getBase().getType() as ArrayType).getBaseType(), scene, realTypes);
             }
         }
 
         if (paramType instanceof ClassType && scene.getProjectSdkMap().has(paramType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
             this.inferArgTypeWithSdk(paramType, scene, argType);
         } else if (paramType instanceof GenericType) {
+            if (realTypes === undefined) {
+                realTypes = [];
+            }
             if (!realTypes[paramType.getIndex()]) {
                 realTypes[paramType.getIndex()] = argType;
             }
         } else if (paramType instanceof AnyType) {
+            if (realTypes === undefined) {
+                realTypes = [];
+            }
             realTypes.push(argType);
         } else if (paramType instanceof FunctionType && argType instanceof FunctionType) {
             TypeInference.inferFunctionType(argType, paramType.getMethodSignature().getMethodSubSignature(), expr.getRealGenericTypes());
         }
+        return realTypes;
     }
 
     public static inferRightWithSdkType(leftType: Type, rightType: Type, ackClass: ArkClass): void {
         if (leftType instanceof AliasType) {
             this.inferRightWithSdkType(TypeInference.replaceAliasType(leftType), rightType, ackClass);
         } else if (leftType instanceof UnionType) {
-            leftType.getTypes().forEach(t => this.inferRightWithSdkType(t, rightType, ackClass));
+            const unionTypes = leftType.getTypes();
+            for (let i = 0; i < unionTypes.length; i++) {
+                this.inferRightWithSdkType(unionTypes[i], rightType, ackClass);
+            }
         } else if (leftType instanceof ClassType) {
             IRInference.inferArgTypeWithSdk(leftType, ackClass.getDeclaringArkFile().getScene(), rightType);
         } else if (rightType instanceof ArrayType && leftType instanceof ArrayType) {
