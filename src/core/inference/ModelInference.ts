@@ -437,6 +437,7 @@ export class MethodInference extends ArkModelInference {
 
 export class StmtInference extends ArkModelInference {
     private readonly defAndUsesScratch: Value[] = [null as unknown as Value];
+    private readonly usesPool: Value[][] = [];
 
     private valueInferences: Map<string, ValueInference<Value>>;
 
@@ -521,7 +522,7 @@ export class StmtInference extends ArkModelInference {
      * @param {Stmt} stmt - The containing statement
      * @param {Set<Value>} visited - Set of already visited values for cycle prevention
      */
-    private inferValue(value: Value, stmt: Stmt, visited?: ValueVisited): void {
+    private inferValue(value: Value, stmt: Stmt, visited?: ValueVisited, depth: number = 0): void {
         if (visited !== undefined) {
             if (visited.has(value)) {
                 return;
@@ -550,9 +551,9 @@ export class StmtInference extends ArkModelInference {
         }
         try {
             if (type instanceof AbstractTypeExpr) {
-                this.inferSubValues(value, type.getUses(), stmt, childVisited!);
+                this.inferSubValues(value, type.getUses(this.acquireUses(depth)), stmt, childVisited!, depth);
             }
-            this.inferSubValues(value, value.getUses(), stmt, childVisited!);
+            this.inferSubValues(value, value.getUses(this.acquireUses(depth)), stmt, childVisited!, depth);
         } finally {
             if (owned) {
                 valueVisitedSeg.leave(prevBase);
@@ -561,14 +562,36 @@ export class StmtInference extends ArkModelInference {
         valueInference.doInfer(value, stmt);
     }
 
-    private inferSubValues(parent: Value, subValues: Value[], stmt: Stmt, visited: ValueVisited): void {
-        if (subValues.length === 0) {
+    private inferSubValues(parent: Value, subValues: Value[], stmt: Stmt, visited: ValueVisited, depth: number): void {
+        const pooled = subValues === this.usesPool[depth];
+        if (subValues.length === 0 || (pooled && subValues.length === 1)) {
             return;
         }
         visited.add(parent);
-        for (const sub of subValues) {
-            this.inferValue(sub, stmt, visited);
+        const start = pooled ? 1 : 0;
+        for (let i = start; i < subValues.length; i++) {
+            this.inferValue(subValues[i], stmt, visited, depth + 1);
         }
+    }
+
+    /**
+     * Per-depth pooled acc for the no-arg getUses default parameter: the default `acc = []`
+     * allocated (and push-grew) a fresh array on every inferValue visit. A plain shared
+     * scratch would be reset by nested inferValue calls while inferSubValues is still
+     * iterating it, so each recursion depth owns a slot. The slot keeps a sentinel at index 0
+     * and resets by pop (truncating to 0 would drop the V8 backing store); iteration skips
+     * the sentinel via the identity check in inferSubValues.
+     */
+    private acquireUses(depth: number): Value[] {
+        let arr = this.usesPool[depth];
+        if (arr === undefined) {
+            arr = [null as unknown as Value];
+            this.usesPool[depth] = arr;
+        }
+        while (arr.length > 1) {
+            arr.pop();
+        }
+        return arr;
     }
 
     /**
