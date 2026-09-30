@@ -51,7 +51,7 @@ export function buildFileBodies(arkFile: ArkFile): void {
     }
     const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     const nodesByPosition = new Map<number, ts.Node>();
-    collectBuilderNodes(sourceFile, sourceFile, nodesByPosition);
+    collectBuilderNodes(sourceFile, nodesByPosition);
     // Generated methods are included on purpose: static blocks are generated but carry a real
     // position and had a builder, unlike instanceInit/staticInit (synthetic (0,0,0,0) position).
     for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
@@ -89,21 +89,61 @@ function positionKey(position: FullPosition): number {
     return position.getFirstLine() * 0x100000 + position.getFirstCol();
 }
 
-function collectBuilderNodes(node: ts.Node, sourceFile: ts.SourceFile, into: Map<number, ts.Node>): void {
-    if (
-        ts.isFunctionDeclaration(node) ||
-        ts.isMethodDeclaration(node) ||
-        ts.isConstructorDeclaration(node) ||
-        ts.isGetAccessorDeclaration(node) ||
-        ts.isSetAccessorDeclaration(node) ||
-        ts.isArrowFunction(node) ||
-        ts.isFunctionExpression(node) ||
-        ts.isClassStaticBlockDeclaration(node)
-    ) {
-        const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
-        into.set((line + 1) * 0x100000 + (character + 1), node);
+const remountStack: ts.Node[] = [];
+const remountChildren: ts.Node[] = [];
+let remountStackTop = 0;
+let remountChildCount = 0;
+const collectRemountChild = (child: ts.Node): void => {
+    remountChildren[remountChildCount++] = child;
+};
+
+/**
+ * Explicit-stack replacement for the former closure recursion, which allocated one
+ * `child => collectBuilderNodes(child, ...)` closure per AST node of every remounted file.
+ * Children are staged in a cursor-reset scratch and pushed reversed so the walk reproduces
+ * the exact DFS pre-order of the recursion - the position map's insertion order and its
+ * last-write-wins outcome for duplicate keys stay identical.
+ */
+function collectBuilderNodes(sourceFile: ts.SourceFile, into: Map<number, ts.Node>): void {
+    remountStack[remountStackTop++] = sourceFile;
+    let stackHighWater = remountStackTop;
+    let childHighWater = 0;
+    while (remountStackTop > 0) {
+        const node = remountStack[--remountStackTop];
+        if (
+            ts.isFunctionDeclaration(node) ||
+            ts.isMethodDeclaration(node) ||
+            ts.isConstructorDeclaration(node) ||
+            ts.isGetAccessorDeclaration(node) ||
+            ts.isSetAccessorDeclaration(node) ||
+            ts.isArrowFunction(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isClassStaticBlockDeclaration(node)
+        ) {
+            const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
+            into.set((line + 1) * 0x100000 + (character + 1), node);
+        }
+        remountChildCount = 0;
+        ts.forEachChild(node, collectRemountChild);
+        if (remountChildCount > childHighWater) {
+            childHighWater = remountChildCount;
+        }
+        for (let i = remountChildCount - 1; i >= 0; i--) {
+            remountStack[remountStackTop++] = remountChildren[i];
+        }
+        if (remountStackTop > stackHighWater) {
+            stackHighWater = remountStackTop;
+        }
     }
-    ts.forEachChild(node, child => collectBuilderNodes(child, sourceFile, into));
+    const nullNode = null as unknown as ts.Node;
+    for (let i = 0; i < stackHighWater; i++) {
+        remountStack[i] = nullNode;
+    }
+    for (let i = 0; i < childHighWater; i++) {
+        remountChildren[i] = nullNode;
+    }
+    remountStackTop = 0;
+    remountChildCount = 0;
 }
 
 function buildParamsPositions(node: ts.Node, sourceFile: ts.SourceFile): Map<string, FullPosition> {
