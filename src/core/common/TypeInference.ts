@@ -91,7 +91,7 @@ import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry
 import { signatureEquals } from './SignatureCanonicalizer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
-const resolveUsesScratch: Value[] = [];
+const resolveUsesScratch: Value[] = [null as unknown as Value];
 // Builtin stub signatures carry FileSignature.DEFAULT whose fileName is UNKNOWN_FILE_NAME,
 // so a single entry covers both unresolved references and builtin stubs.
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME];
@@ -342,9 +342,12 @@ export class TypeInference {
      * infer type for fieldRefs in stmt.
      */
     private static resolveFieldRefsInStmt(stmt: Stmt, arkMethod: ArkMethod): void {
-        resolveUsesScratch.length = 0;
+        while (resolveUsesScratch.length > 1) {
+            resolveUsesScratch.pop();
+        }
         stmt.getUses(resolveUsesScratch);
-        for (const use of resolveUsesScratch) {
+        for (let i = 1; i < resolveUsesScratch.length; i++) {
+            const use = resolveUsesScratch[i];
             if (use instanceof AbstractRef) {
                 this.processRef(use, stmt, arkMethod);
             }

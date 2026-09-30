@@ -363,7 +363,7 @@ export class MethodInference extends ArkModelInference {
 }
 
 export class StmtInference extends ArkModelInference {
-    private readonly defAndUsesScratch: Value[] = [];
+    private readonly defAndUsesScratch: Value[] = [null as unknown as Value];
 
     private valueInferences: Map<string, ValueInference<Value>>;
 
@@ -382,10 +382,13 @@ export class StmtInference extends ArkModelInference {
      */
     public infer(stmt: Stmt): Type | undefined {
         const defType = stmt.getDef()?.getType();
-        this.defAndUsesScratch.length = 0;
-        const values = stmt.getDefAndUses(this.defAndUsesScratch);
-        for (const value of values) {
-            this.inferValue(value, stmt);
+        const values = this.defAndUsesScratch;
+        while (values.length > 1) {
+            values.pop();
+        }
+        stmt.getDefAndUses(values);
+        for (let i = 1; i < values.length; i++) {
+            this.inferValue(values[i], stmt);
         }
         return defType;
     }

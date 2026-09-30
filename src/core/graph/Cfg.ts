@@ -26,6 +26,8 @@ import { ValueAsserts } from '../../utils/ValueAsserts';
 import { AbstractFieldRef, GlobalRef } from '../base/Ref';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'BasicBlock');
+const defUseStmtUsesScratch: Value[] = [null as unknown as Value];
+const defUseChainUsesScratch: Value[] = [null as unknown as Value];
 
 /**
  * @category core/graph
@@ -179,12 +181,14 @@ export class Cfg {
 
     // 若提供globals列表，则需要将locals中实际为global的部分排除，否则会在该method中将为global赋值的语句识别成global的赋值语句，出现错误
     public buildDefUseStmt(locals: Set<Local>, globals?: Map<string, GlobalRef>): void {
-        const uses: Value[] = [];
+        const uses = defUseStmtUsesScratch;
         for (const stmt of this.getStmts()) {
-            uses.length = 0;
+            while (uses.length > 1) {
+                uses.pop();
+            }
             stmt.getUses(uses);
-            for (const value of uses) {
-                this.buildUseStmt(value, locals, stmt);
+            for (let i = 1; i < uses.length; i++) {
+                this.buildUseStmt(uses[i], locals, stmt);
             }
             const defValue = stmt.getDef();
             if (!(defValue instanceof Local)) {
@@ -270,14 +274,16 @@ export class Cfg {
     }
 
     public buildDefUseChain(): void {
-        const uses: Value[] = [];
+        const uses = defUseChainUsesScratch;
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
-                uses.length = 0;
+                while (uses.length > 1) {
+                    uses.pop();
+                }
                 stmt.getUses(uses);
-                for (const value of uses) {
-                    this.handleDefUseForValue(value, block, stmt, stmtIndex);
+                for (let i = 1; i < uses.length; i++) {
+                    this.handleDefUseForValue(uses[i], block, stmt, stmtIndex);
                 }
             }
         }

@@ -27,7 +27,7 @@ import { ModifierType } from '../model/ArkBaseModel';
 import { AbstractTypeExpr } from './TypeExpr';
 
 const EMPTY_USES: Value[] = [];
-const usesScratch: Value[] = [];
+const usesScratch: Value[] = [null as unknown as Value];
 const POSITION_HOLE = -1;
 
 /**
@@ -142,9 +142,12 @@ export abstract class Stmt {
     }
 
     public containsInvokeExpr(): boolean {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractInvokeExpr) {
                 return true;
             }
@@ -164,9 +167,12 @@ export abstract class Stmt {
      ```
      */
     public getInvokeExpr(): AbstractInvokeExpr | undefined {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractInvokeExpr) {
                 return use as AbstractInvokeExpr;
             }
@@ -208,9 +214,12 @@ export abstract class Stmt {
     }
 
     public containsArrayRef(): boolean {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof ArkArrayRef) {
                 return true;
             }
@@ -222,9 +231,12 @@ export abstract class Stmt {
     }
 
     public getArrayRef(): ArkArrayRef | undefined {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof ArkArrayRef) {
                 return use as ArkArrayRef;
             }
@@ -238,9 +250,12 @@ export abstract class Stmt {
     }
 
     public containsFieldRef(): boolean {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractFieldRef) {
                 return true;
             }
@@ -253,9 +268,12 @@ export abstract class Stmt {
     }
 
     public getFieldRef(): AbstractFieldRef | undefined {
-        usesScratch.length = 0;
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
         this.getUses(usesScratch);
-        for (const use of usesScratch) {
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractFieldRef) {
                 return use as AbstractFieldRef;
             }
