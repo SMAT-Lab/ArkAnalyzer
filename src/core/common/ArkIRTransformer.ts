@@ -936,7 +936,12 @@ export class ArkIRTransformer {
         }
         const leftOpPosition = valueOriginalPositions[0];
         const assignStmt = new ArkAssignStmt(leftOp, value);
-        assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
+        const operandPositions: FullPosition[] = new Array<FullPosition>(1 + valueOriginalPositions.length);
+        operandPositions[0] = leftOpPosition;
+        for (let i = 0; i < valueOriginalPositions.length; i++) {
+            operandPositions[i + 1] = valueOriginalPositions[i];
+        }
+        assignStmt.setOperandOriginalPositions(operandPositions);
         stmts.push(assignStmt);
         return { value: leftOp, positions: [leftOpPosition] };
     }

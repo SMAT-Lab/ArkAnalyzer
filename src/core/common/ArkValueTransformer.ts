@@ -891,23 +891,30 @@ export class ArkValueTransformer {
     }
 
     private propertyAccessExpressionToValue(propertyAccessExpression: ts.PropertyAccessExpression): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        let result = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
-        result.stmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(result.value)) {
-            result = this.arkIRTransformer.generateAssignStmtForValue(result.value, result.valueOriginalPositions);
-            result.stmts.forEach(stmt => stmts.push(stmt));
+        const inner = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
+        const stmts: Stmt[] = inner.stmts;
+        let value = inner.value;
+        let positions = inner.valueOriginalPositions;
+        if (IRUtils.moreThanOneAddress(value)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(value, positions, stmts);
+            value = temp.value;
+            positions = temp.positions;
         }
-        if (!(result.value instanceof Local)) {
-            result = this.arkIRTransformer.generateAssignStmtForValue(result.value, result.valueOriginalPositions);
-            result.stmts.forEach(stmt => stmts.push(stmt));
+        if (!(value instanceof Local)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(value, positions, stmts);
+            value = temp.value;
+            positions = temp.positions;
         }
 
-        const fieldRefPositions = [FullPosition.buildFromNode(propertyAccessExpression, this.sourceFile), ...result.valueOriginalPositions];
+        const fieldRefPositions: FullPosition[] = new Array<FullPosition>(1 + positions.length);
+        fieldRefPositions[0] = FullPosition.buildFromNode(propertyAccessExpression, this.sourceFile);
+        for (let i = 0; i < positions.length; i++) {
+            fieldRefPositions[i + 1] = positions[i];
+        }
 
         // this if for the case: const obj: Object = Object.create(Object.prototype);
-        if (result.value instanceof Local && result.value.getName() === Builtin.OBJECT) {
-            this.locals.delete(result.value.getName());
+        if (value instanceof Local && value.getName() === Builtin.OBJECT) {
+            this.locals.delete(value.getName());
             // Object path: the Object stub is unclear and is routed to the temp
             // canonicalizer inside the constructor — no formal interning without a model.
             const fieldSignature = new FieldSignature(
@@ -921,8 +928,8 @@ export class ArkValueTransformer {
         }
 
         let fieldSignature: FieldSignature;
-        if (result.value instanceof Local && result.value.getType() instanceof ClassType) {
-            const baseType = result.value.getType() as ClassType;
+        if (value instanceof Local && value.getType() instanceof ClassType) {
+            const baseType = value.getType() as ClassType;
             const fieldName = cloneText(propertyAccessExpression.name.getText(this.sourceFile));
             // Model-level direct lookup: resolve the base type's class and probe its field
             // by name — a hit (the field really is declared on this class) reuses its formal
@@ -939,36 +946,31 @@ export class ArkValueTransformer {
         } else {
             fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(cloneText(propertyAccessExpression.name.getText(this.sourceFile)));
         }
-        const fieldRef = new ArkInstanceFieldRef(result.value as Local, fieldSignature);
+        const fieldRef = new ArkInstanceFieldRef(value as Local, fieldSignature);
 
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
 
     private elementAccessExpressionToValueAndStmts(elementAccessExpression: ts.ElementAccessExpression): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
-        baseStmts.forEach(stmt => stmts.push(stmt));
+        const baseResult = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
+        const stmts: Stmt[] = baseResult.stmts;
+        let baseValue = baseResult.value;
+        let basePositions = baseResult.valueOriginalPositions;
         if (!(baseValue instanceof Local)) {
-            ({
-                value: baseValue,
-                valueOriginalPositions: basePositions,
-                stmts: baseStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
-            baseStmts.forEach(stmt => stmts.push(stmt));
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+            baseValue = temp.value;
+            basePositions = temp.positions;
         }
-        let {
-            value: argumentValue,
-            valueOriginalPositions: arguPositions,
-            stmts: argumentStmts,
-        } = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
-        argumentStmts.forEach(stmt => stmts.push(stmt));
+        const argResult = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
+        for (let i = 0; i < argResult.stmts.length; i++) {
+            stmts.push(argResult.stmts[i]);
+        }
+        let argumentValue = argResult.value;
+        let arguPositions = argResult.valueOriginalPositions;
         if (IRUtils.moreThanOneAddress(argumentValue)) {
-            ({
-                value: argumentValue,
-                valueOriginalPositions: arguPositions,
-                stmts: argumentStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(argumentValue, arguPositions));
-            argumentStmts.forEach(stmt => stmts.push(stmt));
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(argumentValue, arguPositions, stmts);
+            argumentValue = temp.value;
+            arguPositions = temp.positions;
         }
 
         let elementAccessExpr: Value;
@@ -981,7 +983,15 @@ export class ArkValueTransformer {
             elementAccessExpr = new ArkInstanceFieldRef(baseValue as Local, fieldSignature, true);
         }
         // reserve positions for field name
-        const exprPositions = [FullPosition.buildFromNode(elementAccessExpression, this.sourceFile), ...basePositions, ...arguPositions];
+        const exprPositions: FullPosition[] = new Array<FullPosition>(1 + basePositions.length + arguPositions.length);
+        exprPositions[0] = FullPosition.buildFromNode(elementAccessExpression, this.sourceFile);
+        let exprPosIdx = 1;
+        for (let i = 0; i < basePositions.length; i++) {
+            exprPositions[exprPosIdx++] = basePositions[i];
+        }
+        for (let i = 0; i < arguPositions.length; i++) {
+            exprPositions[exprPosIdx++] = arguPositions[i];
+        }
         return {
             value: elementAccessExpr,
             valueOriginalPositions: exprPositions,
@@ -1006,7 +1016,7 @@ export class ArkValueTransformer {
         currStmts: Stmt[],
         callExpression: ts.CallExpression | ts.TaggedTemplateExpression
     ): ValueAndStmts {
-        const stmts = [...currStmts];
+        const stmts = currStmts;
         const invokeExprPosition = FullPosition.buildFromNode(callExpression, this.sourceFile);
 
         let result: ValueAndStmts;
@@ -1020,7 +1030,9 @@ export class ArkValueTransformer {
             result = this.elementAccessCalleeToInvoke(calleeNode, args, invokeExprPosition, stmts);
         } else {
             const { value: calleeValue, valueOriginalPositions: calleePositions, stmts: calleeStmts } = this.tsNodeToValueAndStmts(functionNameNode);
-            stmts.push(...calleeStmts);
+            for (let i = 0; i < calleeStmts.length; i++) {
+                stmts.push(calleeStmts[i]);
+            }
 
             if (calleeValue instanceof Local) {
                 result = this.handleLocalInvoke(calleeValue, callExpression, args, invokeExprPosition, calleePositions, stmts);
@@ -1080,30 +1092,39 @@ export class ArkValueTransformer {
         currStmts: Stmt[]
     ): ValueAndStmts {
         // base 转换 + 物化——照搬 propertyAccessExpressionToValue。
-        const stmts = [...currStmts];
-        let baseResult = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
-        baseResult.stmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(baseResult.value)) {
-            baseResult = this.arkIRTransformer.generateAssignStmtForValue(baseResult.value, baseResult.valueOriginalPositions);
-            baseResult.stmts.forEach(stmt => stmts.push(stmt));
+        const stmts = currStmts;
+        const baseInner = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
+        for (let i = 0; i < baseInner.stmts.length; i++) {
+            stmts.push(baseInner.stmts[i]);
         }
-        if (!(baseResult.value instanceof Local)) {
-            baseResult = this.arkIRTransformer.generateAssignStmtForValue(baseResult.value, baseResult.valueOriginalPositions);
-            baseResult.stmts.forEach(stmt => stmts.push(stmt));
+        let baseValue = baseInner.value;
+        let basePositions = baseInner.valueOriginalPositions;
+        if (IRUtils.moreThanOneAddress(baseValue)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+            baseValue = temp.value;
+            basePositions = temp.positions;
+        }
+        if (!(baseValue instanceof Local)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+            baseValue = temp.value;
+            basePositions = temp.positions;
         }
         const methodName = cloneText(propertyAccessExpression.name.getText(this.sourceFile));
 
         let methodSignature: MethodSignature;
         let invokeExpr: Value;
-        const invokeExprPositions: FullPosition[] = [invokeExprPosition];
-        if (baseResult.value instanceof Local && baseResult.value.getName() === Builtin.OBJECT) {
+        let invokeExprPositions: FullPosition[];
+        const argPositions = args.argPositions;
+        if (baseValue instanceof Local && baseValue.getName() === Builtin.OBJECT) {
             // Object.xxx() 特判（照搬 propertyAccessExpressionToValue：含 locals.delete 副作用）。
-            this.locals.delete(baseResult.value.getName());
+            this.locals.delete(baseValue.getName());
             methodSignature = new MethodSignature(Builtin.OBJECT_CLASS_SIGNATURE, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
             invokeExpr = new ArkStaticInvokeExpr(methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+            invokeExprPositions = new Array<FullPosition>(1 + argPositions.length);
+            invokeExprPositions[0] = invokeExprPosition;
         } else {
-            if (baseResult.value instanceof Local && baseResult.value.getType() instanceof ClassType) {
-                const baseType = baseResult.value.getType() as ClassType;
+            if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
+                const baseType = baseValue.getType() as ClassType;
                 const sameNameMethods =
                     baseType.getClassSigID() === this.declaringClass.getClassSigID() ? this.declaringClass.getMethodsWithName(methodName) : [];
                 if (
@@ -1118,11 +1139,17 @@ export class ArkValueTransformer {
             } else {
                 methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
             }
-            invokeExpr = new ArkInstanceInvokeExpr(baseResult.value as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
-            invokeExprPositions.push(...baseResult.valueOriginalPositions);
+            invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+            invokeExprPositions = new Array<FullPosition>(1 + basePositions.length + argPositions.length);
+            invokeExprPositions[0] = invokeExprPosition;
+            for (let i = 0; i < basePositions.length; i++) {
+                invokeExprPositions[1 + i] = basePositions[i];
+            }
         }
-        invokeExprPositions.push(...args.argPositions);
-        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts: stmts };
+        for (let i = 0; i < argPositions.length; i++) {
+            invokeExprPositions[invokeExprPositions.length - argPositions.length + i] = argPositions[i];
+        }
+        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts };
     }
 
     private elementAccessCalleeToInvoke(
@@ -1137,29 +1164,42 @@ export class ArkValueTransformer {
         currStmts: Stmt[]
     ): ValueAndStmts {
         // base 转换 + 物化——照搬 elementAccessExpressionToValueAndStmts。
-        const stmts = [...currStmts];
-        let baseResult = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
-        baseResult.stmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(baseResult.value)) {
-            baseResult = this.arkIRTransformer.generateAssignStmtForValue(baseResult.value, baseResult.valueOriginalPositions);
-            baseResult.stmts.forEach(stmt => stmts.push(stmt));
+        const stmts = currStmts;
+        const baseInner = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
+        for (let i = 0; i < baseInner.stmts.length; i++) {
+            stmts.push(baseInner.stmts[i]);
         }
-        if (!(baseResult.value instanceof Local)) {
-            baseResult = this.arkIRTransformer.generateAssignStmtForValue(baseResult.value, baseResult.valueOriginalPositions);
-            baseResult.stmts.forEach(stmt => stmts.push(stmt));
+        let baseValue = baseInner.value;
+        let basePositions = baseInner.valueOriginalPositions;
+        if (IRUtils.moreThanOneAddress(baseValue)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+            baseValue = temp.value;
+            basePositions = temp.positions;
+        }
+        if (!(baseValue instanceof Local)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+            baseValue = temp.value;
+            basePositions = temp.positions;
         }
 
         // argument 转换 + 物化——照搬同函数后半。
-        let argResult = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
-        argResult.stmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(argResult.value)) {
-            argResult = this.arkIRTransformer.generateAssignStmtForValue(argResult.value, argResult.valueOriginalPositions);
-            argResult.stmts.forEach(stmt => stmts.push(stmt));
+        const argInner = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
+        for (let i = 0; i < argInner.stmts.length; i++) {
+            stmts.push(argInner.stmts[i]);
+        }
+        let indexArgValue = argInner.value;
+        let indexArgPositions = argInner.valueOriginalPositions;
+        if (IRUtils.moreThanOneAddress(indexArgValue)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(indexArgValue, indexArgPositions, stmts);
+            indexArgValue = temp.value;
+            indexArgPositions = temp.positions;
         }
 
-        const baseType = baseResult.value.getType();
+        const baseType = baseValue.getType();
         let methodSignature: MethodSignature;
-        const invokeExprPositions: FullPosition[] = [invokeExprPosition];
+        const argPositions = args.argPositions;
+        let invokeExprPositions: FullPosition[];
+        let writeIdx = 0;
         if (baseType instanceof ArrayType || baseType instanceof StringType) {
             // Array/String 分支——复刻 handleArrayRefInvoke（含 stmts.pop() quirk：
             // 方法名用源码文本，argument 物化 stmt 丢弃）。
@@ -1167,15 +1207,26 @@ export class ArkValueTransformer {
                 cloneText(elementAccessExpression.argumentExpression.getText(this.sourceFile))
             );
             stmts.pop();
-            invokeExprPositions.push(baseResult.valueOriginalPositions[0]);
+            invokeExprPositions = new Array<FullPosition>(2 + argPositions.length);
+            invokeExprPositions[writeIdx++] = invokeExprPosition;
+            invokeExprPositions[writeIdx++] = basePositions[0];
         } else {
             // dynamic 分支——复刻原 handleFieldRefInvoke instance 路径。
-            methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(argResult.value.toString()));
-            invokeExprPositions.push(...baseResult.valueOriginalPositions, ...argResult.valueOriginalPositions);
+            methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(indexArgValue.toString()));
+            invokeExprPositions = new Array<FullPosition>(1 + basePositions.length + indexArgPositions.length + argPositions.length);
+            invokeExprPositions[writeIdx++] = invokeExprPosition;
+            for (let i = 0; i < basePositions.length; i++) {
+                invokeExprPositions[writeIdx++] = basePositions[i];
+            }
+            for (let i = 0; i < indexArgPositions.length; i++) {
+                invokeExprPositions[writeIdx++] = indexArgPositions[i];
+            }
         }
-        const invokeExpr = new ArkInstanceInvokeExpr(baseResult.value as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
-        invokeExprPositions.push(...args.argPositions);
-        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts: stmts };
+        const invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
+        for (let i = 0; i < argPositions.length; i++) {
+            invokeExprPositions[writeIdx++] = argPositions[i];
+        }
+        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts };
     }
 
     private handleLocalInvoke(
@@ -1192,7 +1243,6 @@ export class ArkValueTransformer {
         currStmts: Stmt[]
     ): ValueAndStmts {
         let invokeExpr: Value;
-        const invokeExprPositions: FullPosition[] = [invokeExprPosition];
         const calleeName = calleeValue.getName();
 
         if (this.isCustomViewCall(calleeName, callExpression)) {
@@ -1201,16 +1251,27 @@ export class ArkValueTransformer {
             return this.generateSystemComponentStmt(calleeName, args.argValues, args.argPositions, callExpression as ts.CallExpression, currStmts);
         }
 
+        const argPositions = args.argPositions;
+        const isPtrInvoke = !this.getGlobals()?.has(calleeName) || calleeValue.getType() instanceof FunctionType;
+        const invokeExprPositions: FullPosition[] = new Array<FullPosition>(
+            1 + (isPtrInvoke ? Math.max(calleePositions.length - 1, 0) : 0) + argPositions.length
+        );
+        let writeIdx = 0;
+        invokeExprPositions[writeIdx++] = invokeExprPosition;
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(calleeName);
-        if (!this.getGlobals()?.has(calleeName) || calleeValue.getType() instanceof FunctionType) {
+        if (isPtrInvoke) {
             // the call to the left value or a value of function type should be ptr invoke expr.
             invokeExpr = new ArkPtrInvokeExpr(methodSignature, calleeValue, args.argValues, args.realGenericTypes, args.spreadFlags);
-            invokeExprPositions.push(...calleePositions.slice(1));
+            for (let i = 1; i < calleePositions.length; i++) {
+                invokeExprPositions[writeIdx++] = calleePositions[i];
+            }
         } else {
             invokeExpr = new ArkStaticInvokeExpr(methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
         }
 
-        invokeExprPositions.push(...args.argPositions);
+        for (let i = 0; i < argPositions.length; i++) {
+            invokeExprPositions[writeIdx++] = argPositions[i];
+        }
         return {
             value: invokeExpr,
             valueOriginalPositions: invokeExprPositions,
@@ -1243,9 +1304,9 @@ export class ArkValueTransformer {
         calleePositions: FullPosition[],
         currStmts: Stmt[]
     ): ValueAndStmts {
-        const stmts = [...currStmts];
-        const { value: newCalleeValue, stmts: newStmts } = this.arkIRTransformer.generateAssignStmtForValue(calleeValue, calleePositions);
-        stmts.push(...newStmts);
+        const stmts = currStmts;
+        const temp = this.arkIRTransformer.generateAssignStmtForValueInto(calleeValue, calleePositions, stmts);
+        const newCalleeValue = temp.value;
 
         const invokeExpr = new ArkPtrInvokeExpr(
             ArkSignatureBuilder.buildMethodSignatureFromMethodName((newCalleeValue as Local).getName()),
@@ -1254,7 +1315,13 @@ export class ArkValueTransformer {
             args.realGenericTypes,
             args.spreadFlags
         );
-        const invokeExprPositions: FullPosition[] = [invokeExprPosition, calleePositions.slice(1)[0], ...args.argPositions];
+        const argPositions = args.argPositions;
+        const invokeExprPositions: FullPosition[] = new Array<FullPosition>(2 + argPositions.length);
+        invokeExprPositions[0] = invokeExprPosition;
+        invokeExprPositions[1] = calleePositions[1];
+        for (let i = 0; i < argPositions.length; i++) {
+            invokeExprPositions[2 + i] = argPositions[i];
+        }
         return {
             value: invokeExpr,
             valueOriginalPositions: invokeExprPositions,
@@ -1299,12 +1366,13 @@ export class ArkValueTransformer {
         argPositions: FullPosition[];
         spreadFlags?: boolean[];
     } {
-        const argValues: Value[] = [];
-        const argPositions: FullPosition[] = [];
+        const argCount = argumentNodes ? argumentNodes.length : 0;
+        const argValues: Value[] = argCount === 0 ? [] : new Array<Value>(argCount);
+        const argPositions: FullPosition[] = argCount === 0 ? [] : new Array<FullPosition>(argCount);
         let spreadFlags: boolean[] | undefined = [];
         if (argumentNodes) {
-            spreadFlags = new Array<boolean>(argumentNodes.length).fill(false);
-            for (let i = 0; i < argumentNodes.length; i++) {
+            spreadFlags = new Array<boolean>(argCount).fill(false);
+            for (let i = 0; i < argCount; i++) {
                 spreadFlags[i] = ts.isSpreadElement(argumentNodes[i]);
                 const argument = argumentNodes[i];
                 const prevBuilderMethodContextFlag = this.builderMethodContextFlag;
@@ -1315,9 +1383,11 @@ export class ArkValueTransformer {
                 let { value: argValue, valueOriginalPositions: argPositionsSingle, stmts: argStmts } = this.tsNodeToSingleAddressValueAndStmts(argument);
                 this.builderMethodContextFlag = prevBuilderMethodContextFlag;
                 this.arkIRTransformer.setBuilderMethodContextFlag(prevBuilderMethodContextFlag);
-                argStmts.forEach(s => currStmts.push(s));
-                argValues.push(argValue);
-                argPositions.push(argPositionsSingle[0]);
+                for (let j = 0; j < argStmts.length; j++) {
+                    currStmts.push(argStmts[j]);
+                }
+                argValues[i] = argValue;
+                argPositions[i] = argPositionsSingle[0];
             }
         }
         return {
@@ -1839,9 +1909,10 @@ export class ArkValueTransformer {
             leftResult = this.tsNodeToValueAndStmts(leftOpNode);
         }
 
-        let stmts: Stmt[] = [];
+        let stmts: Stmt[];
         if (needRightOp) {
             const rightResult = this.assignmentRightOpToValueAndStmts(rightOpNode, leftResult.value);
+            stmts = rightResult.stmts;
             if (leftResult.value instanceof Local) {
                 if (variableDefFlag) {
                     leftResult.value.setConstFlag(isConst);
@@ -1857,16 +1928,25 @@ export class ArkValueTransformer {
                 }
             }
             const assignStmt = new ArkAssignStmt(leftResult.value, rightResult.value);
-            assignStmt.setOperandOriginalPositions([...leftResult.valueOriginalPositions, ...rightResult.valueOriginalPositions]);
+            const operandPositions: FullPosition[] = new Array<FullPosition>(leftResult.valueOriginalPositions.length + rightResult.valueOriginalPositions.length);
+            for (let i = 0; i < leftResult.valueOriginalPositions.length; i++) {
+                operandPositions[i] = leftResult.valueOriginalPositions[i];
+            }
+            for (let i = 0; i < rightResult.valueOriginalPositions.length; i++) {
+                operandPositions[leftResult.valueOriginalPositions.length + i] = rightResult.valueOriginalPositions[i];
+            }
+            assignStmt.setOperandOriginalPositions(operandPositions);
             if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode) ||
                 ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)
             ) {
-                rightResult.stmts.forEach(stmt => stmts.push(stmt));
                 stmts.push(assignStmt);
-                leftResult.stmts.forEach(stmt => stmts.push(stmt));
+                for (let i = 0; i < leftResult.stmts.length; i++) {
+                    stmts.push(leftResult.stmts[i]);
+                }
             } else {
-                rightResult.stmts.forEach(stmt => stmts.push(stmt));
-                leftResult.stmts.forEach(stmt => stmts.push(stmt));
+                for (let i = 0; i < leftResult.stmts.length; i++) {
+                    stmts.push(leftResult.stmts[i]);
+                }
                 stmts.push(assignStmt);
             }
         } else {
@@ -1878,22 +1958,21 @@ export class ArkValueTransformer {
     private assignmentRightOpToValueAndStmts(rightOpNode: ts.Node | undefined, leftValue: Value): ValueAndStmts {
         let rightValue: Value;
         let rightPositions: FullPosition[];
-        let tempRightStmts: Stmt[] = [];
-        const rightStmts: Stmt[] = [];
+        let rightStmts: Stmt[];
         if (rightOpNode) {
-            ({ value: rightValue, valueOriginalPositions: rightPositions, stmts: tempRightStmts } = this.tsNodeToValueAndStmts(rightOpNode));
-            tempRightStmts.forEach(stmt => rightStmts.push(stmt));
+            const rightResult = this.tsNodeToValueAndStmts(rightOpNode);
+            rightValue = rightResult.value;
+            rightPositions = rightResult.valueOriginalPositions;
+            rightStmts = rightResult.stmts;
         } else {
             rightValue = ValueUtil.getUndefinedConst();
             rightPositions = [FullPosition.DEFAULT];
+            rightStmts = [];
         }
         if (IRUtils.moreThanOneAddress(leftValue) && IRUtils.moreThanOneAddress(rightValue)) {
-            ({
-                value: rightValue,
-                valueOriginalPositions: rightPositions,
-                stmts: tempRightStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(rightValue, rightPositions));
-            tempRightStmts.forEach(stmt => rightStmts.push(stmt));
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(rightValue, rightPositions, rightStmts);
+            rightValue = temp.value;
+            rightPositions = temp.positions;
         }
         return {
             value: rightValue,
