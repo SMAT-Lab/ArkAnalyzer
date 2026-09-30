@@ -39,6 +39,84 @@ import { AbstractInvokeExpr } from '../base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelInference');
 
+interface ValueVisited {
+    has(value: Value): boolean;
+    add(value: Value): void;
+}
+
+class ArrayValueVisited implements ValueVisited {
+    private readonly items: Value[] = [];
+    private base = 0;
+    private top = 0;
+
+    public enter(): number {
+        const prev = this.base;
+        this.base = this.top;
+        return prev;
+    }
+
+    public has(value: Value): boolean {
+        for (let i = this.base; i < this.top; i++) {
+            if (this.items[i] === value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public add(value: Value): void {
+        this.items[this.top++] = value;
+    }
+
+    public leave(prevBase: number): void {
+        const nullValue = null as unknown as Value;
+        for (let i = this.base; i < this.top; i++) {
+            this.items[i] = nullValue;
+        }
+        this.top = this.base;
+        this.base = prevBase;
+    }
+}
+
+const valueVisitedSeg = new ArrayValueVisited();
+const GLOBAL_MERGE_LINEAR_LIMIT = 32;
+
+/**
+ * Snapshot-semantics merge of `incoming` into the global's used-stmt list: membership is
+ * checked against the entries present at call start (duplicates inside `incoming` are all
+ * appended, exactly like the former `new Set(global.getUsedStmts())` snapshot did). Linear
+ * scan below the limit; the Set path is kept for hot globals where the quadratic tail would
+ * show up in CPU profiles.
+ */
+function mergeGlobalUsedStmts(global: Local, incoming: Stmt[]): void {
+    const snapshot = global.getUsedStmts();
+    const boundary = snapshot.length;
+    if (boundary > GLOBAL_MERGE_LINEAR_LIMIT) {
+        const set = new Set<Stmt>();
+        for (let i = 0; i < boundary; i++) {
+            set.add(snapshot[i]);
+        }
+        for (const stmt of incoming) {
+            if (!set.has(stmt)) {
+                global.addUsedStmt(stmt);
+            }
+        }
+        return;
+    }
+    for (const stmt of incoming) {
+        let found = false;
+        for (let i = 0; i < boundary; i++) {
+            if (snapshot[i] === stmt) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            global.addUsedStmt(stmt);
+        }
+    }
+}
+
 /**
  * Abstract base class for performing inference on ArkModel instances
  * Implements both Inference and InferenceFlow interfaces to provide
@@ -283,12 +361,7 @@ export class MethodInference extends ArkModelInference {
                 if (value instanceof GlobalRef && !value.getRef()) {
                     const global = ModelUtils.findGlobalRef(key, method);
                     if (global instanceof Local) {
-                        const set = new Set(global.getUsedStmts());
-                        for (const stmt of value.getUsedStmts()) {
-                            if (!set.has(stmt)) {
-                                global.addUsedStmt(stmt);
-                            }
-                        }
+                        mergeGlobalUsedStmts(global, value.getUsedStmts());
                         value.setRef(global);
                     }
                 }
@@ -448,7 +521,7 @@ export class StmtInference extends ArkModelInference {
      * @param {Stmt} stmt - The containing statement
      * @param {Set<Value>} visited - Set of already visited values for cycle prevention
      */
-    private inferValue(value: Value, stmt: Stmt, visited?: Set<Value>): void {
+    private inferValue(value: Value, stmt: Stmt, visited?: ValueVisited): void {
         if (visited !== undefined) {
             if (visited.has(value)) {
                 return;
@@ -468,24 +541,34 @@ export class StmtInference extends ArkModelInference {
             return;
         }
         const type = value.getType();
+        const owned = visited === undefined;
         let childVisited = visited;
-        if (type instanceof AbstractTypeExpr) {
-            childVisited = this.inferSubValues(value, type.getUses(), stmt, childVisited);
+        let prevBase = 0;
+        if (owned) {
+            prevBase = valueVisitedSeg.enter();
+            childVisited = valueVisitedSeg;
         }
-        this.inferSubValues(value, value.getUses(), stmt, childVisited);
+        try {
+            if (type instanceof AbstractTypeExpr) {
+                this.inferSubValues(value, type.getUses(), stmt, childVisited!);
+            }
+            this.inferSubValues(value, value.getUses(), stmt, childVisited!);
+        } finally {
+            if (owned) {
+                valueVisitedSeg.leave(prevBase);
+            }
+        }
         valueInference.doInfer(value, stmt);
     }
 
-    private inferSubValues(parent: Value, subValues: Value[], stmt: Stmt, visited: Set<Value> | undefined): Set<Value> | undefined {
+    private inferSubValues(parent: Value, subValues: Value[], stmt: Stmt, visited: ValueVisited): void {
         if (subValues.length === 0) {
-            return visited;
+            return;
         }
-        const childVisited = visited ?? new Set();
-        childVisited.add(parent);
+        visited.add(parent);
         for (const sub of subValues) {
-            this.inferValue(sub, stmt, childVisited);
+            this.inferValue(sub, stmt, visited);
         }
-        return childVisited;
     }
 
     /**

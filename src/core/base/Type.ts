@@ -52,13 +52,15 @@ export interface UnclearVisited {
     add(type: Type): void;
 }
 
-class ArrayUnclearVisited implements UnclearVisited {
+export class ArrayUnclearVisited implements UnclearVisited {
     private readonly items: Type[] = [];
     private base = 0;
     private top = 0;
 
-    public enter(): void {
+    public enter(): number {
+        const prev = this.base;
         this.base = this.top;
+        return prev;
     }
 
     public has(type: Type): boolean {
@@ -74,12 +76,13 @@ class ArrayUnclearVisited implements UnclearVisited {
         this.items[this.top++] = type;
     }
 
-    public leave(): void {
+    public leave(prevBase: number): void {
         const nullType = null as unknown as Type;
         for (let i = this.base; i < this.top; i++) {
             this.items[i] = nullType;
         }
         this.top = this.base;
+        this.base = prevBase;
     }
 }
 
@@ -133,11 +136,11 @@ export abstract class Type {
     protected abstract getTypeString(visited?: Set<Type>): string;
 
     public isUnclear(): boolean {
-        unclearVisited.enter();
+        const prevBase = unclearVisited.enter();
         try {
             return this.isUnclearWithVisited(unclearVisited);
         } finally {
-            unclearVisited.leave();
+            unclearVisited.leave(prevBase);
         }
     }
 

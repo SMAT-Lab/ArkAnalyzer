@@ -23,6 +23,7 @@ import {
     AnnotationNamespaceType,
     AnyType,
     ArrayType,
+    ArrayUnclearVisited,
     BigIntType,
     BooleanType,
     ClassType,
@@ -38,6 +39,7 @@ import {
     TupleType,
     Type,
     UnclearReferenceType,
+    UnclearVisited,
     UndefinedType,
     UnionType,
     UnknownType,
@@ -92,6 +94,7 @@ import { signatureEquals } from './SignatureCanonicalizer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 const resolveUsesScratch: Value[] = [null as unknown as Value];
+const inferVisited = new ArrayUnclearVisited();
 // Builtin stub signatures carry FileSignature.DEFAULT whose fileName is UNKNOWN_FILE_NAME,
 // so a single entry covers both unresolved references and builtin stubs.
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME];
@@ -160,10 +163,22 @@ export class TypeInference {
      *        inside the method scope chain resolve deterministically (local-class lookup).
      * @returns
      */
-    public static inferUnclearedType(
+    public static inferUnclearedType(leftOpType: Type, declaringArkClass: ArkClass, visited?: UnclearVisited, arkMethod?: ArkMethod): Type | null | undefined {
+        if (visited !== undefined) {
+            return this.inferUnclearedTypeWithVisited(leftOpType, declaringArkClass, visited, arkMethod);
+        }
+        const prevBase = inferVisited.enter();
+        try {
+            return this.inferUnclearedTypeWithVisited(leftOpType, declaringArkClass, inferVisited, arkMethod);
+        } finally {
+            inferVisited.leave(prevBase);
+        }
+    }
+
+    private static inferUnclearedTypeWithVisited(
         leftOpType: Type,
         declaringArkClass: ArkClass,
-        visited: Set<Type> = new Set(),
+        visited: UnclearVisited,
         arkMethod?: ArkMethod
     ): Type | null | undefined {
         if (visited.has(leftOpType)) {
@@ -197,7 +212,7 @@ export class TypeInference {
         return TypeInference.inferUnclearComplexType(leftOpType, declaringArkClass, visited, arkMethod);
     }
 
-    private static inferUnclearComplexType(leftOpType: Type, declaringArkClass: ArkClass, visited: Set<Type>, arkMethod?: ArkMethod): Type | undefined {
+    private static inferUnclearComplexType(leftOpType: Type, declaringArkClass: ArkClass, visited: UnclearVisited, arkMethod?: ArkMethod): Type | undefined {
         const registry = SignatureCanonicalizerRegistry.getInstance();
         let type;
         if (leftOpType instanceof UnionType || leftOpType instanceof IntersectionType || leftOpType instanceof TupleType) {
@@ -518,7 +533,7 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type, check: (t: Type) => boolean, visited?: Set<Type>): boolean {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited?: UnclearVisited): boolean {
         if (visited !== undefined) {
             if (visited.has(type)) {
                 return false;
@@ -530,10 +545,19 @@ export class TypeInference {
         if (check(type)) {
             return true;
         }
-        if (visited === undefined) {
-            visited = new Set<Type>();
-            visited.add(type);
+        if (visited !== undefined) {
+            return this.checkTypeRecursion(type, check, visited);
         }
+        const prevBase = inferVisited.enter();
+        inferVisited.add(type);
+        try {
+            return this.checkTypeRecursion(type, check, inferVisited);
+        } finally {
+            inferVisited.leave(prevBase);
+        }
+    }
+
+    private static checkTypeRecursion(type: Type, check: (t: Type) => boolean, visited: UnclearVisited): boolean {
         if (type instanceof ClassType || type instanceof FunctionType) {
             const realGenericTypes = type.getRealGenericTypes();
             if (realGenericTypes !== undefined) {
