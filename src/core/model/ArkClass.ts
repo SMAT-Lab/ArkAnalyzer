@@ -580,7 +580,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getFieldWithName(fieldName: string): ArkField | null {
-        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), false));
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(FieldSignature.probe(fieldName, this.classSigID, UnknownType.getInstance(), false));
         if (id !== -1) {
             return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
         }
@@ -589,7 +589,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public getStaticFieldWithName(fieldName: string): ArkField | null {
         // 同 getFieldWithName，staticFlag = true。
-        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), true));
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(FieldSignature.probe(fieldName, this.classSigID, UnknownType.getInstance(), true));
         if (id !== -1) {
             return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
         }
@@ -816,31 +816,55 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameMethods = this.getMethodsWithName(methodName);
-        if (sameNameMethods.length === 0) {
+        const ids = this.methodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return null;
         }
-        if (sameNameMethods.length > 1) {
+        const reg = this.registry;
+        let first: ArkMethod | null = null;
+        let resolved = 0;
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                resolved++;
+                if (first === null) {
+                    first = m;
+                }
+            }
+        }
+        if (resolved > 1) {
             logger.warn(
                 "There are multiple non-static methods with the same name, and the interface 'getMethodWithName' only returns one of them. " +
                     "If you want to obtain all non-static methods with the same name, please use the interface 'getMethodsWithName'."
             );
         }
-        return sameNameMethods[0];
+        return first;
     }
 
     public getStaticMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameStaticMethods = this.getStaticMethodsWithName(methodName);
-        if (sameNameStaticMethods.length === 0) {
+        const ids = this.staticMethodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return null;
         }
-        if (sameNameStaticMethods.length > 1) {
+        const reg = this.registry;
+        let first: ArkMethod | null = null;
+        let resolved = 0;
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                resolved++;
+                if (first === null) {
+                    first = m;
+                }
+            }
+        }
+        if (resolved > 1) {
             logger.warn(
                 "There are multiple static methods with the same name, and the interface 'getStaticMethodWithName' only returns one of them. " +
                     "If you want to obtain all static methods with the same name, please use the interface 'getStaticMethodsWithName'."
             );
         }
-        return sameNameStaticMethods[0];
+        return first;
     }
 
     /**

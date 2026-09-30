@@ -460,15 +460,22 @@ export class ArkFile {
 
     public getClassWithName(className: string): ArkClass | null {
         if (this.fileSigID >= 0) {
-            const top = this.getClass(new ClassSignature(className, this.fileSigID));
+            const top = this.getClass(ClassSignature.probe(className, this.fileSigID));
             if (top) {
                 return top;
             }
         }
-        for (const ns of this.getNamespaces()) {
-            const cls = this.findClassInNamespace(ns, className);
-            if (cls) {
-                return cls;
+        const nsIds = this.topNamespaceSigIDs;
+        if (nsIds !== null && nsIds !== undefined) {
+            const reg = this.registry;
+            for (let i = 0; i < this.topNamespaceCount; i++) {
+                const ns = reg.namespaceSigCanonicalizer.getModel(nsIds[i]);
+                if (ns) {
+                    const cls = this.findClassInNamespace(ns, className);
+                    if (cls) {
+                        return cls;
+                    }
+                }
             }
         }
         return null;
