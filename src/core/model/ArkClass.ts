@@ -23,7 +23,7 @@ import { ClassSignature, FieldSignature, FileSignature, MethodSignature, Namespa
 import { Local } from '../base/Local';
 import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
-import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../common/Const';
+import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
 import { FullPosition, INVALID_LINE } from '../base/Position';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
@@ -745,6 +745,57 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                         }
                     }
                     if (earlyExit) {
+                        break;
+                    }
+                }
+            }
+        } finally {
+            forEachMethodDepth = depth;
+            if (forEachMethodOverflow[depth] !== undefined) {
+                forEachMethodOverflow[depth] = undefined;
+            }
+            const nullMethod = null as unknown as ArkMethod;
+            for (let i = base; i < forEachMethodSeenTop; i++) {
+                forEachMethodSeenScratch[i] = nullMethod;
+            }
+            forEachMethodSeenTop = base;
+        }
+    }
+
+    /**
+     * @internal Iterates the methods whose names mark them as nested inside `outerMethodName`
+     * (NAME_PREFIX ... NAME_DELIMITER + outerMethodName), in the same order and with the same
+     * dedup as an equivalent filtered {@link forEachMethod} walk, but scanning the name-index
+     * keys as strings and resolving models only for hits - no per-call Set and no O(class)
+     * model resolution, which mattered for large SDK classes walked once per outer method.
+     */
+    public forEachNestedMethodOf(outerMethodName: string, callback: (method: ArkMethod) => boolean): void {
+        const suffix = NAME_DELIMITER + outerMethodName;
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        const base = forEachMethodSeenTop;
+        const depth = forEachMethodDepth++;
+        try {
+            let stop = false;
+            for (let pass = 0; pass < 2 && !stop; pass++) {
+                const index = pass === 0 ? this.methodNameIndex : this.staticMethodNameIndex;
+                if (index === undefined) {
+                    continue;
+                }
+                for (const name of index.keys()) {
+                    if (!name.startsWith(NAME_PREFIX) || !name.endsWith(suffix)) {
+                        continue;
+                    }
+                    const ids = index.get(name)!;
+                    for (let i = 0; i < ids.length; i++) {
+                        const m = canonicalizer.getModel(ids[i]);
+                        if (m !== undefined && !m.isGenerated() && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                stop = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (stop) {
                         break;
                     }
                 }

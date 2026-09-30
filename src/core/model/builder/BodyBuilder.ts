@@ -266,10 +266,8 @@ export class BodyBuilder {
 
     private generateNestedMethodChains(outerMethod: ArkMethod): NestedMethodChain {
         let candidateMethods: ArkMethod[] = [];
-        outerMethod.getDeclaringArkClass().forEachMethod(method => {
-            if (method.getName().startsWith(NAME_PREFIX) && method.getName().endsWith(`${NAME_DELIMITER}${outerMethod.getName()}`)) {
-                candidateMethods.push(method);
-            }
+        outerMethod.getDeclaringArkClass().forEachNestedMethodOf(outerMethod.getName(), method => {
+            candidateMethods.push(method);
             return true;
         });
         const childrenChains = this.getNestedChildrenChains(outerMethod, candidateMethods);

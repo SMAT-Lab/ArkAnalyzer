@@ -101,7 +101,18 @@ export class ArkTsStmtInference extends StmtInference {
         const projectName = method.getDeclaringArkFile().getProjectName();
         // An unclear ClassType with fully-resolved real type args still carries information
         // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
-        const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
+        let isUnclearWithRealArgs = false;
+        if (rightType instanceof ClassType) {
+            const realArgs = rightType.getRealGenericTypes();
+            if (realArgs !== undefined) {
+                for (let i = 0; i < realArgs.length; i++) {
+                    if (!(realArgs[i] instanceof GenericType)) {
+                        isUnclearWithRealArgs = true;
+                        break;
+                    }
+                }
+            }
+        }
         const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;
         if ((!TypeInference.isUnclearType(rightType) && !isPlaceholderRight) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
