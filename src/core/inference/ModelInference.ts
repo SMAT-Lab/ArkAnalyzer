@@ -79,19 +79,23 @@ class ArrayValueVisited implements ValueVisited {
 }
 
 const valueVisitedSeg = new ArrayValueVisited();
-const GLOBAL_MERGE_LINEAR_LIMIT = 32;
+const GLOBAL_MERGE_SET_PRODUCT_LIMIT = 131072;
 
 /**
  * Snapshot-semantics merge of `incoming` into the global's used-stmt list: membership is
  * checked against the entries present at call start (duplicates inside `incoming` are all
- * appended, exactly like the former `new Set(global.getUsedStmts())` snapshot did). Linear
- * scan below the limit; the Set path is kept for hot globals where the quadratic tail would
- * show up in CPU profiles.
+ * appended, exactly like the former `new Set(global.getUsedStmts())` snapshot did).
+ *
+ * The linear scan is the only path in practice: a pointer compare is ~0.5ns versus ~50ns
+ * per Set hash operation, so scanning wins for any incoming count below ~50 regardless of
+ * the snapshot size - and incoming is one body's references to one global (typically 1-3).
+ * The Set fallback only guards the pathological product (a huge snapshot merged with a huge
+ * incoming list in one call), where the quadratic tail would reach milliseconds.
  */
 function mergeGlobalUsedStmts(global: Local, incoming: Stmt[]): void {
     const snapshot = global.getUsedStmts();
     const boundary = snapshot.length;
-    if (boundary > GLOBAL_MERGE_LINEAR_LIMIT) {
+    if (boundary * incoming.length > GLOBAL_MERGE_SET_PRODUCT_LIMIT) {
         const set = new Set<Stmt>();
         for (let i = 0; i < boundary; i++) {
             set.add(snapshot[i]);
@@ -301,6 +305,19 @@ interface InferStmtResult {
     impactedStmts?: Stmt[];
 }
 
+/**
+ * Shared no-change result. postInfer must keep returning a truthy object even when nothing
+ * changed (a falsy result makes the worklist consumer skip the entry), so the common
+ * unchanged-stmt case returns this singleton instead of a fresh three-field literal per
+ * statement per round. Consumers only read replacedStmts/impactedStmts (both undefined here)
+ * and never reach oldStmt on this path; the object is never mutated or retained.
+ */
+const EMPTY_INFER_STMT_RESULT: InferStmtResult = {
+    oldStmt: undefined as unknown as Stmt,
+    replacedStmts: undefined,
+    impactedStmts: undefined,
+};
+
 export class MethodInference extends ArkModelInference {
     private stmtInference: StmtInference;
 
@@ -508,6 +525,9 @@ export class StmtInference extends ArkModelInference {
             (method.getBody()?.getUsedGlobals()?.get(finalDef.getName()) || !finalDef.getName().startsWith(NAME_PREFIX))
         ) {
             impactedStmts = this.mergeImpactedStmts(impactedStmts, finalDef.getUsedStmts());
+        }
+        if (impactedStmts === undefined && replacedStmts === undefined) {
+            return EMPTY_INFER_STMT_RESULT;
         }
         return {
             oldStmt: stmt,

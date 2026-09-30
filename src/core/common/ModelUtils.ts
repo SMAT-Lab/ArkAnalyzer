@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { VisitedSegment } from '../../utils/VisitedSegment';
 import { Local } from '../base/Local';
 import { ArkClass } from '../model/ArkClass';
 import { ArkFile, Language } from '../model/ArkFile';
@@ -832,7 +833,20 @@ function resolveArkFile(im: FromInfo): ArkFile | null {
  * @param fromInfo importInfo or exportInfo
  * @param visited
  */
-export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | null {
+export function findExportInfo(fromInfo: FromInfo, visited?: VisitedSegment<ArkFile>): ExportInfo | null {
+    if (visited !== undefined) {
+        return findExportInfoVisited(fromInfo, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(fromInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findExportInfoVisited(fromInfo, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findExportInfoVisited(fromInfo: FromInfo, visited: VisitedSegment<ArkFile>): ExportInfo | null {
     let file = getArkFile(fromInfo);
     if (!file) {
         if (Logger.isWarnEnabled(logger)) {
@@ -862,7 +876,23 @@ export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new S
     return exportInfo;
 }
 
-export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<ArkFile> = new Set()): ArkExport | null {
+export function findArkExport(exportInfo: ExportInfo | undefined, visited?: VisitedSegment<ArkFile>): ArkExport | null {
+    if (visited !== undefined && !visited.isEmpty()) {
+        return findArkExportVisited(exportInfo, visited);
+    }
+    if (!exportInfo) {
+        return null;
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(exportInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findArkExportVisited(exportInfo, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findArkExportVisited(exportInfo: ExportInfo | undefined, visited: VisitedSegment<ArkFile>): ArkExport | null {
     if (!exportInfo) {
         return null;
     }
@@ -871,7 +901,6 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
         return arkExport;
     }
     const declaringFile = exportInfo.getDeclaringArkFile();
-    const effectiveVisited = visited.size > 0 ? visited : new Set([declaringFile]);
     if (!exportInfo.getFrom()) {
         const name = exportInfo.getOriginName();
         const defaultClass = exportInfo.getDeclaringArkNamespace()?.getDefaultClass() ?? declaringFile.getDefaultClass();
@@ -880,10 +909,10 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
         } else if (exportInfo.getExportClauseType() === ExportType.TYPE) {
             arkExport = defaultClass.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name);
         } else {
-            arkExport = findArkExportInFile(name, declaringFile, effectiveVisited);
+            arkExport = findArkExportInFile(name, declaringFile, visited);
         }
     } else if (exportInfo.getExportClauseType() === ExportType.UNKNOWN) {
-        const result = findExportInfo(exportInfo, effectiveVisited);
+        const result = findExportInfo(exportInfo, visited);
         if (result) {
             arkExport = result.getArkExport() || null;
         }
@@ -899,7 +928,20 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
     return arkExport || null;
 }
 
-export function findArkExportInFile(name: string, declaringArkFile: ArkFile, visited: Set<ArkFile> = new Set([declaringArkFile])): ArkExport | null {
+export function findArkExportInFile(name: string, declaringArkFile: ArkFile, visited?: VisitedSegment<ArkFile>): ArkExport | null {
+    if (visited !== undefined) {
+        return findArkExportInFileVisited(name, declaringArkFile, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(declaringArkFile);
+    try {
+        return findArkExportInFileVisited(name, declaringArkFile, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findArkExportInFileVisited(name: string, declaringArkFile: ArkFile, visited: VisitedSegment<ArkFile>): ArkExport | null {
     let arkExport: ArkExport | undefined | null =
         declaringArkFile.getNamespaceWithName(name) ??
         declaringArkFile.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name) ??
@@ -928,6 +970,8 @@ export function findArkExportInFile(name: string, declaringArkFile: ArkFile, vis
  * of the build. Keyed by scene so a disposed scene's entries die with it.
  */
 const resolvedSceneFiles = new WeakMap<object, Map<string, ArkFile | null>>();
+
+const fileVisitedSeg = new VisitedSegment<ArkFile>();
 
 function sceneFileMemo(scene: object, store: WeakMap<object, Map<string, ArkFile | null>> = resolvedSceneFiles): Map<string, ArkFile | null> {
     let memo = store.get(scene);
@@ -973,32 +1017,46 @@ function getArkFileFormSDK(sdk: Sdk, from: string, scene: Scene): ArkFile | null
     return file;
 }
 
-export function findExportInfoInfile(
-    fromInfo: FromInfo,
-    file: ArkFile,
-    visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])
-): ExportInfo | undefined {
+export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile, visited?: VisitedSegment<ArkFile>): ExportInfo | undefined {
+    if (visited !== undefined) {
+        return findExportInfoInfileVisited(fromInfo, file, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(fromInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findExportInfoInfileVisited(fromInfo, file, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findExportInfoInfileVisited(fromInfo: FromInfo, file: ArkFile, visited: VisitedSegment<ArkFile>): ExportInfo | undefined {
     //check cycle
     if (!visited.has(file)) {
         visited.add(file);
         // expand export *
-        file.getExportInfos()
-            .filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-            .forEach(e => {
+        const allExports = file.getExportInfos();
+        for (let i = 0; i < allExports.length; i++) {
+            const e = allExports[i];
+            if (e.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
                 findExportInfo(e, visited);
                 file.removeExportInfo(e);
-            });
+            }
+        }
     }
     if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
         const declaringArkFile = fromInfo.getDeclaringArkFile();
-        file.getExportInfos()
-            .filter(f => !f.isDefault() && !f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-            .forEach(exportInfo => {
-                const existing = declaringArkFile.getExportInfoBy(exportInfo.getExportClauseName());
-                if (!existing || existing.getFrom()) {
-                    declaringArkFile.addExportInfo(exportInfo);
-                }
-            });
+        const expandableExports = file.getExportInfos();
+        for (let i = 0; i < expandableExports.length; i++) {
+            const exportInfo = expandableExports[i];
+            if (exportInfo.isDefault() || exportInfo.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
+                continue;
+            }
+            const existing = declaringArkFile.getExportInfoBy(exportInfo.getExportClauseName());
+            if (!existing || existing.getFrom()) {
+                declaringArkFile.addExportInfo(exportInfo);
+            }
+        }
         declaringArkFile.removeExportInfo(fromInfo);
         return undefined;
     }
@@ -1016,7 +1074,14 @@ export function findExportInfoInfile(
     }
 
     if (exportName === DEFAULT) {
-        exportInfo = file.getExportInfos().find(p => p.isDefault());
+        const defaultCandidates = file.getExportInfos();
+        exportInfo = undefined;
+        for (let i = 0; i < defaultCandidates.length; i++) {
+            if (defaultCandidates[i].isDefault()) {
+                exportInfo = defaultCandidates[i];
+                break;
+            }
+        }
         if (exportInfo) {
             file.addExportInfo(exportInfo, DEFAULT);
             return exportInfo;

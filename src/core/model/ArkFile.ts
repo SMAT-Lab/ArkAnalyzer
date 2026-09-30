@@ -575,12 +575,16 @@ export class ArkFile {
     }
 
     public getExportInfos(): ExportInfo[] {
-        const exportInfos: ExportInfo[] = [];
+        const exportInfos: ExportInfo[] = new Array<ExportInfo>(this.exportInfoMap.size);
+        let writeIdx = 0;
         this.exportInfoMap.forEach((value, key) => {
             if (key !== ALL || value.getFrom()) {
-                exportInfos.push(value);
+                exportInfos[writeIdx++] = value;
             }
         });
+        if (writeIdx < exportInfos.length) {
+            exportInfos.length = writeIdx;
+        }
         return exportInfos;
     }
 
