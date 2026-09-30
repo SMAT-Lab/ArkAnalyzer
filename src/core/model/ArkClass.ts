@@ -32,6 +32,38 @@ import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizer
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
+const forEachMethodSeenScratch: ArkMethod[] = [];
+let forEachMethodSeenTop = 0;
+const forEachMethodOverflow: Array<Set<ArkMethod> | undefined> = [];
+let forEachMethodDepth = 0;
+const SEEN_LINEAR_LIMIT = 32;
+
+function markSeen(base: number, depth: number, method: ArkMethod): boolean {
+    const overflow = forEachMethodOverflow[depth];
+    if (overflow !== undefined) {
+        if (overflow.has(method)) {
+            return true;
+        }
+        overflow.add(method);
+        return false;
+    }
+    for (let i = base; i < forEachMethodSeenTop; i++) {
+        if (forEachMethodSeenScratch[i] === method) {
+            return true;
+        }
+    }
+    if (forEachMethodSeenTop - base >= SEEN_LINEAR_LIMIT) {
+        const promoted = new Set<ArkMethod>();
+        for (let i = base; i < forEachMethodSeenTop; i++) {
+            promoted.add(forEachMethodSeenScratch[i]);
+        }
+        promoted.add(method);
+        forEachMethodOverflow[depth] = promoted;
+        return false;
+    }
+    forEachMethodSeenScratch[forEachMethodSeenTop++] = method;
+    return false;
+}
 
 export enum ClassCategory {
     CLASS = 0,
@@ -670,33 +702,63 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     /**
      * @internal Iterates the class methods in {@link getMethods} order without building the
-     * result array (one dedup set per call instead of the index set, array and dedup set of
-     * getMethods). Return false from the callback to stop early. Use getMethods when the
-     * caller needs the array itself (e.g. to sort it).
+     * result array. Dedup uses a module-level scratch segment with base/top discipline instead
+     * of a per-call Set: each invocation appends its yielded methods above the current top and
+     * pops (nulling) its segment on exit, which keeps the walk reentrant - a callback may call
+     * forEachMethod again without disturbing the outer dedup - and allocation-free per call.
+     * Return false from the callback to stop early. Use getMethods when the caller needs the
+     * array itself (e.g. to sort it).
      */
     public forEachMethod(callback: (method: ArkMethod) => boolean, generated?: boolean): void {
-        const seen = new Set<ArkMethod>();
-        for (const entry of this.methodNameIndex?.values() ?? []) {
-            for (const id of entry) {
-                const m = this.registry.methodSigCanonicalizer.getModel(id);
-                if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
-                    seen.add(m);
-                    if (!callback(m)) {
-                        return;
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        const base = forEachMethodSeenTop;
+        const depth = forEachMethodDepth++;
+        try {
+            let earlyExit = false;
+            const index = this.methodNameIndex;
+            if (index !== undefined) {
+                for (const entry of index.values()) {
+                    for (let i = 0; i < entry.length; i++) {
+                        const m = canonicalizer.getModel(entry[i]);
+                        if (m !== undefined && (generated || !m.isGenerated()) && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                earlyExit = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (earlyExit) {
+                        break;
                     }
                 }
             }
-        }
-        for (const entry of this.staticMethodNameIndex?.values() ?? []) {
-            for (const id of entry) {
-                const m = this.registry.methodSigCanonicalizer.getModel(id);
-                if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
-                    seen.add(m);
-                    if (!callback(m)) {
-                        return;
+            const staticIndex = this.staticMethodNameIndex;
+            if (!earlyExit && staticIndex !== undefined) {
+                for (const entry of staticIndex.values()) {
+                    for (let i = 0; i < entry.length; i++) {
+                        const m = canonicalizer.getModel(entry[i]);
+                        if (m !== undefined && (generated || !m.isGenerated()) && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                earlyExit = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (earlyExit) {
+                        break;
                     }
                 }
             }
+        } finally {
+            forEachMethodDepth = depth;
+            if (forEachMethodOverflow[depth] !== undefined) {
+                forEachMethodOverflow[depth] = undefined;
+            }
+            const nullMethod = null as unknown as ArkMethod;
+            for (let i = base; i < forEachMethodSeenTop; i++) {
+                forEachMethodSeenScratch[i] = nullMethod;
+            }
+            forEachMethodSeenTop = base;
         }
     }
 
