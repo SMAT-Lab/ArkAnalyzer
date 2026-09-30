@@ -15,7 +15,7 @@
 
 import { Value } from './Value';
 import { ArkMethod } from '../model/ArkMethod';
-import { IntersectionType, Type, UnionType, UnknownType } from './Type';
+import { IntersectionType, Type, UnclearVisited, UnionType, UnknownType } from './Type';
 import { IRInference } from '../common/IRInference';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ModelUtils } from '../common/ModelUtils';
@@ -83,7 +83,7 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         return this.genericTypes;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
@@ -91,7 +91,16 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         if (this.getType().isUnclearWithVisited(visited)) {
             return true;
         }
-        return this.getGenerateTypes()?.some(t => t.isUnclearWithVisited(visited)) ?? false;
+        const generateTypes = this.getGenerateTypes();
+        if (generateTypes === undefined || generateTypes === null) {
+            return false;
+        }
+        for (let i = 0; i < generateTypes.length; i++) {
+            if (generateTypes[i].isUnclearWithVisited(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public addGenericType(gType: Type): void {
@@ -168,7 +177,7 @@ export class KeyofTypeExpr extends AbstractTypeExpr {
         this.opType = opType;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }

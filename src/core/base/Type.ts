@@ -39,6 +39,52 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Type');
 /**
  * @category core/base/type
  */
+/**
+ * @internal Minimal visited-set for the isUnclearWithVisited recursion. The former
+ * per-call `new Set<Type>()` allocated on every isUnclear() - tens of millions of
+ * times per build (the preInfer frame alone attributed 3.6GB of it). Recursion depth
+ * is a handful of types, so a cursor-reset array segment with linear scan is both
+ * allocation-free and faster than hashing; base/top keeps nested isUnclear() calls
+ * (should any appear) from disturbing an in-flight segment.
+ */
+export interface UnclearVisited {
+    has(type: Type): boolean;
+    add(type: Type): void;
+}
+
+class ArrayUnclearVisited implements UnclearVisited {
+    private readonly items: Type[] = [];
+    private base = 0;
+    private top = 0;
+
+    public enter(): void {
+        this.base = this.top;
+    }
+
+    public has(type: Type): boolean {
+        for (let i = this.base; i < this.top; i++) {
+            if (this.items[i] === type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public add(type: Type): void {
+        this.items[this.top++] = type;
+    }
+
+    public leave(): void {
+        const nullType = null as unknown as Type;
+        for (let i = this.base; i < this.top; i++) {
+            this.items[i] = nullType;
+        }
+        this.top = this.base;
+    }
+}
+
+const unclearVisited = new ArrayUnclearVisited();
+
 export abstract class Type {
     /** True if this type can contain other types and thus participate in cycles */
     protected canParticipateInCycle(): boolean {
@@ -87,11 +133,16 @@ export abstract class Type {
     protected abstract getTypeString(visited?: Set<Type>): string;
 
     public isUnclear(): boolean {
-        return this.isUnclearWithVisited(new Set<Type>());
+        unclearVisited.enter();
+        try {
+            return this.isUnclearWithVisited(unclearVisited);
+        } finally {
+            unclearVisited.leave();
+        }
     }
 
     /** @internal */
-    public abstract isUnclearWithVisited(visited: Set<Type>): boolean;
+    public abstract isUnclearWithVisited(visited: UnclearVisited): boolean;
 }
 
 /**
@@ -109,7 +160,7 @@ export class AnyType extends Type {
         super();
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -133,7 +184,7 @@ export class UnknownType extends Type {
         super();
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return true;
     }
 
@@ -172,7 +223,7 @@ export class UnclearReferenceType extends Type {
         return this.genericTypes;
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return true;
     }
 
@@ -203,7 +254,7 @@ export abstract class PrimitiveType extends Type {
 
     // Transit implementation: concrete primitives are never unclear;
     // only the inherently unclear leaves (see NullType/UndefinedType notes) override isUnclearWithVisited.
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -283,7 +334,7 @@ export class NullType extends PrimitiveType {
         super(NULL_KEYWORD);
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         // UNIFY-EXP: null as concrete
         return false;
     }
@@ -304,7 +355,7 @@ export class UndefinedType extends PrimitiveType {
         super(UNDEFINED_KEYWORD);
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         // UNIFY-EXP: undefined as concrete
         return false;
     }
@@ -364,13 +415,19 @@ export class UnionType extends Type {
         this.currType = newType;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
         visited.add(this);
         // Unified full semantics: a union is unclear iff any member is unclear.
-        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+        const memberTypes = this.getTypes();
+        for (let i = 0; i < memberTypes.length; i++) {
+            if (memberTypes[i].isUnclearWithVisited(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -419,13 +476,19 @@ export class IntersectionType extends Type {
         return this.types;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
         visited.add(this);
         // Unified full semantics (see UnionType).
-        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+        const memberTypes = this.getTypes();
+        for (let i = 0; i < memberTypes.length; i++) {
+            if (memberTypes[i].isUnclearWithVisited(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -456,7 +519,7 @@ export class VoidType extends Type {
         super();
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -480,7 +543,7 @@ export class NeverType extends Type {
         super();
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -560,7 +623,7 @@ export class FunctionType extends Type {
         return this.realGenericTypes;
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         // 恒为 false，三层理由：
         // 1. 语义层：FunctionType 表示函数类型本身（结构描述：参数列表+返回类型），不是对函数实体的引用——"引用可解析性"的判定职责由 ClassType 承担。
         //    "该签名对应哪个真实方法"的解析在消费点有专门机制（canonicalizer 值查找 + fallback 遍历），从不依赖本判定。
@@ -703,7 +766,7 @@ export class ClassType extends Type {
         this.realGenericTypes = types;
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         const classSignature = this.getClassSignature();
         if (classSignature.getDeclaringFileSigID() === 0) {
             return true;
@@ -772,7 +835,7 @@ export class ArrayType extends Type {
         return this.readonlyFlag;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
@@ -838,13 +901,19 @@ export class TupleType extends Type {
         return this.readonlyFlag;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
         visited.add(this);
         // Unified full semantics (see UnionType).
-        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+        const memberTypes = this.getTypes();
+        for (let i = 0; i < memberTypes.length; i++) {
+            if (memberTypes[i].isUnclearWithVisited(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -910,7 +979,7 @@ export class AliasType extends Type implements ArkExport {
         return this.originalType;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
@@ -1037,7 +1106,7 @@ export class GenericType extends Type {
         return this.index ?? 0;
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return true;
     }
 
@@ -1066,7 +1135,7 @@ export abstract class AnnotationType extends Type {
     }
 
     // Transit implementation: annotation types are concrete leaf types
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -1174,7 +1243,7 @@ export class LexicalEnvType extends Type {
         this.closures.push(closure);
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
@@ -1246,7 +1315,7 @@ export class EnumValueType extends Type {
         return this.constant;
     }
 
-    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+    public isUnclearWithVisited(_visited: UnclearVisited): boolean {
         return false;
     }
 
