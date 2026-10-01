@@ -393,9 +393,11 @@ export class MethodInference extends ArkModelInference {
             }
         }
         let nextIdx = 0;
+        const tracked = workList.length > 64 ? new Set<Stmt>(workList) : undefined;
+        let timeoutCheck = 0;
         while (nextIdx < workList.length) {
             const stmt = workList[nextIdx];
-            if (Date.now() - startTime > MethodInference.TIMEOUT_MS) {
+            if ((timeoutCheck++ & 63) === 0 && Date.now() - startTime > MethodInference.TIMEOUT_MS) {
                 logger.error(`Inference timeout for method: ${method.getName()}`);
                 return modifiedStmts;
             }
@@ -413,12 +415,19 @@ export class MethodInference extends ArkModelInference {
             const impactedStmts = inferResult.impactedStmts;
             if (impactedStmts) {
                 for (const s of impactedStmts) {
-                    if (!workList.includes(s)) {
+                    if (tracked !== undefined) {
+                        if (!tracked.has(s)) {
+                            tracked.add(s);
+                            workList.push(s);
+                        }
+                    } else if (!workList.includes(s)) {
                         workList.push(s);
                     }
                 }
             }
-            workList.splice(nextIdx, 1);
+            tracked?.delete(stmt);
+            workList[nextIdx] = null as unknown as Stmt;
+            nextIdx++;
         }
         return modifiedStmts;
     }
