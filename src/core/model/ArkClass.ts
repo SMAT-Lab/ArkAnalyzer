@@ -880,6 +880,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                 resolved++;
                 if (first === null) {
                     first = m;
+                } else {
+                    break;
                 }
             }
         }
@@ -906,6 +908,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                 resolved++;
                 if (first === null) {
                     first = m;
+                } else {
+                    break;
                 }
             }
         }

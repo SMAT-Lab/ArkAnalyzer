@@ -684,9 +684,10 @@ export class StmtInference extends ArkModelInference {
     }
 
     public transferLeft2Right(rightOp: Value, leftType: Type, method: ArkMethod): Stmt[] | undefined {
-        const projectName = method.getDeclaringArkFile().getProjectName();
-        // Skip if left type is unclear or anonymous
-        if (TypeInference.isUnclearType(leftType) || TypeInference.isAnonType(leftType, projectName)) {
+        if (TypeInference.isUnclearType(leftType)) {
+            return undefined;
+        }
+        if (TypeInference.isAnonType(leftType, method.getDeclaringArkFile().getProjectName())) {
             return undefined;
         }
         const rightType = rightOp.getType();

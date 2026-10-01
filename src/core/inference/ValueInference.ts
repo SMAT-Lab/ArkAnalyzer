@@ -724,7 +724,8 @@ export class LocalInference extends ValueInference<Local> {
 
     public infer(value: Local, stmt: Stmt): Value | undefined {
         const name = value.getName();
-        const arkClass = stmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const arkClass = arkMethod.getDeclaringArkClass();
         // Special handling for 'this' reference - set to current class type
         if (name === THIS_NAME) {
             value.setType(new ClassType(arkClass.getSignature(), arkClass.getRealTypes()));
@@ -733,7 +734,7 @@ export class LocalInference extends ValueInference<Local> {
         let newType;
         // Skip temporary variables (those with name prefix) and look for declared locals
         if (!name.startsWith(NAME_PREFIX)) {
-            newType = ModelUtils.findDeclaredLocalType(name, stmt.getCfg().getDeclaringMethod(), 1) ?? TypeInference.inferBaseType(name, arkClass);
+            newType = ModelUtils.findDeclaredLocalType(name, arkMethod, 1) ?? TypeInference.inferBaseType(name, arkClass);
         }
         if (newType) {
             value.setType(newType);
