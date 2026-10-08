@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { describe, it } from 'vitest';
-import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, PointerAnalysisConfig } from '../../../src';
+import { beforeAll, describe, it } from 'vitest';
+import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, PointerAnalysisConfig, ArkMethod } from '../../../src';
 import { Sdk } from '../../../src/Config';
 import { assert } from 'vitest';
 
@@ -25,31 +25,39 @@ let sdk: Sdk = {
 };
 
 describe('ContainerAddTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/pta/Container');
-    config.getSdksObj().push(sdk);
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let pta: PointerAnalysis;
+    let arrayMethod: (ArkMethod | null)[];
+    let setMethod: (ArkMethod | null)[];
+    let mapMethod: (ArkMethod | null)[];
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/pta/Container');
+        config.getSdksObj().push(sdk);
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true);
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        let pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
-    let arrayMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'ArrayTest')
-        .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
-    let setMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'SetTest')
-        .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
-    let mapMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'MapTest')
-        .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
+        let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true);
+        pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+
+        arrayMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'ArrayTest')
+            .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
+        setMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'SetTest')
+            .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
+        mapMethod = scene.getClasses().filter(arkClass => arkClass.getName() === 'MapTest')
+            .flatMap(arkClass => arkClass.getMethodWithName('test'))!;
+    });
+
 
     it('case1: Array.push(T[])', () => {
         const eleLocal = arrayMethod[0]?.getBody()?.getLocals().get('ele')!;
@@ -74,7 +82,7 @@ describe('ContainerAddTest', () => {
         let setLocal = setMethod[0]?.getBody()?.getLocals().get('ele')!;
         let relatedNodes = pta.getRelatedNodes(setLocal);
         assert(
-            Array.from(relatedNodes).some(element => element.toString() === 'set.<@container/lib.es2015.collection.d.ts: Set.field>')
+            Array.from(relatedNodes).some(element => element.toString() === 'set.<@%unk/%unk: Set.field>')
         );
     });
 
@@ -83,7 +91,7 @@ describe('ContainerAddTest', () => {
         let resultLocal = mapMethod[0]?.getBody()?.getLocals().get('v')!;
         let relatedNodes = pta.getRelatedNodes(mapLocal);
         assert(
-            Array.from(relatedNodes).some(element => element.toString() === 'map.<@container/lib.es2015.collection.d.ts: Map.field>')
+            Array.from(relatedNodes).some(element => element.toString() === 'map.<@%unk/%unk: Map.field>')
         );
 
         assert(
@@ -93,28 +101,36 @@ describe('ContainerAddTest', () => {
 });
 
 describe('ContainerForeachTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/pta/Foreach');
-    config.getSdksObj().push(sdk);
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
+    let arrayMethod: ArkMethod[];
+    let setMethod: ArkMethod[];
+    let mapMethod: ArkMethod[];
+    let pta: PointerAnalysis;
 
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/pta/Foreach');
+        config.getSdksObj().push(sdk);
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true);
-    let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        let pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
-    const arrayMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'arrayForeach')!;
-    const setMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'setForeach')!;
-    const mapMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'mapForeach')!;
+        let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true);
+        pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+
+        arrayMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'arrayForeach')!;
+        setMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'setForeach')!;
+        mapMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === 'mapForeach')!;
+    });
 
     it('case1: Array.forEach', () => {
         const foreachMethod = scene.getMethods().filter(arkMethod => arkMethod.getName() === '%AM0$arrayForeach')!;

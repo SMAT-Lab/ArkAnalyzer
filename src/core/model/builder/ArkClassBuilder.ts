@@ -20,20 +20,8 @@ import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import ts, { ClassElement, EnumMember, ParameterDeclaration, TypeElement } from 'ohos-typescript';
 import { ArkClass, ClassCategory } from '../ArkClass';
-import {
-    buildArkMethodFromArkClass,
-    buildDefaultArkMethodFromArkClass,
-    buildInitMethod,
-    checkAndUpdateMethod
-} from './ArkMethodBuilder';
-import {
-    buildDecorators,
-    buildGenericType,
-    buildHeritageClauses,
-    buildModifiers,
-    buildTypeParameters,
-    tsNode2Type
-} from './builderUtils';
+import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod, checkAndUpdateMethod } from './ArkMethodBuilder';
+import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type, unifyDeclaredTypeWithInitializer } from './builderUtils';
 import { cloneText } from '../../common/StringUtils';
 import { buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
@@ -43,7 +31,8 @@ import {
     ANONYMOUS_CLASS_DELIMITER,
     ANONYMOUS_CLASS_PREFIX,
     DEFAULT_ARK_CLASS_NAME,
-    INSTANCE_INIT_METHOD_NAME, NESTED_CLASS_METHOD_DELIMITER,
+    INSTANCE_INIT_METHOD_NAME,
+    NESTED_CLASS_METHOD_DELIMITER,
     STATIC_BLOCK_METHOD_NAME_PREFIX,
     STATIC_INIT_METHOD_NAME,
 } from '../../common/Const';
@@ -60,6 +49,7 @@ import { NumberConstant } from '../../base/Constant';
 import { ValueUtil } from '../../common/ValueUtil';
 import { Local } from '../../base/Local';
 import { ArkMetadataKind, EnumInitTypeUserMetadata } from '../ArkMetadata';
+import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -80,27 +70,58 @@ type ClassLikeNodeWithMethod =
     | ts.TypeLiteralNode
     | ts.StructDeclaration;
 
-export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: ts.SourceFile): void {
-    defaultClass.setDeclaringArkFile(arkFile);
-    defaultClass.setCategory(ClassCategory.CLASS);
-    buildDefaultArkClass(defaultClass, astRoot);
+function newGenClassName(declaringName: string, declaringInstance: ArkFile | ArkNamespace | ArkMethod): string {
+    if (!declaringName) {
+        let num: number;
+        if (declaringInstance instanceof ArkFile) {
+            num = declaringInstance.getAnonymousClassNumber();
+        } else if (declaringInstance instanceof ArkNamespace) {
+            num = declaringInstance.getAnonymousClassNumber();
+        } else {
+            num = declaringInstance.getDeclaringArkFile().getAnonymousClassNumber();
+        }
+        declaringName = ANONYMOUS_CLASS_PREFIX + num;
+    }
+    let suffix = '';
+    if (declaringInstance instanceof ArkMethod) {
+        const methodClass = declaringInstance.getDeclaringArkClass().getName();
+        const methodName = declaringInstance.getName();
+        suffix = `${ANONYMOUS_CLASS_DELIMITER}${methodClass}${NESTED_CLASS_METHOD_DELIMITER}${methodName}`;
+    }
+    return declaringName + suffix;
 }
 
-export function buildDefaultArkClassFromArkNamespace(
-    arkNamespace: ArkNamespace,
-    defaultClass: ArkClass,
-    nsNode: ts.ModuleDeclaration,
-    sourceFile: ts.SourceFile
-): void {
-    defaultClass.setDeclaringArkNamespace(arkNamespace);
-    defaultClass.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
-    buildDefaultArkClass(defaultClass, sourceFile, nsNode);
+export function buildClassSignature(node: ClassLikeNode, declaringInstance: ArkFile | ArkNamespace | ArkMethod): ClassSignature {
+    let className: string;
+    if (ts.isTypeLiteralNode(node) || ts.isObjectLiteralExpression(node)) {
+        className = '';
+    } else {
+        className = newGenClassName(node.name ? cloneText(node.name.text) : '', declaringInstance);
+    }
+
+    let declaringFileID: number;
+    let declaringNsID: number | undefined;
+    if (declaringInstance instanceof ArkFile) {
+        declaringFileID = declaringInstance.getFileSigID();
+    } else if (declaringInstance instanceof ArkNamespace) {
+        declaringFileID = declaringInstance.getDeclaringFileID();
+        declaringNsID = declaringInstance.getNamespaceSigID();
+    } else {
+        declaringFileID = declaringInstance.getDeclaringArkFileID();
+    }
+    return new ClassSignature(className, declaringFileID, declaringNsID);
+}
+
+export function buildDefaultArkClassFromArkFile(defaultClass: ArkClass, astRoot: ts.SourceFile): void {
+    defaultClass.setCategory(ClassCategory.CLASS);
+    buildDefaultArkClass(defaultClass, astRoot);
 }
 
 export function buildNormalArkClassFromArkMethod(clsNode: ClassLikeNode, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const namespace = cls.getDeclaringArkNamespace();
     if (namespace) {
-        buildNormalArkClassFromArkNamespace(clsNode, namespace, cls, sourceFile, declaringMethod);
+        buildNormalArkClassFromArkNamespace(clsNode, cls, sourceFile, declaringMethod);
+        namespace.addArkClass(cls);
     } else {
         buildNormalArkClassFromArkFile(clsNode, cls.getDeclaringArkFile(), cls, sourceFile, declaringMethod);
     }
@@ -113,7 +134,6 @@ export function buildNormalArkClassFromArkFile(
     sourceFile: ts.SourceFile,
     declaringMethod?: ArkMethod
 ): void {
-    cls.setDeclaringArkFile(arkFile);
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getStart(sourceFile));
     const endPos = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getEnd());
     cls.setOriginFullPosition(new FullPosition(line + 1, character + 1, endPos.line + 1, endPos.character + 1));
@@ -124,35 +144,27 @@ export function buildNormalArkClassFromArkFile(
 
 export function buildNormalArkClassFromArkNamespace(
     clsNode: ClassLikeNode,
-    arkNamespace: ArkNamespace,
     cls: ArkClass,
     sourceFile: ts.SourceFile,
     declaringMethod?: ArkMethod
 ): void {
-    cls.setDeclaringArkNamespace(arkNamespace);
-    cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getStart(sourceFile));
     const endPos = ts.getLineAndCharacterOfPosition(sourceFile, clsNode.getEnd());
     cls.setOriginFullPosition(new FullPosition(line + 1, character + 1, endPos.line + 1, endPos.character + 1));
 
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
-    arkNamespace.addArkClass(cls);
 }
 
-function buildDefaultArkClass(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration): void {
-    const defaultArkClassSignature = new ClassSignature(
-        DEFAULT_ARK_CLASS_NAME,
-        cls.getDeclaringArkFile().getFileSignature(),
-        cls.getDeclaringArkNamespace()?.getSignature() || null
-    );
+export function buildDefaultArkClass(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration): void {
+    const defaultArkClassSignature = new ClassSignature(DEFAULT_ARK_CLASS_NAME, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(defaultArkClassSignature);
 
     genDefaultArkMethod(cls, sourceFile, node);
 }
 
 function genDefaultArkMethod(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration): void {
-    let defaultMethod = new ArkMethod();
-    buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
+    let defaultMethod = new ArkMethod(cls.getClassSigID());
+    buildDefaultArkMethodFromArkClass(defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
 }
 
@@ -185,13 +197,11 @@ export function buildNormalArkClass(clsNode: ClassLikeNode, cls: ArkClass, sourc
 }
 
 export function init4InstanceInitMethod(cls: ArkClass): void {
-    const instanceInit = new ArkMethod();
-    instanceInit.setDeclaringArkClass(cls);
-    instanceInit.setIsGeneratedFlag(true);
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(INSTANCE_INIT_METHOD_NAME);
     methodSubSignature.setReturnType(VoidType.getInstance());
-    const methodSignature = new MethodSignature(instanceInit.getDeclaringArkClass().getSignature(), methodSubSignature);
-    instanceInit.setImplementationSignature(methodSignature);
+    const methodSignature = new MethodSignature(cls.getClassSigID(), methodSubSignature);
+    const instanceInit = new ArkMethod(cls.getClassSigID(), methodSignature);
+    instanceInit.setIsGeneratedFlag(true);
     instanceInit.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     checkAndUpdateMethod(instanceInit, cls);
@@ -200,16 +210,12 @@ export function init4InstanceInitMethod(cls: ArkClass): void {
 }
 
 export function init4StaticInitMethod(cls: ArkClass): void {
-    const staticInit = new ArkMethod();
-    staticInit.setDeclaringArkClass(cls);
-    staticInit.setIsGeneratedFlag(true);
-
-    staticInit.setModifiers(ModifierType.STATIC);
-
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(STATIC_INIT_METHOD_NAME);
     methodSubSignature.setReturnType(VoidType.getInstance());
-    const methodSignature = new MethodSignature(staticInit.getDeclaringArkClass().getSignature(), methodSubSignature);
-    staticInit.setImplementationSignature(methodSignature);
+    const methodSignature = new MethodSignature(cls.getClassSigID(), methodSubSignature);
+    const staticInit = new ArkMethod(cls.getClassSigID(), methodSignature);
+    staticInit.setIsGeneratedFlag(true);
+    staticInit.setModifiers(ModifierType.STATIC);
     staticInit.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
     checkAndUpdateMethod(staticInit, cls);
@@ -219,7 +225,7 @@ export function init4StaticInitMethod(cls: ArkClass): void {
 
 function buildStruct2ArkClass(clsNode: ts.StructDeclaration, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const className = genClassName(clsNode.name ? cloneText(clsNode.name.text) : '', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     if (clsNode.typeParameters) {
@@ -241,9 +247,11 @@ function buildStruct2ArkClass(clsNode: ts.StructDeclaration, cls: ArkClass, sour
 }
 
 function buildClass2ArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
-    const className = genClassName(clsNode.name ? cloneText(clsNode.name.text) : '', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
-    cls.setSignature(classSignature);
+    if (!cls.getSignature()) {
+        const className = genClassName(clsNode.name ? cloneText(clsNode.name.text) : '', cls, declaringMethod);
+        const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
+        cls.setSignature(classSignature);
+    }
 
     if (clsNode.typeParameters) {
         buildTypeParameters(clsNode.typeParameters, sourceFile, cls).forEach(typeParameter => {
@@ -277,14 +285,14 @@ function initHeritage(heritageClauses: Map<string, string>, cls: ArkClass): void
     }
 }
 
-/** Register @Component into Scene.customComponentMap while the class is being built. */
+/** Register @Component into customComponentMap while the class is being built. */
 function registerCustomComponentIfNeeded(cls: ArkClass): void {
-    cls.getDeclaringArkFile().getScene().registerCustomComponent(cls);
+    SignatureCanonicalizerRegistry.getInstance().registerCustomComponent(cls);
 }
 
 function buildInterface2ArkClass(clsNode: ts.InterfaceDeclaration, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const className = genClassName(clsNode.name ? cloneText(clsNode.name.text) : '', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     if (clsNode.typeParameters) {
@@ -305,7 +313,7 @@ function buildInterface2ArkClass(clsNode: ts.InterfaceDeclaration, cls: ArkClass
 
 function buildEnum2ArkClass(clsNode: ts.EnumDeclaration, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const className = genClassName(clsNode.name ? cloneText(clsNode.name.text) : '', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     cls.setModifiers(buildModifiers(clsNode));
@@ -319,7 +327,7 @@ function buildEnum2ArkClass(clsNode: ts.EnumDeclaration, cls: ArkClass, sourceFi
 
 function buildTypeLiteralNode2ArkClass(clsNode: ts.TypeLiteralNode, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const className = genClassName('', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     cls.setCategory(ClassCategory.TYPE_LITERAL);
@@ -338,7 +346,7 @@ function buildObjectLiteralExpression2ArkClass(
     declaringMethod?: ArkMethod
 ): void {
     const className = genClassName('', cls, declaringMethod);
-    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     cls.setCategory(ClassCategory.OBJECT);
@@ -346,18 +354,23 @@ function buildObjectLiteralExpression2ArkClass(
     let arkMethods: ArkMethod[] = [];
 
     init4InstanceInitMethod(cls);
-    const instanceIRTransformer = new ArkIRTransformer(sourceFile, cls.getInstanceInitMethod());
+    const instanceIRTransformer = new ArkIRTransformer(sourceFile, cls.getInstanceInitMethodOrNull()!);
     const instanceFieldInitializerStmts: Stmt[] = [];
     clsNode.properties.forEach(property => {
         if (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property) || ts.isSpreadAssignment(property)) {
             buildProperty2ArkField(property, sourceFile, cls);
         } else {
-            let arkMethod = new ArkMethod();
-            arkMethod.setDeclaringArkClass(cls);
+            const arkMethod = new ArkMethod(cls.getClassSigID());
             buildArkMethodFromArkClass(property, cls, arkMethod, sourceFile);
+            arkMethods.push(arkMethod);
         }
     });
-    buildInitMethod(cls.getInstanceInitMethod(), instanceFieldInitializerStmts, instanceIRTransformer.getThisLocal(), instanceIRTransformer.getGlobals());
+    buildInitMethod(
+        cls.getInstanceInitMethodOrNull()!,
+        instanceFieldInitializerStmts,
+        instanceIRTransformer.getThisLocal(),
+        instanceIRTransformer.getGlobals()
+    );
     arkMethods.forEach(mtd => {
         checkAndUpdateMethod(mtd, cls);
         cls.addMethod(mtd);
@@ -388,11 +401,11 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
     let instanceIRTransformer: ArkIRTransformer;
     let staticIRTransformer: ArkIRTransformer;
     if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
-        instanceIRTransformer = new ArkIRTransformer(sourceFile, cls.getInstanceInitMethod());
-        staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethod());
+        instanceIRTransformer = new ArkIRTransformer(sourceFile, cls.getInstanceInitMethodOrNull()!);
+        staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethodOrNull()!);
     }
     if (ts.isEnumDeclaration(clsNode)) {
-        staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethod());
+        staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethodOrNull()!);
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
@@ -437,11 +450,11 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
         }
     });
     if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
-        buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer!.getThisLocal(), instanceIRTransformer!.getGlobals());
-        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal(), staticIRTransformer!.getGlobals());
+        buildInitMethod(cls.getInstanceInitMethodOrNull()!, instanceInitStmts, instanceIRTransformer!.getThisLocal(), instanceIRTransformer!.getGlobals());
+        buildInitMethod(cls.getStaticInitMethodOrNull()!, staticInitStmts, staticIRTransformer!.getThisLocal(), staticIRTransformer!.getGlobals());
     }
     if (ts.isEnumDeclaration(clsNode)) {
-        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal(), staticIRTransformer!.getGlobals());
+        buildInitMethod(cls.getStaticInitMethodOrNull()!, staticInitStmts, staticIRTransformer!.getThisLocal(), staticIRTransformer!.getGlobals());
     }
 }
 
@@ -466,7 +479,7 @@ function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, s
             ts.isAccessor(member) ||
             ts.isCallSignatureDeclaration(member)
         ) {
-            let mthd: ArkMethod = new ArkMethod();
+            let mthd: ArkMethod = new ArkMethod(cls.getClassSigID());
             buildArkMethodFromArkClass(member, cls, mthd, sourceFile);
             if (ts.isConstructorDeclaration(member)) {
                 buildParameterProperty2ArkField(member.parameters, cls, sourceFile);
@@ -497,8 +510,7 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         if (parameter.modifiers === undefined || !ts.isIdentifier(parameter.name)) {
             return;
         }
-        let field = new ArkField();
-        field.setDeclaringArkClass(cls);
+        let field = new ArkField(cls.getClassSigID());
 
         field.setCategory(FieldCategory.PARAMETER_PROPERTY);
         field.setOriginFullPosition(FullPosition.buildFromNode(parameter, sourceFile));
@@ -509,7 +521,7 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         } else {
             fieldType = UnknownType.getInstance();
         }
-        const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, false);
+        const fieldSignature = new FieldSignature(fieldName, cls.getClassSigID(), fieldType, false);
         field.setSignature(fieldSignature);
         field.setModifiers(buildModifiers(parameter));
         if (parameter.questionToken) {
@@ -524,15 +536,13 @@ function buildStaticBlocksForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkCla
     const staticBlockMethodSignatures: MethodSignature[] = [];
     clsNode.members.forEach(member => {
         if (ts.isClassStaticBlockDeclaration(member)) {
-            const staticBlockMethod = new ArkMethod();
-            staticBlockMethod.setDeclaringArkClass(cls);
-            staticBlockMethod.setIsGeneratedFlag(true);
-            staticBlockMethod.setImplOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
+
             const methodName = STATIC_BLOCK_METHOD_NAME_PREFIX + staticInitBlockId++;
             const methodSubSignature = new MethodSubSignature(methodName, [], VoidType.getInstance(), true);
-            const methodSignature = new MethodSignature(cls.getSignature(), methodSubSignature);
+            const methodSignature = new MethodSignature(cls.getClassSigID(), methodSubSignature);
             staticBlockMethodSignatures.push(methodSignature);
-            staticBlockMethod.setImplementationSignature(methodSignature);
+            const staticBlockMethod = new ArkMethod(cls.getClassSigID(), methodSignature);
+            staticBlockMethod.setIsGeneratedFlag(true);
             staticBlockMethod.setImplOriginFullPosition(FullPosition.buildFromNode(member, sourceFile));
 
             let bodyBuilder = new BodyBuilder(staticBlockMethod.getSignature(), member, staticBlockMethod, sourceFile);
@@ -549,9 +559,9 @@ function getInitStmts(
     field: ArkField,
     initNode?: ts.Node,
     enumFieldInfo?: {
-        lastFieldName: string,
-        curValue: number,
-        isCurValueValid: boolean
+        lastFieldName: string;
+        curValue: number;
+        isCurValueValid: boolean;
     }
 ): void {
     const stmts: Stmt[] = [];
@@ -566,6 +576,12 @@ function getInitStmts(
     assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
     stmts.push(assignStmt);
 
+    const declaredType = field.getSignature().getType();
+    const unifiedType = unifyDeclaredTypeWithInitializer(declaredType, initValue.getType());
+    if (unifiedType !== declaredType) {
+        field.getSignature().setType(unifiedType);
+    }
+
     setFieldInitPositionInfo(field, stmts, initValue);
 }
 
@@ -574,12 +590,12 @@ function processInitValue(
     field: ArkField,
     initNode?: ts.Node,
     enumFieldInfo?: {
-        lastFieldName: string,
-        curValue: number,
-        isCurValueValid: boolean
+        lastFieldName: string;
+        curValue: number;
+        isCurValueValid: boolean;
     },
     stmts?: Stmt[]
-): { initValue: Value | undefined, initPositions: FullPosition[] } {
+): { initValue: Value | undefined; initPositions: FullPosition[] } {
     let initValue: Value | undefined;
     let initPositions: FullPosition[] = [];
 
@@ -606,7 +622,7 @@ function processInitValue(
 function updateEnumFieldInfoFromValue(
     field: ArkField,
     initValue: Value,
-    enumFieldInfo: { lastFieldName: string, curValue: number, isCurValueValid: boolean }
+    enumFieldInfo: { lastFieldName: string; curValue: number; isCurValueValid: boolean }
 ): void {
     if (initValue instanceof NumberConstant) {
         enumFieldInfo.curValue = parseFloat(initValue.getValue()) + 1;
@@ -617,20 +633,13 @@ function updateEnumFieldInfoFromValue(
     }
 }
 
-function createEnumInitValue(
-    field: ArkField,
-    enumFieldInfo: { lastFieldName: string, curValue: number, isCurValueValid: boolean }
-): Value {
+function createEnumInitValue(field: ArkField, enumFieldInfo: { lastFieldName: string; curValue: number; isCurValueValid: boolean }): Value {
     if (enumFieldInfo.isCurValueValid) {
         const initValue = ValueUtil.getOrCreateNumberConst(enumFieldInfo.curValue);
         enumFieldInfo.curValue += 1;
         return initValue;
     } else {
-        const initValue = new ArkNormalBinopExpr(
-            new Local(enumFieldInfo.lastFieldName),
-            ValueUtil.getOrCreateNumberConst(1),
-            NormalBinaryOperator.Addition
-        );
+        const initValue = new ArkNormalBinopExpr(new Local(enumFieldInfo.lastFieldName), ValueUtil.getOrCreateNumberConst(1), NormalBinaryOperator.Addition);
         enumFieldInfo.lastFieldName = field.getName();
         return initValue;
     }

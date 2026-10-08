@@ -83,7 +83,7 @@ describe('ArkArrayRef', () => {
 
 describe('ArkInstanceFieldRef', () => {
     it('exposes the base, field signature, field name and dynamic flag', () => {
-        const sig = new FieldSignature('foo', ClassSignature.DEFAULT, NumberType.getInstance(), false);
+        const sig = new FieldSignature('foo', 0, NumberType.getInstance(), false);
         const base = new Local('obj', sampleClassType);
         const ref = new ArkInstanceFieldRef(base, sig);
 
@@ -95,35 +95,36 @@ describe('ArkInstanceFieldRef', () => {
     });
 
     it('honours the dynamic constructor flag', () => {
-        const sig = new FieldSignature('bar', ClassSignature.DEFAULT, NumberType.getInstance());
+        const sig = new FieldSignature('bar', 0, NumberType.getInstance());
         const ref = new ArkInstanceFieldRef(new Local('o'), sig, true);
         expect(ref.isDynamic()).toBe(true);
     });
 
-    it('setBase / setFieldSignature update fields', () => {
-        const sig1 = new FieldSignature('a', ClassSignature.DEFAULT, NumberType.getInstance());
-        const sig2 = new FieldSignature('b', ClassSignature.DEFAULT, StringType.getInstance());
+    it('setBase / updateFieldSignature update fields', () => {
+        const sig1 = new FieldSignature('a', 0, NumberType.getInstance());
         const ref = new ArkInstanceFieldRef(new Local('o'), sig1);
 
         const newBase = new Local('o2');
         ref.setBase(newBase);
-        ref.setFieldSignature(sig2);
+        // A2：参数式决策表更新（值变化场景——终点不确定）。
+        ref.updateFieldSignature('b', 0, StringType.getInstance(), false);
 
         expect(ref.getBase()).toBe(newBase);
-        expect(ref.getFieldSignature()).toBe(sig2);
+        // 决策表：未毕业就地演进（旧实例 S 抄入新值，编号不变、零新登记）。
+        expect(ref.getFieldSignature().getFieldName()).toBe('b');
         expect(ref.getFieldName()).toBe('b');
         expect(ref.getType()).toBe(StringType.getInstance());
     });
 
     it('getUses returns the base (plus its transitive uses)', () => {
-        const sig = new FieldSignature('x', ClassSignature.DEFAULT, NumberType.getInstance());
+        const sig = new FieldSignature('x', 0, NumberType.getInstance());
         const base = new Local('o');
         const ref = new ArkInstanceFieldRef(base, sig);
         expect(ref.getUses()).toContain(base);
     });
 
     it('toString uses base.<fieldSignature> format', () => {
-        const sig = new FieldSignature('x', ClassSignature.DEFAULT, NumberType.getInstance());
+        const sig = new FieldSignature('x', 0, NumberType.getInstance());
         const ref = new ArkInstanceFieldRef(new Local('o'), sig);
         const out = ref.toString();
         expect(out.startsWith('o.<')).toBe(true);
@@ -133,7 +134,7 @@ describe('ArkInstanceFieldRef', () => {
 
 describe('ArkStaticFieldRef', () => {
     it('exposes signature, type and name through the AbstractFieldRef base', () => {
-        const sig = new FieldSignature('S', ClassSignature.DEFAULT, NumberType.getInstance(), true);
+        const sig = new FieldSignature('S', 0, NumberType.getInstance(), true);
         const ref = new ArkStaticFieldRef(sig);
         expect(ref.getFieldSignature()).toBe(sig);
         expect(ref.getFieldName()).toBe('S');
@@ -141,12 +142,12 @@ describe('ArkStaticFieldRef', () => {
     });
 
     it('getUses is always empty', () => {
-        const sig = new FieldSignature('S', ClassSignature.DEFAULT, NumberType.getInstance(), true);
+        const sig = new FieldSignature('S', 0, NumberType.getInstance(), true);
         expect(new ArkStaticFieldRef(sig).getUses()).toEqual([]);
     });
 
     it('toString equals fieldSignature.toString()', () => {
-        const sig = new FieldSignature('S', ClassSignature.DEFAULT, NumberType.getInstance(), true);
+        const sig = new FieldSignature('S', 0, NumberType.getInstance(), true);
         const ref = new ArkStaticFieldRef(sig);
         expect(ref.toString()).toBe(sig.toString());
     });

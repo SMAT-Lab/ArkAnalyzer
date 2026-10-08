@@ -167,7 +167,7 @@ describe('Type.toString circular reference - no stack overflow', () => {
             // setRealGenericTypes([aliasB]) and setRealGenericTypes([aliasA]) respectively.
             // getTypeString uses realGenericTypes?.join(',') which calls toString on each.
             const methodSig = new MethodSignature(
-                ClassSignature.DEFAULT,
+                0,
                 new MethodSubSignature('fn', [], VoidType.getInstance())
             );
             const sigA = new AliasTypeSignature('A', methodSig);
@@ -246,7 +246,7 @@ describe('Type.toString circular reference - no stack overflow', () => {
             param.setType(UnknownType.getInstance()); // placeholder, will replace
 
             const subSig = new MethodSubSignature('recursive', [param], VoidType.getInstance());
-            const methodSig = new MethodSignature(ClassSignature.DEFAULT, subSig);
+            const methodSig = new MethodSignature(0, subSig);
             const funcType = new FunctionType(methodSig);
             param.setType(funcType);
 
@@ -266,7 +266,7 @@ describe('Type.toString circular reference - no stack overflow', () => {
             // constraint = AliasType. getTypeString uses genericTypes?.join(',') which
             // calls GenericType.toString(), which calls constraint.toString() = AliasType.toString().
             const methodSig = new MethodSignature(
-                ClassSignature.DEFAULT,
+                0,
                 new MethodSubSignature('fn', [], VoidType.getInstance())
             );
             const sig = new AliasTypeSignature('T', methodSig);
@@ -295,7 +295,7 @@ describe('Type.toString circular reference - no stack overflow', () => {
             param.setType(UnknownType.getInstance()); // placeholder
 
             const subSig = new MethodSubSignature('RecursiveFn', [param], VoidType.getInstance());
-            const methodSig = new MethodSignature(ClassSignature.DEFAULT, subSig);
+            const methodSig = new MethodSignature(0, subSig);
             const sig = new AliasTypeSignature('RecursiveFn', methodSig);
             const funcType = new FunctionType(methodSig);
             const aliasType = new AliasType('RecursiveFn', funcType, sig);

@@ -21,22 +21,16 @@ import { TypeInference } from '../../common/TypeInference';
 import { ArkMethod } from '../../model/ArkMethod';
 import { MethodSignature } from '../../model/ArkSignature';
 import { InferenceBuilder } from '../InferenceBuilder';
-import {
-    Bind,
-    FieldRefInference,
-    InferLanguage,
-    InstanceInvokeExprInference,
-    LocalInference,
-    ValueInference
-} from '../ValueInference';
+import { Bind, FieldRefInference, InferLanguage, InstanceInvokeExprInference, LocalInference, ValueInference } from '../ValueInference';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../base/Stmt';
 import { Value } from '../../base/Value';
-import { AnyType, ClassType, FunctionType, GenericType, Type } from '../../base/Type';
+import { AnyType, ClassType, FunctionType, GenericType, NullType, Type, UndefinedType } from '../../base/Type';
 import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, GlobalRef } from '../../base/Ref';
 import { Local } from '../../base/Local';
 import { AbcMethodInference } from '../abc/AbcInference';
 import { ANONYMOUS_CLASS_PREFIX, INSTANCE_INIT_METHOD_NAME } from '../../common/Const';
-import { CONSTRUCTOR_NAME, THIS_NAME } from '../../common/TSConst';
+import { SUPER_NAME, THIS_NAME } from '../../common/TSConst';
+
 import { AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkField } from '../../model/ArkField';
@@ -56,7 +50,8 @@ class ArkTsClassInference extends ClassInference {
     public preInfer(arkClass: ArkClass): void {
         super.preInfer(arkClass);
         TypeInference.inferGenericType(arkClass.getGenericsTypes(), arkClass);
-        arkClass.getFields()
+        arkClass
+            .getFields()
             .filter(p => TypeInference.isUnclearType(p.getType()))
             .forEach(f => {
                 const newType = TypeInference.inferUnclearedType(f.getType(), arkClass);
@@ -68,7 +63,6 @@ class ArkTsClassInference extends ClassInference {
 }
 
 class ArkTsMethodInference extends MethodInference {
-
     public preInfer(arkMethod: ArkMethod): void {
         TypeInference.inferGenericType(arkMethod.getGenericTypes(), arkMethod.getDeclaringArkClass());
         arkMethod.getDeclareSignatures()?.forEach(x => this.inferMethodSignature(x, arkMethod));
@@ -79,13 +73,14 @@ class ArkTsMethodInference extends MethodInference {
     }
 
     private inferMethodSignature(ms: MethodSignature, arkMethod: ArkMethod): void {
-        ms.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
+        ms.getMethodSubSignature()
+            .getParameters()
+            .forEach(p => TypeInference.inferParameterType(p, arkMethod));
         TypeInference.inferSignatureReturnType(ms, arkMethod);
     }
 }
 
 export class ArkTsStmtInference extends StmtInference {
-
     constructor(valueInferences: ValueInference<Value>[]) {
         super(valueInferences);
     }
@@ -102,7 +97,11 @@ export class ArkTsStmtInference extends StmtInference {
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
         const projectName = method.getDeclaringArkFile().getProjectName();
-        if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || TypeInference.isDummyClassType(rightType)) {
+        // An unclear ClassType with fully-resolved real type args still carries information
+        // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
+        const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
+        const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;
+        if ((!TypeInference.isUnclearType(rightType) && !isPlaceholderRight) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;
@@ -144,12 +143,9 @@ export class ArkTsStmtInference extends StmtInference {
         }
         return undefined;
     }
-
 }
 
-
 export class ArkTsInferenceBuilder extends InferenceBuilder {
-
     public buildImportInfoInference(): ImportInfoInference {
         return new ArkTsImportInference();
     }
@@ -169,12 +165,9 @@ export class ArkTsInferenceBuilder extends InferenceBuilder {
     }
 }
 
-export class ArkTs2InferenceBuilder extends ArkTsInferenceBuilder {
-
-}
+export class ArkTs2InferenceBuilder extends ArkTsInferenceBuilder {}
 
 export class JsInferenceBuilder extends InferenceBuilder {
-
     public buildImportInfoInference(): ImportInfoInference {
         return new ArkTsImportInference();
     }
@@ -189,7 +182,6 @@ export class JsInferenceBuilder extends InferenceBuilder {
     }
 }
 
-
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTSFieldRefInference extends FieldRefInference {
     public preInfer(value: ArkInstanceFieldRef, stmt: Stmt): boolean {
@@ -201,20 +193,27 @@ export class ArkTSFieldRefInference extends FieldRefInference {
 
     /**
      * Checks if a value represents an anonymous class 'this' field reference
-     * Identifies field references that access fields directly on 'this' in anonymous class constructors
+     * Identifies field references that access fields directly on 'this' in the AC's
+     * %instInit — the carrier of field-initializer expressions, where `this` lexically
+     * means the ENCLOSING this (rebound to the host class by inferThisLocal), so def-side
+     * member resolution against the AC would only degrade. The AC's own constructors keep
+     * the build-time this (ClassType(AC), see the this-semantic guards in
+     * ArkTSLocalInference.infer / IRInference.inferBase) and their def-side resolution
+     * must NOT be skipped — skipping it left build-time probe stubs permanently uncorrected.
      * @param {Value} stmtDef - The value to check (typically a field reference)
      * @param {ArkMethod} arkMethod - The method containing the value
-     * @returns {boolean} True if the value is an anonymous class 'this' field reference
+     * @returns {boolean} True if the value is an anonymous class %instInit 'this' field reference
      */
     private isAnonClassThisRef(stmtDef: Value, arkMethod: ArkMethod): boolean {
-        return (arkMethod.getName() === INSTANCE_INIT_METHOD_NAME || arkMethod.getName() === CONSTRUCTOR_NAME) &&
+        return (
+            arkMethod.getName() === INSTANCE_INIT_METHOD_NAME &&
             stmtDef instanceof ArkInstanceFieldRef &&
             stmtDef.getBase().getName() === THIS_NAME &&
             arkMethod.getDeclaringArkClass().isAnonymousClass() &&
-            stmtDef.getFieldName().indexOf('.') === -1;
+            stmtDef.getFieldName().indexOf('.') === -1
+        );
     }
 }
-
 
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInference {
@@ -242,8 +241,8 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
      * @param methodName
      */
     private processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
-        const annoMethod = arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ??
-            arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
+        const annoMethod =
+            arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ?? arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
         if (annoMethod && annoMethod.hasDecorator(COMPONENT_EXTEND_DECORATOR)) {
             expr.setMethodSignature(annoMethod.getSignature());
             return expr;
@@ -251,7 +250,6 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
         return null;
     }
 }
-
 
 @Bind(InferLanguage.ARK_TS1_1)
 export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
@@ -305,7 +303,6 @@ export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
     }
 }
 
-
 @Bind(InferLanguage.ARK_TS1_1)
 export class ArkTSLocalInference extends LocalInference {
     public getValueName(): string {
@@ -314,8 +311,7 @@ export class ArkTSLocalInference extends LocalInference {
 
     public preInfer(value: Local): boolean {
         const type = value.getType();
-        if (value.getName() === THIS_NAME && type instanceof ClassType &&
-            type.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
+        if (value.getName() === THIS_NAME && type instanceof ClassType && type.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
             return true;
         } else if (type instanceof FunctionType) {
             return true;
@@ -329,14 +325,32 @@ export class ArkTSLocalInference extends LocalInference {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         let newType;
         if (name === THIS_NAME) {
-            newType = IRInference.inferThisLocal(arkMethod)?.getType();
-            if (newType) {
-                value.setType(newType);
+            // this-semantic guard: only the AC's %instInit (the carrier of field-initializer
+            // expressions, where `this` lexically means the ENCLOSING this at the object
+            // literal / class expression site — the host class) gets rebound via
+            // inferThisLocal. The AC's own methods (constructor, named method properties)
+            // keep the build-time this (ClassType(AC)) — the instance itself. Rebinding
+            // them to the host class breaks every `this.<memberOfAC>` resolution downstream.
+            const hostMethod = stmt.getCfg().getDeclaringMethod();
+            if (hostMethod.getName() === INSTANCE_INIT_METHOD_NAME && hostMethod.getDeclaringArkClass().isAnonymousClass()) {
+                newType = IRInference.inferThisLocal(hostMethod)?.getType();
+                if (newType) {
+                    value.setType(newType);
+                }
+            }
+            return undefined;
+        } else if (name === SUPER_NAME) {
+            const superType = TypeInference.inferBaseType(SUPER_NAME, arkMethod.getDeclaringArkClass());
+            if (superType) {
+                value.setType(superType);
             }
             return undefined;
         } else if (type instanceof FunctionType) {
             const methodSignature = type.getMethodSignature();
-            methodSignature.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
+            methodSignature
+                .getMethodSubSignature()
+                .getParameters()
+                .forEach(p => TypeInference.inferParameterType(p, arkMethod));
             TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
             return undefined;
         } else {

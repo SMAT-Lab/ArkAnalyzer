@@ -15,7 +15,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { ArkFile, Scene, SceneConfig } from '../../../src/index';
 import { JsonPrinter } from '../../../src/save/json/JsonPrinter';
 
@@ -27,18 +27,21 @@ function compareClassJson(arkClass: any, expectedClass: any): void {
 }
 
 describe('JsonPrinterTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
-    let arkfile: ArkFile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('sample.ts');
-    })!;
+    let ir: any;
+    beforeAll(()=> {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+        let arkfile: ArkFile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('sample.ts');
+        })!;
 
-    let printer = new JsonPrinter(arkfile);
-    let json = printer.dump();
-    let ir = JSON.parse(json);
+        let printer = new JsonPrinter(arkfile);
+        let json = printer.dump();
+        ir = JSON.parse(json);
+    });
 
     it('ArkIR for Scene for sample.ts', () => {
         let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../../resources/save/expected_sample.json'), 'utf8'));

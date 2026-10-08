@@ -76,11 +76,12 @@ export class AssignValidator extends StmtValidator<ArkAssignStmt> {
 }
 
 describe('Anonymous Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/anonymous'));
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
     it('iter inst', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/anonymous'));
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+
         let mgr = new SceneValidator();
         let summary = mgr.validate(projectScene);
         logger.info(`validated ${JSON.stringify(summary)}`);

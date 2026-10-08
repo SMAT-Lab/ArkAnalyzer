@@ -136,7 +136,6 @@ export class WorkerPlugin implements IPagPlugin {
     public addWorkerObj2CGNodeMap(cs: ICallSite): void {
         // Obtain the function that the worker sub-thread is going to execute through the file path.
         let callstmt = cs.callStmt;
-        callstmt.getCfg().getDeclaringMethod().getDeclaringArkClass().getDeclaringArkFile().getScene();
         let invokeExpr = cs.callStmt.getInvokeExpr() as ArkInstanceInvokeExpr;
         if (cs.args === undefined) {
             return;

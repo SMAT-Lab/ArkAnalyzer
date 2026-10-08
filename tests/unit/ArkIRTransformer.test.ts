@@ -13,14 +13,17 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     ANONYMOUS_METHOD_PREFIX,
+    ArrayType,
     ArkAssignStmt,
+    ArkClass,
     ArkFile,
     ArkMethod,
     ArkStaticFieldRef,
+    ClassType,
     DEFAULT_ARK_CLASS_NAME,
     GlobalRef,
     Local,
@@ -29,6 +32,7 @@ import {
     NAME_DELIMITER,
     NAME_PREFIX,
     Scene,
+    SignatureCanonicalizerRegistry,
     Value,
 } from '../../src';
 import {
@@ -72,11 +76,7 @@ import {
     THROW_SIMPLE_VALUE_EXPECT_IR,
     THROW_NESTED_CALL_EXPECT_IR,
 } from '../resources/arkIRTransformer/statement/ThrowStatementExpectIR';
-import {
-    CompoundAssignment_Expect_IR,
-    Declaration_Expect_IR,
-    Destructuring_Expect_IR,
-} from '../resources/arkIRTransformer/assignment/AssignmentExpectIR';
+import { CompoundAssignment_Expect_IR, Declaration_Expect_IR, Destructuring_Expect_IR } from '../resources/arkIRTransformer/assignment/AssignmentExpectIR';
 import {
     ArrowFunction_Expect_IR,
     BasicNestedMethod1_Expect_IR,
@@ -116,6 +116,7 @@ import {
     MultipleOuterMethod4_Expect_IR,
     NoOverloadMethod_Expect_IR,
     NoOverloadMethodWithBody2_Expect_IR,
+    NoOverloadMethodWithBody3_Expect_IR,
     NoOverloadMethodWithBody_Expect_IR,
     OverloadClassMethod_Expect_IR,
     OverloadInterfaceMethod_Expect_IR,
@@ -141,8 +142,11 @@ const BASE_DIR = path.join(__dirname, '../../tests/resources/arkIRTransformer');
 Logger.configure('out/ArkIRTransformerTest.test.log', LOG_LEVEL.INFO, LOG_LEVEL.INFO, false);
 
 function testMethodOverload(scene: Scene, filePath: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -153,9 +157,9 @@ function testMethodOverload(scene: Scene, filePath: string, methodName: string, 
 }
 
 function testClassMethodOverload(scene: Scene, filePath: string, className: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkClass = arkFile?.getClasses().find((cls) => cls.getName() === className);
-    const arkMethod = arkClass?.getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass = arkFile?.getClasses().find(cls => cls.getName() === className);
+    const arkMethod = arkClass?.getMethods().find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -166,9 +170,12 @@ function testClassMethodOverload(scene: Scene, filePath: string, className: stri
 }
 
 function testNamespaceMethodOverload(scene: Scene, filePath: string, namespaceName: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkNamespace = arkFile?.getNamespaces().find((ns) => ns.getName() === namespaceName);
-    const arkMethod = arkNamespace?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkNamespace = arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+    const arkMethod = arkNamespace
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -179,9 +186,9 @@ function testNamespaceMethodOverload(scene: Scene, filePath: string, namespaceNa
 }
 
 function testInterfaceMethodOverload(scene: Scene, filePath: string, interfaceName: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkClass = arkFile?.getClasses().find((cls) => cls.getName() === interfaceName);
-    const arkMethod = arkClass?.getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass = arkFile?.getClasses().find(cls => cls.getName() === interfaceName);
+    const arkMethod = arkClass?.getMethods().find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -192,8 +199,11 @@ function testInterfaceMethodOverload(scene: Scene, filePath: string, interfaceNa
 }
 
 function testNoMethodOverload(scene: Scene, filePath: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -204,8 +214,11 @@ function testNoMethodOverload(scene: Scene, filePath: string, methodName: string
 }
 
 function testNoMethodOverloadWithBody(scene: Scene, filePath: string, methodName: string, expectMethod: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     if (arkMethod === undefined) {
         assert.isDefined(arkMethod);
         return;
@@ -410,7 +423,11 @@ function printFileIR(arkFile: ArkFile): string {
 }
 
 describe('expression Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'expression'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'));
+    });
 
     it('test binary expression', async () => {
         testMethodStmts(scene, 'BinaryExpressionTest.ts', BinaryExpression_Expect_IR.stmts);
@@ -441,18 +458,15 @@ describe('expression Test', () => {
     });
 
     it('test postfix and prefix unary expression', async () => {
-        const file = scene.getFiles().find((file) => file.getName().endsWith('PostfixAndPrefixUnaryExpression.ts'));
+        const file = scene.getFiles().find(file => file.getName().endsWith('PostfixAndPrefixUnaryExpression.ts'));
         assert.isDefined(file);
         assert.equal(printFileIR(file!), PostfixAndPrefixUnaryExpression_Expected_IR);
     });
 
     it('test ptr invoke expression', async () => {
-        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'returnFunc1',
-            PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR);
-        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'callFuncReturned',
-            PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR);
-        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, '%AM8$promiseCall',
-            PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR);
+        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'returnFunc1', PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR);
+        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'callFuncReturned', PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR);
+        testMethodIR(scene, 'CallExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, '%AM8$promiseCall', PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR);
     });
 
     it('test spread syntax', async () => {
@@ -473,8 +487,7 @@ describe('expression Test', () => {
     });
 
     it('test assignment', async () => {
-        testMethodIR(scene, 'Assignment.ts', DEFAULT_ARK_CLASS_NAME, 'additiveCompoundAssignment',
-            ASSIGNMENT_EXPECT_IR);
+        testMethodIR(scene, 'Assignment.ts', DEFAULT_ARK_CLASS_NAME, 'additiveCompoundAssignment', ASSIGNMENT_EXPECT_IR);
     });
 
     it('test destructuring', async () => {
@@ -489,30 +502,68 @@ describe('expression Test', () => {
 });
 
 describe('object literal Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'expression'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'));
+    });
 
     it('test object literal expression in method', async () => {
-        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ObjectLiteralExpression_Expect_IR.stmts,
-            DEFAULT_ARK_CLASS_NAME, 'createLiteralInMethod', false);
+        testMethodStmts(
+            scene,
+            'ObjectLiteralExpressionTest.ts',
+            ObjectLiteralExpression_Expect_IR.stmts,
+            DEFAULT_ARK_CLASS_NAME,
+            'createLiteralInMethod',
+            false
+        );
     });
 
     it('test object literal expression from field', async () => {
-        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ObjectLiteralFromField_Expect_IR.stmts,
-            DEFAULT_ARK_CLASS_NAME, 'createLiteralFromOtherClassField', false);
+        testMethodStmts(
+            scene,
+            'ObjectLiteralExpressionTest.ts',
+            ObjectLiteralFromField_Expect_IR.stmts,
+            DEFAULT_ARK_CLASS_NAME,
+            'createLiteralFromOtherClassField',
+            false
+        );
     });
 
     it('test object literal class field initializer', async () => {
-        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_InstInit_Expect_IR.stmts,
-            'ClassFieldLiteralHolder', '%instInit', false);
-        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_Constructor_Expect_IR.stmts,
-            'ClassFieldLiteralHolder', 'constructor', false);
-        testMethodStmts(scene, 'ObjectLiteralExpressionTest.ts', ClassFieldLiteralHolder_StatInit_Expect_IR.stmts,
-            'ClassFieldLiteralHolder', '%statInit', false);
+        testMethodStmts(
+            scene,
+            'ObjectLiteralExpressionTest.ts',
+            ClassFieldLiteralHolder_InstInit_Expect_IR.stmts,
+            'ClassFieldLiteralHolder',
+            '%instInit',
+            false
+        );
+        testMethodStmts(
+            scene,
+            'ObjectLiteralExpressionTest.ts',
+            ClassFieldLiteralHolder_Constructor_Expect_IR.stmts,
+            'ClassFieldLiteralHolder',
+            'constructor',
+            false
+        );
+        testMethodStmts(
+            scene,
+            'ObjectLiteralExpressionTest.ts',
+            ClassFieldLiteralHolder_StatInit_Expect_IR.stmts,
+            'ClassFieldLiteralHolder',
+            '%statInit',
+            false
+        );
     });
 });
 
 describe('statement Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'statement'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'statement'));
+    });
 
     it('test throw staticinvoke expression', async () => {
         testMethodIR(scene, 'ThrowStatementTest.ts', 'ThrowTestClass', 'throwError', THROW_STATIC_INVOKE_EXPECT_IR);
@@ -536,7 +587,11 @@ describe('statement Test', () => {
 });
 
 describe('assignment Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'assignment'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'assignment'));
+    });
 
     it('test declaration', async () => {
         testMethodStmts(scene, 'DeclarationTest.ts', Declaration_Expect_IR.stmts);
@@ -552,7 +607,11 @@ describe('assignment Test', () => {
 });
 
 describe('loop statement Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'loopStatement'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'loopStatement'));
+    });
 
     it('for statement', async () => {
         testBlocks(scene, 'ForStatementSample.ts', 'case1', FOR_STATEMENT_EXPECT_CASE1.blocks);
@@ -563,11 +622,14 @@ describe('loop statement Test', () => {
         testBlocks(scene, 'ForStatementSample.ts', 'case6', FOR_STATEMENT_EXPECT_CASE6.blocks);
         testBlocks(scene, 'ForStatementSample.ts', 'case7', FOR_STATEMENT_EXPECT_CASE7.blocks);
     });
-
 });
 
 describe('function Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'function'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'function'));
+    });
 
     it('test arrow function', async () => {
         testFileStmts(scene, 'ArrowFunctionTest.ts', ArrowFunction_Expect_IR);
@@ -600,34 +662,59 @@ describe('function Test', () => {
     it('test no overload function with body 2', async () => {
         testNoMethodOverloadWithBody(scene, 'OverloadFunctionTest.ts', 'function7', NoOverloadMethodWithBody2_Expect_IR);
     });
+
+    it('test declaration and implementation with different parameter names', async () => {
+        // declaration: function8(x: number);  implementation: function8(implX: number) { ... }
+        // The implementation parameter name must win for body-local generation even though
+        // both signatures share one canonical MethodSignature instance (parameter names are
+        // not part of signature identity).
+        testNoMethodOverloadWithBody(scene, 'OverloadFunctionTest.ts', 'function8', NoOverloadMethodWithBody3_Expect_IR);
+    });
 });
 
 describe('closure Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'function'));
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'function'));
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('ClosureParamsTest.ts'));
+    });
 
     it('basic test nested function with no closures', async () => {
-        const nestedMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === '%nestedMethod$basicMethod'));
+        const nestedMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === '%nestedMethod$basicMethod');
         assert.isDefined(nestedMethod);
         testMethodClosure(nestedMethod as ArkMethod, BasicNestedMethod_Expect_IR);
 
-        const outerMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === 'basicMethod'));
+        const outerMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === 'basicMethod');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod as ArkMethod, BasicOuterMethod_Expect_IR);
     });
 
     it('basic test independently nested function declaration', async () => {
-        const nestedMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === '%basicNestedMethod1$basicOuterMethod1'));
+        const nestedMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === '%basicNestedMethod1$basicOuterMethod1');
         assert.isDefined(nestedMethod);
         testMethodClosure(nestedMethod as ArkMethod, BasicNestedMethod1_Expect_IR);
 
-        const outerMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === 'basicOuterMethod1'));
+        const outerMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === 'basicOuterMethod1');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod as ArkMethod, BasicOuterMethod1_Expect_IR);
 
         // make sure in nested method, there is only one %closures0 instance
         const nestedStmts = nestedMethod!.getCfg()?.getStmts();
-        const closure = ((nestedStmts![0] as ArkAssignStmt).getLeftOp() as Local);
+        const closure = (nestedStmts![0] as ArkAssignStmt).getLeftOp() as Local;
         const closureRefBase = ((nestedStmts![2] as ArkAssignStmt).getRightOp() as ClosureFieldRef).getBase();
         const nestedLocal = nestedMethod!.getBody()?.getLocals().get(closure.getName());
         const outerLocal = outerMethod!.getBody()?.getLocals().get(closure.getName());
@@ -637,178 +724,227 @@ describe('closure Test', () => {
     });
 
     it('basic test anonymous nested function declared in forEach', async () => {
-        const nestedMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === '%AM0$basicOuterMethod2'));
+        const nestedMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === '%AM0$basicOuterMethod2');
         assert.isDefined(nestedMethod);
         testMethodClosure(nestedMethod!, BasicNestedMethod2_Expect_IR);
 
-        const outerMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === 'basicOuterMethod2'));
+        const outerMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === 'basicOuterMethod2');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, BasicOuterMethod2_Expect_IR);
     });
 
     it('basic test ptr invoke anonymous nested function', async () => {
-        const nestedMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === '%AM1$basicOuterMethod3'));
+        const nestedMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === '%AM1$basicOuterMethod3');
         assert.isDefined(nestedMethod);
         testMethodClosure(nestedMethod!, BasicNestedMethod3_Expect_IR);
 
-        const outerMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === 'basicOuterMethod3'));
+        const outerMethod = arkFile
+            ?.getClassWithName('BasicTest')
+            ?.getMethods()
+            .find(method => method.getName() === 'basicOuterMethod3');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, BasicOuterMethod3_Expect_IR);
     });
 
     it('basic test return nested function', async () => {
-        const nestedMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === '%basicNestedMethod4$basicOuterMethod4'));
+        const nestedMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === '%basicNestedMethod4$basicOuterMethod4');
         assert.isDefined(nestedMethod);
         testMethodClosure(nestedMethod!, BasicNestedMethod4_Expect_IR);
 
-        const outerMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === 'basicOuterMethod4'));
+        const outerMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === 'basicOuterMethod4');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, BasicOuterMethod4_Expect_IR);
 
         // TODO: 此处的callMethod(3)应该是ptrInvoke，args需要加入闭包变量，当前错误识别成statcInvoke，args中缺失闭包变量。需类型推导时处理
-        const callMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === 'callMethod4'));
+        const callMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === 'callMethod4');
         assert.isDefined(callMethod);
         testMethodClosure(callMethod!, CallMethod4_Expect_IR);
     });
 
     it('test closure in function', async () => {
         const methodName = `${NAME_PREFIX}innerFunction1${NAME_DELIMITER}outerFunction1`;
-        const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+        const arkMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === methodName);
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, ClosureFunction_Expect_IR);
     });
 
     it('test unClosure function', async () => {
-        const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === 'outerFunction1'));
+        const arkMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === 'outerFunction1');
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, UnClosureFunction_Expect_IR);
     });
 
     it('test closure in anonymous function', async () => {
         const methodName = `${ANONYMOUS_METHOD_PREFIX}1${NAME_DELIMITER}outerFunction1`;
-        const arkMethod = arkFile?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+        const arkMethod = arkFile
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === methodName);
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, ClosureAnonymousFunction_Expect_IR);
     });
 
     it('test closure in class method', async () => {
-        const arkClass = arkFile?.getClasses().find((cls) => (cls.getName() === 'ClosureClass'));
+        const arkClass = arkFile?.getClasses().find(cls => cls.getName() === 'ClosureClass');
         const methodName = `${NAME_PREFIX}innerFunction2${NAME_DELIMITER}outerFunction2`;
-        const arkMethod = arkClass?.getMethods().find((method) => (method.getName() === methodName));
+        const arkMethod = arkClass?.getMethods().find(method => method.getName() === methodName);
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, ClosureClassMethod_Expect_IR);
     });
 
     it('test closure in Namespace function', async () => {
-        const arkNS = arkFile?.getNamespaces().find((ns) => ns.getName() === 'closureNamespace');
+        const arkNS = arkFile?.getNamespaces().find(ns => ns.getName() === 'closureNamespace');
         const methodName = `${NAME_PREFIX}innerFunction3${NAME_DELIMITER}outerFunction3`;
-        const arkMethod = arkNS?.getDefaultClass().getMethods().find((method) => (method.getName() === methodName));
+        const arkMethod = arkNS
+            ?.getDefaultClass()
+            .getMethods()
+            .find(method => method.getName() === methodName);
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, ClosureNamespaceFunction_Expect_IR);
     });
 
     it('test closure Namespace Class method', async () => {
-        const arkNS = arkFile?.getNamespaces().find((ns) => ns.getName() === 'closureNamespace');
+        const arkNS = arkFile?.getNamespaces().find(ns => ns.getName() === 'closureNamespace');
         const methodName = `${NAME_PREFIX}innerFunction3${NAME_DELIMITER}outerFunction3`;
-        const arkMethod = arkNS?.getClassWithName('ClosureClass')?.getMethods().find((method) => (method.getName() === methodName));
+        const arkMethod = arkNS
+            ?.getClassWithName('ClosureClass')
+            ?.getMethods()
+            .find(method => method.getName() === methodName);
         assert.isDefined(arkMethod);
         testMethodClosure(arkMethod as ArkMethod, ClosureNamespaceClassMethod_Expect_IR);
     });
 });
 
 describe('multiple closure Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'function'));
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
-    const multipleTestClass = arkFile?.getClassWithName('MultipleNestedTest');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+    let multipleTestClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'function'));
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('ClosureParamsTest.ts'));
+        multipleTestClass = arkFile?.getClassWithName('MultipleNestedTest');
+    });
 
     it('basic test for function declaration', async () => {
-        const outerMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'outerMethod1'));
+        const outerMethod = multipleTestClass?.getMethods().find(method => method.getName() === 'outerMethod1');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, MultipleOuterMethod1_Expect_IR);
 
-        const nested1Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested1Method1$outerMethod1'));
+        const nested1Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested1Method1$outerMethod1');
         assert.isDefined(nested1Method);
         testMethodClosure(nested1Method!, MultipleNested1Method1_Expect_IR);
 
-        const nested2Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested2Method1$%nested1Method1$outerMethod1'));
+        const nested2Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested2Method1$%nested1Method1$outerMethod1');
         assert.isDefined(nested2Method);
         testMethodClosure(nested2Method!, MultipleNested2Method1_Expect_IR);
 
-        const nested3Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested3Method1$%nested2Method1$%nested1Method1$outerMethod1'));
+        const nested3Method = multipleTestClass
+            ?.getMethods()
+            .find(method => method.getName() === '%nested3Method1$%nested2Method1$%nested1Method1$outerMethod1');
         assert.isDefined(nested3Method);
         testMethodClosure(nested3Method!, MultipleNested3Method1_Expect_IR);
 
-        const nested11Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested11Method1$outerMethod1'));
+        const nested11Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested11Method1$outerMethod1');
         assert.isDefined(nested11Method);
         testMethodClosure(nested11Method!, MultipleNested11Method1_Expect_IR);
 
-        const nested22Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested22Method1$%nested11Method1$outerMethod1'));
+        const nested22Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested22Method1$%nested11Method1$outerMethod1');
         assert.isDefined(nested22Method);
         testMethodClosure(nested22Method!, MultipleNested22Method1_Expect_IR);
 
-        const nested33Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested33Method1$%nested11Method1$outerMethod1'));
+        const nested33Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested33Method1$%nested11Method1$outerMethod1');
         assert.isDefined(nested33Method);
         testMethodClosure(nested33Method!, MultipleNested33Method1_Expect_IR);
 
-        const nested111Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested111Method1$outerMethod1'));
+        const nested111Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested111Method1$outerMethod1');
         assert.isDefined(nested111Method);
         testMethodClosure(nested111Method!, MultipleNested111Method1_Expect_IR);
 
-        const nested222Method = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nested222Method1$%nested111Method1$outerMethod1'));
+        const nested222Method = multipleTestClass?.getMethods().find(method => method.getName() === '%nested222Method1$%nested111Method1$outerMethod1');
         assert.isDefined(nested222Method);
         testMethodClosure(nested222Method!, MultipleNested222Method1_Expect_IR);
     });
 
     it('anonymous nested function declared in forEach', async () => {
-        const outerMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'outerMethod2'));
+        const outerMethod = multipleTestClass?.getMethods().find(method => method.getName() === 'outerMethod2');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, MultipleOuterMethod2_Expect_IR);
 
-        const anonymousMethod1 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%AM1$outerMethod2'));
+        const anonymousMethod1 = multipleTestClass?.getMethods().find(method => method.getName() === '%AM1$outerMethod2');
         assert.isDefined(anonymousMethod1);
         testMethodClosure(anonymousMethod1!, MultipleAnonymousMethod1_Expect_IR);
 
-        const anonymousMethod2 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%AM2$%AM1$outerMethod2'));
+        const anonymousMethod2 = multipleTestClass?.getMethods().find(method => method.getName() === '%AM2$%AM1$outerMethod2');
         assert.isDefined(anonymousMethod2);
         testMethodClosure(anonymousMethod2!, MultipleAnonymousMethod2_Expect_IR);
     });
 
     it('ptr invoke anonymous nested function', async () => {
-        const outerMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'outerMethod3'));
+        const outerMethod = multipleTestClass?.getMethods().find(method => method.getName() === 'outerMethod3');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, MultipleOuterMethod3_Expect_IR);
 
-        const anonymousMethod3 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%AM3$outerMethod3'));
+        const anonymousMethod3 = multipleTestClass?.getMethods().find(method => method.getName() === '%AM3$outerMethod3');
         assert.isDefined(anonymousMethod3);
         testMethodClosure(anonymousMethod3!, MultipleAnonymousMethod3_Expect_IR);
 
-        const anonymousMethod4 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%AM4$%AM3$outerMethod3'));
+        const anonymousMethod4 = multipleTestClass?.getMethods().find(method => method.getName() === '%AM4$%AM3$outerMethod3');
         assert.isDefined(anonymousMethod4);
         testMethodClosure(anonymousMethod4!, MultipleAnonymousMethod4_Expect_IR);
     });
 
     it('return nested function', async () => {
-        const outerMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'outerMethod4'));
+        const outerMethod = multipleTestClass?.getMethods().find(method => method.getName() === 'outerMethod4');
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod!, MultipleOuterMethod4_Expect_IR);
 
-        const nestedMethod4 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nestedMethod4$outerMethod4'));
+        const nestedMethod4 = multipleTestClass?.getMethods().find(method => method.getName() === '%nestedMethod4$outerMethod4');
         assert.isDefined(nestedMethod4);
         testMethodClosure(nestedMethod4!, MultipleNestedMethod4_Expect_IR);
 
-        const nestedInNestedMethod4 = multipleTestClass?.getMethods().find((method) => (method.getName() === '%nestedInNestedMethod4$%nestedMethod4$outerMethod4'));
+        const nestedInNestedMethod4 = multipleTestClass?.getMethods().find(method => method.getName() === '%nestedInNestedMethod4$%nestedMethod4$outerMethod4');
         assert.isDefined(nestedInNestedMethod4);
         testMethodClosure(nestedInNestedMethod4!, MultipleNestedInNestedMethod4_Expect_IR);
 
-        const callMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'callMethod4'));
+        const callMethod = multipleTestClass?.getMethods().find(method => method.getName() === 'callMethod4');
         assert.isDefined(callMethod);
         testMethodClosure(callMethod!, MultipleCallMethod4_Expect_IR);
     });
 });
 
 describe('closure in anonymous class Test', () => {
-    const scene = buildScene(path.join(BASE_DIR, 'function'));
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'function'));
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('ClosureParamsTest.ts'));
+    });
 
     it('create anonymous class in anonymous function', async () => {
         const method = arkFile?.getClassWithName('%AC1$ClosureInClass-%AM0$%statInit')?.getInstanceInitMethod();
@@ -824,5 +960,78 @@ describe('closure in anonymous class Test', () => {
         const stmts = method?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         expect(stmts!.length).toEqual(2);
+    });
+});
+
+describe('field ref type refinement Test', () => {
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'));
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('MethodReference.ts'));
+    });
+
+    it('static method reference is represented as temp-held static field refs after inference', () => {
+        const method = arkFile?.getDefaultClass().getDefaultArkMethod();
+        assert.isDefined(method);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const staticRefs = stmts!
+            .map(stmt => (stmt instanceof ArkAssignStmt ? stmt.getRightOp() : undefined))
+            .filter((op): op is ArkStaticFieldRef => op instanceof ArkStaticFieldRef);
+        expect(staticRefs.length).toEqual(2);
+        for (const ref of staticRefs) {
+            expect(ref.getFieldSignature().toString()).toEqual('@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic');
+            expect(ref.getType().toString()).toEqual('@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic()');
+        }
+        const registry = SignatureCanonicalizerRegistry.getInstance();
+        for (let i = 0; i < registry.fieldSigCanonicalizer.size(); i++) {
+            const sig = registry.fieldSigCanonicalizer.get(i);
+            expect(sig?.toString().includes('unboundStatic')).toBe(false);
+        }
+    });
+
+    it('instance method reference and bare function reference keep their existing forms', () => {
+        const method = arkFile?.getDefaultClass().getDefaultArkMethod();
+        assert.isDefined(method);
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        const texts = stmts!.map(stmt => stmt.toString());
+        expect(texts.some(text => text.includes('%0.<@expression/MethodReference.ts: ContainsMethods.unbound>'))).toBe(true);
+        expect(texts.some(text => text.trim() === 'a = foo')).toBe(true);
+        expect(texts.some(text => text.includes('ptrinvoke staticUnbound<@expression/MethodReference.ts: ContainsMethods.[static]unboundStatic()>'))).toBe(true);
+    });
+});
+
+describe('declared type unify with initializer Test', () => {
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(BASE_DIR, 'expression'), false);
+        arkFile = scene.getFiles().find(file => file.getName().endsWith('UnresolvedTypeUnify.ts'));
+    });
+
+    it('field declared with an unresolved name is unified to the initializer stub ClassType at build time', () => {
+        const cls = arkFile?.getClassWithName('FieldHost');
+        assert.isDefined(cls);
+        const arrType = cls!.getFieldWithName('arr')!.getType();
+        assert.isTrue(arrType instanceof ArrayType);
+        const elemType = (arrType as ArrayType).getBaseType();
+        assert.isTrue(elemType instanceof ClassType);
+        expect((elemType as ClassType).getClassSignature().getClassName()).toEqual('SharedArr');
+    });
+
+    it('local declared with an unresolved name is unified to the initializer stub ClassType at build time', () => {
+        const method = arkFile?.getClassWithName('FieldHost')?.getMethodWithName('useLocal');
+        assert.isDefined(method);
+        const local = method!.getBody()?.getLocals().get('local');
+        assert.isDefined(local);
+        const localType = local!.getType();
+        assert.isTrue(localType instanceof ArrayType);
+        const elemType = (localType as ArrayType).getBaseType();
+        assert.isTrue(elemType instanceof ClassType);
+        expect((elemType as ClassType).getClassSignature().getClassName()).toEqual('SharedArr');
     });
 });

@@ -17,13 +17,7 @@ import { ClassType, GenericType, Type, UnknownType, VoidType } from '../../../..
 import { CxxBodyBuilder } from './BodyBuilder';
 import { ArkClass } from '../../../../core/model/ArkClass';
 import { ArkMethod } from '../../../../core/model/ArkMethod';
-import {
-    buildModifiers,
-    buildParameters,
-    buildReturnType,
-    cxxNode2Type,
-    isCxxFunctionPointer,
-} from './builderUtils';
+import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type, isCxxFunctionPointer } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../../core/base/Ref';
 import { ArkBody } from '../../../../core/model/ArkBody';
 import { Cfg } from '../../../../core/graph/Cfg';
@@ -65,10 +59,7 @@ function getSpecificNodes(methodNode: CxxAstNode, targetNode: AstKind): CxxAstNo
         return [];
     }
     // Handle Cpp lambda functions
-    if (methodNode.type && !(isCxxFunctionPointer(methodNode.type.qualType)) &&
-        !LAMBDA_WRAPPER_METHOD_KINDS.includes(methodNode.kind) &&
-        methodNode.inner
-    ) {
+    if (methodNode.type && !isCxxFunctionPointer(methodNode.type.qualType) && !LAMBDA_WRAPPER_METHOD_KINDS.includes(methodNode.kind) && methodNode.inner) {
         return getSpecificNodes(methodNode.inner[0], targetNode);
     }
     let result: CxxAstNode[] = [];
@@ -81,10 +72,8 @@ function getSpecificNodes(methodNode: CxxAstNode, targetNode: AstKind): CxxAstNo
 }
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: CxxAstNode, node?: CxxAstNode): void {
-    mtd.setDeclaringArkClass(declaringClass);
-
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
-    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
+    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getClassSigID(), methodSubSignature);
     mtd.setImplementationSignature(methodSignature);
     mtd.setImplOriginFullPosition(new FullPosition(0, 0, 0, 0));
 
@@ -117,14 +106,17 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
         templateTypesArray.push(templateType);
-
     }
     mtd.setGenericTypes(templateTypesArray);
 }
 
-export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClass: ArkClass, mtd: ArkMethod,
-                                           sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
-    mtd.setDeclaringArkClass(declaringClass);
+export function buildArkMethodFromArkClass(
+    methodNode: CxxAstNode,
+    declaringClass: ArkClass,
+    mtd: ArkMethod,
+    sourceFile: CxxAstNode,
+    declaringMethod?: ArkMethod
+): void {
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
@@ -155,7 +147,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     }
     reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
-    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
+    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getClassSigID(), methodSubSignature);
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
         mtd.setImplOriginFullPosition(FullPosition.cxxBuildFromNode(methodNode, sourceFile));
@@ -309,10 +301,6 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
 
     recursivelyCheckAndBuildSuperConstructor(arkClass);
 
-    const defaultConstructor: ArkMethod = new ArkMethod();
-    defaultConstructor.setDeclaringArkClass(arkClass);
-    defaultConstructor.setIsGeneratedFlag(false);
-
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
     const locals: Set<Local> = new Set([thisLocal]);
     const basicBlock = new BasicBlock();
@@ -336,13 +324,15 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
 
     if (superConstructor) {
         const superMethodSubSignature = new MethodSubSignature(SUPER_NAME, parameters, superConstructor.getReturnType());
-        const superMethodSignature = new MethodSignature(arkClass.getSignature(), superMethodSubSignature);
+        const superMethodSignature = new MethodSignature(arkClass.getClassSigID(), superMethodSubSignature);
         const superInvokeExpr = new ArkStaticInvokeExpr(superMethodSignature, parameterArgs);
         basicBlock.addStmt(new ArkInvokeStmt(superInvokeExpr));
     }
 
-    const methodSubSignature = new MethodSubSignature(CONSTRUCTOR_NAME, parameters, thisLocal.getType(), defaultConstructor.isStatic());
-    defaultConstructor.setImplementationSignature(new MethodSignature(arkClass.getSignature(), methodSubSignature));
+    const methodSubSignature = new MethodSubSignature(CONSTRUCTOR_NAME, parameters, thisLocal.getType());
+    const defaultConstructor: ArkMethod = new ArkMethod(arkClass.getClassSigID(), new MethodSignature(arkClass.getClassSigID(), methodSubSignature));
+    defaultConstructor.setIsGeneratedFlag(false);
+
     basicBlock.addStmt(new ArkReturnStmt(thisLocal));
 
     const cfg = new Cfg();
@@ -409,7 +399,9 @@ export function addInitInConstructor(constructor: ArkMethod): void {
     }
     let initInvokeStmt: ArkInvokeStmt;
     try {
-        initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal, constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(), []));
+        initInvokeStmt = new ArkInvokeStmt(
+            new ArkInstanceInvokeExpr(thisLocal, constructor.getDeclaringArkClass().getInstanceInitMethodOrNull()!.getSignature(), [])
+        );
     } catch (e) {
         logger.warn('addInitInConstructor: failed to build initInvokeStmt due to exception: ', e);
         return;
@@ -423,7 +415,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
 export function isMethodImplementation(node: CxxAstNode): boolean {
     switch (node.kind) {
         case AstKind.LambdaExpr:
-            return (node.inner && node.inner.length > 0);
+            return node.inner && node.inner.length > 0;
         case AstKind.CXXMethodDecl:
         case AstKind.CXXConstructorDecl:
         case AstKind.CXXDestructorDecl:
@@ -432,9 +424,7 @@ export function isMethodImplementation(node: CxxAstNode): boolean {
         case AstKind.FriendDecl:
             // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
             // ==> The constructor of the subclass has the same implementation as that of the parent class.
-            return !!node.inner?.find((inn: CxxAstNode) =>
-                (inn.kind === AstKind.CompoundStmt || inn.kind === AstKind.CXXCtorInitializer)
-            );
+            return !!node.inner?.find((inn: CxxAstNode) => inn.kind === AstKind.CompoundStmt || inn.kind === AstKind.CXXCtorInitializer);
         default:
             return false;
     }

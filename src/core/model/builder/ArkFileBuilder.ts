@@ -30,7 +30,7 @@ import {
     buildExportVariableStatement,
     isExported,
 } from './ArkExportBuilder';
-import { buildArkNamespace, mergeNameSpaces } from './ArkNamespaceBuilder';
+import { buildArkNamespace, buildNamespaceSignature } from './ArkNamespaceBuilder';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { FullPosition } from '../../base/Position';
@@ -38,6 +38,7 @@ import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
 import { FileSignature } from '../ArkSignature';
 import { ARKTS_STATIC_MARK } from '../../common/Const';
 import { cloneText } from '../../common/StringUtils';
+import { SignatureCanonicalizerRegistry } from '../../common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -77,7 +78,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     const options = arkFile.getScene().getOptions();
@@ -105,10 +106,9 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
  *   which would duplicate `export *` entries (their temp keys are process-level auto-increment).
  */
 function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport: boolean = false): void {
-    const namespaces: ArkNamespace[] = [];
     for (const child of astRoot.statements) {
         if (ts.isModuleDeclaration(child)) {
-            buildAndCollectNamespace(child, arkFile, astRoot, namespaces);
+            buildAndCollectNamespace(child, arkFile, astRoot);
         } else if (ts.isClassDeclaration(child) || ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child) || ts.isStructDeclaration(child)) {
             buildAndExportClass(child, arkFile, astRoot);
         } else if (ts.isMethodDeclaration(child) || ts.isFunctionDeclaration(child)) {
@@ -123,21 +123,25 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport
             logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
         }
     }
-    mergeAndAddNamespaces(namespaces, arkFile);
 }
 
-function buildAndCollectNamespace(child: ts.ModuleDeclaration, arkFile: ArkFile, astRoot: ts.SourceFile, namespaces: ArkNamespace[]): void {
-    const ns = new ArkNamespace();
-    ns.setDeclaringArkFile(arkFile);
-    buildArkNamespace(child, arkFile, ns, astRoot);
-    namespaces.push(ns);
+function buildAndCollectNamespace(child: ts.ModuleDeclaration, arkFile: ArkFile, astRoot: ts.SourceFile): void {
+    const namespaceSig = buildNamespaceSignature(child, arkFile);
+    let ns = SignatureCanonicalizerRegistry.getInstance().getNamespaceBySig(namespaceSig);
+    if (!ns) {
+        ns = new ArkNamespace(arkFile.getFileSigID(), undefined, namespaceSig);
+        arkFile.addNamespace(ns);
+    }
+
+    buildArkNamespace(child, ns, astRoot);
+
     if (ns.isExported()) {
         arkFile.addExportInfo(buildExportInfo(ns, arkFile, FullPosition.buildFromNode(child, astRoot)));
     }
 }
 
 function buildAndExportClass(child: ClassLikeNode, arkFile: ArkFile, astRoot: ts.SourceFile): void {
-    const cls = new ArkClass();
+    const cls = new ArkClass(arkFile.getFileSigID());
     buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
     if (cls.isExported()) {
         arkFile.addExportInfo(buildExportInfo(cls, arkFile, FullPosition.buildFromNode(child, astRoot)));
@@ -145,8 +149,9 @@ function buildAndExportClass(child: ClassLikeNode, arkFile: ArkFile, astRoot: ts
 }
 
 function buildAndExportMethod(child: MethodLikeNode, arkFile: ArkFile, astRoot: ts.SourceFile): void {
-    const mthd = new ArkMethod();
-    buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd, astRoot);
+    const defaultClass = arkFile.getDefaultClass();
+    const mthd = new ArkMethod(defaultClass.getClassSigID());
+    buildArkMethodFromArkClass(child, defaultClass, mthd, astRoot);
     if (mthd.isExported()) {
         arkFile.addExportInfo(buildExportInfo(mthd, arkFile, FullPosition.buildFromNode(child, astRoot)));
     }
@@ -184,24 +189,11 @@ function tryBuildImportExport(child: ts.Statement, arkFile: ArkFile, astRoot: ts
     return false;
 }
 
-function mergeAndAddNamespaces(namespaces: ArkNamespace[], arkFile: ArkFile): void {
-    const merged = mergeNameSpaces(namespaces);
-    merged.forEach(ns => {
-        arkFile.addNamespace(ns);
-        if (ns.isExport()) {
-            const positions = ns.getOriginFullPositions();
-            if (positions.length > 0) {
-                arkFile.addExportInfo(buildExportInfo(ns, arkFile, positions[0]));
-            }
-        }
-    });
-}
-
 function genDefaultArkClass(arkFile: ArkFile, astRoot: ts.SourceFile): void {
-    let defaultClass = new ArkClass();
+    let defaultClass = new ArkClass(arkFile.getFileSigID());
 
-    buildDefaultArkClassFromArkFile(arkFile, defaultClass, astRoot);
-    arkFile.setDefaultClass(defaultClass);
+    buildDefaultArkClassFromArkFile(defaultClass, astRoot);
+    arkFile.setDefaultClassID(defaultClass.getClassSigID());
     arkFile.addArkClass(defaultClass);
 }
 
@@ -216,7 +208,7 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     arkFile.setCode(sourceText);
@@ -270,7 +262,7 @@ export function buildArkFileSignaturesFromFile(arkFile: ArkFile): void {
     try {
         sourceText = fs.readFileSync(arkFile.getFilePath(), 'utf8');
     } catch (error) {
-        logger.error('Failed to read file: ${error}');
+        logger.error(`Failed to read file: ${error}`);
         return;
     }
     const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);

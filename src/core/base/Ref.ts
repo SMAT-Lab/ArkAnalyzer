@@ -14,9 +14,10 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { FieldSignature } from '../model/ArkSignature';
+import { BaseSignature, ClassSignature, FieldSignature } from '../model/ArkSignature';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { Local } from './Local';
-import { ArrayType, ClassType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
+import { AnyType, ArrayType, ClassType, GenericType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../model/ArkMethod';
@@ -125,11 +126,41 @@ export class ArkArrayRef extends AbstractRef {
 }
 
 export abstract class AbstractFieldRef extends AbstractRef {
-    private fieldSignature: FieldSignature;
+    /** @internal formal FieldSigID。-1 = 完全未注册（纯 temp-held）。*/
+    private fieldSigID!: number;
+    /**  @internal temp FieldSigID（索引表）。undefined = formal 路径。*/
+    private tempFieldSigID?: number;
+    private realFieldTypes?: Type[];
 
     constructor(fieldSignature: FieldSignature) {
         super();
-        this.fieldSignature = fieldSignature;
+        this.route(fieldSignature);
+    }
+
+    /** 首路径路由（构造器专用）：formal 只读命中 → 持 formal ID（栅栏精化）；miss → temp 登记。*/
+    private route(fieldSignature: FieldSignature): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (fieldSignature.isUnclear()) {
+            this.fieldSigID = -1;
+            this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
+            return;
+        }
+        const existingId = reg.fieldSigCanonicalizer.getExistingId(fieldSignature);
+        if (existingId !== -1) {
+            const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+            // formal 路由 + 单向精度栅栏。
+            const canonicalType = canonical.getType();
+            const incomingType = fieldSignature.getType();
+            if (TypeInference.isUnclearType(canonicalType) && !TypeInference.isUnclearType(incomingType)) {
+                canonical.setType(incomingType);
+            }
+            this.fieldSigID = existingId;
+            this.tempFieldSigID = undefined;
+        } else {
+            logger.error(`AbstractFieldRef: clear FieldSignature not interned (route) — routing to temp defensively: ${fieldSignature.toString()}`);
+            this.fieldSigID = -1;
+            this.tempFieldSigID = reg.tempFieldSigCanonicalizer.register(fieldSignature);
+        }
     }
 
     /**
@@ -137,37 +168,190 @@ export abstract class AbstractFieldRef extends AbstractRef {
      * @returns The the field name.
      */
     public getFieldName(): string {
-        return this.fieldSignature.getFieldName();
+        return this.getFieldSignature().getFieldName();
+    }
+
+    /** Returns the field signature. */
+    public getFieldSignature(): FieldSignature {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.fieldSigID >= 0) {
+            const sig = reg.fieldSigCanonicalizer.get(this.fieldSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+        } else if (this.tempFieldSigID !== undefined) {
+            const sig = reg.tempFieldSigCanonicalizer.get(this.tempFieldSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            const formalId = reg.tempFieldSigCanonicalizer.getReplacement(this.tempFieldSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.fieldSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.fieldSigID = formalId;
+                    return formalSig;
+                }
+            }
+        }
+        throw new Error('AbstractFieldRef has no signature');
+    }
+
+    /** @internal */
+    public updateFieldSignature(
+        fieldName: string,
+        declaringOrID: BaseSignature | number,
+        type: Type,
+        staticFlag: boolean,
+        namespaceDeclared: boolean = false
+    ): void {
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        // a. 未毕业分支。
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            const tempId = this.tempFieldSigID;
+            const tempFieldSig = reg.tempFieldSigCanonicalizer.get(tempId);
+            if (tempFieldSig === undefined) {
+                const formalId = reg.tempFieldSigCanonicalizer.getReplacement(tempId);
+                if (formalId !== -1) {
+                    this.fieldSigID = formalId;
+                    this.tempFieldSigID = undefined;
+                    return;
+                }
+                // stale 兜底：构造真实例走首路径（登记一次）。低频路径（Registry 重建等）。
+                this.route(AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared));
+                return;
+            }
+            const oldDeclTempId = tempFieldSig.getDeclaringClassTempSigID();
+            tempFieldSig.applyFields(fieldName, declaringOrID, type, staticFlag, namespaceDeclared);
+            const existingId = reg.fieldSigCanonicalizer.getExistingId(tempFieldSig);
+            if (existingId === -1) {
+                return;
+            }
+            const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+            if (canonical.getType().isUnclear() && !type.isUnclear()) {
+                canonical.setType(type);
+            }
+            this.fieldSigID = existingId;
+            this.tempFieldSigID = undefined;
+            reg.tempFieldSigCanonicalizer.retireWithReplacement(tempId, existingId);
+            // declaring 联动：新值 declaring 为 formal class 时同步收敛 temp class 行。
+            const declSig = tempFieldSig.getDeclaringSignature();
+            if (oldDeclTempId !== undefined && declSig instanceof ClassSignature && !declSig.isUnclear()) {
+                const declFormalId = tempFieldSig.getDeclaringClassSigID();
+                if (declFormalId !== undefined && declFormalId > 0) {
+                    reg.tempClassSigCanonicalizer.retireWithReplacement(oldDeclTempId, declFormalId);
+                }
+            }
+            return;
+        }
+        // b. 已毕业分支：只查不降级（低频路径——多轮推导的精化；probe 为值查载体，短命实例可接受）。
+        if (this.fieldSigID >= 0) {
+            const probe = AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared);
+            const existingId = reg.fieldSigCanonicalizer.getExistingId(probe);
+            if (existingId !== -1) {
+                const canonical = reg.fieldSigCanonicalizer.get(existingId)!;
+                if (canonical.getType().isUnclear() && !type.isUnclear()) {
+                    canonical.setType(type);
+                }
+                this.fieldSigID = existingId;
+            }
+            return;
+        }
+        // 防御兜底（理论不可达）。
+        this.route(AbstractFieldRef.buildFallbackSignature(fieldName, declaringOrID, type, staticFlag, namespaceDeclared));
+    }
+
+    /** @internal 兜底/probe 构造（联合类型按重载收窄分发；低频路径）。 */
+    private static buildFallbackSignature(
+        fieldName: string,
+        declaringOrID: BaseSignature | number,
+        type: Type,
+        staticFlag: boolean,
+        namespaceDeclared: boolean
+    ): FieldSignature {
+        if (typeof declaringOrID === 'number') {
+            return namespaceDeclared ?
+                new FieldSignature(fieldName, declaringOrID, type, staticFlag, true) :
+                new FieldSignature(fieldName, declaringOrID, type, staticFlag);
+        }
+        return new FieldSignature(fieldName, declaringOrID, type, staticFlag);
+    }
+
+    /** @internal 毕业到正式签名 */
+    public graduateToFormal(formalId: number): void {
+        if (formalId <= 0) {
+            return;
+        }
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const canonical = reg.fieldSigCanonicalizer.get(formalId);
+        if (canonical === undefined) {
+            return; // stale ID（Registry 重建等）——防御性不动作
+        }
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            const tempId = this.tempFieldSigID;
+            const S = reg.tempFieldSigCanonicalizer.get(tempId);
+            if (S !== undefined) {
+                // declaring 联动（毕业的组成部分）：旧 declaring temp 行同步收敛，
+                // 共享该 declaring stub 的持有者经替换记录自动跟随。
+                const oldDeclTempId = S.getDeclaringClassTempSigID();
+                const declFormalId = canonical.getDeclaringClassSigID();
+                if (oldDeclTempId !== undefined && declFormalId !== undefined && declFormalId > 0) {
+                    reg.tempClassSigCanonicalizer.retireWithReplacement(oldDeclTempId, declFormalId);
+                }
+                reg.tempFieldSigCanonicalizer.retireWithReplacement(tempId, formalId);
+            }
+            // 行已划（共享链已被首毕业者收敛）：仅换编号（替换记录已登记）。
+            this.fieldSigID = formalId;
+            this.tempFieldSigID = undefined;
+            return;
+        }
+        // 已毕业：直接换编号（重复回写 = 无操作；stale 已在开头拦截）。
+        this.fieldSigID = formalId;
+    }
+
+    /** @internal */
+    public retireTemp(): void {
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined) {
+            SignatureCanonicalizerRegistry.getInstance().tempFieldSigCanonicalizer.retire(this.tempFieldSigID);
+        }
     }
 
     /**
-     * Returns a field signature, which consists of a class signature,
-     * a **string** field name, and a **boolean** label indicating whether it is static or not.
-     * @returns The field signature.
-     * @example
-     * 1. Compare two Fields
-
-     ```typescript
-     const fieldSignature = new FieldSignature();
-     fieldSignature.setFieldName(...);
-     const fieldRef = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
-     ...
-     if (fieldRef.getFieldSignature().getFieldName() ===
-     targetField.getFieldSignature().getFieldName()) {
-     ...
-     }
-     ```
+     * @internal 替换埋葬（带归宿版）：同 {@link retireTemp}，但替换产物为
+     * formal canonical（static 转换等 formalId 已知场景）——retire 同时记录
+     * 替换（temp → formal），供诊断追溯。
      */
-    public getFieldSignature(): FieldSignature {
-        return this.fieldSignature;
+    public retireTempTo(formalId: number): void {
+        if (this.fieldSigID === -1 && this.tempFieldSigID !== undefined && formalId > 0) {
+            SignatureCanonicalizerRegistry.getInstance().tempFieldSigCanonicalizer.retireWithReplacement(this.tempFieldSigID, formalId);
+        }
     }
 
-    public setFieldSignature(newFieldSignature: FieldSignature): void {
-        this.fieldSignature = newFieldSignature;
+    /** @internal Get the formal FieldSigID（身份视图；泛型双视图下为定义点字段 ID）。-1 = 纯 temp-held。 */
+    public getFieldSigID(): number {
+        return this.fieldSigID;
+    }
+
+    /** @internal Get the temp FieldSigID for the unresolved-signature registration（值视图在 temp 时非空）。 */
+    public getTempSigID(): number | undefined {
+        return this.tempFieldSigID;
+    }
+
+    /** @internal Get the generic instantiation real types of the field (Expr.realGenericTypes 同构)。 */
+    public getRealFieldTypes(): Type[] | undefined {
+        return this.realFieldTypes;
+    }
+
+    /** @internal Set the generic instantiation real types. */
+    public setRealFieldTypes(realTypes: Type[] | undefined): void {
+        this.realFieldTypes = realTypes;
     }
 
     public getType(): Type {
-        return this.fieldSignature.getType();
+        const type = this.getFieldSignature().getType();
+        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realFieldTypes) {
+            return TypeInference.replaceTypeWithReal(type, this.realFieldTypes);
+        }
+        return type;
     }
 }
 

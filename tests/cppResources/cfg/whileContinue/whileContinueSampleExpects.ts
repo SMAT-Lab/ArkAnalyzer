@@ -75,9 +75,9 @@ export const COMMA_EXPRESSION = {
         {
             id: 2,
             stmts: [
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'i = \')',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, i)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'i = \')',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, i)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
             ],
             preds: [1],
             succes: [1],
@@ -106,9 +106,9 @@ export const EMPTY_DO_WHILE = {
         {
             id: 2,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Final count: \')',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, count)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Final count: \')',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, count)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
                 'return',
             ],
             preds: [1],
@@ -138,10 +138,10 @@ export const CONTINUE_DO_WHILE = {
         {
             id: 3,
             stmts: [
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'After continue: \')',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, i)',
-                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, \' (odd number)\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'After continue: \')',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, i)',
+                '%3 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, \' (odd number)\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%3, endl)',
             ],
             preds: [1],
             succes: [2],
@@ -166,11 +166,11 @@ export const CONTINUE_WHILE_WITH_LOGICAL_OPERATORS = {
         {
             id: 2,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'a = \')',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, a)',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, \', b = \')',
-                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, b)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'a = \')',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, a)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, \', b = \')',
+                '%3 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, b)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%3, endl)',
                 'if a < 5',
             ],
             preds: [7, 8],
@@ -205,11 +205,11 @@ export const CONTINUE_DO_WHILE_WITH_LOGICAL_OPERATORS = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'x = \')',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, x)',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, \', y = \')',
-                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, y)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'x = \')',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, x)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, \', y = \')',
+                '%3 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, y)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%3, endl)',
                 'if x < 3',
             ],
             preds: [0, 6, 7],

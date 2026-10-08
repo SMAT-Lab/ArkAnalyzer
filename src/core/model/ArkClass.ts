@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ClassType, GenericType, Type } from '../base/Type';
+import { ClassType, GenericType, Type, UnknownType } from '../base/Type';
 import { ViewTree } from '../graph/ViewTree';
 import { ArkField } from './ArkField';
 import { ArkFile, Language } from './ArkFile';
@@ -23,11 +23,12 @@ import { ClassSignature, FieldSignature, FileSignature, MethodSignature, Namespa
 import { Local } from '../base/Local';
 import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
-import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
+import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../common/Const';
 import { FullPosition, INVALID_LINE } from '../base/Position';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { ModelUtils } from '../common/ModelUtils';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
@@ -70,9 +71,27 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      *  Undefined when this class is an automatically generated default class during IR construction. */
     private originFullPosition?: FullPosition;
 
-    private declaringArkFile!: ArkFile;
-    private declaringArkNamespace: ArkNamespace | undefined;
-    private classSignature!: ClassSignature;
+    /** @internal Formal FileSigID for the declaring file. -1 = not yet interned. */
+    private declaringFileID: number = -1;
+
+    /** @internal Formal NamespaceSigID for the declaring namespace. undefined = no namespace. */
+    private declaringNamespaceSigID?: number;
+
+    /** @internal Formal ClassSigID of this class. -1 = not yet set. */
+    private classSigID: number = -1;
+
+    /** @internal MethodSigID of the default method. undefined = no default method (most classes). */
+    private defaultMethodSigID?: number;
+    /** @internal MethodSigID of the instance init method. undefined = not set. */
+    private instanceInitMethodSigID?: number;
+    /** @internal MethodSigID of the static init method. undefined = not set. */
+    private staticInitMethodSigID?: number;
+
+    /** @internal Get the Registry singleton. */
+    private get registry(): SignatureCanonicalizerRegistry {
+        return SignatureCanonicalizerRegistry.getInstance();
+    }
+
     /**
      * The keys of the `heritageClasses` map represent the names of superclass and interfaces.
      * The superclass name is placed first; if it does not exist, an empty string `''` will occupy this position.
@@ -82,17 +101,32 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     private genericsTypes?: GenericType[];
     private realTypes?: Type[];
-    private defaultMethod: ArkMethod | null = null;
 
-    // name to model
-    private methods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
-    private fields: Map<string, ArkField> = new Map<string, ArkField>();
-    private extendedClasses: Map<string, ArkClass> = new Map<string, ArkClass>();
-    private staticMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
-    private staticFields: Map<string, ArkField> = new Map<string, ArkField>();
+    /**
+     * @internal Name index of direct instance methods: full method name → selected SigIDs
+     * (impl SigID, or the first declare SigID for declare-only methods), in add order.
+     * One entry per method; same-name coexistence only for overload-supported languages (CXX).
+     * undefined = no instance methods yet.
+     */
+    private methodNameIndex?: Map<string, number[]>;
 
-    private instanceInitMethod: ArkMethod = new ArkMethod();
-    private staticInitMethod: ArkMethod = new ArkMethod();
+    /**
+     * @internal Name index of direct static methods. Same layout as {@link methodNameIndex}.
+     * undefined = no static methods yet.
+     */
+    private staticMethodNameIndex?: Map<string, number[]>;
+
+    /** @internal SigIDs of direct subclasses (parent→child back-references). undefined = none yet. */
+    private extendedClassSigIDs?: Int32Array;
+    private extendedClassCount: number = 0;
+
+    /** @internal SigIDs of direct instance fields. undefined = no fields allocated yet. */
+    private topFieldSigIDs?: Int32Array;
+    private topFieldCount: number = 0;
+
+    /** @internal SigIDs of direct static fields. undefined = no static fields allocated yet. */
+    private topStaticFieldSigIDs?: Int32Array;
+    private topStaticFieldCount: number = 0;
 
     private anonymousMethodNumber: number = 0;
     private indexSignatureNumber: number = 0;
@@ -104,8 +138,34 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     // When the declaration and definition of a class in C++ are separated, record the signature of the relevant declaration.
     private classDeclareSignature?: ClassSignature;
 
-    constructor() {
+    /**
+     * @deprecated Construct with the declaring IDs and (optionally) the signature
+     * object instead.
+     */
+    constructor();
+    /**
+     * Build directly from the declaring file ID, the declaring (parent) namespace SigID,
+     * and (optionally) the class signature.
+     * `setSignature` is the registration point: it interns the signature, assigns the
+     * ClassSigID, and registers this class as the model on first interning.
+     * @param declaringFileID - Formal FileSigID of the declaring file.
+     * @param declaringNamespaceSigID - Formal NamespaceSigID of the declaring (parent)
+     *        namespace; omit for top-level classes.
+     * @param classSig - The signature object; not yet registered — registration happens
+     *        inside via setSignature.
+     */
+    constructor(declaringFileID: number, declaringNamespaceSigID?: number, classSig?: ClassSignature);
+    constructor(declaringFileID?: number, declaringNamespaceSigID?: number, classSig?: ClassSignature) {
         super();
+        if (declaringFileID !== undefined) {
+            this.declaringFileID = declaringFileID;
+        }
+        if (declaringNamespaceSigID !== undefined) {
+            this.declaringNamespaceSigID = declaringNamespaceSigID;
+        }
+        if (classSig) {
+            this.setSignature(classSig);
+        }
     }
 
     /**
@@ -120,7 +180,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The name of this class.
      */
     public getName(): string {
-        return this.classSignature.getClassName();
+        return this.getSignature().getClassName();
     }
 
     /**
@@ -143,8 +203,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @deprecated Source text is now stored on ArkFile only. This method has no effect.
      * @param _code - The source code (ignored).
      */
-    public setCode(_code: string): void {
-    }
+    public setCode(_code: string): void {}
 
     /**
      * Returns the full position (start/end line/col) of this class in the source file.
@@ -227,11 +286,20 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      ```
      */
     public getDeclaringArkFile(): ArkFile {
-        return this.declaringArkFile;
+        if (this.declaringFileID !== -1) {
+            return this.registry.fileSigCanonicalizer.getModel(this.declaringFileID)!;
+        }
+        return undefined as unknown as ArkFile;
     }
 
+    /** @deprecated Use {@link constructor} instead. */
     public setDeclaringArkFile(declaringArkFile: ArkFile): void {
-        this.declaringArkFile = declaringArkFile;
+        this.declaringFileID = declaringArkFile.getFileSigID();
+    }
+
+    /** @internal Get the formal FileSigID of the declaring file. Returns -1 if not interned. */
+    public getDeclaringFileID(): number {
+        return this.declaringFileID;
     }
 
     /**
@@ -239,11 +307,26 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The declaring namespace (may be **undefined**) of this class.
      */
     public getDeclaringArkNamespace(): ArkNamespace | undefined {
-        return this.declaringArkNamespace;
+        if (this.declaringNamespaceSigID !== undefined) {
+            return this.registry.namespaceSigCanonicalizer.getModel(this.declaringNamespaceSigID) ?? undefined;
+        }
+        return undefined;
     }
 
+    public getDeclaringArkNamespaceID(): number | undefined {
+        if (this.declaringNamespaceSigID !== undefined) {
+            return this.declaringNamespaceSigID;
+        }
+        return undefined;
+    }
+
+    /**
+     * @deprecated Use the ID-injecting constructor
+     * {@link constructor(declaringFileID, declaringNamespaceSigID, classSig)} or
+     * {@link setDeclaringArkNamespaceID} instead.
+     */
     public setDeclaringArkNamespace(declaringArkNamespace: ArkNamespace | undefined): void {
-        this.declaringArkNamespace = declaringArkNamespace;
+        this.declaringNamespaceSigID = declaringArkNamespace?.getNamespaceSigID();
     }
 
     public isDefaultArkClass(): boolean {
@@ -265,11 +348,32 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The class signature.
      */
     public getSignature(): ClassSignature {
-        return this.classSignature;
+        return this.registry.classSigCanonicalizer.get(this.classSigID)!;
     }
 
     public setSignature(classSig: ClassSignature): void {
-        this.classSignature = classSig;
+        const existing = this.registry.classSigCanonicalizer.getExistingId(classSig);
+        this.classSigID = existing >= 0 ? existing : this.registry.classSigCanonicalizer.getOrCreateId(classSig);
+        // 新值首建 → 注册；
+        // 驱逐态恢复（sig 值残留、model 已被 removeClass 删除）→ 补注册（否则 reload 时 getDeclaringArkClass 查不到 model，genDefaultArkMethod 链 NPE）；
+        // 已有别的 model 持有该签名 → 不覆盖（防"后 setSignature 者顶替"写穿）。
+        if (existing < 0 || this.registry.classSigCanonicalizer.getModel(existing) === undefined) {
+            this.registry.registerClass(this);
+        }
+    }
+
+    /** @internal Get the formal ClassSigID of this class. */
+    public getClassSigID(): number {
+        return this.classSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the ClassSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
+        return this.classSigID;
     }
 
     public getSuperClassName(): string {
@@ -283,7 +387,6 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     public addHeritageClassNameWithInfo(className: string, classInfo: heritageClassWithInfo): void {
         this.heritageClasses.set(className, classInfo);
     }
-
 
     /**
      * Returns the superclass of this class.
@@ -317,7 +420,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             if (type) {
                 type = TypeInference.replaceAliasType(type);
             }
-            if (type instanceof ClassType && (superClass = this.declaringArkFile.getScene().getClass(type.getClassSignature()))) {
+            if (type instanceof ClassType && (superClass = this.getDeclaringArkFile().getScene().getClass(type.getClassSignature()))) {
                 superClass.addExtendedClass(this);
                 const realGenericTypes = type.getRealGenericTypes();
                 if (realGenericTypes) {
@@ -351,12 +454,59 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return result;
     }
 
+    /**
+     * Returns the direct subclasses (parent→child back-references) of this class.
+     * The returned Map is a rebuilt view keyed by class name; mutating it does not
+     * affect the internal storage.
+     */
     public getExtendedClasses(): Map<string, ArkClass> {
-        return this.extendedClasses;
+        const result = new Map<string, ArkClass>();
+        const arr = this.extendedClassSigIDs;
+        if (!arr) {
+            return result;
+        }
+        const reg = this.registry;
+        for (let i = 0; i < this.extendedClassCount; i++) {
+            const cls = reg.classSigCanonicalizer.getModel(arr[i]);
+            if (cls) {
+                result.set(cls.getName(), cls);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @internal Returns the direct subclasses as an array, or **null** if this class
+     * has no extended classes. Preferred over {@link getExtendedClasses} in hot paths
+     * to avoid rebuilding a Map. Stale SigIDs (whose classes were removed) are skipped.
+     */
+    public getExtendedClassList(): ArkClass[] | null {
+        const arr = this.extendedClassSigIDs;
+        if (!arr || this.extendedClassCount === 0) {
+            return null;
+        }
+        const result: ArkClass[] = [];
+        const reg = this.registry;
+        for (let i = 0; i < this.extendedClassCount; i++) {
+            const cls = reg.classSigCanonicalizer.getModel(arr[i]);
+            if (cls) {
+                result.push(cls);
+            }
+        }
+        return result;
     }
 
     public addExtendedClass(extendedClass: ArkClass): void {
-        this.extendedClasses.set(extendedClass.getName(), extendedClass);
+        const id = extendedClass.getClassSigID();
+        if (id <= 0 || this.hasExtendedClassWithID(id)) {
+            return;
+        }
+        this.addExtendedClassSigID(id);
+    }
+
+    /** @internal Removes a direct subclass back-reference (by ClassSigID, swap-remove). */
+    public removeExtendedClass(extendedClass: ArkClass): void {
+        this.removeExtendedClassSigID(extendedClass.getClassSigID());
     }
 
     public getImplementedInterfaceNames(): string[] {
@@ -366,10 +516,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return Array.from(this.heritageClasses.keys()).slice(1);
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public hasImplementedInterface(interfaceName: string): boolean {
         return this.heritageClasses.has(interfaceName) && this.getSuperClassName() !== interfaceName;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getImplementedInterface(interfaceName: string): ArkClass | null {
         const heritageClass = this.getHeritageClass(interfaceName);
         if (heritageClass && heritageClass.getCategory() === ClassCategory.INTERFACE) {
@@ -385,20 +537,31 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns A field. If there is no field in this class, the return will be a **null**.
      */
     public getField(fieldSignature: FieldSignature): ArkField | null {
-        const fieldName = fieldSignature.getFieldName();
-        let fieldSearched: ArkField | null = this.getFieldWithName(fieldName);
-        if (!fieldSearched) {
-            fieldSearched = this.getStaticFieldWithName(fieldName);
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(fieldSignature);
+        if (id !== -1) {
+            const fld = this.registry.fieldSigCanonicalizer.getModel(id);
+            if (fld !== undefined && fld.getDeclaringClassID() === this.classSigID) {
+                return fld;
+            }
         }
-        return fieldSearched;
+        return null;
     }
 
     public getFieldWithName(fieldName: string): ArkField | null {
-        return this.fields.get(fieldName) || null;
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), false));
+        if (id !== -1) {
+            return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
+        }
+        return null;
     }
 
     public getStaticFieldWithName(fieldName: string): ArkField | null {
-        return this.staticFields.get(fieldName) || null;
+        // 同 getFieldWithName，staticFlag = true。
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), true));
+        if (id !== -1) {
+            return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
+        }
+        return null;
     }
 
     /**
@@ -406,19 +569,44 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of fields in the class.
      */
     public getFields(): ArkField[] {
-        const allFields: ArkField[] = Array.from(this.staticFields.values());
-        allFields.push(...this.fields.values());
-        return allFields;
+        const result: ArkField[] = [];
+        const sArr = this.topStaticFieldSigIDs;
+        if (sArr) {
+            const reg = this.registry;
+            for (let i = 0; i < this.topStaticFieldCount; i++) {
+                const fld = reg.fieldSigCanonicalizer.getModel(sArr[i]);
+                if (fld) {
+                    result.push(fld);
+                }
+            }
+        }
+        const arr = this.topFieldSigIDs;
+        if (arr) {
+            const reg = this.registry;
+            for (let i = 0; i < this.topFieldCount; i++) {
+                const fld = reg.fieldSigCanonicalizer.getModel(arr[i]);
+                if (fld) {
+                    result.push(fld);
+                }
+            }
+        }
+        return result;
     }
 
     public addField(field: ArkField): void {
+        const id = field.getFieldSigID();
         if (field.isStatic()) {
-            this.staticFields.set(field.getName(), field);
+            if (!this.hasTopStaticFieldWithID(id)) {
+                this.addTopStaticFieldSigID(id);
+            }
         } else {
-            this.fields.set(field.getName(), field);
+            if (!this.hasTopFieldWithID(id)) {
+                this.addTopFieldSigID(id);
+            }
         }
     }
 
+    /** @deprecated No callers remain in the codebase; use {@link addField} per field instead. */
     public addFields(fields: ArkField[]): void {
         fields.forEach(field => {
             this.addField(field);
@@ -457,31 +645,46 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      ```
      */
     public getMethods(generated?: boolean): ArkMethod[] {
-        const seen = new WeakSet<ArkMethod>();
+        const ids = new Set<number>();
+        for (const entry of this.methodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                ids.add(id);
+            }
+        }
+        for (const entry of this.staticMethodNameIndex?.values() ?? []) {
+            for (const id of entry) {
+                ids.add(id);
+            }
+        }
+        const seen = new Set<ArkMethod>();
         const result: ArkMethod[] = [];
-
-        const addIfNeeded = (m: ArkMethod) => {
-            if (!seen.has(m) && (generated || !m.isGenerated())) {
+        for (const id of ids) {
+            const m = this.registry.methodSigCanonicalizer.getModel(id);
+            if (m !== undefined && (generated || !m.isGenerated()) && !seen.has(m)) {
                 seen.add(m);
                 result.push(m);
             }
-        };
-
-        for (const methods of this.methods.values()) {
-            for (const m of methods) {
-                addIfNeeded(m);
-            }
         }
-        for (const methods of this.staticMethods.values()) {
-            for (const m of methods) {
-                addIfNeeded(m);
-            }
-        }
-
         return result;
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        const id = canonicalizer.getExistingId(methodSignature);
+        if (id !== -1) {
+            const mtd = canonicalizer.getModel(id);
+            if (mtd !== undefined && mtd.getDeclaringClassID() === this.classSigID) {
+                return mtd;
+            }
+        }
+        // Fallback: class-local traversal with signature matching.
+        // 不能删除（结构性缺口承载者）：
+        // ① declare[k>0] 无 model——addMethod 只注册 impl ?? declare[0]，而
+        //    matchMethodSignature 为可选参数/重载调用点选出的非首选声明签名
+        //    （callgraph callee 解析主链路，PagBuilder/CallGraph/RTA 等）只能在此命中；
+        //    → 全槽注册后 declare 槽已注册，此缺口关闭；
+        // ② 闭包 declare 重建签名（updateNestedMethodWithClosures 只 intern 不注册）；
+        // ③ C++ 跨类借用（声明方法借实现侧签名，fast path 归属校验失败后在此命中）。
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
         const methodsWithSameName = this.getAllMethodsWithName(methodName);
         if (methodsWithSameName.length === 0) {
@@ -519,70 +722,104 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameMethods = this.methods.get(methodName);
-        if (!sameNameMethods) {
+        const sameNameMethods = this.getMethodsWithName(methodName);
+        if (sameNameMethods.length === 0) {
             return null;
         }
         if (sameNameMethods.length > 1) {
-            logger.warn("There are multiple non-static methods with the same name, and the interface 'getMethodWithName' only returns one of them. " +
-                "If you want to obtain all non-static methods with the same name, please use the interface 'getMethodsWithName'.");
+            logger.warn(
+                "There are multiple non-static methods with the same name, and the interface 'getMethodWithName' only returns one of them. " +
+                    "If you want to obtain all non-static methods with the same name, please use the interface 'getMethodsWithName'."
+            );
         }
         return sameNameMethods[0];
     }
 
     public getStaticMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameStaticMethods = this.staticMethods.get(methodName);
-        if (!sameNameStaticMethods) {
+        const sameNameStaticMethods = this.getStaticMethodsWithName(methodName);
+        if (sameNameStaticMethods.length === 0) {
             return null;
         }
         if (sameNameStaticMethods.length > 1) {
-            logger.warn("There are multiple static methods with the same name, and the interface 'getStaticMethodWithName' only returns one of them. " +
-                "If you want to obtain all static methods with the same name, please use the interface 'getStaticMethodsWithName'.");
+            logger.warn(
+                "There are multiple static methods with the same name, and the interface 'getStaticMethodWithName' only returns one of them. " +
+                    "If you want to obtain all static methods with the same name, please use the interface 'getStaticMethodsWithName'."
+            );
         }
         return sameNameStaticMethods[0];
     }
 
     /**
      * add a method in class.
-     * when a nested method with declare name, add both the declare origin name and signature name
-     * %${declare name}$${outer method name} in class.
      */
-    public addMethod(method: ArkMethod, originName?: string): void {
-        const name = originName ?? method.getName();
-        this.updateMethodMap(method, name);
-        if (!originName && !method.isAnonymousMethod() && name.startsWith(NAME_PREFIX)) {
-            const index = name.indexOf(NAME_DELIMITER);
-            if (index > 1) {
-                const originName = name.substring(1, index);
-                this.addMethod(method, originName);
+    public addMethod(method: ArkMethod): void {
+        const id = method.getMethodSigID() ?? method.getDeclareSigIDs()?.[0];
+        if (id === undefined || id <= 0) {
+            logger.error(`Cannot add method (SigID=${method.getMethodSigID()}) to class (SigID=${this.getClassSigID()}): it has no interned signature.`);
+            return;
+        }
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        // The class index is authoritative: registering here (unconditionally) marks the final
+        // winner of any same-signature merge chain performed by builders.
+        canonicalizer.setModel(id, method);
+        const declareSigIDs = method.getDeclareSigIDs();
+        if (declareSigIDs !== null && declareSigIDs !== undefined) {
+            for (let i = 0; i < declareSigIDs.length; i++) {
+                const declareID = declareSigIDs[i];
+                if (declareID > 0 && declareID !== id) {
+                    this.registerDeclareSlotWithArbitration(canonicalizer, declareID, method);
+                }
             }
         }
+        this.updateMethodIndex(method, id);
     }
 
     /**
-     * Update the new method to the corresponding Map.
+     * @internal Register a method as the model of one of its non-primary declare slots.
+     *
+     * Arbitration (single rule, no same-class sibling protection — addMethod is the
+     * terminal registration point where the merge winner must take over same-class
+     * declare slots; compare registerImplModelWithArbitration in ArkMethod for the
+     * construction-time rules):
+     * - a slot already held by a body-carrying method is never taken over by a
+     *   body-less one (C++ decl/impl split added in reverse order).
+     */
+    private registerDeclareSlotWithArbitration(
+        canonicalizer: { getModel(id: number): ArkMethod | undefined; setModel(id: number, model: ArkMethod): void },
+        declareID: number,
+        method: ArkMethod
+    ): void {
+        const existing = canonicalizer.getModel(declareID);
+        if (existing !== undefined && existing !== method) {
+            if (existing.getBody() !== undefined && method.getBody() === undefined) {
+                return;
+            }
+        }
+        canonicalizer.setModel(declareID, method);
+    }
+
+    /**
+     * Update the new method in the corresponding SigID index.
      *
      * @param newMethod - the new method
-     * @param methodName - name of new method
+     * @param sigID - the formal MethodSigID (or first declare SigID) indexing the method
      */
-    private updateMethodMap(newMethod: ArkMethod, methodName: string): void {
-        const methodMap = newMethod.isStatic() ? this.staticMethods : this.methods;
-        const methodsWithSameName = methodMap.get(methodName);
-        if (!methodsWithSameName || !ModelUtils.isLanguageOverloadSupport(this.getLanguage())) {
-            methodMap.set(methodName, [newMethod]);
+    private updateMethodIndex(newMethod: ArkMethod, sigID: number): void {
+        if (newMethod.isStatic()) {
+            if (!ModelUtils.isLanguageOverloadSupport(this.getLanguage())) {
+                // Non-overload languages: same-name methods replace each other. set() on an
+                // existing key keeps its insertion position, so the first-occurrence order
+                // of getMethods is stable across same-name re-adds.
+                this.setStaticMethodNameEntry(newMethod.getName(), sigID);
+            } else if (!this.replaceTopStaticMethodSigIDByMatch(newMethod)) {
+                this.appendStaticMethodNameEntry(newMethod.getName(), sigID);
+            }
             return;
         }
-
-        const newMethodSignature = newMethod.getSignature();
-        const matchIndex = methodsWithSameName.findIndex(
-            // CXXTodo: After the subsequent abstraction of BodyBuilder, this conditions need to be refactored.
-            preMtd => preMtd.getSignature().isMatch(newMethodSignature)
-        );
-
-        if (matchIndex === -1) {
-            methodsWithSameName.push(newMethod);
-        } else {
-            methodsWithSameName[matchIndex] = newMethod;
+        if (!ModelUtils.isLanguageOverloadSupport(this.getLanguage())) {
+            this.setMethodNameEntry(newMethod.getName(), sigID);
+        } else if (!this.replaceTopMethodSigIDByMatch(newMethod)) {
+            this.appendMethodNameEntry(newMethod.getName(), sigID);
         }
     }
 
@@ -593,7 +830,19 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of methods in the class.
      */
     public getMethodsWithName(methodName: string): ArkMethod[] {
-        return this.methods.get(methodName) ?? [];
+        const ids = this.methodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
+            return [];
+        }
+        const reg = this.registry;
+        const result: ArkMethod[] = [];
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                result.push(m);
+            }
+        }
+        return result;
     }
 
     /**
@@ -603,7 +852,19 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of methods in the class.
      */
     public getStaticMethodsWithName(methodName: string): ArkMethod[] {
-        return this.staticMethods.get(methodName) ?? [];
+        const ids = this.staticMethodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
+            return [];
+        }
+        const reg = this.registry;
+        const result: ArkMethod[] = [];
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                result.push(m);
+            }
+        }
+        return result;
     }
 
     /**
@@ -618,12 +879,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public setDefaultArkMethod(defaultMethod: ArkMethod): void {
-        this.defaultMethod = defaultMethod;
+        this.defaultMethodSigID = defaultMethod.getMethodSigID();
         this.addMethod(defaultMethod);
     }
 
     public getDefaultArkMethod(): ArkMethod | null {
-        return this.defaultMethod;
+        if (this.defaultMethodSigID === undefined) {
+            return null;
+        }
+        return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getModel(this.defaultMethodSigID) ?? null;
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -671,21 +935,47 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.viewTree !== undefined;
     }
 
-    public getStaticFields(_classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
-        return Array.from(this.staticFields.values());
+    /**
+     * Returns the static fields declared in this class.
+     * @returns An **array** of static fields.
+     */
+    public getStaticFields(): ArkField[];
+    /**
+     * @deprecated The `classMap` parameter has never been used by this method — it is
+     * a historical cross-class lookup input left over from the pre-ID era. Call the
+     * no-argument overload {@link getStaticFields} instead.
+     */
+    public getStaticFields(classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[];
+    public getStaticFields(_classMap?: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
+        const arr = this.topStaticFieldSigIDs;
+        if (!arr) {
+            return [];
+        }
+        const reg = this.registry;
+        const result: ArkField[] = [];
+        for (let i = 0; i < this.topStaticFieldCount; i++) {
+            const fld = reg.fieldSigCanonicalizer.getModel(arr[i]);
+            if (fld) {
+                result.push(fld);
+            }
+        }
+        return result;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getGlobalVariable(globalMap: Map<FileSignature | NamespaceSignature, Local[]>): Local[] {
-        if (this.declaringArkNamespace) {
-            return globalMap.get(this.declaringArkNamespace.getNamespaceSignature())!;
+        const ns = this.getDeclaringArkNamespace();
+        if (ns) {
+            return globalMap.get(ns.getNamespaceSignature())!;
         }
-        return globalMap.get(this.declaringArkFile.getFileSignature())!;
+        return globalMap.get(this.getDeclaringArkFile().getFileSignature())!;
     }
 
     public getAnonymousMethodNumber(): number {
         return this.anonymousMethodNumber++;
     }
 
+    /** @deprecated No callers remain in the codebase; no replacement. */
     public getIndexSignatureNumber(): number {
         return this.indexSignatureNumber++;
     }
@@ -694,42 +984,371 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return ExportType.CLASS;
     }
 
-    public getInstanceInitMethod(): ArkMethod {
-        return this.instanceInitMethod;
+    /** @internal Returns the instance init method, or null if not set. */
+    public getInstanceInitMethodOrNull(): ArkMethod | null {
+        if (this.instanceInitMethodSigID === undefined) {
+            return null;
+        }
+        return this.registry.methodSigCanonicalizer.getModel(this.instanceInitMethodSigID) ?? null;
     }
 
+    /** @internal Returns the static init method, or null if not set. */
+    public getStaticInitMethodOrNull(): ArkMethod | null {
+        if (this.staticInitMethodSigID === undefined) {
+            return null;
+        }
+        return this.registry.methodSigCanonicalizer.getModel(this.staticInitMethodSigID) ?? null;
+    }
+
+    /** @deprecated Use {@link getInstanceInitMethodOrNull} instead. */
+    public getInstanceInitMethod(): ArkMethod {
+        return this.getInstanceInitMethodOrNull() ?? new ArkMethod();
+    }
+
+    /** @deprecated Use {@link getStaticInitMethodOrNull} instead. */
     public getStaticInitMethod(): ArkMethod {
-        return this.staticInitMethod;
+        return this.getStaticInitMethodOrNull() ?? new ArkMethod();
     }
 
     public setInstanceInitMethod(arkMethod: ArkMethod): void {
-        this.instanceInitMethod = arkMethod;
+        this.instanceInitMethodSigID = arkMethod.getMethodSigID();
     }
 
     public setStaticInitMethod(arkMethod: ArkMethod): void {
-        this.staticInitMethod = arkMethod;
+        this.staticInitMethodSigID = arkMethod.getMethodSigID();
+    }
+
+    // --- Instance/static method name index ---
+
+    /** @internal Returns the instance method name index, or undefined if no instance methods exist. */
+    public getMethodNameIndex(): Map<string, number[]> | undefined {
+        return this.methodNameIndex;
+    }
+
+    /** @internal Returns the static method name index, or undefined if no static methods exist. */
+    public getStaticMethodNameIndex(): Map<string, number[]> | undefined {
+        return this.staticMethodNameIndex;
+    }
+
+    /** @internal Appends the SigID under the method name in the instance index. */
+    private appendMethodNameEntry(name: string, id: number): void {
+        const ids = this.methodNameIndex?.get(name);
+        if (ids !== undefined) {
+            ids.push(id);
+            return;
+        }
+        (this.methodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
+    }
+
+    /** @internal Appends the SigID under the method name in the static index. */
+    private appendStaticMethodNameEntry(name: string, id: number): void {
+        const ids = this.staticMethodNameIndex?.get(name);
+        if (ids !== undefined) {
+            ids.push(id);
+            return;
+        }
+        (this.staticMethodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
+    }
+
+    /**
+     * @internal Sets the instance method name entry to a single SigID. Overwrites any
+     * previous same-name entry; set() on an existing key preserves its insertion position
+     * (non-overload same-name replacement keeps the first-occurrence order).
+     */
+    private setMethodNameEntry(name: string, id: number): void {
+        (this.methodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
+    }
+
+    /**
+     * @internal Sets the static method name entry to a single SigID. See {@link setMethodNameEntry}.
+     */
+    private setStaticMethodNameEntry(name: string, id: number): void {
+        (this.staticMethodNameIndex ??= new Map<string, number[]>()).set(name, [id]);
+    }
+
+    /**
+     * @internal For overload-supported languages: replace the SigID of the same-signature
+     * instance method in place. Returns true if replaced.
+     */
+    private replaceTopMethodSigIDByMatch(newMethod: ArkMethod): boolean {
+        const index = this.methodNameIndex;
+        if (!index) {
+            return false;
+        }
+        const reg = this.registry;
+        const newSig = newMethod.getSignature();
+        const newID = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0];
+        if (newID === undefined) {
+            return false;
+        }
+        for (const ids of index.values()) {
+            for (let i = 0; i < ids.length; i++) {
+                const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                if (m && m.getSignature().isMatch(newSig)) {
+                    ids[i] = newID;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @internal For overload-supported languages: replace the SigID of the same-signature
+     * static method in place. Returns true if replaced.
+     */
+    private replaceTopStaticMethodSigIDByMatch(newMethod: ArkMethod): boolean {
+        const index = this.staticMethodNameIndex;
+        if (!index) {
+            return false;
+        }
+        const reg = this.registry;
+        const newSig = newMethod.getSignature();
+        const newID = newMethod.getMethodSigID() ?? newMethod.getDeclareSigIDs()?.[0];
+        if (newID === undefined) {
+            return false;
+        }
+        for (const ids of index.values()) {
+            for (let i = 0; i < ids.length; i++) {
+                const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+                if (m && m.getSignature().isMatch(newSig)) {
+                    ids[i] = newID;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** @internal Removes the SigID of one instance method from the index (exact ID match). Returns true if it was held. */
+    private removeTopMethodSigID(id: number): boolean {
+        const index = this.methodNameIndex;
+        if (!index) {
+            return false;
+        }
+        for (const [name, ids] of index) {
+            const i = ids.indexOf(id);
+            if (i >= 0) {
+                if (ids.length === 1) {
+                    index.delete(name);
+                } else {
+                    ids.splice(i, 1);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Removes the SigID of one static method from the index (exact ID match). Returns true if it was held. */
+    private removeTopStaticMethodSigID(id: number): boolean {
+        const index = this.staticMethodNameIndex;
+        if (!index) {
+            return false;
+        }
+        for (const [name, ids] of index) {
+            const i = ids.indexOf(id);
+            if (i >= 0) {
+                if (ids.length === 1) {
+                    index.delete(name);
+                } else {
+                    ids.splice(i, 1);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // --- Instance field SigID index ---
+
+    /** @internal Checks whether a field with the given SigID is a direct instance field. */
+    public hasTopFieldWithID(id: number): boolean {
+        const arr = this.topFieldSigIDs;
+        if (!arr) {
+            return false;
+        }
+        const count = this.topFieldCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Ensures the instance field Int32Array has at least minCapacity slots. */
+    private ensureTopFieldCapacity(minCapacity: number): void {
+        if (!this.topFieldSigIDs) {
+            this.topFieldSigIDs = new Int32Array(Math.max(minCapacity, 8));
+            return;
+        }
+        if (this.topFieldSigIDs.length < minCapacity) {
+            const newCapacity = Math.max(minCapacity, this.topFieldSigIDs.length * 2);
+            const newArray = new Int32Array(newCapacity);
+            newArray.set(this.topFieldSigIDs.subarray(0, this.topFieldCount));
+            this.topFieldSigIDs = newArray;
+        }
+    }
+
+    /** @internal Appends an instance field SigID to the index. */
+    private addTopFieldSigID(id: number): void {
+        this.ensureTopFieldCapacity(this.topFieldCount + 1);
+        this.topFieldSigIDs![this.topFieldCount++] = id;
+    }
+
+    /** @internal Removes an instance field SigID from the index (swap-remove). */
+    private removeTopFieldSigID(id: number): void {
+        const arr = this.topFieldSigIDs;
+        if (!arr) {
+            return;
+        }
+        const count = this.topFieldCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                arr[i] = arr[--this.topFieldCount];
+                return;
+            }
+        }
+    }
+
+    // --- Static field SigID index ---
+
+    /** @internal Checks whether a field with the given SigID is a direct static field. */
+    public hasTopStaticFieldWithID(id: number): boolean {
+        const arr = this.topStaticFieldSigIDs;
+        if (!arr) {
+            return false;
+        }
+        const count = this.topStaticFieldCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Ensures the static field Int32Array has at least minCapacity slots. */
+    private ensureTopStaticFieldCapacity(minCapacity: number): void {
+        if (!this.topStaticFieldSigIDs) {
+            this.topStaticFieldSigIDs = new Int32Array(Math.max(minCapacity, 8));
+            return;
+        }
+        if (this.topStaticFieldSigIDs.length < minCapacity) {
+            const newCapacity = Math.max(minCapacity, this.topStaticFieldSigIDs.length * 2);
+            const newArray = new Int32Array(newCapacity);
+            newArray.set(this.topStaticFieldSigIDs.subarray(0, this.topStaticFieldCount));
+            this.topStaticFieldSigIDs = newArray;
+        }
+    }
+
+    /** @internal Appends a static field SigID to the index. */
+    private addTopStaticFieldSigID(id: number): void {
+        this.ensureTopStaticFieldCapacity(this.topStaticFieldCount + 1);
+        this.topStaticFieldSigIDs![this.topStaticFieldCount++] = id;
+    }
+
+    /** @internal Removes a static field SigID from the index (swap-remove). */
+    private removeTopStaticFieldSigID(id: number): void {
+        const arr = this.topStaticFieldSigIDs;
+        if (!arr) {
+            return;
+        }
+        const count = this.topStaticFieldCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                arr[i] = arr[--this.topStaticFieldCount];
+                return;
+            }
+        }
+    }
+
+    // --- Extended class (subclass back-reference) SigID index ---
+
+    /** @internal Checks whether a class with the given ClassSigID is a direct subclass. */
+    public hasExtendedClassWithID(id: number): boolean {
+        const arr = this.extendedClassSigIDs;
+        if (!arr) {
+            return false;
+        }
+        const count = this.extendedClassCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Ensures the extended class Int32Array has at least minCapacity slots. */
+    private ensureExtendedClassCapacity(minCapacity: number): void {
+        if (!this.extendedClassSigIDs) {
+            this.extendedClassSigIDs = new Int32Array(Math.max(minCapacity, 8));
+            return;
+        }
+        if (this.extendedClassSigIDs.length < minCapacity) {
+            const newCapacity = Math.max(minCapacity, this.extendedClassSigIDs.length * 2);
+            const newArray = new Int32Array(newCapacity);
+            newArray.set(this.extendedClassSigIDs.subarray(0, this.extendedClassCount));
+            this.extendedClassSigIDs = newArray;
+        }
+    }
+
+    /** @internal Appends a subclass ClassSigID to the index. */
+    private addExtendedClassSigID(id: number): void {
+        this.ensureExtendedClassCapacity(this.extendedClassCount + 1);
+        this.extendedClassSigIDs![this.extendedClassCount++] = id;
+    }
+
+    /** @internal Removes a subclass ClassSigID from the index (swap-remove). */
+    private removeExtendedClassSigID(id: number): void {
+        const arr = this.extendedClassSigIDs;
+        if (!arr) {
+            return;
+        }
+        const count = this.extendedClassCount;
+        for (let i = 0; i < count; i++) {
+            if (arr[i] === id) {
+                arr[i] = arr[--this.extendedClassCount];
+                return;
+            }
+        }
     }
 
     public removeField(field: ArkField): boolean {
+        const id = field.getFieldSigID();
         if (field.isStatic()) {
-            return this.staticFields.delete(field.getName());
+            const rtn = this.hasTopStaticFieldWithID(id);
+            if (rtn) {
+                this.removeTopStaticFieldSigID(id);
+                this.registry.removeField(field);
+            }
+            return rtn;
         }
-        return this.fields.delete(field.getName());
+        const rtn = this.hasTopFieldWithID(id);
+        if (rtn) {
+            this.removeTopFieldSigID(id);
+            this.registry.removeField(field);
+        }
+        return rtn;
     }
 
     public removeMethod(method: ArkMethod): boolean {
+        // Remove exactly this method (by its index SigID), not all same-name siblings.
+        const id = method.getMethodSigID() ?? method.getDeclareSigIDs()?.[0] ?? -1;
         let rtn: boolean = false;
         if (method.isStatic()) {
-            rtn = this.staticMethods.delete(method.getName());
+            rtn = this.removeTopStaticMethodSigID(id);
         } else {
-            rtn = this.methods.delete(method.getName());
+            rtn = this.removeTopMethodSigID(id);
         }
-        rtn &&= this.getDeclaringArkFile().getScene().removeMethod(method);
+        rtn &&= this.registry.removeMethod(method);
         return rtn;
     }
 
     public validate(): ArkError {
-        return this.validateFields(['declaringArkFile', 'classSignature']);
+        return this.validateFields(['declaringFileID']);
     }
 
     public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {
@@ -749,28 +1368,49 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public clearAllReferences(): void {
-        for (const methods of this.methods.values()) {
-            for (const mtd of methods) { mtd.clearAllReferences(); }
+        const reg = this.registry;
+        const index = this.methodNameIndex;
+        if (index) {
+            for (const ids of index.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    reg.methodSigCanonicalizer.getModel(ids[i])?.clearAllReferences();
+                }
+            }
         }
-        for (const methods of this.staticMethods.values()) {
-            for (const mtd of methods) { mtd.clearAllReferences(); }
+        const staticIndex = this.staticMethodNameIndex;
+        if (staticIndex) {
+            for (const ids of staticIndex.values()) {
+                for (let i = 0; i < ids.length; i++) {
+                    reg.methodSigCanonicalizer.getModel(ids[i])?.clearAllReferences();
+                }
+            }
         }
-        for (const fld of this.fields.values()) { fld.clearAllReferences(); }
-        for (const fld of this.staticFields.values()) { fld.clearAllReferences(); }
-        if (this.instanceInitMethod) { this.instanceInitMethod.clearAllReferences(); }
-        if (this.staticInitMethod) { this.staticInitMethod.clearAllReferences(); }
-        this.methods.clear();
-        this.staticMethods.clear();
-        this.fields.clear();
-        this.staticFields.clear();
-        this.extendedClasses.clear();
+        for (const fld of this.getFields()) {
+            fld.clearAllReferences();
+        }
+        const instanceInit = this.getInstanceInitMethodOrNull();
+        if (instanceInit) {
+            instanceInit.clearAllReferences();
+        }
+        const staticInit = this.getStaticInitMethodOrNull();
+        if (staticInit) {
+            staticInit.clearAllReferences();
+        }
+        this.methodNameIndex = undefined;
+        this.staticMethodNameIndex = undefined;
+        this.topFieldSigIDs = undefined;
+        this.topFieldCount = 0;
+        this.topStaticFieldSigIDs = undefined;
+        this.topStaticFieldCount = 0;
+        this.extendedClassSigIDs = undefined;
+        this.extendedClassCount = 0;
         this.heritageClasses.clear();
         this.ts2cxxFuncMap.clear();
-        this.defaultMethod = null;
-        this.instanceInitMethod = undefined as unknown as ArkMethod;
-        this.staticInitMethod = undefined as unknown as ArkMethod;
+        this.defaultMethodSigID = undefined;
+        this.instanceInitMethodSigID = undefined;
+        this.staticInitMethodSigID = undefined;
         this.viewTree = undefined;
-        this.declaringArkFile = undefined as unknown as ArkFile;
-        this.declaringArkNamespace = undefined;
+        this.declaringFileID = -1;
+        this.declaringNamespaceSigID = undefined;
     }
 }

@@ -38,6 +38,5 @@ function buildScene(projectPath: string): Scene {
 
 const scene = buildScene('tests/resources/cfg/switch')
 const creater = new DummyMainCreater(scene);
-creater.createDummyMain();
-let d = creater.getDummyMain()
+let d = creater.createDummyMain();
 logger.info(d)

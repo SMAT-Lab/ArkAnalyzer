@@ -68,7 +68,7 @@ describe('SceneConfig Test', () => {
         console.log(config.getTargetProjectDirectory())
         assert.equal(config.getTargetProjectDirectory(), 'tests/resources/viewtree/project');
         assert.equal(config.getSdksObj().length, 1);
-    })
+    });
 
     it('config file does not exit case', () => {
         let config: SceneConfig = new SceneConfig();
@@ -76,5 +76,5 @@ describe('SceneConfig Test', () => {
         assert.equal(config.getTargetProjectName(), '');
         assert.equal(config.getTargetProjectDirectory(), '');
         assert.equal(config.getSdksObj().length, 0);
-    })
-})
+    });
+});

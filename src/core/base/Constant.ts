@@ -65,15 +65,21 @@ export class Constant implements Value {
 }
 
 export class BooleanConstant extends Constant {
-    private static readonly FALSE = new BooleanConstant(false);
-    private static readonly TRUE = new BooleanConstant(true);
+    // lazy 单例（非模块级静态初始化）：Constant 与 Type 互为 ESM 循环依赖，
+    // 模块级 new（构造期调用 BooleanType.getInstance()）会在 Type 未完成加载时炸；
+    // 延迟到首次 getInstance 调用（此时加载图已就绪）。
+    private static FALSE?: BooleanConstant;
+    private static TRUE?: BooleanConstant;
 
     constructor(value: boolean) {
         super(value.toString(), BooleanType.getInstance());
     }
 
     public static getInstance(value: boolean): BooleanConstant {
-        return value ? this.TRUE : this.FALSE;
+        if (value) {
+            return (this.TRUE ??= new BooleanConstant(true));
+        }
+        return (this.FALSE ??= new BooleanConstant(false));
     }
 }
 
@@ -96,25 +102,27 @@ export class StringConstant extends Constant {
 }
 
 export class NullConstant extends Constant {
-    private static readonly INSTANCE = new NullConstant();
+    // lazy 单例，理由同 BooleanConstant（ESM 循环依赖下模块级 new 不安全）
+    private static INSTANCE?: NullConstant;
 
     constructor() {
         super(NULL_KEYWORD, NullType.getInstance());
     }
 
     public static getInstance(): NullConstant {
-        return this.INSTANCE;
+        return (this.INSTANCE ??= new NullConstant());
     }
 }
 
 export class UndefinedConstant extends Constant {
-    private static readonly INSTANCE = new UndefinedConstant();
+    // lazy 单例，理由同 BooleanConstant（ESM 循环依赖下模块级 new 不安全）
+    private static INSTANCE?: UndefinedConstant;
 
     constructor() {
         super(UNDEFINED_KEYWORD, UndefinedType.getInstance());
     }
 
     public static getInstance(): UndefinedConstant {
-        return this.INSTANCE;
+        return (this.INSTANCE ??= new UndefinedConstant());
     }
 }

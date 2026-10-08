@@ -14,6 +14,7 @@
  */
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, CallSite, DynCallSite, FuncID, ICallSite } from '../model/CallGraph';
+import { SdkUtils } from '../../core/common/SdkUtils';
 import { Scene } from '../../Scene';
 import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
@@ -624,7 +625,7 @@ export class PagBuilder {
             if (value instanceof ArkNewExpr) {
                 return (value.getType() as ClassType).getClassSignature() as ClassSignature;
             }
-            return this.scene.getSdkGlobal('Array')!.getSignature() as ClassSignature;
+            return SdkUtils.getSdkGlobal('Array')!.getSignature() as ClassSignature;
         };
 
         const clsSig = getClassSignature(value);

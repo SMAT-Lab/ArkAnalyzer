@@ -18,9 +18,8 @@ import { ClassType, FunctionType, Type, UnknownType } from './Type';
 import { Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkExport, ExportType } from '../model/ArkExport';
-import { ClassSignature, LocalSignature, MethodSignature } from '../model/ArkSignature';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { NAME_PREFIX, UNKNOWN_METHOD_NAME } from '../common/Const';
+import { LocalSignature, MethodSignature } from '../model/ArkSignature';
+import { NAME_PREFIX } from '../common/Const';
 import { ModifierType } from '../model/ArkBaseModel';
 import { ArkMethod } from '../model/ArkMethod';
 import { ModelUtils } from '../common/ModelUtils';
@@ -68,24 +67,7 @@ export class Local implements Value, ArkExport {
         return this;
     }
 
-    /**
-     * Returns the name of local value.
-     * @returns The name of local value.
-     * @example
-     * 1. get the name of local value.
-
-     ```typescript
-     arkClass.getDefaultArkMethod()?.getBody().getLocals().forEach(local => {
-     const arkField = new ArkField();
-     arkField.setFieldType(ArkField.DEFAULT_ARK_Field);
-     arkField.setDeclaringClass(defaultClass);
-     arkField.setType(local.getType());
-     arkField.setName(local.getName());
-     arkField.genSignature();
-     defaultClass.addField(arkField);
-     });
-     ```
-     */
+    /** Returns the name of local value. */
     public getName(): string {
         return this.name;
     }
@@ -200,7 +182,7 @@ export class Local implements Value, ArkExport {
             this.signature ??
             new LocalSignature(
                 this.name,
-                new MethodSignature(ClassSignature.DEFAULT, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(UNKNOWN_METHOD_NAME))
+                MethodSignature.DEFAULT
             )
         );
     }

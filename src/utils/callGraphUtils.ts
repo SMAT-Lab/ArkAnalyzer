@@ -89,7 +89,7 @@ export class SceneManager {
             return targetMethod;
         }
         // 支持SDK调用解析
-        let file = this._scene.getFile(method.getDeclaringClassSignature().getDeclaringFileSignature());
+        let file = this._scene.getFile(method.getDeclaringClassSignature().getDeclaringFileSigID());
         if (file) {
             const methods = ModelUtils.getAllMethodsInFile(file);
             for (let methodUnderFile of methods) {
@@ -109,7 +109,7 @@ export class SceneManager {
         if (classInstance != null) {
             return classInstance;
         }
-        let sdkOrTargetProjectFile = this._scene.getFile(arkClass.getDeclaringFileSignature());
+        let sdkOrTargetProjectFile = this._scene.getFile(arkClass.getDeclaringFileSigID());
         // TODO: support get sdk class, targetProject class waiting to be supported
         if (sdkOrTargetProjectFile != null) {
             for (let classUnderFile of ModelUtils.getAllClassesInFile(sdkOrTargetProjectFile)) {
@@ -131,22 +131,20 @@ export class SceneManager {
             if (tempClass == null) {
                 continue;
             }
-            let firstLevelSubclasses: ArkClass[] = Array.from(tempClass.getExtendedClasses().values());
+            // 当前类处理完毕，标记为已处理
+            if (!isItemRegistered<ArkClass>(tempClass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
+                extendedClasses.push(tempClass);
+            }
 
+            let firstLevelSubclasses: ArkClass[] | null = tempClass.getExtendedClassList();
             if (!firstLevelSubclasses) {
                 continue;
             }
-
             for (let subclass of firstLevelSubclasses) {
                 if (!isItemRegistered<ArkClass>(subclass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
                     // 子类未处理，加入到classList
                     classList.push(subclass);
                 }
-            }
-
-            // 当前类处理完毕，标记为已处理
-            if (!isItemRegistered<ArkClass>(tempClass, extendedClasses, (a, b) => a.getSignature().toString() === b.getSignature().toString())) {
-                extendedClasses.push(tempClass);
             }
         }
         return extendedClasses;

@@ -102,15 +102,7 @@ export interface SceneLanguagesOptions {
     [option: string]: LanguageOptions | undefined;
 }
 
-export type SceneOptionsValue =
-    | string
-    | number
-    | boolean
-    | (string | number)[]
-    | string[]
-    | SceneLanguagesOptions
-    | null
-    | undefined;
+export type SceneOptionsValue = string | number | boolean | (string | number)[] | string[] | SceneLanguagesOptions | null | undefined;
 
 export interface SceneOptions {
     supportFileExts?: string[];
@@ -131,6 +123,13 @@ export interface SceneOptions {
     /** Max process memory (RSS) in MB; 0 or undefined disables memory monitoring.
      *  Internally converted to a heapUsed limit via RSS_TO_HEAPUSED_RATIO in MemoryMonitor. */
     memoryLimitMB?: number;
+    /** Internal dev-only validation of signature canonicalizer invariants (see CanonicalizerValidator).
+     *  Off by default; when on, all rule violations are collected and reported in full after type inference. */
+    validateCanonicalizers?: boolean;
+    /** Enable stage statistics (time + memory) collection during scene building and type inference. */
+    enableStatistics?: boolean;
+    /** Optional path for the auto-generated statistics report file. Defaults to out/<projectName>_statistics.txt. */
+    statisticsOutputPath?: string;
     [option: string]: SceneOptionsValue;
 }
 const CONFIG_FILENAME = 'arkanalyzer.json';

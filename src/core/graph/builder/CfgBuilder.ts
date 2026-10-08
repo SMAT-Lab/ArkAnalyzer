@@ -15,6 +15,7 @@
 
 import * as ts from 'ohos-typescript';
 import { ParameterDeclaration } from 'ohos-typescript';
+import { SdkUtils } from '../../common/SdkUtils';
 import { Local } from '../../base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
 import { BasicBlock } from '../BasicBlock';
@@ -1357,7 +1358,7 @@ export class CfgBuilder {
         }
         if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType && !this.declaringMethod.getAsteriskToken()) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
-                const promise = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
+                const promise = SdkUtils.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
                     this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
                 } else {

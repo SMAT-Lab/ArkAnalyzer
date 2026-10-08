@@ -61,6 +61,7 @@ export * from './core/common/TSConst';
 export { TypeInference } from './core/common/TypeInference';
 export { ValueUtil } from './core/common/ValueUtil';
 export { VisibleValue, Scope } from './core/common/VisibleValue';
+export { SignatureCanonicalizerRegistry } from './core/common/SignatureCanonicalizerRegistry';
 
 // core/dataflow
 export { ReachingDefProblem, ReachingDefTransferFunction } from './core/dataflow/ReachingDef';
@@ -96,6 +97,10 @@ export * from './core/model/builder/ArkSignatureBuilder';
 
 export { SceneConfig, SceneOptions, buildSceneConfigFromProject, LanguageOptions, SceneLanguagesOptions } from './Config';
 export { Scene } from './Scene';
+
+// statistics
+export { StageName, StageStatistics, StageStatisticsData, StageStatEntry, MemorySnapshot } from './statistics/StageStatistics';
+export { StageStatisticsReporter, StageStatisticsReport } from './statistics/StageStatisticsReporter';
 
 // frontends
 export { FrontendBuilder, FrontendParseFailure, FrontendParseResult } from './frontend/FrontendBuilder';

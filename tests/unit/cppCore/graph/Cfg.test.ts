@@ -23,6 +23,7 @@ import {
     getCxxSourceFileExtensions,
 } from '../../../../src';
 import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
+import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 import { afterEach, assert, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -98,6 +99,7 @@ afterEach(() => {
 // ---- Build helpers ----
 
 function buildScene(folderName: string): Scene {
+    SignatureCanonicalizerRegistry.dispose();
     vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
     const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     const includeDirs: string[] = [cxxIncludeDir, ...configSiteDirs];

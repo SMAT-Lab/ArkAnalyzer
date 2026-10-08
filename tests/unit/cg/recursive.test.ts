@@ -24,35 +24,35 @@ let sdk: Sdk = {
 };
 
 describe('recursive Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/callgraph/recursive');
-    config.getSdksObj().push(sdk);
-
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
-
-    let cg = new CallGraph(scene);
-    let cgBuilder = new CallGraphBuilder(cg, scene);
-    cgBuilder.buildDirectCallGraphForScene();
-
-    let mainFunc = scene.getMethods().filter(method => method.getName() === 'main')
-        .flatMap(method => {
-            const signature = method.getSignature();
-            return signature ? [signature] : [];
-        });
-
-    let reFunc = scene.getMethods().filter(method => method.getName() === 're')
-        .flatMap(method => {
-            const signature = method.getSignature();
-            return signature ? [signature] : [];
-        });
-
-    let cgCha = new CallGraph(scene);
-    let cgBuilderCha = new CallGraphBuilder(cgCha, scene);
-    cgBuilderCha.buildClassHierarchyCallGraph(mainFunc, false);
-
     it('case1', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/callgraph/recursive');
+        config.getSdksObj().push(sdk);
+
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+
+        let cg = new CallGraph(scene);
+        let cgBuilder = new CallGraphBuilder(cg, scene);
+        cgBuilder.buildDirectCallGraphForScene();
+
+        let mainFunc = scene.getMethods().filter(method => method.getName() === 'main')
+            .flatMap(method => {
+                const signature = method.getSignature();
+                return signature ? [signature] : [];
+            });
+
+        let reFunc = scene.getMethods().filter(method => method.getName() === 're')
+            .flatMap(method => {
+                const signature = method.getSignature();
+                return signature ? [signature] : [];
+            });
+
+        let cgCha = new CallGraph(scene);
+        let cgBuilderCha = new CallGraphBuilder(cgCha, scene);
+        cgBuilderCha.buildClassHierarchyCallGraph(mainFunc, false);
+
         let main = cgCha.getCallGraphNodeByMethod(mainFunc[0]).getID();
         let recusive = cgCha.getCallGraphNodeByMethod(reFunc[0]).getID();
 

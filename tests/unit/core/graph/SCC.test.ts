@@ -15,24 +15,28 @@
 
 import { SCCDetection, SceneConfig, Scene, CallGraph, CallGraphBuilder } from '../../../../src';
 import { BaseImplicitGraph } from '../../../../src/core/graph/BaseImplicitGraph';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir('./tests/resources/scc');
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypes();
+    let scc: SCCDetection<CallGraph>;
 
-    let cg = new CallGraph(projectScene);
-    let cgBuilder = new CallGraphBuilder(cg, projectScene);
-    cgBuilder.buildDirectCallGraphForScene();
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/scc');
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+        projectScene.inferTypes();
 
-    let scc = new SCCDetection<CallGraph>(cg);
-    scc.find();
-    let topo = scc.getTopoAndCollapsedNodeStack();
-    console.log(topo);
+        let cg = new CallGraph(projectScene);
+        let cgBuilder = new CallGraphBuilder(cg, projectScene);
+        cgBuilder.buildDirectCallGraphForScene();
+
+        scc = new SCCDetection<CallGraph>(cg);
+        scc.find();
+    });
+
     it('case1: patching interface', () => {
+        let topo = scc.getTopoAndCollapsedNodeStack();
         expect(topo.length).eq(4);
         expect(topo.reverse().toString()).eq('5,2,1,0'); //b,e,g,%dflt
         expect(Array.from(scc.getMySCCNodes(2)).toString()).eq('2,3,4,7'); //e,d,c,f

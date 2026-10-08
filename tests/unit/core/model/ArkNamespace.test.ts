@@ -13,20 +13,24 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { buildScene } from '../../common';
 import path from 'path';
 import {
     Basic_Namespace_Nested,
-    Continuous_Namespace_Nested, Continuous_Namespace_Nested_With_The_Same_Name,
+    Continuous_Namespace_Nested,
+    Continuous_Namespace_Nested_With_The_Same_Name,
     Namespaces_With_The_Same_Name,
 } from '../../../resources/model/namespace/NamespaceExpect';
 import { ArkFile, ArkNamespace } from '../../../../src';
 
 describe('namespace Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/namespace'));
+    let scene: ReturnType<typeof buildScene>;
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/namespace'));
+    });
     it('namespace with the same name', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'NamespacesWithTheSameName.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'NamespacesWithTheSameName.ts');
         assert.isDefined(arkFile);
 
         const namespaces = arkFile!.getNamespaces();
@@ -34,7 +38,7 @@ describe('namespace Test', () => {
     });
 
     it('basic namespace in namespace', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'Namespaces.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'Namespaces.ts');
         assert.isDefined(arkFile);
 
         const namespace = arkFile!.getNamespaceWithName('A');
@@ -43,7 +47,7 @@ describe('namespace Test', () => {
     });
 
     it('continuous namespace in namespace', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'Namespaces.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'Namespaces.ts');
         assert.isDefined(arkFile);
 
         const namespace = arkFile!.getNamespaceWithName('Foo');
@@ -52,7 +56,7 @@ describe('namespace Test', () => {
     });
 
     it('continuous namespace with the same name', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'Namespaces.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'Namespaces.ts');
         assert.isDefined(arkFile);
 
         const namespace = arkFile!.getNamespaceWithName('C');
@@ -65,7 +69,7 @@ function assertNamespacesEqual(namespaces: ArkNamespace[], expectNamespaces: any
     assert.deepEqual(namespaces.length, expectNamespaces.length);
     for (const expectNamespace of expectNamespaces) {
         const expectNamespaceName = expectNamespace.namespaceName;
-        const namespace = namespaces.find((namespace) => namespace.getName() === expectNamespaceName);
+        const namespace = namespaces.find(namespace => namespace.getName() === expectNamespaceName);
         assert.isDefined(namespace);
         assertNamespaceEqual(namespace!, expectNamespace);
     }
@@ -94,7 +98,7 @@ function assertNamespaceEqual(namespace: ArkNamespace, expectNamespace: any): vo
     assert.deepEqual(classes.length, expectClasses.length);
     for (const expectClass of expectClasses) {
         const expectClassName = expectClass.className;
-        const arkClass = classes.find((arkClass) => arkClass.getName() === expectClassName);
+        const arkClass = classes.find(arkClass => arkClass.getName() === expectClassName);
         assert.isDefined(arkClass);
         assert.deepEqual(arkClass!.getSignature().toString(), expectClass.classSignature);
     }
@@ -104,13 +108,17 @@ function assertNamespaceEqual(namespace: ArkNamespace, expectNamespace: any): vo
 }
 
 describe('ArkNamespace Source Code and Position Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'method.ts');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ArkFile | undefined;
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/method'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'method.ts');
+    });
 
     it('test getOriginFullPositions for ConstructorTest namespace', async () => {
         const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
         assert.isDefined(namespace);
-        
+
         const positions = namespace!.getOriginFullPositions();
         expect(positions.length).eq(1);
         expect(positions[0].getFirstLine()).eq(227);
@@ -154,7 +162,7 @@ describe('ArkNamespace Source Code and Position Test', () => {
     it('test getLineColPairs for ConstructorTest namespace', async () => {
         const namespace = arkFile?.getNamespaceWithName('ConstructorTest');
         assert.isDefined(namespace);
-        
+
         const lineColPairs = namespace!.getLineColPairs();
         expect(lineColPairs.length).eq(1);
         expect(lineColPairs[0][0]).eq(227);

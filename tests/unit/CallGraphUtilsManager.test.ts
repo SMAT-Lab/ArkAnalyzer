@@ -16,7 +16,7 @@
 import { SceneConfig } from '../../src/Config';
 import { ClassSignature, FileSignature, MethodSignature } from '../../src/core/model/ArkSignature';
 import { MethodSignatureManager, printCallGraphDetails, SceneManager } from '../../src/utils/callGraphUtils';
-import { assert, describe, expect, it, vi } from 'vitest';
+import { assert, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Scene } from '../../src/Scene';
 import path from 'path';
 import { ArkSignatureBuilder } from '../../src/core/model/builder/ArkSignatureBuilder';
@@ -49,11 +49,16 @@ describe("MethodSignatureManager Test", () => {
 
 
 describe("SceneManager Test", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, "../../src/core/dataflow"));
-    let sceneManager = new SceneManager();
-    sceneManager.scene = new Scene();
-    sceneManager.scene.buildSceneFromProjectDir(config);
+    let sceneManager: SceneManager;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, "../../src/core/dataflow"));
+        sceneManager = new SceneManager();
+        sceneManager.scene = new Scene();
+        sceneManager.scene.buildSceneFromProjectDir(config);
+    });
+
     it('get Method case', () => {
         let ms = ArkSignatureBuilder.buildMethodSignatureFromMethodName(UNKNOWN_METHOD_NAME);
         assert.isNull(sceneManager.getMethod(ms));
@@ -77,7 +82,6 @@ describe("SceneManager Test", () => {
 })
 
 describe("MethodSignatureManager Test", () => {
-
     it('normal case', () => {
         let set = new Set<MethodSignature>();
         let ms = ArkSignatureBuilder.buildMethodSignatureFromMethodName(UNKNOWN_METHOD_NAME);

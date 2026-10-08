@@ -14,7 +14,7 @@
  */
 
 import { Scene, SceneConfig, SourceClassPrinter, SourceFilePrinter, SourceNamespacePrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const CASE1_EXPECT = `@Component
@@ -67,7 +67,7 @@ const CASE2_EXPECT = `namespace Case2 {
     build(): void {
       Column() {
         // Pass the this.label reference to the overBuilder component when the overBuilder component is called in the Parent component.
-        overBuilder({paramA1: this.label});
+        %unk.overBuilder({paramA1: this.label});
         Button('Click me')
         .onClick((): void => {
         // After Click me is clicked, the UI text changes from Hello to ArkUI.
@@ -93,7 +93,7 @@ const CASE3_EXPECT = `namespace Case3 {
     label: string = 'Hello';
     build(): void {
       Column() {
-        overBuilder(this.label);
+        %unk.overBuilder(this.label);
       }
     }
   }
@@ -207,7 +207,7 @@ struct BuilderParamTest {
     Column() {
       CustomContainer({header: this.text}) {
       Column() {
-        specificParam('testA', 'testB');
+        %unk.specificParam('testA', 'testB');
       }
       .backgroundColor(Color.Yellow)
       .onClick((): void => {
@@ -317,14 +317,18 @@ export default class SongItemBuilder {
 `;
 
 describe('SourceViewTreeTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/viewtree'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferSimpleTypes();
+    let scene: Scene;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/viewtree'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferSimpleTypes();
+    });
 
     it('case1: class build', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('BuilderTest.ets');
         });
 
@@ -339,7 +343,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case2: class Decorator', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('BuilderTest.ets');
         });
 
@@ -354,7 +358,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case3: class Decorator', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('BuilderTest.ets');
         });
 
@@ -369,7 +373,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case4: LazyForEachTest', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('LazyForEachTest.ets');
         });
 
@@ -385,7 +389,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case5: IfTest', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('IfElseTest1.ets');
         });
 
@@ -401,7 +405,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case6: BuilderParam', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('BuilderParamTest.ets');
         });
 
@@ -417,7 +421,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case7: BuilderParam ns', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('BuilderParamTest.ets');
         });
 
@@ -432,7 +436,7 @@ describe('SourceViewTreeTest', () => {
     });
 
     it('case8: normal build', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('SongItemBuilder.ets');
         });
         if (!arkfile) {

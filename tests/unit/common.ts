@@ -14,15 +14,8 @@
  */
 
 import {
-    ArkMethod,
-    BasicBlock,
-    DEFAULT_ARK_CLASS_NAME,
-    DEFAULT_ARK_METHOD_NAME,
-    FullPosition,
-    ModelUtils,
-    Scene,
-    SceneConfig,
-    Stmt,
+    ArkMethod, BasicBlock, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, FullPosition, ModelUtils, Scene, SceneConfig,
+    SignatureCanonicalizerRegistry, Stmt,
 } from '../../src';
 import { assert, expect } from 'vitest';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
@@ -38,8 +31,8 @@ interface ReachingDefExpectSolution {
     out: ReachingDefNodeMap;
 }
 
-
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {
+    SignatureCanonicalizerRegistry.dispose();
     const config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(projectPath);
     const scene = new Scene();
@@ -51,7 +44,7 @@ export function buildScene(projectPath: string, needInferTypes: boolean = true) 
 }
 
 export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
     if (!arkFile) {
         assert.isDefined(arkFile);
         return;
@@ -59,7 +52,7 @@ export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: a
     const methods = ModelUtils.getAllMethodsInFile(arkFile);
     for (const expectMethod of expectFileStmts.methods) {
         const expectMethodName = expectMethod.name;
-        const method = methods.find((method) => method.getName() === expectMethodName);
+        const method = methods.find(method => method.getName() === expectMethodName);
         if (!method) {
             assert.isDefined(method);
             continue;
@@ -73,12 +66,19 @@ export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: a
     }
 }
 
-export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any[],
+export function testMethodStmts(
+    scene: Scene,
+    fileName: string,
+    expectStmts: any[],
     className: string = DEFAULT_ARK_CLASS_NAME,
-    methodName: string = DEFAULT_ARK_METHOD_NAME, assertPos: boolean = true): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
-    const arkMethod = arkFile?.getClassWithName(className)?.getMethods(true)
-        .find((method) => (method.getName() === methodName));
+    methodName: string = DEFAULT_ARK_METHOD_NAME,
+    assertPos: boolean = true
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(fileName));
+    const arkMethod = arkFile
+        ?.getClassWithName(className)
+        ?.getMethods(true)
+        .find(method => method.getName() === methodName);
     const stmts = arkMethod?.getCfg()?.getStmts();
     if (!stmts) {
         assert.isDefined(stmts);
@@ -87,20 +87,29 @@ export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any
     assertStmtsEqual(stmts, expectStmts, assertPos);
 }
 
-export function testMethodIR(scene: Scene, fileName: string, className: string = DEFAULT_ARK_CLASS_NAME,
-    methodName: string = DEFAULT_ARK_METHOD_NAME, expectMethodIR: string): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
-    const arkMethod = arkFile?.getClassWithName(className)?.getMethods()
-        .find((method) => (method.getName() === methodName));
+export function testMethodIR(
+    scene: Scene,
+    fileName: string,
+    className: string = DEFAULT_ARK_CLASS_NAME,
+    methodName: string = DEFAULT_ARK_METHOD_NAME,
+    expectMethodIR: string
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(fileName));
+    const arkMethod = arkFile
+        ?.getClassWithName(className)
+        ?.getMethods()
+        .find(method => method.getName() === methodName);
     assert.isDefined(arkMethod);
     const printer = new ArkIRMethodPrinter(arkMethod!);
     expect(printer.dump()).toEqual(expectMethodIR);
 }
 
 export function testBlocks(scene: Scene, filePath: string, methodName: string, expectBlocks: any[]): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods()
-        .find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -113,18 +122,10 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
 }
 
 /** Like testBlocks, but selects the method by MethodSubSignature.toString() (e.g. PrintInfo(int)). */
-export function testBlocksWithSignature(
-    scene: Scene,
-    filePath: string,
-    className: string,
-    methodSubSignature: string,
-    expectBlocks: any[]
-): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkClass = className ? arkFile?.getClassWithName(className) ?? undefined : arkFile?.getDefaultClass();
-    const arkMethod = arkClass?.getMethods().find(
-        (method) => method.getSubSignature().toString() === methodSubSignature
-    );
+export function testBlocksWithSignature(scene: Scene, filePath: string, className: string, methodSubSignature: string, expectBlocks: any[]): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass = className ? (arkFile?.getClassWithName(className) ?? undefined) : arkFile?.getDefaultClass();
+    const arkMethod = arkClass?.getMethods().find(method => method.getSubSignature().toString() === methodSubSignature);
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -137,9 +138,11 @@ export function testBlocksWithSignature(
 }
 
 export function testReachingDef(scene: Scene, filePath: string, methodName: string, expectSolution: ReachingDefExpectSolution): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods()
-        .find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     assert(arkFile);
     assert(arkMethod);
     assert(expectSolution && expectSolution.in && expectSolution.out);
@@ -158,9 +161,7 @@ export function testReachingDef(scene: Scene, filePath: string, methodName: stri
 
     reachingDefSolution.out.forEach((defs, nodeId) => {
         const actual = defs ? Array.from(defs).join(', ') : '';
-        assert(
-            expectSolution.out && Object.prototype.hasOwnProperty.call(expectSolution.out, nodeId)
-        );
+        assert(expectSolution.out && Object.prototype.hasOwnProperty.call(expectSolution.out, nodeId));
         const expected = expectSolution.out[nodeId];
         assert(actual === expected);
     });
@@ -239,9 +240,7 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
         }
         if (expectStmts[i].originalPosition !== undefined) {
             const originalPosition = stmts[i].getOriginPositionInfo();
-            const actualOriginalPosition = originalPosition === undefined ? undefined : [
-                originalPosition.getLineNo(), originalPosition.getColNo(),
-            ];
+            const actualOriginalPosition = originalPosition === undefined ? undefined : [originalPosition.getLineNo(), originalPosition.getColNo()];
             expect(actualOriginalPosition).toEqual(expectStmts[i].originalPosition);
         }
 
@@ -255,9 +254,12 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
         for (const operand of stmts[i].getDefAndUses()) {
             const operandOriginalPosition = stmts[i].getOperandOriginalPosition(operand);
             if (operandOriginalPosition) {
-                operandOriginalPositions.push(
-                    [operandOriginalPosition.getFirstLine(), operandOriginalPosition.getFirstCol(),
-                    operandOriginalPosition.getLastLine(), operandOriginalPosition.getLastCol()]);
+                operandOriginalPositions.push([
+                    operandOriginalPosition.getFirstLine(),
+                    operandOriginalPosition.getFirstCol(),
+                    operandOriginalPosition.getLastLine(),
+                    operandOriginalPosition.getLastCol(),
+                ]);
             } else {
                 operandOriginalPositions.push(operandOriginalPosition);
             }
@@ -276,14 +278,11 @@ export function fullPositionArray2String(fullPositions: FullPosition[]): string 
     return `[${positions.join(', ')}]`;
 }
 
-export function testBlocksClass(
-    scene: Scene, filePath: string, className: string, expectBlocks: any, namespaceName?: string, isCheckOverload?: boolean
-): void {
+export function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, namespaceName?: string, isCheckOverload?: boolean): void {
     const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkClass =
-        namespaceName ?
-        arkFile?.getNamespaceWithName(namespaceName)?.getClassWithName(className) :
-        arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
+    const arkClass = namespaceName
+        ? arkFile?.getNamespaceWithName(namespaceName)?.getClassWithName(className)
+        : arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
     const classBlockMap = new Map<String, BasicBlock[]>();
     for (const block of expectBlocks.blocks) {
         classBlockMap.set(block.methodName, block.blocks);

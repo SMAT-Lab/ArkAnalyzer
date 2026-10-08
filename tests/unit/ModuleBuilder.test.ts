@@ -23,6 +23,7 @@ import { ModuleDepGraph, DependencyType } from '../../src/core/graph/ModuleDepGr
 import { ModuleDepthLevel } from '../../src/frontend/common/ModuleDepth';
 import { ArkFile } from '../../src/core/model/ArkFile';
 import { Scene, SceneBuildStage } from '../../src/Scene';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 import { Canonicalizer } from '../../src/utils/Canonicalizer';
 import { SparseBitVector } from '../../src/utils/SparseBitVector';
 import type { Sdk } from '../../src/Config';
@@ -59,6 +60,9 @@ function makeLoadModuleSceneStub(): Scene {
     (scene as unknown as { getFileLanguages: () => Map<string, unknown> }).getFileLanguages = () => new Map();
     (scene as unknown as { getProjectName: () => string }).getProjectName = () => 'test-project';
     (scene as unknown as { setFile: (file: ArkFile) => void }).setFile = (file: ArkFile) => {
+        // Keep the real setFile contract (scene + projectFile flag); only the filesMap bookkeeping is stubbed.
+        file.setScene(scene);
+        file.setProjectFile(true);
         filesMap.set(file.getFileSignature().toMapKey(), file);
     };
     (scene as unknown as { getSceneConfig: () => undefined }).getSceneConfig = () => undefined;
@@ -1437,6 +1441,52 @@ describe('ModuleBuilder tests', () => {
             }
         });
 
+        it('unload evicts field models and reload restores them via addField fallback', () => {
+            // P0 专项：disposeModule 补的 field 清理 + reload 自愈闭环（addField 兜底注册）。
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-field-'));
+            try {
+                const modulePath = path.join(tmpDir, 'entry');
+                fs.mkdirSync(modulePath, { recursive: true });
+                // 声明一个带字段的类，构建后有 formal field model。
+                fs.writeFileSync(path.join(modulePath, 'a.ets'), 'export class FieldHost { x: number = 1; }\n');
+                SignatureCanonicalizerRegistry.dispose();
+                const scene = makeLoadModuleSceneStub();
+                const builder = new ModuleBuilder(scene);
+                const module = builder.registerModule(modulePath, '@ohos/entry');
+                const moduleId = builder.getModuleId(module);
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+
+                const reg = SignatureCanonicalizerRegistry.getInstance();
+                const collectFieldModels = (): Map<number, unknown> => {
+                    const models = new Map<number, unknown>();
+                    const size = reg.fieldSigCanonicalizer.size();
+                    for (let id = 1; id < size; id++) {
+                        const model = reg.fieldSigCanonicalizer.getModel(id);
+                        if (model !== undefined) {
+                            models.set(id, model);
+                        }
+                    }
+                    return models;
+                };
+                const before = collectFieldModels();
+                expect(before.size).toBeGreaterThan(0);
+
+                builder.unload(moduleId);
+                expect(module.getLoadState()).toBe(ModuleLoadState.NOT_LOADED);
+                // P0：unload 后 field model 全清（驱逐窗口——sig 留、model 无）。
+                expect(collectFieldModels().size).toBe(0);
+
+                builder.loadModule(moduleId, ModuleDepthLevel.SIGNATURES);
+                expect(module.getLoadState()).toBe(ModuleLoadState.SIGNATURES);
+                // reload 自愈：addField 兜底注册恢复 field model。
+                expect(collectFieldModels().size).toBeGreaterThan(0);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+                SignatureCanonicalizerRegistry.dispose();
+                SignatureCanonicalizerRegistry.getInstance();
+            }
+        });
+
         it('unload skips SDK modules', () => {
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-sdk-'));
             try {
@@ -1455,6 +1505,9 @@ describe('ModuleBuilder tests', () => {
         });
 
         it('unload cleans Scene global indices via disposeModule and sets arkModule back-reference', () => {
+            // Isolate from earlier cases in this file: they share the global registry without
+            // disposing, which would pollute the getFiles() count below.
+            SignatureCanonicalizerRegistry.dispose();
             const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mm-unload-dispose-'));
             try {
                 const modulePath = path.join(tmpDir, 'entry');

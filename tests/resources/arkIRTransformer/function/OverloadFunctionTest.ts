@@ -62,3 +62,10 @@ function function6(x: number): number {
 function function7(x: number): number {
     return x;
 }
+
+// Declaration and implementation with DIFFERENT parameter names (same types).
+// The implementation side is the authority for body-local generation.
+function function8(x: number): number;
+function function8(implX: number): number {
+    return implX;
+}

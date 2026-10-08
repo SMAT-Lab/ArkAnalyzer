@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import {
     ArkAssignStmt,
     ArkClass,
+    ArkInstanceInvokeExpr,
     ArkMethod,
     ClassSignature,
     ClassType,
@@ -30,6 +31,7 @@ import {
 } from '../../../../src';
 import path from 'path';
 import { assertStmtsEqual, buildScene, fullPositionArray2String } from '../../common';
+import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 import {
     Class_With_Static_Init_Block_Expect,
     ClassWithFieldAndConstructor,
@@ -86,17 +88,21 @@ function checkAllMethodsLocalDef(arkClass: ArkClass): void {
 }
 
 describe('ArkClass Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+    });
 
     it('get method with matched signature', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'class.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
         const arkClass = arkFile?.getClassWithName('TestClass');
         const arkMethod = arkClass?.getMethodWithName('testMethod');
 
         assert.isNotNull(arkClass);
         assert.isDefined(arkMethod);
         assert.isNotNull(arkMethod);
-        const matchedSignature = new MethodSignature((arkClass as ArkClass).getSignature(), (arkMethod as ArkMethod).getSubSignature());
+        const matchedSignature = new MethodSignature((arkClass as ArkClass).getClassSigID(), (arkMethod as ArkMethod).getSubSignature());
         const method = arkClass?.getMethod(matchedSignature);
         assert.isDefined(method);
         assert.isNotNull(method);
@@ -104,7 +110,7 @@ describe('ArkClass Test', () => {
     });
 
     it('get method with unmatched signature', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'class.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
         const arkClass = arkFile?.getClassWithName('TestClass');
         const arkMethod = arkClass?.getMethodWithName('testMethod');
 
@@ -112,13 +118,16 @@ describe('ArkClass Test', () => {
         assert.isDefined(arkMethod);
         assert.isNotNull(arkMethod);
         const clsSignature = new ClassSignature('newClass', (arkClass as ArkClass).getDeclaringArkFile().getFileSignature());
-        const unmatchedSignature = new MethodSignature(clsSignature, (arkMethod as ArkMethod).getSubSignature());
+        const unmatchedSignature = new MethodSignature(
+            SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getOrCreateId(clsSignature),
+            (arkMethod as ArkMethod).getSubSignature()
+        );
         const method = arkClass?.getMethod(unmatchedSignature);
         assert.isNull(method);
     });
 
     it('static block', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithStaticInitBlock.ts');
         assert.isDefined(arkFile);
 
         const staticInitNamePrefix = '%stat';
@@ -153,7 +162,7 @@ describe('ArkClass Test', () => {
     });
 
     it('init methods should record used globals from field initializers', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithStaticInitBlock.ts');
         assert.isDefined(arkFile);
 
         const expectGlobalRecorded = (className: string, globalName: string): void => {
@@ -172,7 +181,7 @@ describe('ArkClass Test', () => {
             expect(method).toBeDefined();
             expect(method).toBeInstanceOf(GlobalRef);
         };
-        
+
         expectGlobalRecorded('Case4', 'globalClassField');
         expectGlobalRecorded('Case5', 'forwardGlobalClassField');
         expectGlobalRecorded('Case6', 'importedGlobalClassField');
@@ -182,7 +191,7 @@ describe('ArkClass Test', () => {
     });
 
     it('unused globals should not be recorded in init method usedGlobals', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithStaticInitBlock.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithStaticInitBlock.ts');
         assert.isDefined(arkFile);
         const classCase4 = arkFile!.getClassWithName('Case4');
         assert.isTrue(classCase4 instanceof ArkClass);
@@ -199,7 +208,7 @@ describe('ArkClass Test', () => {
     });
 
     it('stmt cfg', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'class.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
         const arkClass = arkFile?.getClassWithName('TestClass');
 
         assert.isDefined(arkClass);
@@ -210,8 +219,13 @@ describe('ArkClass Test', () => {
 });
 
 describe('ArkClass Constructor and Init Method Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithConstructor.ts');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ReturnType<typeof scene.getFiles>[number] | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithConstructor.ts');
+    });
 
     it('class with generated constructor', async () => {
         const arkClass = arkFile?.getClassWithName('ClassWithNoConstructor');
@@ -275,8 +289,13 @@ describe('ArkClass Constructor and Init Method Test', () => {
 });
 
 describe('ArkClass with Other Category Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithOtherCategory.ts');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ReturnType<typeof scene.getFiles>[number] | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithOtherCategory.ts');
+    });
 
     it('interface class', async () => {
         const arkClass = arkFile?.getClassWithName('TestInterface');
@@ -394,8 +413,13 @@ describe('ArkClass with Other Category Test', () => {
 });
 
 describe('ArkClass with Heritage Class Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithHeritage.ts');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ReturnType<typeof scene.getFiles>[number] | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithHeritage.ts');
+    });
 
     it('extended class without constructor', async () => {
         const arkClass = arkFile?.getClassWithName('A');
@@ -490,13 +514,16 @@ describe('ArkClass with Heritage Class Test', () => {
 
         assert.isAtLeast(stmts!.length, 3);
         assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
-        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        // B1 (round10): super.foo() keeps the 'super' base (the historical super→this
+        // normalization removed) — the IR now preserves the super-vs-this distinction.
+        assert.equal(stmts![2].toString(), 'instanceinvoke super.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
         assert.isDefined(thisLocalStmts);
-        assert.isAtLeast(thisLocalStmts!.length, 2);
+        // Only the this.foo() statement stays on this's use chain (super.foo() no longer
+        // normalized onto it).
+        assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
-        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
         assert.isUndefined(superLocal);
@@ -509,13 +536,15 @@ describe('ArkClass with Heritage Class Test', () => {
 
         assert.isAtLeast(stmts!.length, 3);
         assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
-        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        // B1 (round10): super.foo() keeps the 'super' base and resolves the member from
+        // the base class (declaring C — the correct super lookup semantics).
+        assert.equal(stmts![2].toString(), 'instanceinvoke super.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
         assert.isDefined(thisLocalStmts);
-        assert.isAtLeast(thisLocalStmts!.length, 2);
+        // Only the this.foo() statement stays on this's use chain.
+        assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
-        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
 
         const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
         assert.isUndefined(superLocal);
@@ -542,10 +571,14 @@ describe('ArkClass with Heritage Class Test', () => {
 });
 
 describe('Object Literal Generated ArkClass Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/arkIRTransformer/expression'));
+    });
 
     it('object literal generates accurate ArkClass structure', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'ObjectLiteralExpressionTest.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ObjectLiteralExpressionTest.ts');
         assert.isDefined(arkFile);
 
         const testMethod = arkFile?.getDefaultClass().getMethodWithName('createLiteralInMethod');
@@ -561,8 +594,8 @@ describe('Object Literal Generated ArkClass Test', () => {
         assert.isNotNull(objClass);
 
         const fields = objClass!.getFields();
-        expect(fields.map((field) => field.getName())).toEqual(['leftValue', 'rightValue']);
-        expect(fields.map((field) => field.getType().toString())).toEqual(['number', 'number']);
+        expect(fields.map(field => field.getName())).toEqual(['leftValue', 'rightValue']);
+        expect(fields.map(field => field.getType().toString())).toEqual(['number', 'number']);
 
         const instInitStmts = objClass!.getInstanceInitMethod().getCfg()?.getStmts();
         assert.isDefined(instInitStmts);
@@ -573,14 +606,12 @@ describe('Object Literal Generated ArkClass Test', () => {
         const constructorStmts = objClass!.getMethodWithName(CONSTRUCTOR_NAME)?.getCfg()?.getStmts();
         assert.isDefined(constructorStmts);
         expect(constructorStmts?.length).toEqual(3);
-        expect(constructorStmts?.[1].toString()).toEqual(
-            `instanceinvoke this.<@expression/ObjectLiteralExpressionTest.ts: ${objClassName}.%instInit()>()`
-        );
+        expect(constructorStmts?.[1].toString()).toEqual(`instanceinvoke this.<@expression/ObjectLiteralExpressionTest.ts: ${objClassName}.%instInit()>()`);
         expect(constructorStmts?.[2].toString()).toEqual('return this');
     });
 
     it('object literal with parameter field access generates accurate ArkClass structure', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'ObjectLiteralExpressionTest.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ObjectLiteralExpressionTest.ts');
         assert.isDefined(arkFile);
 
         const fooMethod = arkFile?.getDefaultClass().getMethodWithName('createLiteralFromOtherClassField');
@@ -596,25 +627,68 @@ describe('Object Literal Generated ArkClass Test', () => {
         assert.isNotNull(objClass);
 
         const fields = objClass!.getFields();
-        expect(fields.map((field) => field.getName())).toEqual(['targetValue']);
-        expect(fields.map((field) => field.getType().toString())).toEqual(['number']);
+        expect(fields.map(field => field.getName())).toEqual(['targetValue']);
+        expect(fields.map(field => field.getType().toString())).toEqual(['number']);
 
         const stmts = fooMethod?.getCfg()?.getStmts();
         assert.isDefined(stmts);
-        const fieldLoadStmt = stmts?.find((stmt) => stmt.toString().includes(': SourceFieldHolder.sourceValue>')) as ArkAssignStmt | undefined;
-        const fieldAssignStmt = stmts?.find((stmt) => stmt.toString().includes('.targetValue> =')) as ArkAssignStmt | undefined;
+        const fieldLoadStmt = stmts?.find(stmt => stmt.toString().includes(': SourceFieldHolder.sourceValue>')) as ArkAssignStmt | undefined;
+        const fieldAssignStmt = stmts?.find(stmt => stmt.toString().includes('.targetValue> =')) as ArkAssignStmt | undefined;
         assert.isDefined(fieldLoadStmt);
         assert.isDefined(fieldAssignStmt);
         assert.isTrue(fieldLoadStmt?.getLeftOp() instanceof Local);
         assert.equal(fieldAssignStmt?.getRightOp(), fieldLoadStmt?.getLeftOp());
     });
+
+    it('object literal method properties are indexed and resolvable (A2: arkMethods fill)', async () => {
+        const arkFile = scene.getFiles().find(file => file.getName() === 'ObjectLiteralMethodTest.ts');
+        assert.isDefined(arkFile);
+
+        const buildCounter = arkFile?.getDefaultClass().getMethodWithName('buildCounter');
+        assert.isDefined(buildCounter);
+        const counterLocal = buildCounter?.getBody()?.getLocals().get('counter');
+        assert.isDefined(counterLocal);
+        assert.isTrue(counterLocal!.getType() instanceof ClassType);
+
+        const objClassName = (counterLocal!.getType() as ClassType).getClassSignature().getClassName();
+        const objClass = arkFile?.getClassWithName(objClassName);
+        assert.isDefined(objClass);
+        assert.isNotNull(objClass);
+
+        // A2 (round10): method properties reach addMethod finalization — they appear in
+        // getMethods() and the name index (previously the arkMethods array was never
+        // filled, leaving getMethodWithName/findPropertyInClass/round29 normalization
+        // blind on object-literal method properties and the dump omitting them).
+        expect(objClass!.getMethods().map(m => m.getName())).toEqual(['increment', 'double']);
+        assert.isDefined(objClass!.getMethodWithName('increment'));
+        assert.isDefined(objClass!.getMethodWithName('double'));
+
+        // this.increment() inside double(): the round29 normalization now matches the
+        // unique same-name method — direct formal signature, no temp stub.
+        const doubleStmts = objClass!.getMethodWithName('double')?.getCfg()?.getStmts();
+        assert.isDefined(doubleStmts);
+        const incrementInvokes = doubleStmts!
+            .map(stmt => (stmt.getExprs() ?? []).find(expr => expr instanceof ArkInstanceInvokeExpr))
+            .filter((expr): expr is ArkInstanceInvokeExpr => expr instanceof ArkInstanceInvokeExpr);
+        expect(incrementInvokes.length).toEqual(2);
+        for (const invoke of incrementInvokes) {
+            expect(invoke.getMethodSigID()).toBeGreaterThan(0);
+            expect(invoke.getMethodSignature().toString()).toEqual(
+                `@expression/ObjectLiteralMethodTest.ts: ${objClassName}.increment()`
+            );
+        }
+    });
 });
 
 describe('New Class Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+    let scene: ReturnType<typeof buildScene>;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+    });
 
     it('new class ir', async () => {
-        const arkFile = scene.getFiles().find((file) => file.getName() === 'class.ts');
+        const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
 
         const defaultMethod = arkFile?.getDefaultClass().getDefaultArkMethod();
         assert.isDefined(defaultMethod);
@@ -629,8 +703,10 @@ describe('New Class Test', () => {
         const defaultStmts = defaultMethod!.getBody()?.getCfg().getStmts();
         assert.isDefined(defaultStmts);
         assert.isAtLeast(defaultStmts!.length, 3);
-        assert.equal(fullPositionArray2String(defaultStmts![3].getOperandOriginalPositions()!),
-            '[[[28, 5], [28, 17]], [[28, 20], [28, 35]], [[28, 20], [28, 35]], [[28, 20], [28, 35]]]');
+        assert.equal(
+            fullPositionArray2String(defaultStmts![3].getOperandOriginalPositions()!),
+            '[[[28, 5], [28, 17]], [[28, 20], [28, 35]], [[28, 20], [28, 35]], [[28, 20], [28, 35]]]'
+        );
 
         const testMethod = arkFile?.getDefaultClass().getMethodWithName('test');
         assert.isDefined(testMethod);
@@ -645,19 +721,26 @@ describe('New Class Test', () => {
         const testStmts = testMethod!.getBody()?.getCfg().getStmts();
         assert.isDefined(testStmts);
         assert.isAtLeast(testStmts!.length, 3);
-        assert.equal(fullPositionArray2String(testStmts![3].getOperandOriginalPositions()!),
-            '[[[32, 9], [32, 21]], [[32, 24], [32, 39]], [[32, 24], [32, 39]], [[32, 24], [32, 39]]]');
+        assert.equal(
+            fullPositionArray2String(testStmts![3].getOperandOriginalPositions()!),
+            '[[[32, 9], [32, 21]], [[32, 24], [32, 39]], [[32, 24], [32, 39]], [[32, 24], [32, 39]]]'
+        );
     });
 });
 
 describe('ArkClass Position Test', () => {
-    const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
-    const arkFile = scene.getFiles().find((file) => file.getName() === 'ClassWithConstructor.ts');
+    let scene: ReturnType<typeof buildScene>;
+    let arkFile: ReturnType<typeof scene.getFiles>[number] | undefined;
+
+    beforeAll(() => {
+        scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
+        arkFile = scene.getFiles().find(file => file.getName() === 'ClassWithConstructor.ts');
+    });
 
     it('test getOriginFullPosition for ClassWithNoConstructor class', async () => {
         const arkClass = arkFile?.getClassWithName('ClassWithNoConstructor');
         assert.isDefined(arkClass);
-        
+
         const position = arkClass!.getOriginFullPosition();
         assert.isDefined(position);
         expect(position!.getFirstLine()).eq(16);
@@ -681,7 +764,7 @@ describe('ArkClass Position Test', () => {
     it('test getOriginFullPosition for ClassWithParamsConstructor class', async () => {
         const arkClass = arkFile?.getClassWithName('ClassWithParamsConstructor');
         assert.isDefined(arkClass);
-        
+
         const position = arkClass!.getOriginFullPosition();
         assert.isDefined(position);
         expect(position!.getFirstLine()).eq(30);

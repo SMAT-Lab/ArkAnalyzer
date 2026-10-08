@@ -106,34 +106,31 @@ namespace U {
 ```typescript
 // src/core/model/ArkNamespace.ts
 export class ArkNamespace extends ArkBaseModel implements ArkExport {
-    private sourceCodes: string[] = [''];                                  // 同名命名空间合并时累加
-    private lineCols: LineCol[] = [];
+    private originFullPositions!: FullPosition[];                            // 同名命名空间合并时累加
 
-    private declaringArkFile!: ArkFile;                                    // 所属文件
-    private declaringArkNamespace: ArkNamespace | null = null;             // 父命名空间
-    private declaringInstance!: ArkFile | ArkNamespace;                    // 直接外层
+    private declaringFileID: number = -1;                                    // 所属文件 FileSigID（-1 = 未 intern）
+    private declaringNamespaceSigID?: number;                                // 父命名空间 NamespaceSigID（顶层为 undefined）
+    private namespaceSigID: number = -1;                                     // 本命名空间 NamespaceSigID
 
-    private exportInfos: Map<string, ExportInfo>;                          // 命名空间内的 export
-    private defaultClass!: ArkClass;                                       // %dflt
-    private namespaces: Map<string, ArkNamespace>;                         // 直接子命名空间
-    private classes: Map<string, ArkClass>;                                // 直接成员类
-    private namespaceSignature!: NamespaceSignature;
+    private exportInfos: Map<string, ExportInfo>;                            // 命名空间内的 export
+    private defaultClassSigID: number = -1;                                  // %dflt 的 ClassSigID
+    private topNamespaceSigIDs?: Int32Array;                                 // 直接子命名空间 NamespaceSigID 索引
+    private topClassSigIDs?: Int32Array;                                     // 直接成员类 ClassSigID 索引
 
-    private anonymousClassNumber: number = 0;                              // 用于 %AC<n>$<owner> 命名
+    private anonymousClassNumber: number = 0;                                // 用于 %AC<n>$<owner> 命名
     private anonymousNamespaceNumber: number = 0;
 }
 ```
 
 | 字段 | 含义 |
 |------|------|
-| `declaringArkFile` | 反向定位所属文件 |
-| `declaringArkNamespace` | 父命名空间；顶层命名空间为 `null` |
-| `declaringInstance` | 直接外层（`ArkFile` 或 `ArkNamespace`），方便统一向上查询 |
-| `defaultClass` | 命名空间作用域的 `%dflt` 类，承载独立函数、顶层变量、`type` 别名等 |
-| `namespaces` | **仅直接** 子命名空间；递归全部用 `getAllNamespacesUnderThisNamespace()` |
-| `classes` | 直接成员类；同上递归用 `getAllClassesUnderThisNamespace()` |
+| `declaringFileID` | 反向定位所属文件（`getDeclaringArkFile()` 经 Registry 反查） |
+| `declaringNamespaceSigID` | 父命名空间；顶层命名空间为 `undefined` |
+| `defaultClassSigID` | 命名空间作用域 `%dflt` 类的 ClassSigID，承载独立函数、顶层变量、`type` 别名等 |
+| `topNamespaceSigIDs` | **仅直接** 子命名空间的 SigID 索引；递归全部用 `getAllNamespacesUnderThisNamespace()` |
+| `topClassSigIDs` | 直接成员类的 SigID 索引；同上递归用 `getAllClassesUnderThisNamespace()` |
 | `exportInfos` | 命名空间内的 `export` / `export from` 项 |
-| `sourceCodes` / `lineCols` | 同名命名空间合并时按出现顺序累加，每段保留独立源码片段与起始位置 |
+| `originFullPositions` | 同名命名空间合并时按出现顺序累加，每段保留独立起始位置 |
 
 `NamespaceSignature` 形如 `@Pkg/File: NS1.NS2`（嵌套以 `.` 拼接），与命名空间内成员签名前缀一致。
 
@@ -145,14 +142,11 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 |------|------|
 | `getName(): string` | 等价 `getSignature().getNamespaceName()` |
 | `getSignature(): NamespaceSignature` / `getNamespaceSignature()` / `setSignature(s)` | 全局签名 |
-| `getDeclaringArkFile() / setDeclaringArkFile(f)` | 所属文件 |
-| `getDeclaringArkNamespace() / setDeclaringArkNamespace(ns)` | 父命名空间 |
-| `getDeclaringInstance(): ArkFile \| ArkNamespace` / `setDeclaringInstance(x)` | 直接外层 |
+| `getDeclaringArkFile() / setDeclaringFileID(id)` | 所属文件（getter 经 Registry 按 FileSigID 反查；对象 setter 已废弃） |
+| `getDeclaringArkNamespace() / setDeclaringNamespaceID(id)` | 父命名空间（同上，按 NamespaceSigID 反查） |
+| `getDeclaringInstance(): ArkFile \| ArkNamespace` | 直接外层（经 Registry 反查后判定） |
 | `getLanguage(): Language` | 等价 `getDeclaringArkFile().getLanguage()` |
-| `getCode() / setCode(s)` | 第一段（最早一次声明）的源码 |
-| `getCodes(): string[] / setCodes(arr) / addCode(s)` | 同名命名空间合并时维护多段源码 |
-| `getLine() / setLine(n) / getColumn() / setColumn(n)` | 第一段位置 |
-| `getLineColPairs(): [number, number][] / setLineCols(pairs)` | 所有段的位置 |
+| `getOriginFullPositions(): FullPosition[] / setOriginFullPositions(arr)` | 所有段的完整位置（`getCode`/`getLine` 等旧 API 已废弃，源码统一存储在 `ArkFile` 上） |
 
 ### 子命名空间
 
@@ -169,7 +163,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
 | 方法 | 说明 |
 |------|------|
-| `addArkClass(c, originName?)` | 加入；与 [ArkClass.addMethod](./ArkClass.md#4-主要接口) 类似，嵌套类会同时按 originName 索引一份 |
+| `addArkClass(c)` | 加入 |
 | `getClass(sig): ArkClass \| null` / `getClassWithName(name)` | 直接成员类查询 |
 | `getClasses(): ArkClass[]` | 直接成员类列表 |
 | `getAllClassesUnderThisNamespace(): ArkClass[]` | 递归取所有后代类（含子命名空间） |

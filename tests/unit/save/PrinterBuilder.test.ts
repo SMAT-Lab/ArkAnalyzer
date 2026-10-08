@@ -15,21 +15,34 @@
 
 import { SceneConfig } from '../../../src/Config';
 import { PrinterBuilder, ScenePrinter } from '../../../src/save/PrinterBuilder';
-import { assert, describe, expect, it, vi } from 'vitest';
+import { assert, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Scene } from '../../../src/Scene';
 import path from 'path';
 import fs from 'fs';
 import { SourceDefaultClass } from '../../../src/save/source/SourceClass';
+import { SignatureCanonicalizerRegistry } from '../../../src/core/common/SignatureCanonicalizerRegistry';
+import { ArkFile } from '../../../src';
 
-let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-let scene = new Scene();
-scene.buildSceneFromProjectDir(config);
-let arkfile = scene.getFiles().find((file) => file.getName() == 'namespaces.ts');
-let outputDir = 'out';
-let printer = new PrinterBuilder(outputDir);
+function buildScene(): Scene {
+    SignatureCanonicalizerRegistry.dispose();
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    return scene;
+}
 
 describe('PrinterBuilderTest', () => {
+    let scene: Scene;
+    let arkfile: ArkFile | undefined;
+    let outputDir = 'out';
+    let printer: PrinterBuilder;
+    beforeAll(() => {
+        scene = buildScene();
+        arkfile = scene.getFiles().find((file) => file.getName() == 'namespaces.ts');
+        printer = new PrinterBuilder(outputDir);
+    });
+
     it('case1: dumpToDot', () => {
         if (arkfile == null) {
             assert.isNotNull(arkfile);
@@ -81,6 +94,7 @@ describe('PrinterBuilderTest', () => {
     });
 
     it('case7: SourceDefaultClass dumpOriginalCode', () => {
+        SignatureCanonicalizerRegistry.dispose();
         let config: SceneConfig = new SceneConfig();
         config.buildFromProjectDir(path.join(__dirname, '../../../src/core/base'));
         let scene = new Scene();
@@ -109,6 +123,7 @@ describe('PrinterBuilderTest', () => {
     });
 
     it('case9: sceneDump', () => {
+        SignatureCanonicalizerRegistry.dispose();
         let config: SceneConfig = new SceneConfig();
         config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../../resources/Sdk') });
         config.buildFromJson(path.join(__dirname, '../../resources/viewtree/project/test-config.json'));

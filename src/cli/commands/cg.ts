@@ -40,6 +40,7 @@ export interface CgCommandOptions {
     direction: CgDirection;
     edges: CgEdgeFilter;
     ohosSdkHome?: string;
+    stats?: boolean;
 }
 
 interface CgEdgeRow {
@@ -67,7 +68,7 @@ export function resolveMethodRef(scene: Scene, spec: string): ArkMethod | null {
     const trimmed = spec.trim();
     const methods = scene.getMethods();
 
-    const exact = methods.find((m) => m.getSignature().toString() === trimmed);
+    const exact = methods.find(m => m.getSignature().toString() === trimmed);
     if (exact) {
         return exact;
     }
@@ -76,9 +77,7 @@ export function resolveMethodRef(scene: Scene, spec: string): ArkMethod | null {
     if (dotted) {
         const className = dotted[1];
         const methodName = dotted[2];
-        const hits = methods.filter(
-            (m) => m.getDeclaringArkClass().getName() === className && m.getName() === methodName
-        );
+        const hits = methods.filter(m => m.getDeclaringArkClass().getName() === className && m.getName() === methodName);
         if (hits.length === 1) {
             return hits[0];
         }
@@ -87,12 +86,12 @@ export function resolveMethodRef(scene: Scene, spec: string): ArkMethod | null {
                 errCode: ArkErrorCode.CLI_AMBIGUOUS_METHOD_REF,
                 errMsg:
                     `Ambiguous method ref "${trimmed}": ${hits.length} matches. Use a full signature string.\n` +
-                    hits.map((h) => h.getSignature().toString()).join('\n'),
+                    hits.map(h => h.getSignature().toString()).join('\n'),
             });
         }
     }
 
-    const substrHits = methods.filter((m) => m.getSignature().toString().includes(trimmed));
+    const substrHits = methods.filter(m => m.getSignature().toString().includes(trimmed));
     if (substrHits.length === 1) {
         return substrHits[0];
     }
@@ -103,7 +102,7 @@ export function resolveMethodRef(scene: Scene, spec: string): ArkMethod | null {
                 `Ambiguous method ref "${trimmed}": ${substrHits.length} substring matches. Use ClassName.methodName or full signature.\n` +
                 substrHits
                     .slice(0, 15)
-                    .map((h) => h.getSignature().toString())
+                    .map(h => h.getSignature().toString())
                     .join('\n') +
                 (substrHits.length > 15 ? '\n...' : ''),
         });
@@ -114,7 +113,7 @@ export function resolveMethodRef(scene: Scene, spec: string): ArkMethod | null {
 
 function pickEntries(scene: Scene, refs: string[]): MethodSignature[] {
     if (refs.length > 0) {
-        return refs.map((r) => {
+        return refs.map(r => {
             const m = resolveMethodRef(scene, r);
             if (!m) {
                 throw new ArkAnalyzerError({
@@ -126,12 +125,15 @@ function pickEntries(scene: Scene, refs: string[]): MethodSignature[] {
         });
     }
 
-    const mains = scene.getMethods().filter((m) => m.getName() === 'main');
+    const mains = scene.getMethods().filter(m => m.getName() === 'main');
     if (mains.length > 0) {
-        return mains.map((m) => m.getSignature());
+        return mains.map(m => m.getSignature());
     }
 
-    return scene.getMethods().filter((m) => m.getCfg() !== undefined).map((m) => m.getSignature());
+    return scene
+        .getMethods()
+        .filter(m => m.getCfg() !== undefined)
+        .map(m => m.getSignature());
 }
 
 function buildGraphForCg(scene: Scene, algorithm: CgAlgorithm, entryRefs: string[]): { cg: CallGraph; algorithmUsed: 'cha' | 'rta'; entry: string[] } {
@@ -160,7 +162,7 @@ function buildGraphForCg(scene: Scene, algorithm: CgAlgorithm, entryRefs: string
         }
     }
 
-    return { cg, algorithmUsed, entry: entries.map((e) => e.toString()) };
+    return { cg, algorithmUsed, entry: entries.map(e => e.toString()) };
 }
 
 function classifyEdge(scene: Scene, edge: CallGraphEdge): Exclude<CgEdgeFilter, 'all'> {
@@ -326,8 +328,8 @@ function writeOutput(outputPath: string, content: string): void {
     fs.writeFileSync(outputPath, `${content}\n`);
 }
 
-function buildSceneForCg(input: string, ohosSdkHome?: string): Scene {
-    const config = buildSceneConfigFromProject(input, ohosSdkHome);
+function buildSceneForCg(input: string, ohosSdkHome?: string, enableStatistics?: boolean): Scene {
+    const config = buildSceneConfigFromProject(input, ohosSdkHome, enableStatistics ? { enableStatistics: true } : undefined);
     const scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     scene.inferTypes();
@@ -364,22 +366,16 @@ function buildNodeSignatureIndex(cg: CallGraph): { sigToId: Map<string, number>;
 
 function resolveReachabilityRoots(scene: Scene, specs: string[]): string[] {
     return specs
-        .map((r) => resolveMethodRef(scene, r))
+        .map(r => resolveMethodRef(scene, r))
         .filter((m): m is ArkMethod => m !== null)
-        .map((m) => m.getSignature().toString());
+        .map(m => m.getSignature().toString());
 }
 
-function collectReachableIds(
-    cg: CallGraph,
-    roots: string[],
-    sigToId: Map<string, number>,
-    direction: CgDirection,
-    edges: CgEdgeRow[]
-): Set<number> {
+function collectReachableIds(cg: CallGraph, roots: string[], sigToId: Map<string, number>, direction: CgDirection, edges: CgEdgeRow[]): Set<number> {
     if (roots.length === 0) {
         return new Set<number>();
     }
-    const starts = roots.map((s) => sigToId.get(s)).filter((x): x is number => x !== undefined);
+    const starts = roots.map(s => sigToId.get(s)).filter((x): x is number => x !== undefined);
     return reachableNodeIds(cg, starts, direction, edges);
 }
 
@@ -389,7 +385,7 @@ function filterEdgesByReachability(edgeRows: CgEdgeRow[], reachableIds: Set<numb
     }
 
     // Keep only subgraph edges whose both endpoints are in the reachable node set.
-    return edgeRows.filter((e) => {
+    return edgeRows.filter(e => {
         const sid = sigToId.get(e.src);
         const did = sigToId.get(e.dst);
         return sid !== undefined && did !== undefined && reachableIds.has(sid) && reachableIds.has(did);
@@ -398,7 +394,7 @@ function filterEdgesByReachability(edgeRows: CgEdgeRow[], reachableIds: Set<numb
 
 function idsToSortedSignatures(ids: Set<number>, idToSig: Map<number, string>): string[] {
     return Array.from(ids)
-        .map((id) => idToSig.get(id))
+        .map(id => idToSig.get(id))
         .filter((s): s is string => s !== undefined)
         .sort();
 }
@@ -411,7 +407,7 @@ function collectOutputNodes(reachableIds: Set<number>, idToSig: Map<number, stri
 }
 
 export function analyzeCg(input: string, options: CgCommandOptions): CgAnalyzeResult {
-    const scene = buildSceneForCg(input, options.ohosSdkHome);
+    const scene = buildSceneForCg(input, options.ohosSdkHome, options.stats);
     const { cg, algorithmUsed, entry } = buildGraphForCg(scene, options.algorithm, options.entry);
     const edgeRows = collectFilteredEdgeRows(scene, cg, options.edges);
     const reachableFrom = resolveReachabilityRoots(scene, options.reachableFrom);
@@ -437,7 +433,6 @@ export function analyzeCg(input: string, options: CgCommandOptions): CgAnalyzeRe
     };
 }
 
-
 export function runCgCommand(input: string, raw: CgCommandOptions): void {
     const options = parseAndValidate(raw);
     const result = analyzeCg(input, options);
@@ -462,17 +457,28 @@ export function register(program: Command): void {
         .option('-a, --algorithm <name>', 'Build algorithm: cha | rta', 'rta')
         .option('-o, --output <file>', 'Output file path', 'stdout')
         .option('-f, --format <type>', 'Output format: json | text | dot | csv', 'json')
-        .option('-e, --entry <method>', 'Specify entry method (repeatable)', (v: string, prev: string[]) => {
-            prev.push(v);
-            return prev;
-        }, [])
-        .option('-r, --reachable-from <method>', 'Reachability roots (repeatable)', (v: string, prev: string[]) => {
-            prev.push(v);
-            return prev;
-        }, [])
+        .option(
+            '-e, --entry <method>',
+            'Specify entry method (repeatable)',
+            (v: string, prev: string[]) => {
+                prev.push(v);
+                return prev;
+            },
+            []
+        )
+        .option(
+            '-r, --reachable-from <method>',
+            'Reachability roots (repeatable)',
+            (v: string, prev: string[]) => {
+                prev.push(v);
+                return prev;
+            },
+            []
+        )
         .option('--direction <dir>', 'Reachability direction: forward | backward', 'forward')
         .option('--edges <type>', 'Edge filter: call | virtual | interface | all', 'all')
         .option('--ohos-sdk-home <path>', 'OHOS SDK home. Fallback to env OHOS_SDK_HOME')
+        .option('--stats', 'Enable stage statistics collection and output report')
         .action((input: string, opts: CgCommandOptions) => {
             runCgCommand(input, opts);
         });

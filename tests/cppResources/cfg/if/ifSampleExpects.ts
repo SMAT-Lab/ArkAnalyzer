@@ -191,8 +191,8 @@ export const IF_EXPECT_CASE9 = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Integral: \')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Integral: \')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, endl)',
             ],
             preds: [0],
             succes: [5],
@@ -206,8 +206,8 @@ export const IF_EXPECT_CASE9 = {
         {
             id: 3,
             stmts: [
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Floating-point: \')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Floating-point: \')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
             ],
             preds: [2],
             succes: [5],
@@ -215,8 +215,8 @@ export const IF_EXPECT_CASE9 = {
         {
             id: 4,
             stmts: [
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Other: \')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Other: \')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
             ],
             preds: [2],
             succes: [5],
@@ -243,8 +243,8 @@ export const IF_EXPECT_CASE10 = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Condition met, execute operation\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Condition met, execute operation\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, endl)',
             ],
             preds: [9, 10],
             succes: [3],
@@ -252,8 +252,8 @@ export const IF_EXPECT_CASE10 = {
         {
             id: 2,
             stmts: [
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Conditions not met\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Conditions not met\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
             ],
             preds: [8, 10],
             succes: [3],
@@ -307,13 +307,13 @@ export const IF_EXPECT_CASE11 = {
         },
         {
             id: 1,
-            stmts: ['staticinvoke <@%unk/%unk: .operator<<()>(cout, \'The condition is true\')'],
+            stmts: ['staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'The condition is true\')'],
             preds: [0, 6],
             succes: [3],
         },
         {
             id: 2,
-            stmts: ['staticinvoke <@%unk/%unk: .operator<<()>(cout, \'The condition is false\')'],
+            stmts: ['staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'The condition is false\')'],
             preds: [6],
             succes: [3],
         },
@@ -326,8 +326,8 @@ export const IF_EXPECT_CASE11 = {
         {
             id: 4,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'This will be executed!\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'This will be executed!\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, endl)',
             ],
             preds: [7, 8],
             succes: [5],

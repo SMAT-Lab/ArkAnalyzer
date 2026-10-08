@@ -160,6 +160,7 @@ export function prepareArkFiles(
         onSourceAst: (sourceFile, astRoot) => {
             const target = new ArkFile(Language.CXX);
             target.setScene(scene);
+            scene.setFile(target);
             try {
                 applyArkFile(target, sourceFile, astRoot);
                 arkFiles.push(target);
@@ -241,17 +242,21 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
     }
 }
 
-export const classMap: Map<string, ArkClass> = new Map<string, ArkClass>();
+export const classMap: Map<string, number> = new Map<string, number>();
+
+export function disposeClassMap(): void {
+    classMap.clear();
+}
 
 export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
-    let cls: ArkClass = new ArkClass();
+    let cls: ArkClass = new ArkClass(arkFile.getFileSigID());
     if (classNode.kind === AstKind.ClassTemplateDecl) {
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : CxxTagUsed.Class;
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
     addExportInfoOnCondition(classNode, cls, arkFile, astRoot);
     if (classNode.id) {
-        classMap.set(classNode.id, cls);
+        classMap.set(classNode.id, cls.getClassSigID());
     }
 }
 
@@ -301,20 +306,14 @@ function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, 
 }
 
 function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
-    let mtd = new ArkMethod();
-    buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
+    const declaringClass = arkClass ?? arkFile.getDefaultClass();
+    let mtd = new ArkMethod(declaringClass.getClassSigID());
+    buildArkMethodFromArkClass(mtdNode, declaringClass, mtd, astRoot);
     addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
 }
 
-/**
- * Building ArkFile instance
- *
- * @param arkFile
- * @param astRoot
- * @returns
- */
-function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
-    // handle header units
+/** 头部单元的 include 指令 → ImportInfo。 */
+function buildImportInfosFromHeaderUnits(arkFile: ArkFile, astRoot: CxxAstNode): void {
     astRoot.headerUnits?.forEach((child: CxxAstNode) => {
         if (!child.includes) {
             return;
@@ -327,6 +326,17 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
         }
     });
+}
+
+/**
+ * Building ArkFile instance
+ *
+ * @param arkFile
+ * @param astRoot
+ * @returns
+ */
+function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    buildImportInfosFromHeaderUnits(arkFile, astRoot);
     // handle non-header unit
     const statements = astRoot.inner ?? [];
     statements.forEach((child: CxxAstNode) => {
@@ -345,10 +355,8 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 buildArkMethodFromCxxMethod(child, arkFile, astRoot);
                 break;
             case AstKind.NamespaceDecl:
-                let ns: ArkNamespace = new ArkNamespace();
-                ns.setDeclaringArkFile(arkFile);
+                let ns: ArkNamespace = new ArkNamespace(arkFile.getFileSigID());
                 buildArkNamespace(child, arkFile, ns, astRoot);
-                arkFile.addNamespace(ns);
                 addExportInfoOnCondition(child, ns, arkFile, astRoot);
                 break;
             case AstKind.CXXMethodDecl:
@@ -385,10 +393,9 @@ function getDeclaringArkClassOfMethod(mtd: CxxAstNode, arkFile: ArkFile): ArkCla
     const className: string = mtd.mangledName ?? '';
     let arkClass = arkFile.getClasses().find(arkClass => arkClass.getName() === className);
     if (!arkClass) {
-        arkClass = new ArkClass();
-        const classSignature = new ClassSignature(className, arkFile.getFileSignature());
+        arkClass = new ArkClass(arkFile.getFileSigID());
+        const classSignature = new ClassSignature(className, arkFile.getFileSigID());
         arkClass.setSignature(classSignature);
-        arkClass.setDeclaringArkFile(arkFile);
         arkFile.addArkClass(arkClass);
         init4InstanceInitMethod(arkClass);
         init4StaticInitMethod(arkClass);
@@ -397,9 +404,9 @@ function getDeclaringArkClassOfMethod(mtd: CxxAstNode, arkFile: ArkFile): ArkCla
 }
 
 function genDefaultArkClass(arkFile: ArkFile, astRoot: CxxAstNode): void {
-    let defaultClass = new ArkClass();
+    let defaultClass = new ArkClass(arkFile.getFileSigID());
 
     buildDefaultArkClassFromArkFile(arkFile, defaultClass, astRoot);
-    arkFile.setDefaultClass(defaultClass);
+    arkFile.setDefaultClassID(defaultClass.getClassSigID());
     arkFile.addArkClass(defaultClass);
 }

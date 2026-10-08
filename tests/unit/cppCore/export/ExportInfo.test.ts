@@ -28,6 +28,7 @@ import {
     ClassType,
     getCxxSourceFileExtensions
 } from '../../../../src';
+import { SignatureCanonicalizerRegistry } from '../../../../src/core/common/SignatureCanonicalizerRegistry';
 import { CAST_SAMPLE_EXPORT_INFO_EXPECT_IR, MY_HEADER_EXPORT_INFO_EXPECT_IR } from '../../../cppResources/exports/indirectRef/expectedIR';
 import {
     MAIN_CASE,
@@ -46,6 +47,12 @@ const isWin32 = process.platform === 'win32';
 const { cxxIncludeDir, configSiteDirs } = resolveSdkPaths();
 
 function buildScene(folderName: string, extraIncludeDirs: string[] = [], ccJsonPath?: string): Scene {
+    // round32 测试隔离（对齐 Cfg.test.ts 同款）：本文件内多个 describe 各自构建
+    // 独立项目，共用全局 Registry 时跨项目模型共存——funcImplementInCpp 先构建
+    // 后，crossFileCase 的 Circle 被解析到 test.h 的同名类（跨项目污染，
+    // round24.11 挂账顺序依赖问题的显性化）。dispose 重建使每个项目独占
+    // Registry 生命周期（生产单 Scene 用法语义一致）。
+    SignatureCanonicalizerRegistry.dispose();
     const mergedIncludeDirs = [cxxIncludeDir, ...configSiteDirs, ...extraIncludeDirs];
     const config = new SceneConfig({ supportFileExts: [...getCxxSourceFileExtensions()] });
     config.buildFromProjectDir(path.join(EXPORTS_PROJECT_ROOT, folderName), mergedIncludeDirs);

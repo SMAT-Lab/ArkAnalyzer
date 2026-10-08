@@ -29,8 +29,16 @@ import { FunctionType } from '../core/base/Type';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
 import type { ArkAggregateExpr } from '../frontend/cppFrontend/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from './logger';
+import { SignatureCanonicalizerRegistry } from '../core/common/SignatureCanonicalizerRegistry';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
+/**
+ * C++ NAPI 打桩工具。当前整条调用链（`puncture` → `processApiDefine` → ...）在仓库内
+ * 零引用，处于死代码状态，保留待确认无外部依赖后再决定删除。
+ *
+ * @deprecated Dead code: no callers anywhere in the repository. Do not add new
+ *             usages; slated for removal.
+ */
 export class CxxSceneUtils {
     public static puncture(cxxModulePath: string, tsFile: ArkFile): void {
         const fileName = path.relative(tsFile.getProjectDir(), path.join(cxxModulePath, '../../napi_init.cpp'));
@@ -142,7 +150,7 @@ export class CxxSceneUtils {
         if (tsMtd instanceof Local || tsMtd instanceof ArkField) {
             const type = tsMtd.getType();
             if (type instanceof FunctionType) {
-                tsMtd = tsClass.getDeclaringArkFile().getScene().getMethod(type.getMethodSignature());
+                tsMtd = SignatureCanonicalizerRegistry.getInstance().getMethodBySig(type.getMethodSignature()) ?? null;
             }
         }
         if (tsMtd instanceof ArkMethod && cppMtd.getBody()) {

@@ -328,8 +328,8 @@ export function isCxxFunctionPointer(type: string): boolean {
 }
 
 export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sourceFile: CxxAstNode | CxxTranslationUnit): Type {
-    const anonymousMethod = new ArkMethod();
     const declaringClass = arkMtd.getDeclaringArkClass();
+    const anonymousMethod = new ArkMethod(declaringClass.getClassSigID());
     buildArkMethodFromArkClass(funcPtrNode, declaringClass, anonymousMethod, sourceFile);
     const funcType = new FunctionType(anonymousMethod.getSignature());
     return new PointerType(funcType, 1);
@@ -535,7 +535,12 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
-        arkClass = file?.getClassWithName?.(typeStr) ??
+        // Nested classes are referenced by their bare short name inside the enclosing
+        // class scope; resolve via the enclosing-name candidate chain first.
+        const ctxClass = arkInstance instanceof ArkClass ? arkInstance : arkInstance.getDeclaringArkClass();
+        arkClass =
+            CxxModelUtils.findClassByShortName(typeStr, ctxClass, arkInstance instanceof ArkMethod ? arkInstance : undefined) ??
+            file?.getClassWithName?.(typeStr) ??
             CxxModelUtils.getClassFromAnonymousNamespaceByName(typeStr, file);
         // Obtain the use of alias types
         let aliasType =

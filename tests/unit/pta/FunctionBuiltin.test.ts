@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, PointerAnalysisConfig } from '../../../src';
 import { Sdk } from '../../../src/Config';
+import { SignatureCanonicalizerRegistry } from '../../../src/core/common/SignatureCanonicalizerRegistry';
 
 let sdk: Sdk = {
     name: 'ohos',
@@ -25,6 +26,7 @@ let sdk: Sdk = {
 };
 
 function test(): PointerAnalysis {
+    SignatureCanonicalizerRegistry.dispose();
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir('./tests/resources/pta/FunctionType');
     config.getSdksObj().push(sdk);
@@ -48,7 +50,12 @@ function test(): PointerAnalysis {
 }
 
 describe('Function.call Test', () => {
-    let pta = test();
+    let pta: PointerAnalysis;
+
+    beforeAll(() => {
+       pta = test();
+    });
+
     it('case1: anonymousMethod', () => {
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke1Call');
@@ -156,9 +163,13 @@ describe('Function.call Test', () => {
 });
 
 describe('Function.apply Test', () => {
-    it('case1: anonymousMethod', () => {
-        let pta = test();
+    let pta: PointerAnalysis;
 
+    beforeAll(() => {
+        pta = test();
+    });
+
+    it('case1: anonymousMethod', () => {
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke1Apply');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -182,8 +193,6 @@ describe('Function.apply Test', () => {
     });
 
     it('case2: class instance method', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke2Apply');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -214,8 +223,6 @@ describe('Function.apply Test', () => {
     });
 
     it('case3: class static method', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke3Apply');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -239,8 +246,6 @@ describe('Function.apply Test', () => {
     });
 
     it('case4: function', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke4Apply');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -270,9 +275,13 @@ describe('Function.apply Test', () => {
 
 // TODO: add return value check
 describe('Function.bind Test', () => {
-    it('case1: anonymousMethod', () => {
-        let pta = test();
+    let pta: PointerAnalysis;
 
+    beforeAll(() => {
+        pta = test();
+    });
+
+    it('case1: anonymousMethod', () => {
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke1Bind');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -298,8 +307,6 @@ describe('Function.bind Test', () => {
     });
 
     it('case2: class instance method', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke2Bind');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -330,8 +337,6 @@ describe('Function.bind Test', () => {
     });
 
     it('case3: class instance method called in external method', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke2BindReturn');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -362,8 +367,6 @@ describe('Function.bind Test', () => {
     });
 
     it('case4: class static method', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke3Bind');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
@@ -387,8 +390,6 @@ describe('Function.bind Test', () => {
     });
 
     it('case5: function', () => {
-        let pta = test();
-
         let callerMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===
             'ptrInvoke4Bind');
         let calleeMethod = pta.getScene().getMethods().filter(arkMethod => arkMethod.getName() ===

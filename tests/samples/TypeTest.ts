@@ -35,8 +35,7 @@ export class TypeInferenceTest {
     public testLocalTypes() {
         let scene = this.buildScene();
         const creater = new DummyMainCreater(scene);
-        creater.createDummyMain();
-        let d = creater.getDummyMain();
+        let d = creater.createDummyMain();
         logger.info(d);
     }
 }

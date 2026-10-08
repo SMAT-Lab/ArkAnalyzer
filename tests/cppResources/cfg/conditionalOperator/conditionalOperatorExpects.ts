@@ -198,9 +198,9 @@ export const CONDITIONAL_WITH_LOGICAL_EXPECT = {
         { id: 2, stmts: ['result = a - b'], preds: [4, 6], succes: [3] },
         {
             id: 3, stmts: [
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Result: \')',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, result)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Result: \')',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, result)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
                 'return',
             ], preds: [1, 2], succes: [],
         },

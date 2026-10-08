@@ -59,7 +59,7 @@ export const BUILT_IN_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
-                'b = noexcept(staticinvoke <@%unk/%unk: .Foo()>())',
+                'b = noexcept(staticinvoke <@%unk/%unk: %unk.Foo()>())',
                 'return 0',
             ],
             preds: [],
@@ -75,7 +75,7 @@ export const BUILT_IN_EXPECT_CASE4 = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = &g_counter',
-                'staticinvoke <@%unk/%unk: .atomic_fetch_add()>(%0, 1)',
+                'staticinvoke <@%unk/%unk: %unk.atomic_fetch_add()>(%0, 1)',
                 'return',
             ],
             preds: [],
@@ -91,7 +91,7 @@ export const BUILT_IN_EXPECT_CASE4_LINUX = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = &g_counter',
-                'staticinvoke <@%unk/%unk: .atomic_fetch_add()>(%0, 1)',
+                'staticinvoke <@%unk/%unk: %unk.atomic_fetch_add()>(%0, 1)',
                 'return',
             ],
             preds: [],

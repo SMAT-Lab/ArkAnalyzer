@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import path from 'path';
 import {
-    AliasType,
+    AliasType, ArkAliasTypeDefineStmt,
     ArkAssignStmt,
-    ArkClass,
+    ArkClass, ArkFile,
     ArkInstanceFieldRef,
     ArkInstanceInvokeExpr,
     ArkInvokeStmt,
@@ -160,14 +160,20 @@ function checkLocalInitWithBigIntConstant(stmt: Stmt, expectValue: string): void
     assert.equal((value as BigIntConstant).getValue(), expectValue);
 }
 
-let projectScene = buildScene();
-const fileId = new FileSignature(projectScene.getProjectName(), 'test.ts');
-const defaultClass = projectScene.getFile(fileId)?.getDefaultClass();
+let projectScene: Scene;
+let fileSig: FileSignature;
+let defaultClass: ArkClass | undefined;
+
+beforeAll(() => {
+    projectScene = buildScene();
+    fileSig = new FileSignature(projectScene.getProjectName(), 'test.ts');
+    defaultClass = projectScene.getFile(fileSig)?.getDefaultClass();
+});
 
 describe('Special Test', () => {
     it('Special check for function isUnclearType', () => {
         const typeStr = '@type/exportExample.ts: A.B.C|null';
-        const specialClass = projectScene.getFile(fileId)?.getClassWithName('SpecialForIsUnclearCheck');
+        const specialClass = projectScene.getFile(fileSig)?.getClassWithName('SpecialForIsUnclearCheck');
 
         const fieldA = specialClass?.getFieldWithName('A');
         assert.isDefined(fieldA);
@@ -190,9 +196,15 @@ describe('Special Test', () => {
 });
 
 describe('Simple Alias Type Test', () => {
-    const method = defaultClass?.getMethodWithName('simpleAliasType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('simpleAliasType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of boolean', () => {
         const alias = aliasTypeMap?.get('BooleanAliasType');
@@ -223,7 +235,7 @@ describe('Simple Alias Type Test', () => {
     });
 
     it('alias type using in params', () => {
-        const method = projectScene.getFile(fileId)?.getDefaultClass().getMethodWithName('%useAliasTypeInParam$simpleAliasType');
+        const method = projectScene.getFile(fileSig)?.getDefaultClass().getMethodWithName('%useAliasTypeInParam$simpleAliasType');
         assert.isDefined(method);
         assert.isNotNull(method);
         const params = method!.getSubSignature().getParameters();
@@ -241,9 +253,15 @@ describe('Simple Alias Type Test', () => {
 });
 
 describe('Alias Type With Import Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithImport');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithImport');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of exported class', () => {
         const alias = aliasTypeMap?.get('ClassAType');
@@ -258,7 +276,7 @@ describe('Alias Type With Import Test', () => {
             compareTypeAliasStmt(stmts![1], AliasTypeOfClassA.stmt);
         }
 
-        const importInfo = projectScene.getFile(fileId)?.getImportInfoBy('ClassA');
+        const importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('ClassA');
         assert.isUndefined(importInfo);
     });
 
@@ -282,10 +300,10 @@ describe('Alias Type With Import Test', () => {
             compareTypeAliasStmt(stmts![2], AliasTypeOfClassB.stmt);
         }
 
-        let importInfo = projectScene.getFile(fileId)?.getImportInfoBy('ClassB');
+        let importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('ClassB');
         assert.isUndefined(importInfo);
 
-        importInfo = projectScene.getFile(fileId)?.getImportInfoBy('default');
+        importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('default');
         assert.isUndefined(importInfo);
     });
 
@@ -302,7 +320,7 @@ describe('Alias Type With Import Test', () => {
             compareTypeAliasStmt(stmts![3], AliasTypeOfNumberA.stmt);
         }
 
-        const importInfo = projectScene.getFile(fileId)?.getImportInfoBy('numberA');
+        const importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('numberA');
         assert.isDefined(importInfo);
         assert.equal(importInfo!.getOriginTsPosition().getLineNo(), 16);
     });
@@ -320,7 +338,7 @@ describe('Alias Type With Import Test', () => {
             compareTypeAliasStmt(stmts![4], AliasTypeOfMultiQualifier.stmt);
         }
 
-        const importInfo = projectScene.getFile(fileId)?.getImportInfoBy('A.B.C');
+        const importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('A.B.C');
         assert.isUndefined(importInfo);
     });
 
@@ -337,7 +355,7 @@ describe('Alias Type With Import Test', () => {
             compareTypeAliasStmt(stmts![5], AliasTypeOfObjectA.stmt);
         }
 
-        const importInfo = projectScene.getFile(fileId)?.getImportInfoBy('objectA');
+        const importInfo = projectScene.getFile(fileSig)?.getImportInfoBy('objectA');
         assert.isDefined(importInfo);
         assert.equal(importInfo!.getOriginTsPosition().getLineNo(), 16);
     });
@@ -357,7 +375,7 @@ describe('Alias Type With Import Test', () => {
     });
 
     it('alias type using in body', () => {
-        const method = projectScene.getFile(fileId)?.getDefaultClass().getMethodWithName('%useAliasTypeInBody$aliasTypeWithImport');
+        const method = projectScene.getFile(fileSig)?.getDefaultClass().getMethodWithName('%useAliasTypeInBody$aliasTypeWithImport');
         assert.isDefined(method);
         assert.isNotNull(method);
         const localA = method!.getBody()?.getLocals().get('a');
@@ -392,9 +410,15 @@ describe('Alias Type With Import Test', () => {
 });
 
 describe('Alias Type With Type Query Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithTypeQuery');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithTypeQuery');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of single qualifier', () => {
         const alias = aliasTypeMap?.get('SingleTypeQuery');
@@ -436,9 +460,15 @@ describe('Alias Type With Type Query Test', () => {
 });
 
 describe('Alias Type With Reference Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithReference');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithReference');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type', () => {
         const alias = aliasTypeMap?.get('ReferType');
@@ -480,9 +510,15 @@ describe('Alias Type With Reference Test', () => {
 });
 
 describe('Alias Type With Literal Type Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithLiteralType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithLiteralType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of literalType', () => {
         const alias = aliasTypeMap?.get('ABC');
@@ -526,9 +562,15 @@ describe('Alias Type With Literal Type Test', () => {
 });
 
 describe('Alias Type With Function Type Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithFunctionType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithFunctionType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of FunctionType', () => {
         const alias = aliasTypeMap?.get('FunctionAliasType');
@@ -560,9 +602,15 @@ describe('Alias Type With Function Type Test', () => {
 });
 
 describe('Alias Type With Union Type Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithUnionType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithUnionType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of UnionType', () => {
         const alias = aliasTypeMap?.get('UnionAliasType');
@@ -580,9 +628,15 @@ describe('Alias Type With Union Type Test', () => {
 });
 
 describe('Alias Type With Generic Type Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithGenericType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithGenericType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of GenericType', () => {
         const alias = aliasTypeMap?.get('Generic');
@@ -717,9 +771,15 @@ describe('Alias Type With Generic Type Test', () => {
 });
 
 describe('Alias Type With Generic Class Test', () => {
-    const method = defaultClass?.getMethodWithName('aliasTypeWithClassType');
-    const aliasTypeMap = method?.getBody()?.getAliasTypeMap();
-    const stmts = method?.getBody()?.getCfg().getStmts();
+    let method: ArkMethod | null | undefined;
+    let aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> | undefined;
+    let stmts: Stmt[] | undefined;
+
+    beforeAll(() => {
+        method = defaultClass?.getMethodWithName('aliasTypeWithClassType');
+        aliasTypeMap = method?.getBody()?.getAliasTypeMap();
+        stmts = method?.getBody()?.getCfg().getStmts();
+    });
 
     it('alias type of GenericClass', () => {
         const alias = aliasTypeMap?.get('StringClass');
@@ -737,7 +797,6 @@ describe('Alias Type With Generic Class Test', () => {
 });
 
 describe('Intersection Type With Generic Test', () => {
-
     it('intersection type in Function', () => {
         const method = defaultClass?.getMethodWithName('intersectionTypeWithGeneric');
         const methodParamString = '@type/test.ts: ClassWithGeneric<string>&@type/test.ts: %dflt.[static]%dflt()#ParamType<number>';
@@ -761,7 +820,7 @@ describe('Intersection Type With Generic Test', () => {
     });
 
     it('intersection type in Class Field', () => {
-        const fields = projectScene.getFile(fileId)?.getClassWithName('IntersectionClassWithGeneric')?.getFields();
+        const fields = projectScene.getFile(fileSig)?.getClassWithName('IntersectionClassWithGeneric')?.getFields();
         const fieldA = fields?.find(f => f.getName() === 'fieldA');
         assert.isDefined(fieldA);
         assert.equal(fieldA!.getType().toString(), '@type/test.ts: ClassWithGeneric<string>&@type/test.ts: %dflt.[static]%dflt()#ParamType<string>');
@@ -769,14 +828,19 @@ describe('Intersection Type With Generic Test', () => {
 });
 
 describe('Intersection Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'intersectionType.ts');
-    const defaultClass = projectScene.getFile(fileId)?.getDefaultClass();
-    const method = defaultClass?.getDefaultArkMethod();
-
     const aliasTypeAStr = '@type/intersectionType.ts: %dflt.[static]%dflt()#A';
     const aliasTypeBStr = '@type/intersectionType.ts: %dflt.[static]%dflt()#B';
     const classCanEatStr = '@type/intersectionType.ts: CanEat';
     const classCanSleepStr = '@type/intersectionType.ts: CanSleep';
+    let method: ArkMethod | null | undefined;
+    let fileSig: FileSignature;
+    let defaultClass: ArkClass | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'intersectionType.ts');
+        defaultClass = projectScene.getFile(fileSig)?.getDefaultClass();
+        method = defaultClass?.getDefaultArkMethod();
+    });
 
     it('case1: simple intersection', () => {
         const alias = method?.getBody()?.getAliasTypeMap()?.get('IntersectionType');
@@ -833,7 +897,7 @@ describe('Intersection Type Test', () => {
     });
 
     it('case10: class field with class intersection', () => {
-        const fields = projectScene.getFile(fileId)?.getClassWithName('Inter')?.getFields();
+        const fields = projectScene.getFile(fileSig)?.getClassWithName('Inter')?.getFields();
         assert.isDefined(fields);
         assert.equal(fields![1].getType().toString(), 'string&number');
         assert.equal(fields![2].getType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#A&@type/intersectionType.ts: %dflt.[static]%dflt()#B');
@@ -843,8 +907,13 @@ describe('Intersection Type Test', () => {
 });
 
 describe('Readonly Type With Basic Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const basicClass = projectScene.getFile(fileId)?.getClassWithName('BasicReadonly');
+    let fileSig: FileSignature;
+    let basicClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        basicClass = projectScene.getFile(fileSig)?.getClassWithName('BasicReadonly');
+    });
 
     it('class field with readonly', () => {
         const field = basicClass?.getFieldWithName('fieldA');
@@ -980,9 +1049,14 @@ describe('Readonly Type With Basic Type Test', () => {
 });
 
 describe('Readonly Type With Reference Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const referenceClass = projectScene.getFile(fileId)?.getClassWithName('ReadonlyOfReferenceType');
     const aliasAStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#A';
+    let fileSig: FileSignature;
+    let referenceClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        referenceClass = projectScene.getFile(fileSig)?.getClassWithName('ReadonlyOfReferenceType');
+    });
 
     it('class field with readonly', () => {
         const fieldA = referenceClass?.getFieldWithName('fieldA');
@@ -1046,11 +1120,16 @@ describe('Readonly Type With Reference Type Test', () => {
 });
 
 describe('Readonly Type With Generic Reference Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const referenceClass = projectScene.getFile(fileId)?.getClassWithName('ReadonlyOfGenericType');
     const aliasCBooleanStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#C<boolean>';
     const aliasCStringStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#C<string>';
     const aliasCNumberStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#C<number>';
+    let fileSig: FileSignature;
+    let referenceClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        referenceClass = projectScene.getFile(fileSig)?.getClassWithName('ReadonlyOfGenericType');
+    });
 
     it('class field with readonly', () => {
         const fieldA = referenceClass?.getFieldWithName('fieldA');
@@ -1127,12 +1206,17 @@ describe('Readonly Type With Generic Reference Type Test', () => {
 });
 
 describe('Keyof Type With Basic Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const basicClass = projectScene.getFile(fileId)?.getClassWithName('BasicKeyof');
     const personTypeStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonType';
     const personStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonType';
     const thisReturnValueStr = 'this.<@type/typeOperator.ts: BasicKeyof.returnValue>';
     const thisAgeKeyStr = 'this.<@type/typeOperator.ts: BasicKeyof.ageKey>';
+    let fileSig: FileSignature;
+    let basicClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        basicClass = projectScene.getFile(fileSig)?.getClassWithName('BasicKeyof');
+    });
 
     it('keyof class field', () => {
         const fieldNameKey = basicClass?.getFieldWithName('nameKey');
@@ -1203,8 +1287,13 @@ describe('Keyof Type With Basic Type Test', () => {
 });
 
 describe('Keyof Type With Different Types Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const objectClass = projectScene.getFile(fileId)?.getClassWithName('AllKeyofObject');
+    let fileSig: FileSignature;
+    let objectClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        objectClass = projectScene.getFile(fileSig)?.getClassWithName('AllKeyofObject');
+    });
 
     it('keyof primitive type', () => {
         const aliases = objectClass?.getMethodWithName('keyofPrimitiveType')?.getBody()?.getAliasTypeMap();
@@ -1260,7 +1349,7 @@ describe('Keyof Type With Different Types Test', () => {
         const literalKeys = aliases?.get('LiteralKeys');
         assert.isDefined(literalKeys);
         const className = ((literalKeys![0].getOriginalType() as KeyofTypeExpr).getOpType() as ClassType).getClassSignature().getClassName();
-        const ACClass = projectScene.getFile(fileId)?.getClassWithName(className);
+        const ACClass = projectScene.getFile(fileSig)?.getClassWithName(className);
         assert.isDefined(ACClass);
         assert.isNotNull(ACClass);
         assert.isDefined(ACClass!.getFieldWithName('a'));
@@ -1273,13 +1362,18 @@ describe('Keyof Type With Different Types Test', () => {
 });
 
 describe('Keyof Type With Generic Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
-    const basicClass = projectScene.getFile(fileId)?.getClassWithName('KeyofWithGeneric');
     const genericClassNumber = '@type/typeOperator.ts: GenericClass<number>';
     const genericClassA = '@type/typeOperator.ts: GenericClass<@type/typeOperator.ts: %dflt.[static]%dflt()#A>';
     const genericClass = '@type/typeOperator.ts: GenericClass';
     const genericTypeRealStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonGenericType<string,number>';
     const personGenericStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonGenericType<string,number>';
+    let fileSig: FileSignature;
+    let basicClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
+        basicClass = projectScene.getFile(fileSig)?.getClassWithName('KeyofWithGeneric');
+    });
 
     it('keyof class field', () => {
         const fieldNameKey = basicClass?.getFieldWithName('nameKey');
@@ -1401,9 +1495,15 @@ describe('Keyof Type With Generic Type Test', () => {
 });
 
 describe('BigInt Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'bigIntType.ts');
-    const targetClass = projectScene.getFile(fileId)?.getClassWithName('BigIntClass');
-    const method = targetClass?.getMethodWithName('transfer2String');
+    let fileSig: FileSignature;
+    let targetClass: ArkClass | null | undefined;
+    let method: ArkMethod | null | undefined;
+
+    beforeAll(() => {
+        fileSig = new FileSignature(projectScene.getProjectName(), 'bigIntType.ts');
+        targetClass = projectScene.getFile(fileSig)?.getClassWithName('BigIntClass');
+        method = targetClass?.getMethodWithName('transfer2String');
+    });
 
     it('bigint class field', () => {
         const fieldA = targetClass?.getFieldWithName('fieldA');
@@ -1479,7 +1579,7 @@ describe('BigInt Type Test', () => {
     });
 
     it('bigint alias type', () => {
-        const method = projectScene.getFile(fileId)?.getDefaultClass()?.getDefaultArkMethod();
+        const method = projectScene.getFile(fileSig)?.getDefaultClass()?.getDefaultArkMethod();
         const aliasType = method?.getBody()?.getAliasTypeByName('IntersectionType');
         assert.isDefined(aliasType);
         assert.isNotNull(aliasType);
@@ -1489,8 +1589,12 @@ describe('BigInt Type Test', () => {
 });
 
 describe('Save to TS Test', () => {
-    let arkFile = projectScene.getFiles().find((value) => {
-        return value.getName() === 'test.ts';
+    let arkFile: ArkFile | undefined;
+
+    beforeAll(() => {
+        arkFile = projectScene.getFiles().find((value) => {
+            return value.getName() === 'test.ts';
+        });
     });
 
     it('case1: method simpleAliasType', () => {
@@ -1702,13 +1806,20 @@ describe('Save to IR Test', () => {
 });
 
 describe('Object Type Test', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'objectType.ts');
-    const arkFile = projectScene.getFile(fileId);
-    const classA = arkFile?.getClassWithName('ClassA');
-    const defaultClass = arkFile?.getDefaultClass();
     const objectTypeStr = '@built-in/lib.es5.d.ts: Object';
     const objectConstructorTypeStr = '@built-in/lib.es2015.core.d.ts: ObjectConstructor';
     const builtInObjectTypeStr = '@built-in/lib.es5.d.ts: Object';
+    let fileId: FileSignature;
+    let arkFile: ArkFile | null;
+    let classA: ArkClass | null | undefined;
+    let defaultClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        fileId = new FileSignature(projectScene.getProjectName(), 'objectType.ts');
+        arkFile = projectScene.getFile(fileId);
+        classA = arkFile?.getClassWithName('ClassA');
+        defaultClass = arkFile?.getDefaultClass();
+    });
 
     it('case1: whole ir', () => {
         assert.isNotNull(arkFile);
@@ -1814,10 +1925,9 @@ describe('Object Type Test', () => {
 });
 
 describe('Type of Binary Operator', () => {
-    const fileId = new FileSignature(projectScene.getProjectName(), 'numberType.ts');
-    const arkFile = projectScene.getFile(fileId);
-
     it('case1: binary operator of Exponentiation', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'numberType.ts');
+        const arkFile = projectScene.getFile(fileId);
         const stmts = arkFile?.getDefaultClass().getMethodWithName('testBinaryOperator')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
         assert.isAtLeast(stmts!.length, 2);

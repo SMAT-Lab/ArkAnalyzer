@@ -30,23 +30,22 @@ function buildScene(): Scene {
     return projectScene;
 }
 
-let projectScene = buildScene();
-
 describe('WorkerTest', () => {
-    let cg = new CallGraph(projectScene);
-    let cgBuilder = new CallGraphBuilder(cg, projectScene);
-    cgBuilder.buildDirectCallGraphForScene();
-
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
-
-    
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.Set);
-    let pta = new PointerAnalysis(pag, cg, projectScene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
-
     it('case1: worker.postMessageWithSharedSendable()', () => {
+        let projectScene = buildScene();
+        let cg = new CallGraph(projectScene);
+        let cgBuilder = new CallGraphBuilder(cg, projectScene);
+        cgBuilder.buildDirectCallGraphForScene();
+
+        let pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+
+
+        let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.Set);
+        let pta = new PointerAnalysis(pag, cg, projectScene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+
         let target;
         for (let node of pag.getNodesIter()) {
             let pagNode = node as PagNode;

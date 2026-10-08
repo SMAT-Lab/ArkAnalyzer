@@ -182,33 +182,33 @@ class %dflt {
 // src/core/model/ArkClass.ts
 export class ArkClass extends ArkBaseModel implements ArkExport {
     private category!: ClassCategory;                                    // 类别（7 种）
-    private code?: string;
-    private lineCol: LineCol = 0;
+    private originFullPosition?: FullPosition;                           // 源码全位置（默认类为 undefined）
 
-    private declaringArkFile!: ArkFile;                                  // 所属文件
-    private declaringArkNamespace: ArkNamespace | undefined;             // 所属命名空间（可选）
-    private classSignature!: ClassSignature;                             // 全局唯一签名
+    private declaringFileID: number = -1;                                // 所属文件 FileSigID（-1 = 未 intern）
+    private declaringNamespaceSigID?: number;                            // 所属命名空间 NamespaceSigID（可选）
+    private classSigID: number = -1;                                     // 本类 ClassSigID（-1 = 未设置）
 
-    private heritageClasses: Map<string, heritageClassWithInfo | undefined>; // 继承表（父类在前）
+    private heritageClasses: Map<string, heritageClassWithInfo | undefined>; // 继承表（父类在前，保持对象引用）
     private genericsTypes?: GenericType[];                               // 类层泛型形参
     private realTypes?: Type[];                                          // 泛型实例化时的实参
 
-    private defaultMethod: ArkMethod | null = null;                      // %dflt 方法
+    private defaultMethodSigID?: number;                                 // %dflt 方法的 MethodSigID
+    private instanceInitMethodSigID?: number;                            // %instInit 的 MethodSigID
+    private staticInitMethodSigID?: number;                              // %statInit 的 MethodSigID
 
-    private methods: Map<string, ArkMethod[]>;                           // 实例方法（同名重载用数组）
-    private staticMethods: Map<string, ArkMethod[]>;                     // 静态方法
-    private fields: Map<string, ArkField>;                               // 实例字段
-    private staticFields: Map<string, ArkField>;                         // 静态字段
-    private extendedClasses: Map<string, ArkClass>;                      // 反向：所有继承本类的子类
-
-    private instanceInitMethod: ArkMethod;                               // %instInit
-    private staticInitMethod: ArkMethod;                                 // %statInit
+    private methodNameIndex?: Map<string, number[]>;                     // 实例方法名 → MethodSigID 列表（重载多 ID，按加入序）
+    private staticMethodNameIndex?: Map<string, number[]>;               // 静态方法名索引（同上）
+    private topFieldSigIDs?: Int32Array;                                 // 实例字段 FieldSigID 索引
+    private topStaticFieldSigIDs?: Int32Array;                           // 静态字段 FieldSigID 索引
+    private extendedClassSigIDs?: Int32Array;                            // 反向：所有继承本类的子类 ClassSigID
 
     private anonymousMethodNumber: number = 0;                           // 用于命名 %AM<idx>$<外层>
     private indexSignatureNumber: number = 0;
     private viewTree?: ViewTree;                                         // ArkUI 视图树
 }
 ```
+
+> ID 化说明：`declaringFileID` / `declaringNamespaceSigID` / `classSigID` 等为正式 SigID，模型对象经 `SignatureCanonicalizerRegistry`（全局单例）反查——例如 `getDeclaringArkFile()` 内部通过 `fileSigCanonicalizer.getModel(declaringFileID)` 取回 `ArkFile`。子元素（方法 / 字段 / 子类）的存储一律为 SigID 索引（`Map<string, number[]>` 或 `Int32Array`），查询时经 Registry 物化为对象。
 
 ### `ClassCategory` 7 种取值
 
@@ -238,13 +238,13 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 ```typescript
 // src/core/model/ArkSignature.ts
 export class ClassSignature {
-    private declaringFileSignature!: FileSignature;
-    private declaringNamespaceSignature: NamespaceSignature | null;
+    private declaringFileSigID: number;               // 所属文件 FileSigID（0 = DEFAULT）
+    private declaringNamespaceSigID?: number;         // 所属命名空间 NamespaceSigID（可选）
     private className: string;
 }
 ```
 
-`toString()` 形如 `@Pkg/File: ClassName`，命名空间内则形如 `@Pkg/File: NS.ClassName`。
+`toString()` 形如 `@Pkg/File: ClassName`，命名空间内则形如 `@Pkg/File: NS.ClassName`。签名构造时缓存 32 位 hash（`getHashCode()`），供 `SignatureCanonicalizerRegistry` 做 hash + equals 值语义去重；构造重载推荐直接传 SigID（传签名对象的旧重载已标 deprecated）。
 
 ### `heritageClasses`
 
@@ -272,14 +272,13 @@ interface heritageClassWithInfo {
 | `getName(): string` | 类名（来自 `classSignature`） |
 | `getSignature(): ClassSignature` / `setSignature(s)` | 全局签名 |
 | `getCategory(): ClassCategory` / `setCategory(c)` | 类别 |
-| `getDeclaringArkFile(): ArkFile` / `setDeclaringArkFile(f)` | 所属文件 |
-| `getDeclaringArkNamespace(): ArkNamespace \| undefined` / `setDeclaringArkNamespace(ns)` | 所属命名空间 |
+| `getDeclaringArkFile(): ArkFile` / `setDeclaringFileID(id)` | 所属文件（getter 经 Registry 按 FileSigID 反查；setter 已改为写 ID） |
+| `getDeclaringArkNamespace(): ArkNamespace \| undefined` / `setDeclaringArkNamespaceID(id)` | 所属命名空间（同上，按 NamespaceSigID 反查） |
 | `getLanguage(): Language` | 等价 `getDeclaringArkFile().getLanguage()` |
 | `isDefaultArkClass()` | 是否 `%dflt` |
 | `isAnonymousClass()` | 是否 `%AC` 前缀 |
 | `isLibraryClass()` | 是否第三方库类（与当前 Scene 主项目名不一致） |
-| `getCode() / setCode(s)` | 源码片段 |
-| `getLine() / setLine(n) / getColumn() / setColumn(n)` | 源码位置 |
+| `getOriginFullPosition() / setOriginFullPosition(p)` | 源码全位置（`getCode`/`getLine` 等旧 API 已废弃） |
 
 ### 继承
 
@@ -292,7 +291,7 @@ interface heritageClassWithInfo {
 | `getImplementedInterfaceNames(): string[]` | 所有 implements 接口名（不含 INTERFACE 类自身的 extends） |
 | `hasImplementedInterface(name) / getImplementedInterface(name)` | 接口判断与查询 |
 | `addHeritageClassName(name) / addHeritageClassNameWithInfo(name, info)` | 在构建期登记继承关系 |
-| `getExtendedClasses(): Map<string, ArkClass>` / `addExtendedClass(c)` | 反向：本类的子类集合 |
+| `getExtendedClasses(): Map<string, ArkClass>` / `addExtendedClass(c)` | 反向：本类的子类集合（内部存储为 ClassSigID 的 `Int32Array`，本方法每次重建 Map 视图；热路径可用 `getExtendedClassList(): ArkClass[] \| null`） |
 
 ### 字段
 
@@ -302,7 +301,7 @@ interface heritageClassWithInfo {
 | `getFieldWithName(name) / getStaticFieldWithName(name) / getField(sig)` | 按名 / 按签名查 |
 | `addField(f) / addFields(fs)` | 加入（自动按 `isStatic` 分流） |
 | `removeField(f): boolean` | 删除 |
-| `getStaticFields(classMap): ArkField[]` | 仅静态字段 |
+| `getStaticFields(): ArkField[]` | 仅静态字段（旧的 `getStaticFields(classMap)` 双参重载已废弃，`classMap` 参数从未被使用） |
 
 ### 方法
 
@@ -312,11 +311,11 @@ interface heritageClassWithInfo {
 | `getMethodWithName(name) / getStaticMethodWithName(name)` | 按名查首个匹配（重载多签名时仅返回一个） |
 | `getMethodsWithName(name) / getStaticMethodsWithName(name) / getAllMethodsWithName(name)` | 按名查全部（含重载） |
 | `getMethod(signature): ArkMethod \| null` | 按签名查 |
-| `addMethod(method, originName?)` | 加入；嵌套方法名（`%name$outer`）会同时按 originName 索引一份 |
-| `removeMethod(method): boolean` | 从类与 Scene 中同时移除 |
+| `addMethod(method)` | 加入（内部按 MethodSigID 索引；重载语言同名共存，非重载语言后加入者覆盖先加入者） |
+| `removeMethod(method): boolean` | 精确删除这一个方法（按其 MethodSigID），并同步从 Registry 移除模型 |
 | `setDefaultArkMethod(m) / getDefaultArkMethod(): ArkMethod \| null` | 默认方法 `%dflt` |
-| `getInstanceInitMethod(): ArkMethod` / `setInstanceInitMethod(m)` | `%instInit` |
-| `getStaticInitMethod(): ArkMethod` / `setStaticInitMethod(m)` | `%statInit` |
+| `setInstanceInitMethod(m)` / `getInstanceInitMethodOrNull(): ArkMethod \| undefined` | `%instInit`（非空兜底的 `getInstanceInitMethod()` 已废弃） |
+| `setStaticInitMethod(m)` / `getStaticInitMethodOrNull(): ArkMethod \| undefined` | `%statInit`（非空兜底的 `getStaticInitMethod()` 已废弃） |
 | `getAnonymousMethodNumber(): number` | 在添加新匿名方法时自增 |
 | `getIndexSignatureNumber(): number` | 在添加新索引签名时自增 |
 
@@ -333,7 +332,7 @@ interface heritageClassWithInfo {
 | 方法 | 说明 |
 |------|------|
 | `getGlobalVariable(globalMap): Local[]` | 该类作用域可见的全局变量列表 |
-| `validate(): ArkError` | 必填字段检查（`declaringArkFile`、`category`、`classSignature`） |
+| `validate(): ArkError` | 必填字段检查（`declaringFileID`、`category`、`classSigID`） |
 | `getDeclareSignature() / setDeclareSignature(s)` | C/C++ 声明与定义分离时的声明签名 |
 | `getTs2cxxFuncMap()` / `addTs2cxxFuncMapElement(name, mtds)` | TS ↔ CXX 跨语言函数映射（仅鸿蒙 native 场景） |
 | `getExportType(): ExportType` | 恒返回 `ExportType.CLASS` |

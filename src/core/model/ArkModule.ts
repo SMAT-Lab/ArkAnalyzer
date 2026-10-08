@@ -78,7 +78,7 @@ export class ArkModule {
     private moduleName: string = '';
 
     /** key: {@link FileSignature.toMapKey} */
-    private filesMap: Map<string, ArkFile> = new Map();
+    private filesMap: Map<number, ArkFile> = new Map();
 
     /**
      * Alias-to-id mapping for dependencies, defined at the use site.
@@ -145,7 +145,7 @@ export class ArkModule {
         this.moduleName = moduleName;
     }
 
-    public getFilesMap(): Map<string, ArkFile> {
+    public getFilesMap(): Map<number, ArkFile> {
         return this.filesMap;
     }
 
@@ -268,7 +268,7 @@ export class ArkModule {
     // --- File management ---
 
     public addFile(arkFile: ArkFile): void {
-        this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
+        this.filesMap.set(arkFile.getFileSigID(), arkFile);
     }
 
     public clearFilesMap(): void {

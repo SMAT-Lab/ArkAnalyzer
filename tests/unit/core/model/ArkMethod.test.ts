@@ -17,21 +17,23 @@ import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { Scene } from '../../../../src/Scene';
 import { SceneConfig } from '../../../../src/Config';
 import path from 'path';
-import { ArkAssignStmt, ArkInvokeStmt, ArkMethod, ArkReturnStmt, FunctionType, GlobalRef, Local, Stmt, Value } from '../../../../src';
+import {
+    ArkAssignStmt,
+    ArkClass,
+    ArkFile,
+    ArkInvokeStmt,
+    ArkMethod,
+    ArkNamespace,
+    ArkReturnStmt,
+    FunctionType,
+    GlobalRef,
+    Local,
+    Stmt,
+    Value,
+} from '../../../../src';
 import { getLineNo, getColNo } from '../../../../src/core/base/Position';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
 import { buildScene } from '../../common';
-
-let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir(path.join(__dirname, '../../../resources/model/method'));
-let projectScene: Scene = new Scene();
-projectScene.buildSceneFromProjectDir(config);
-projectScene.inferTypes();
-
-let arkFile = projectScene.getFiles().find(file => file.getName() == 'method.ts');
-let arkDefaultClass = arkFile?.getDefaultClass();
-let nestedTestClass = arkFile?.getClassWithName('NestedTestClass');
-let testNamespace = arkFile?.getNamespaceWithName('ConstructorTest');
 
 const MethodParamWithDefaultValue = `paramWithInitializer(a: string, x?: number, y?: unknown, z?: number): number {
   label0:
@@ -62,7 +64,7 @@ const MethodParamWithDefaultValue = `paramWithInitializer(a: string, x?: number,
 
   label6:
     %0 = a + y
-    instanceinvoke console.<@%unk/%unk: .log()>(%0)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)
     %1 = x + z
     return %1
 }
@@ -96,7 +98,7 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
 
   label7:
     %1 = a + b
-    instanceinvoke console.<@%unk/%unk: .log()>(%1)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(%1)
     return
 
   label5:
@@ -167,7 +169,7 @@ const methodWithTryCatch = `paramInitializerWithTryCatch(a?: unknown): void {
     goto label0
 
   label0:
-    instanceinvoke console.<@%unk/%unk: .log()>(a)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(a)
     goto label2
 
   label2:
@@ -175,7 +177,7 @@ const methodWithTryCatch = `paramInitializerWithTryCatch(a?: unknown): void {
 
   label1:
     e = caughtexception: unknown
-    instanceinvoke console.<@%unk/%unk: .log()>(e)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(e)
     goto label2
 }
 `;
@@ -198,7 +200,7 @@ const methodWithForLoop = `paramInitializerWithForLoop(a?: unknown): void {
     if i < a goto label1 label2
 
   label1:
-    instanceinvoke console.<@%unk/%unk: .log()>(i)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(i)
     i = i + 1
     goto label0
 
@@ -222,14 +224,14 @@ const methodWithSwitch = `paramInitializerWithSwitch(a?: unknown): void {
 
   label0:
     %0 = a + 1
-    instanceinvoke console.<@%unk/%unk: .log()>(%0)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)
     goto label2
 
   label2:
     return
 
   label1:
-    instanceinvoke console.<@%unk/%unk: .log()>(a)
+    instanceinvoke console.<@%unk/%unk: %unk.log()>(a)
     goto label2
 }
 `;
@@ -298,6 +300,20 @@ const methodWithNestedTernaryDefault = `paramInitializerWithNestedTernaryDefault
 }
 `;
 
+let arkDefaultClass: ArkClass | undefined;
+let arkFile: ArkFile | undefined;
+
+beforeAll(() => {
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, '../../../resources/model/method'));
+    let projectScene: Scene = new Scene();
+    projectScene.buildSceneFromProjectDir(config);
+    projectScene.inferTypes();
+
+    arkFile = projectScene.getFiles().find(file => file.getName() == 'method.ts');
+    arkDefaultClass = arkFile?.getDefaultClass();
+});
+
 describe('ArkMethod Test', () => {
     it('test dotDotDot parameter', async () => {
         let method = arkDefaultClass?.getMethodWithName('testDotDotDotToken');
@@ -326,7 +342,7 @@ describe('Nested Method with Function Declaration Statement', () => {
 
         const stmts = method?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('This is nested function with function declaration.')");
+        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('This is nested function with function declaration.')");
         expect((stmts as Stmt[])[2].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()>()');
 
         const global = method!.getBody()?.getUsedGlobals()?.get('innerInnerFunction1');
@@ -342,7 +358,7 @@ describe('Nested Method with Function Declaration Statement', () => {
         const stmts = method?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
         expect((stmts as Stmt[])[1].toString()).toEqual(
-            "instanceinvoke console.<@%unk/%unk: .log()>('This is nested function in nested function with function declaration.')"
+            "instanceinvoke console.<@%unk/%unk: %unk.log()>('This is nested function in nested function with function declaration.')"
         );
         const locals = method?.getBody()?.getLocals();
         assert.isDefined(locals);
@@ -426,7 +442,7 @@ describe('Nested Method with Function Expression', () => {
     it('test nested method', async () => {
         const stmts = nestedMethod.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('This is nested function with function expression.')");
+        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('This is nested function with function expression.')");
         const locals = nestedMethod.getBody()?.getLocals();
         assert.isDefined(locals);
         expect(locals!.size).toEqual(1);
@@ -468,7 +484,7 @@ describe('Nested Method with Arrow Function', () => {
     it('test nested method', async () => {
         const stmts = nestedMethod.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('This is nested function with arrow function.')");
+        expect((stmts as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('This is nested function with arrow function.')");
         const locals = nestedMethod.getBody()?.getLocals();
         assert.isDefined(locals);
         expect(locals!.size).toEqual(1);
@@ -520,34 +536,40 @@ describe('Recursive Method', () => {
 });
 
 describe('Nested Method in Class', () => {
+    let nestedTestClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        nestedTestClass = arkFile?.getClassWithName('NestedTestClass');
+    });
+
     it('test nested method', async () => {
         const method1 = nestedTestClass?.getMethodWithName('%innerFunction1$outerMethod');
         assert.isDefined(method1);
         assert.isNotNull(method1);
         const stmts1 = method1?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts1);
-        expect((stmts1 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('innerFunction1')");
+        expect((stmts1 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('innerFunction1')");
 
         const method2 = nestedTestClass?.getMethodWithName('%AM1$outerMethod');
         assert.isDefined(method2);
         assert.isNotNull(method2);
         const stmts2 = method2?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts2);
-        expect((stmts2 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('innerFunction2')");
+        expect((stmts2 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('innerFunction2')");
 
         const method3 = nestedTestClass?.getMethodWithName('%AM2$outerMethod');
         assert.isDefined(method3);
         assert.isNotNull(method3);
         const stmts3 = method3?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts3);
-        expect((stmts3 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('innerFunction3')");
+        expect((stmts3 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('innerFunction3')");
 
         const method4 = nestedTestClass?.getMethodWithName('%AM3$outerMethod');
         assert.isDefined(method4);
         assert.isNotNull(method4);
         const stmts4 = method4?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts4);
-        expect((stmts4 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: .log()>('innerFunction4')");
+        expect((stmts4 as Stmt[])[1].toString()).toEqual("instanceinvoke console.<@%unk/%unk: %unk.log()>('innerFunction4')");
     });
 
     it('test outer method', async () => {
@@ -557,7 +579,13 @@ describe('Nested Method in Class', () => {
 
         const stmts = outerMethod?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
+        // Scope-precise resolution: the callee is NestedTestClass.outerMethod's own nested
+        // innerFunction1 (composed name %innerFunction1$outerMethod). The historical
+        // origin-prefix matching resolved it across scopes to %dflt.%innerFunction1$outerFunction1
+        // (the file-level outerFunction1's nested function of the same origin name) — a quirk
+        // retired with B2; this expectation now matches the lexical scope, consistent with the
+        // usedGlobals type assertion below.
+        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: NestedTestClass.%innerFunction1$outerMethod()>()');
         expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke innerFunction2<@method/method.ts: NestedTestClass.%AM1$outerMethod()>()');
         expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke innerFunction3<@method/method.ts: NestedTestClass.%AM2$outerMethod()>()');
 
@@ -643,7 +671,11 @@ describe('Optional Method', () => {
 });
 
 describe('Method Param with Default Value', () => {
-    const method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
+    let method: ArkMethod | undefined | null;
+
+    beforeAll(() => {
+        method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
+    });
 
     it('case1: param without default value', async () => {
         const param = method?.getSubSignature().getParameters()[0];
@@ -889,6 +921,7 @@ describe('Empty Function constructor()', () => {
 
 describe('Empty Function constructor()', () => {
     it('should execute without errors and have no side effects', () => {
+        let testNamespace = arkFile?.getNamespaceWithName('ConstructorTest');
         const method = testNamespace?.getDefaultClass()?.getMethodWithName('constructor');
         assert.isDefined(method);
         const stmts = method?.getCfg()?.getStmts();
@@ -900,7 +933,7 @@ describe('ArkMethod Position Test', () => {
     it('test getImplOriginFullPosition for getA method', async () => {
         const method = arkDefaultClass?.getMethodWithName('getA');
         assert.isDefined(method);
-        
+
         const position = method!.getImplOriginFullPosition();
         assert.isDefined(position);
         expect(position!.getFirstLine()).eq(115);
@@ -912,7 +945,7 @@ describe('ArkMethod Position Test', () => {
     it('test getLineCol for getA method', async () => {
         const method = arkDefaultClass?.getMethodWithName('getA');
         assert.isDefined(method);
-        
+
         const lineCol = method!.getLineCol();
         assert.isNotNull(lineCol);
         expect(getLineNo(lineCol!)).eq(115);
@@ -922,7 +955,7 @@ describe('ArkMethod Position Test', () => {
     it('test getDeclareOriginFullPositions for getA method returns null', async () => {
         const method = arkDefaultClass?.getMethodWithName('getA');
         assert.isDefined(method);
-        
+
         const declarePositions = method!.getDeclareOriginFullPositions();
         assert.isNull(declarePositions);
     });
@@ -930,7 +963,7 @@ describe('ArkMethod Position Test', () => {
     it('test getDeclareLineCols for getA method returns null', async () => {
         const method = arkDefaultClass?.getMethodWithName('getA');
         assert.isDefined(method);
-        
+
         const declareLineCols = method!.getDeclareLineCols();
         assert.isNull(declareLineCols);
     });
@@ -950,7 +983,7 @@ describe('ArkMethod Position Test', () => {
     it('test getImplOriginFullPosition for paramInitializerWithIfBranch method', async () => {
         const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
         assert.isDefined(method);
-        
+
         const position = method!.getImplOriginFullPosition();
         assert.isDefined(position);
         expect(position!.getFirstLine()).eq(125);
@@ -962,7 +995,7 @@ describe('ArkMethod Position Test', () => {
     it('test getLineCol for paramInitializerWithIfBranch method', async () => {
         const method = arkDefaultClass?.getMethodWithName('paramInitializerWithIfBranch');
         assert.isDefined(method);
-        
+
         const lineCol = method!.getLineCol();
         assert.isNotNull(lineCol);
         expect(getLineNo(lineCol!)).eq(125);
@@ -983,11 +1016,19 @@ describe('ArkMethod Position Test', () => {
 });
 
 describe('ArkMethod Declare Method Position Test', () => {
-    const declareScene = buildScene(path.join(__dirname, '../../../resources/exports'));
-    const declareArkFile = declareScene.getFiles().find((file) => file.getName() === 'exportSample.ts');
-    const myNamespace = declareArkFile?.getNamespaceWithName('MyNameSpace');
-    const namespaceClass = myNamespace?.getDefaultClass();
-    const doaMethod = namespaceClass?.getMethodWithName('doa');
+    let declareScene: ReturnType<typeof buildScene>;
+    let declareArkFile: ArkFile | undefined;
+    let myNamespace: ArkNamespace | null | undefined;
+    let namespaceClass: ArkClass | undefined;
+    let doaMethod: ArkMethod | null | undefined;
+
+    beforeAll(() => {
+        declareScene = buildScene(path.join(__dirname, '../../../resources/exports'));
+        declareArkFile = declareScene.getFiles().find(file => file.getName() === 'exportSample.ts');
+        myNamespace = declareArkFile?.getNamespaceWithName('MyNameSpace');
+        namespaceClass = myNamespace?.getDefaultClass();
+        doaMethod = namespaceClass?.getMethodWithName('doa');
+    });
 
     it('test getImplOriginFullPosition for doa method returns undefined', async () => {
         assert.isDefined(doaMethod);
@@ -1011,7 +1052,7 @@ describe('ArkMethod Declare Method Position Test', () => {
 
     it('test getDeclareOriginFullPositions for doa method returns non-null', async () => {
         assert.isDefined(doaMethod);
-        
+
         const declarePositions = doaMethod!.getDeclareOriginFullPositions();
         assert.isNotNull(declarePositions);
         expect(declarePositions!.length).eq(1);
@@ -1023,7 +1064,7 @@ describe('ArkMethod Declare Method Position Test', () => {
 
     it('test getDeclareLineCols for doa method returns non-null', async () => {
         assert.isDefined(doaMethod);
-        
+
         const declareLineCols = doaMethod!.getDeclareLineCols();
         assert.isNotNull(declareLineCols);
         expect(declareLineCols!.length).eq(1);
@@ -1033,7 +1074,7 @@ describe('ArkMethod Declare Method Position Test', () => {
 
     it('test getDeclareLines for doa method returns non-null', async () => {
         assert.isDefined(doaMethod);
-        
+
         const declareLines = doaMethod!.getDeclareLines();
         assert.isNotNull(declareLines);
         expect(declareLines!.length).eq(1);
@@ -1042,7 +1083,7 @@ describe('ArkMethod Declare Method Position Test', () => {
 
     it('test getDeclareColumns for doa method returns non-null', async () => {
         assert.isDefined(doaMethod);
-        
+
         const declareColumns = doaMethod!.getDeclareColumns();
         assert.isNotNull(declareColumns);
         expect(declareColumns!.length).eq(1);

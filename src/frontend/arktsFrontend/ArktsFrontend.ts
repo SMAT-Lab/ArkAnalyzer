@@ -16,8 +16,6 @@
 import { Scene } from '../../Scene';
 import { ArkFile } from '../../core/model/ArkFile';
 import { buildArkFileFromFile, buildArkFileSignaturesFromFile, buildImportExportInfoFromFile } from '../../core/model/builder/ArkFileBuilder';
-import { FrontendParseFailure, FrontendParseResult } from '../FrontendBuilder';
-import { FileUtils } from '../../utils/FileUtils';
 
 /**
  * ArkTS/TS/JS: builds {@link ArkFile}s using the core TS/ArkTS pipeline (see {@link buildArkFileFromFile}).
@@ -50,21 +48,5 @@ export class ArktsFrontend {
      */
     public static buildArkFileFromSdkPath(absoluteFilePath: string, sdkPath: string, arkFile: ArkFile, sdkName: string): void {
         buildArkFileFromFile(absoluteFilePath, sdkPath, arkFile, sdkName);
-    }
-
-    public buildProjectFiles(scene: Scene, filePaths: string[]): FrontendParseResult {
-        const arkFiles: ArkFile[] = [];
-        const failedFiles: FrontendParseFailure[] = [];
-        for (const filePath of filePaths) {
-            try {
-                const arkFile = new ArkFile(FileUtils.getFileLanguage(filePath, scene.getFileLanguages()));
-                arkFile.setScene(scene);
-                this.buildProjectFile(scene, filePath, arkFile);
-                arkFiles.push(arkFile);
-            } catch (error) {
-                failedFiles.push({ filePath, reason: error });
-            }
-        }
-        return { arkFiles, failedFiles };
     }
 }

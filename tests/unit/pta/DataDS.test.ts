@@ -19,6 +19,7 @@ import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, 
 import { Sdk } from '../../../src/Config';
 import { PtsCollectionType } from '../../../src/callgraph/pointerAnalysis/PtsDS';
 import { ContextType, PtaAnalysisScale } from '../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
+import { SignatureCanonicalizerRegistry } from '../../../src/core/common/SignatureCanonicalizerRegistry';
 
 let sdk: Sdk = {
     name: 'ohos',
@@ -27,6 +28,9 @@ let sdk: Sdk = {
 };
 
 function test(type: PtsCollectionType): PointerAnalysis {
+    // 单 Scene 单次构建生命周期：共享 registry 的二次构建为不支持场景（同 it 内
+    // Set/BitVector 两次完整构建），逐次 dispose 隔离。
+    SignatureCanonicalizerRegistry.dispose();
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir('./tests/resources/pta/ExportNew');
     config.getSdksObj().push(sdk);

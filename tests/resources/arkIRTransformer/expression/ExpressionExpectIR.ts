@@ -810,141 +810,141 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [null, null],
         },
         {
-            text: 'instanceinvoke a1.<@%unk/%unk: .call1()>()',
+            text: 'instanceinvoke a1.<@%unk/%unk: %unk.call1()>()',
             operandOriginalPositions: [[17, 1, 17, 11], [17, 1, 17, 3]],
         },
         {
-            text: 'a2 = instanceinvoke a3.<@%unk/%unk: .call2()>()',
+            text: 'a2 = instanceinvoke a3.<@%unk/%unk: %unk.call2()>()',
             operandOriginalPositions: [[18, 5, 18, 7], [18, 10, 18, 20], [18, 10, 18, 12]],
         },
         {
-            text: 'a4 = instanceinvoke a3.<@%unk/%unk: .call3()>(para1, para2)',
+            text: 'a4 = instanceinvoke a3.<@%unk/%unk: %unk.call3()>(para1, para2)',
             operandOriginalPositions: [[19, 5, 19, 7], [19, 10, 19, 32], [19, 10, 19, 12], [19, 19, 19, 24],
             [19, 26, 19, 31]],
         },
         {
-            text: '%0 = a3.<@%unk/%unk: .field1>',
+            text: '%0 = a3.<@%unk/%unk: %unk.field1>',
             operandOriginalPositions: [[20, 10, 20, 19], [20, 10, 20, 19], [20, 10, 20, 12]],
         },
         {
-            text: 'instanceinvoke a4.<@%unk/%unk: .call4()>(%0)',
+            text: 'instanceinvoke a4.<@%unk/%unk: %unk.call4()>(%0)',
             operandOriginalPositions: [[20, 1, 20, 20], [20, 1, 20, 3], [20, 10, 20, 19]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .call10()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.call10()>()',
             operandOriginalPositions: [[23, 1, 23, 9]],
         },
         {
-            text: 'a20 = staticinvoke <@%unk/%unk: .call20()>()',
+            text: 'a20 = staticinvoke <@%unk/%unk: %unk.call20()>()',
             operandOriginalPositions: [[24, 5, 24, 8], [24, 11, 24, 19]],
         },
         {
-            text: 'a40 = staticinvoke <@%unk/%unk: .call30()>(para10, para20)',
+            text: 'a40 = staticinvoke <@%unk/%unk: %unk.call30()>(para10, para20)',
             operandOriginalPositions: [[25, 5, 25, 8], [25, 11, 25, 33], [25, 18, 25, 24], [25, 26, 25, 32]],
         },
         {
-            text: '%1 = staticinvoke <@%unk/%unk: .call200()>()',
+            text: '%1 = staticinvoke <@%unk/%unk: %unk.call200()>()',
             operandOriginalPositions: [[28, 12, 28, 21], [28, 12, 28, 21]],
         },
         {
-            text: 'a200 = instanceinvoke %1.<@%unk/%unk: .call300()>(para100, para200)',
+            text: 'a200 = instanceinvoke %1.<@%unk/%unk: %unk.call300()>(para100, para200)',
             operandOriginalPositions: [[28, 5, 28, 9], [28, 12, 28, 47], [28, 12, 28, 21], [28, 30, 28, 37],
             [28, 39, 28, 46]],
         },
         {
-            text: '%2 = instanceinvoke obj.<@%unk/%unk: .call400()>()',
+            text: '%2 = instanceinvoke obj.<@%unk/%unk: %unk.call400()>()',
             operandOriginalPositions: [[31, 12, 32, 15], [31, 12, 32, 15], [31, 12, 31, 15]],
         },
         {
-            text: 'a300 = instanceinvoke %2.<@%unk/%unk: .call500()>(para1)',
+            text: 'a300 = instanceinvoke %2.<@%unk/%unk: %unk.call500()>(para1)',
             operandOriginalPositions: [[31, 5, 31, 9], [31, 12, 33, 20], [31, 12, 32, 15], [33, 14, 33, 19]],
         },
         {
-            text: '%3 = staticinvoke <@%unk/%unk: .call600()>()',
+            text: '%3 = staticinvoke <@%unk/%unk: %unk.call600()>()',
             operandOriginalPositions: [[35, 12, 35, 21], [35, 12, 35, 21]],
         },
         {
-            text: '%4 = instanceinvoke %3.<@%unk/%unk: .call700()>()',
+            text: '%4 = instanceinvoke %3.<@%unk/%unk: %unk.call700()>()',
             operandOriginalPositions: [[35, 12, 36, 15], [35, 12, 36, 15], [35, 12, 35, 21]],
         },
         {
-            text: 'a500 = instanceinvoke %4.<@%unk/%unk: .call800()>()',
+            text: 'a500 = instanceinvoke %4.<@%unk/%unk: %unk.call800()>()',
             operandOriginalPositions: [[35, 5, 35, 9], [35, 12, 37, 15], [35, 12, 36, 15]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .call900()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.call900()>()',
             operandOriginalPositions: [[40, 1, 40, 15], [40, 1, 40, 4]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .prefixCall10()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.prefixCall10()>()',
             operandOriginalPositions: [[43, 1, 43, 15]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .$tempCall()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.$tempCall()>()',
             operandOriginalPositions: [[44, 1, 44, 12]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .callSpace()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.callSpace()>()',
             operandOriginalPositions: [[45, 1, 45, 13]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .genericCall()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.genericCall()>()',
             operandOriginalPositions: [[46, 1, 46, 17]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .callNewline()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.callNewline()>()',
             operandOriginalPositions: [[47, 1, 48, 3]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .parenCall()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.parenCall()>()',
             operandOriginalPositions: [[49, 1, 49, 14]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .nestedGeneric()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.nestedGeneric()>()',
             operandOriginalPositions: [[50, 1, 50, 24]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .arrowGeneric()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.arrowGeneric()>()',
             operandOriginalPositions: [[51, 1, 51, 27]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .strGeneric()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.strGeneric()>()',
             operandOriginalPositions: [[52, 1, 52, 20]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .fnGeneric()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.fnGeneric()>()',
             operandOriginalPositions: [[53, 1, 53, 39]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .commentGeneric()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.commentGeneric()>()',
             operandOriginalPositions: [[54, 1, 54, 28]],
         },
         {
-            text: '%5 = staticinvoke <@%unk/%unk: .fooSame()>()',
+            text: '%5 = staticinvoke <@%unk/%unk: %unk.fooSame()>()',
             operandOriginalPositions: [[57, 1, 57, 10], [57, 1, 57, 10]],
         },
         {
-            text: 'instanceinvoke %5.<@%unk/%unk: .fooSame()>()',
+            text: 'instanceinvoke %5.<@%unk/%unk: %unk.fooSame()>()',
             operandOriginalPositions: [[57, 1, 57, 20], [57, 1, 57, 10]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .callParenBase()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.callParenBase()>()',
             operandOriginalPositions: [[60, 1, 60, 22], [60, 2, 60, 5]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .m()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.m()>()',
             operandOriginalPositions: [[61, 1, 61, 10], [61, 2, 61, 5]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .parenCall2()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.parenCall2()>()',
             operandOriginalPositions: [[62, 1, 62, 17]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .callNonNull()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.callNonNull()>()',
             operandOriginalPositions: [[63, 1, 63, 19], [63, 1, 63, 4]],
         },
         {
-            text: 'staticinvoke <@%unk/%unk: .callBang()>()',
+            text: 'staticinvoke <@%unk/%unk: %unk.callBang()>()',
             operandOriginalPositions: [[64, 1, 64, 12]],
         },
         {
@@ -952,19 +952,19 @@ export const CallExpression_Expect_IR = {
             operandOriginalPositions: [[65, 2, 65, 15], [65, 2, 65, 15], [65, 2, 65, 8]],
         },
         {
-            text: 'ptrinvoke %6<@%unk/%unk: .%6()>()',
+            text: 'ptrinvoke %6<@%unk/%unk: %unk.%6()>()',
             operandOriginalPositions: [[65, 1, 65, 18], [65, 2, 65, 8]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .key()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.key()>()',
             operandOriginalPositions: [[66, 1, 66, 11], [66, 1, 66, 4]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .\'lit\'()>()',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.\'lit\'()>()',
             operandOriginalPositions: [[67, 1, 67, 13], [67, 1, 67, 4]],
         },
         {
-            text: 'instanceinvoke obj.<@%unk/%unk: .callMultilineArgs()>(para1)',
+            text: 'instanceinvoke obj.<@%unk/%unk: %unk.callMultilineArgs()>(para1)',
             operandOriginalPositions: [[68, 1, 70, 2], [68, 1, 68, 4], [69, 5, 69, 10]],
         },
         {
@@ -1462,8 +1462,7 @@ export const INCREMENT_EXPECT_IR = `incrementExpression(): void {
     obj1 = %3
     %6 = obj1.<@expression/IncrementExpressionTest.ts: %AC1$%dflt-incrementExpression.x>
     %7 = %6.<@expression/IncrementExpressionTest.ts: %AC2$%dflt-incrementExpression.y>
-    %8 = %7[0]
-    %7[0] = %8 + 5
+    %7[0] = %7[0] + 5
     return
 }
 `;

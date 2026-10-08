@@ -24,20 +24,17 @@ export type TextInput = string;
 
 
 describe('SourceTypeAliasTest', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
-
     it('case1: whole file', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+
         let arkfile = scene.getFiles().find((value) => {
             return value.getName() == 'type_alias.ts';
         });
-        if (!arkfile) {
-            return;
-        }
-        let printer = new SourceFilePrinter(arkfile);
+        let printer = new SourceFilePrinter(arkfile!);
         let source = printer.dump();
         expect(source).eq(SourceTypeAliasTest_CASE1_EXPECT);
     });

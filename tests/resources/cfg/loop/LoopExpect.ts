@@ -29,7 +29,7 @@ export const LOOP_EXPECT_CASE1 = {
                 '%2[0] = %0',
                 '%2[1] = %1',
                 'arr = %2',
-                '%3 = instanceinvoke arr.<@%unk/%unk: .Symbol.iterator()>()',
+                '%3 = instanceinvoke arr.<@%unk/%unk: %unk.Symbol.iterator()>()',
             ],
             preds: [],
             succes: [1],
@@ -37,8 +37,8 @@ export const LOOP_EXPECT_CASE1 = {
         {
             id: 1,
             stmts: [
-                '%4 = instanceinvoke %3.<@%unk/%unk: .next()>()',
-                '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
+                '%4 = instanceinvoke %3.<@%unk/%unk: %unk.next()>()',
+                '%5 = %4.<@%unk/%unk: IteratorResult.done>',
                 'if %5 != true',
             ],
             preds: [2, 0],
@@ -47,11 +47,11 @@ export const LOOP_EXPECT_CASE1 = {
         {
             id: 2,
             stmts: [
-                '%6 = %4.<@ES2015/BuiltinClass: IteratorResult.value>',
+                '%6 = %4.<@%unk/%unk: IteratorResult.value>',
                 '%7 = <unknown>%6',
                 'a = %7[0]',
                 'b = %7[1]',
-                'instanceinvoke console.<@%unk/%unk: .log()>(a, b)',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(a, b)',
             ],
             preds: [1],
             succes: [1],
@@ -85,7 +85,7 @@ export const LOOP_EXPECT_CASE2 = {
                 '%2[0] = %0',
                 '%2[1] = %1',
                 'arr = %2',
-                '%3 = instanceinvoke arr.<@%unk/%unk: .Symbol.iterator()>()',
+                '%3 = instanceinvoke arr.<@%unk/%unk: %unk.Symbol.iterator()>()',
             ],
             preds: [],
             succes: [1],
@@ -93,8 +93,8 @@ export const LOOP_EXPECT_CASE2 = {
         {
             id: 1,
             stmts: [
-                '%4 = instanceinvoke %3.<@%unk/%unk: .next()>()',
-                '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
+                '%4 = instanceinvoke %3.<@%unk/%unk: %unk.next()>()',
+                '%5 = %4.<@%unk/%unk: IteratorResult.done>',
                 'if %5 != true',
             ],
             preds: [2, 0],
@@ -103,11 +103,11 @@ export const LOOP_EXPECT_CASE2 = {
         {
             id: 2,
             stmts: [
-                '%6 = %4.<@ES2015/BuiltinClass: IteratorResult.value>',
+                '%6 = %4.<@%unk/%unk: IteratorResult.value>',
                 '%7 = <unknown>%6',
-                'a = %7.<@%unk/%unk: .a>',
-                'b = %7.<@%unk/%unk: .b>',
-                'instanceinvoke console.<@%unk/%unk: .log()>(a, b)',
+                'a = %7.<@%unk/%unk: %unk.a>',
+                'b = %7.<@%unk/%unk: %unk.b>',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(a, b)',
             ],
             preds: [1],
             succes: [1],

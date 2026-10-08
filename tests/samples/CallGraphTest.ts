@@ -59,8 +59,7 @@ function run4Project(): void {
         callGraphBuilder.buildCGNodes(projectScene.getMethods());
 
         const dummyMainCreater = new DummyMainCreater(projectScene);
-        dummyMainCreater.createDummyMain();
-        const entryMethod = dummyMainCreater.getDummyMain();
+        const entryMethod = dummyMainCreater.createDummyMain();
 
         const dummyMainMethodNode = cg.getCallGraphNodeByMethod(entryMethod.getSignature());
         cg.setEntries([dummyMainMethodNode.getID()]);

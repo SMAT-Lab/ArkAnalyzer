@@ -58,8 +58,9 @@ function doValidation(scene: Scene): void {
     // Array holds two elements:
     //   element[0] is expected value
     //   element[1] is actual value
+    // file 数量从 261 -> 262，因为有一个读取失败的文件，旧版本不会加入Scene里，新版本会对其进行注册（有 model、零类、零方法）。
     const obj = {
-        filesNumber: [261],
+        filesNumber: [262],
         classesNumber: [1740],
         methodsNumber: [5766],
         customComponentsNumber: [1130]

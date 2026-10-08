@@ -180,7 +180,7 @@ export const LABEL_FOR_OF_EXPECT = {
                 'arr = parameter0: number[]',
                 'this = this: @labeledStatement/LabeledStatementSample.ts: %dflt',
                 'r = 0',
-                '%0 = instanceinvoke arr.<@%unk/%unk: .Symbol.iterator()>()',
+                '%0 = instanceinvoke arr.<@%unk/%unk: %unk.Symbol.iterator()>()',
             ],
             preds: [],
             succes: [1],
@@ -188,8 +188,8 @@ export const LABEL_FOR_OF_EXPECT = {
         {
             id: 1,
             stmts: [
-                '%1 = instanceinvoke %0.<@%unk/%unk: .next()>()',
-                '%2 = %1.<@ES2015/BuiltinClass: IteratorResult.done>',
+                '%1 = instanceinvoke %0.<@%unk/%unk: %unk.next()>()',
+                '%2 = %1.<@%unk/%unk: IteratorResult.done>',
                 'if %2 != true',
             ],
             preds: [2, 0],
@@ -198,7 +198,7 @@ export const LABEL_FOR_OF_EXPECT = {
         {
             id: 2,
             stmts: [
-                '%3 = %1.<@ES2015/BuiltinClass: IteratorResult.value>',
+                '%3 = %1.<@%unk/%unk: IteratorResult.value>',
                 'item = <unknown>%3',
                 'r = r + item',
             ],

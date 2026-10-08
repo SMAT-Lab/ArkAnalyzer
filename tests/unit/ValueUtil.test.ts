@@ -15,7 +15,7 @@
 
 import { NullType, NumberType, StringType, UndefinedType } from '../../src/core/base/Type';
 import { ValueUtil } from '../../src/core/common/ValueUtil';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import { FileSignature, ModelUtils, Scene, SceneConfig } from "../../src";
 import path from "path";
 
@@ -47,12 +47,17 @@ describe("ValueUtil Test", () => {
 })
 
 describe("ModelUtils Test", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.getSdksObj().push({moduleName: "", name: "ohos", path: path.join(__dirname, "../resources/Sdk")})
-    config.buildFromProjectDir(path.join(__dirname, "../resources/inferType"));
-    let scene: Scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.getSdksObj().push({moduleName: "", name: "ohos", path: path.join(__dirname, "../resources/Sdk")})
+        config.buildFromProjectDir(path.join(__dirname, "../resources/inferType"));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
+
     it('namespace normal case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'demo.ts');
         const outerNameSpace = scene.getFile(fileId)?.getNamespaceWithName('outer');

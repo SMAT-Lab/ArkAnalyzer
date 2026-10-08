@@ -29,12 +29,16 @@ import { FullPosition, getColNo, getLineNo, INVALID_LINE, LineCol, setLineCol } 
 import { ArkBaseModel, BaseModelTag, ModifierType } from './ArkBaseModel';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
 import { Local } from '../base/Local';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { CxxBodyBuilder } from '../../frontend/cppFrontend/model/builder/BodyBuilder';
 import { PointerType } from '../../frontend/cppFrontend/base/Type';
 import { ModelUtils } from '../common/ModelUtils';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethod');
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -53,20 +57,32 @@ export const arkMethodNodeKind = [
  * @category core/model
  */
 export class ArkMethod extends ArkBaseModel implements ArkExport {
-    private declaringArkClass!: ArkClass;
-    // used for the nested function to locate its outer function
-    private outerMethod?: ArkMethod;
+    /** @internal Formal ClassSigID for the declaring class. -1 = not yet interned. */
+    private declaringClassID: number = -1;
 
-    private genericTypes?: GenericType[];
+    /** @internal Formal MethodSigID for the outer method. undefined = none. */
+    private outerMethodSigID?: number;
 
-    private declareSignatures?: MethodSignature[];
+    /** @internal Formal MethodSigID of this method's implementation signature. undefined = declare-only (no implementation). */
+    private implementSigID?: number;
+
+    /** @internal Formal MethodSigIDs of the declaration signatures. undefined = no separate declarations. */
+    private declareSigIDs?: number[];
+
+    /**
+     * @internal SigIDs of classes declared inside this method body (bare source name → ClassSigID).
+     * Only methods whose body contains a class declaration have this map. Enables deterministic
+     * scope-chain resolution of local-class references (bare name → exact SigID), replacing
+     * the file-level fuzzy prefix matching on composed names (`Local$Outer-m`).
+     */
+    private localClassSigIDs?: Map<string, number>;
+
+    /** The full position of the method implementation. Undefined when the method has no implementation (e.g., interface method). */
+    private implOriginFullPosition?: FullPosition;
     /** The full positions of the method declarations (for interface/abstract methods with separate declarations). */
     private declareOriginFullPositions?: FullPosition[];
 
-    private implSignature?: MethodSignature;
-    /** The full position of the method implementation.
-     *  Undefined when the method has no implementation (e.g., interface method). */
-    private implOriginFullPosition?: FullPosition;
+    private genericTypes?: GenericType[];
     private sourceCode?: string;
 
     private body?: ArkBody;
@@ -76,8 +92,51 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
     private CxxBodyBuilder?: CxxBodyBuilder;
 
-    constructor() {
+    /**
+     * @deprecated Construct with the declaring class ID and (optionally) the signature
+     * objects instead.
+     */
+    constructor();
+    /**
+     * Build directly from the declaring class ID and (optionally) signature objects and
+     * the outer method SigID.
+     * `setImplementationSignature` / `setDeclareSignatures` are the registration points:
+     * the implementation path interns the signature, refreshes canonical parameter names,
+     * and registers this method as the model with arbitration; the declaration path only
+     * interns (registration is completed by ArkClass.addMethod).
+     * @param declaringClassID - Formal ClassSigID of the declaring class (required).
+     * @param implementationSignature - The implementation signature object; not yet
+     *        registered — registration happens inside via setImplementationSignature.
+     * @param declareSignatures - The declaration signature object(s); not yet interned —
+     *        interning happens inside via setDeclareSignatures.
+     * @param outerMethodSigID - Formal MethodSigID of the outer (enclosing) method for
+     *        nested methods. Non-positive values are treated as none.
+     */
+    constructor(
+        declaringClassID: number,
+        implementationSignature?: MethodSignature,
+        declareSignatures?: MethodSignature | MethodSignature[],
+        outerMethodSigID?: number
+    );
+    constructor(
+        declaringClassID?: number,
+        implementationSignature?: MethodSignature,
+        declareSignatures?: MethodSignature | MethodSignature[],
+        outerMethodSigID?: number
+    ) {
         super();
+        if (declaringClassID !== undefined) {
+            this.declaringClassID = declaringClassID;
+        }
+        if (implementationSignature) {
+            this.setImplementationSignature(implementationSignature);
+        }
+        if (declareSignatures) {
+            this.setDeclareSignatures(declareSignatures);
+        }
+        if (outerMethodSigID !== undefined) {
+            this.outerMethodSigID = outerMethodSigID > 0 ? outerMethodSigID : undefined;
+        }
     }
 
     /**
@@ -127,8 +186,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @deprecated Source text is now stored on ArkFile only. This method has no effect.
      * @param _code - The source code (ignored).
      */
-    public setCode(_code: string): void {
-    }
+    public setCode(_code: string): void {}
 
     /**
      * @deprecated Since version 1.0.91. Use getDeclareOriginFullPositions().map(p => p.getFirstLine()) instead.
@@ -307,15 +365,38 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns The declaring class of the method.
      */
     public getDeclaringArkClass(): ArkClass {
-        return this.declaringArkClass;
+        if (this.declaringClassID !== -1) {
+            return SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getModel(this.declaringClassID)!;
+        }
+        return undefined as unknown as ArkClass;
     }
 
+    /** @deprecated Use the ID-injecting constructor {@link constructor(declaringClassID, implementationSignature, declareSignatures, outerMethodSigID)}. */
     public setDeclaringArkClass(declaringArkClass: ArkClass): void {
-        this.declaringArkClass = declaringArkClass;
+        this.declaringClassID = declaringArkClass.getClassSigID();
+    }
+
+    /** @internal Get the formal ClassSigID of the declaring class. Returns -1 if not interned. */
+    public getDeclaringClassID(): number {
+        return this.declaringClassID;
+    }
+
+    /** @internal Get the formal MethodSigID of the outer method. Returns undefined if none. */
+    public getOuterMethodSigID(): number | undefined {
+        return this.outerMethodSigID;
+    }
+
+    /** @internal Set the formal MethodSigID of the outer method directly. Non-positive IDs are treated as none. */
+    public setOuterMethodSigID(sigID: number): void {
+        this.outerMethodSigID = sigID > 0 ? sigID : undefined;
     }
 
     public getDeclaringArkFile(): ArkFile {
-        return this.declaringArkClass.getDeclaringArkFile();
+        return this.getDeclaringArkClass().getDeclaringArkFile();
+    }
+
+    public getDeclaringArkFileID(): number {
+        return this.getDeclaringArkClass().getDeclaringFileID();
     }
 
     public isDefaultArkMethod(): boolean {
@@ -337,10 +418,28 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     /**
      * Get all declare signatures.
      * The results could be null if there is no seperated declaration of the method.
+     * Note: the returned array is a rebuilt copy; mutating it does not affect the internal storage.
      * @returns null or the method declare signatures.
      */
     public getDeclareSignatures(): MethodSignature[] | null {
-        return this.declareSignatures ?? null;
+        const ids = this.declareSigIDs;
+        if (ids === undefined) {
+            return null;
+        }
+        const canonicalizer = SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer;
+        const result: MethodSignature[] = [];
+        for (const id of ids) {
+            const sig = canonicalizer.get(id);
+            if (sig !== undefined) {
+                result.push(sig);
+            }
+        }
+        return result.length > 0 ? result : null;
+    }
+
+    /** @internal Get the formal MethodSigIDs of the declaration signatures. Returns undefined if none. */
+    public getDeclareSigIDs(): number[] | undefined {
+        return this.declareSigIDs;
     }
 
     /**
@@ -350,8 +449,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns -1 or the index of the matched signature.
      */
     public getDeclareSignatureIndex(targetSignature: MethodSignature): number {
-        let declareSignatures = this.declareSignatures;
-        if (declareSignatures === undefined) {
+        const declareSignatures = this.getDeclareSignatures();
+        if (declareSignatures === null) {
             return -1;
         }
         for (let i = 0; i < declareSignatures.length; i++) {
@@ -368,7 +467,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @returns null or the method implementation signature.
      */
     public getImplementationSignature(): MethodSignature | null {
-        return this.implSignature ?? null;
+        if (this.implementSigID === undefined) {
+            return null;
+        }
+        return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.get(this.implementSigID) ?? null;
     }
 
     /**
@@ -378,16 +480,18 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * - Class Signature: indicates which class this method belong to.
      * - Method SubSignature: indicates the detail info of this method such as method name, parameters, returnType, etc.
      * @returns The method signature.
-     * @example
-     * 1. Get the signature of method mtd.
-
-     ```typescript
-     let signature = mtd.getSignature();
-     // ... ...
-     ```
      */
     public getSignature(): MethodSignature {
-        return this.implSignature ?? (this.declareSignatures as MethodSignature[])[0];
+        const impl = this.getImplementationSignature();
+        if (impl !== null) {
+            return impl;
+        }
+        const declares = this.getDeclareSignatures();
+        if (declares !== null && declares.length > 0) {
+            return declares[0];
+        }
+        logger.error(`A method (SigID=${this.getMethodSigID()}) has neither an implementation nor a declaration signature; returning DEFAULT.`);
+        return MethodSignature.DEFAULT;
     }
 
     /**
@@ -396,11 +500,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @param signatures - one signature or a list of signatures.
      */
     public setDeclareSignatures(signatures: MethodSignature | MethodSignature[]): void {
-        if (Array.isArray(signatures)) {
-            this.declareSignatures = signatures;
-        } else {
-            this.declareSignatures = [signatures];
+        const sigList = Array.isArray(signatures) ? signatures : [signatures];
+        const canonicalizer = SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer;
+        // Only intern here; the model is registered when the method is added to a class(ArkClass.addMethod).
+        // Eager registration would overwrite the model of the previously added same-signature method while builders still need to read it for merging.
+        const ids: number[] = [];
+        for (const sig of sigList) {
+            ids.push(canonicalizer.getOrCreateId(sig));
         }
+        this.declareSigIDs = ids;
     }
 
     /**
@@ -410,10 +518,13 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @param index - index of signature want to set.
      */
     public setDeclareSignatureWithIndex(signature: MethodSignature, index: number): void {
-        if (this.declareSignatures === undefined || this.declareSignatures.length <= index) {
+        if (this.declareSigIDs === undefined || this.declareSigIDs.length <= index) {
             return;
         }
-        this.declareSignatures[index] = signature;
+        // Only intern here; the model registration stays with ArkClass.addMethod (see setDeclareSignatures).
+        const canonicalizer = SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer;
+        const id = canonicalizer.getOrCreateId(signature);
+        this.declareSigIDs[index] = id;
     }
 
     /**
@@ -422,7 +533,107 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      * @param signature - signature of implementation.
      */
     public setImplementationSignature(signature: MethodSignature): void {
-        this.implSignature = signature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const canonicalizer = reg.methodSigCanonicalizer;
+        const id = canonicalizer.getOrCreateId(signature);
+        this.implementSigID = id;
+        this.refreshCanonicalParameterNames(canonicalizer, id, signature);
+        this.registerImplModelWithArbitration(canonicalizer, id);
+    }
+
+    /**
+     * @internal Refresh the implementation-side parameter names onto the canonical signature.
+     *
+     * Parameter names are not part of signature identity (hash/equals/toString use parameter
+     * types only), so a declaration and an implementation with differing parameter names share
+     * one canonical instance — whichever interned first. The implementation is the authority
+     * for body-local generation (`prebuildStmts` reads `getParameters()` through the canonical
+     * instance), so when an implementation signature carries different parameter names than the
+     * canonical instance, the canonical parameter list is replaced with the implementation's.
+     */
+    private refreshCanonicalParameterNames(canonicalizer: { get(id: number): MethodSignature | undefined }, id: number, implSignature: MethodSignature): void {
+        const canonical = canonicalizer.get(id);
+        if (canonical === undefined || canonical === implSignature) {
+            return;
+        }
+        const canonicalParams = canonical.getMethodSubSignature().getParameters();
+        const implParams = implSignature.getMethodSubSignature().getParameters();
+        const namesDiffer = canonicalParams.length !== implParams.length || canonicalParams.some((p, i) => p.getName() !== implParams[i].getName());
+        if (namesDiffer) {
+            canonical.getMethodSubSignature().setParameters(implParams);
+        }
+    }
+
+    /**
+     * @internal Register this method as the model of the given implementation SigID, with arbitration:
+     * - Sibling methods of the same declaring class never overwrite each other's registration:
+     *   builders merge same-signature overloads/declarations by reading the previously added
+     *   method through the canonicalizer, and the final winner is registered by ArkClass.addMethod.
+     * - The reverse-lookup slot should be held by the method that actually has a body (C++ decl/impl split).
+     * - Setting an implementation signature twice on different methods is anomalous and logged.
+     */
+    private registerImplModelWithArbitration(
+        canonicalizer: { getModel(id: number): ArkMethod | undefined; setModel(id: number, model: ArkMethod): void },
+        id: number
+    ): void {
+        const existing = canonicalizer.getModel(id);
+        if (existing !== undefined && existing !== this) {
+            if (this.declaringClassID > 0 && this.declaringClassID === existing.getDeclaringClassID()) {
+                return;
+            }
+            const existingHasBody = existing.getBody() !== undefined;
+            const thisHasBody = this.getBody() !== undefined;
+            if (this.isCxxMethod()) {
+                if (existingHasBody && !thisHasBody) {
+                    // C++ decl/impl split: the declaration borrows the impl signature. Keep the
+                    // body-holding implementation in the reverse-lookup slot.
+                    return;
+                }
+                if (existingHasBody && thisHasBody) {
+                    logger.error(`Duplicate method (SigID=${this.getMethodSigID()}), the latter wins.`);
+                }
+            } else {
+                logger.error(`Implementation signature (SigID=${this.getMethodSigID()}) is set twice, the latter wins.`);
+            }
+        }
+        canonicalizer.setModel(id, this);
+    }
+
+    /** @internal Whether this method belongs to a C++ file. Defensive against unresolved declaring class. */
+    private isCxxMethod(): boolean {
+        if (this.declaringClassID <= 0) {
+            return false;
+        }
+        const cls = SignatureCanonicalizerRegistry.getInstance().classSigCanonicalizer.getModel(this.declaringClassID);
+        if (cls === undefined) {
+            return false;
+        }
+        return cls.getLanguage() === Language.CXX;
+    }
+
+    /** @internal Get the formal MethodSigID of this method's implementation signature. Returns undefined for declare-only methods. */
+    public getMethodSigID(): number | undefined {
+        return this.implementSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the MethodSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     *
+     * A method may be registered under multiple SigIDs (n:1: the implementation slot
+     * plus declaration slots all hold this model). This returns the ID of the
+     * signature {@link getSignature} would return — the implementation ID when set,
+     * otherwise the first declaration ID; 0 (the DEFAULT slot) when neither is set.
+     */
+    public getId(): number {
+        if (this.implementSigID !== undefined) {
+            return this.implementSigID;
+        }
+        if (this.declareSigIDs !== undefined && this.declareSigIDs.length > 0) {
+            return this.declareSigIDs[0];
+        }
+        return 0;
     }
 
     public getSubSignature(): MethodSubSignature {
@@ -729,11 +940,11 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 errMsg: 'methodSignature and originFullPosition are not matched.',
             };
         }
-        return this.validateFields(['declaringArkClass']);
+        return this.validateFields(['declaringClassID']);
     }
 
     public matchMethodSignature(args: Value[]): MethodSignature {
-        const signatures = this.declareSignatures?.filter((f: MethodSignature) => {
+        const signatures = this.getDeclareSignatures()?.filter((f: MethodSignature) => {
             const parameters = f.getMethodSubSignature().getParameters();
             const max = parameters.length;
             let min = 0;
@@ -744,11 +955,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         });
         return (
             signatures?.find((p: MethodSignature) =>
-                ModelUtils.isMatched(
-                    p.getMethodSubSignature().getParameters(),
-                    args,
-                    this.getDeclaringArkFile().getScene()
-                )
+                ModelUtils.isMatched(p.getMethodSubSignature().getParameters(), args, this.getDeclaringArkFile().getScene())
             ) ??
             signatures?.[0] ??
             this.getSignature()
@@ -756,11 +963,46 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getOuterMethod(): ArkMethod | undefined {
-        return this.outerMethod;
+        if (this.outerMethodSigID !== undefined) {
+            return SignatureCanonicalizerRegistry.getInstance().methodSigCanonicalizer.getModel(this.outerMethodSigID);
+        }
+        return undefined;
     }
 
+    /**
+     * @internal Sets the outer (enclosing) method of a nested function.
+     * Internally only the formal MethodSigID is stored; the outer method itself is resolved back via the method signature canonicalizer.
+     * @param method - The outer method of this nested method.
+     */
     public setOuterMethod(method: ArkMethod): void {
-        this.outerMethod = method;
+        const id = method.getMethodSigID();
+        this.outerMethodSigID = id !== undefined && id > 0 ? id : undefined;
+    }
+
+    /**
+     * @internal Register a class declared inside this method body, keyed by its bare source name.
+     * The class model itself is stored under the composed name (`Local$Outer-m`) at file/namespace
+     * top level; this map preserves the bare-name → ClassSigID scope binding. First registration
+     * wins (TS block-scoped shadowing is not modeled at this granularity).
+     */
+    public registerLocalClass(bareName: string, classSigID: number): void {
+        if (!bareName || classSigID <= 0) {
+            return;
+        }
+        if (!this.localClassSigIDs) {
+            this.localClassSigIDs = new Map<string, number>();
+        }
+        if (!this.localClassSigIDs.has(bareName)) {
+            this.localClassSigIDs.set(bareName, classSigID);
+        }
+    }
+
+    /**
+     * @internal Get the ClassSigID of a class declared inside this method body by its bare name.
+     * Returns undefined when no such class is registered.
+     */
+    public getLocalClassSigID(bareName: string): number | undefined {
+        return this.localClassSigIDs?.get(bareName);
     }
 
     public getFunctionLocal(name: string): Local | null {
@@ -812,9 +1054,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         this.clearBodyAndSupplementary();
         this.freeBodyBuilder();
         this.freeCxxBodyBuilder();
-        this.declaringArkClass = undefined as unknown as ArkClass;
-        this.outerMethod = undefined;
-        this.declareSignatures = undefined;
-        this.implSignature = undefined;
+        this.declaringClassID = -1;
+        this.outerMethodSigID = undefined;
+        this.declareSigIDs = undefined;
+        this.implementSigID = undefined;
+        this.localClassSigIDs = undefined;
     }
 }

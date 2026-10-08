@@ -399,7 +399,7 @@ function serializeFunctionTypeDto(type: FunctionType, active: WeakSet<object>): 
         const sig = type.getMethodSignature();
         const sub = sig.getMethodSubSignature();
         const sig2 = new MethodSignature(
-            sig.getDeclaringClassSignature(),
+            sig.getDeclaringClassSigID(),
             new MethodSubSignature(sub.getMethodName(), sub.getParameters(), UnknownType.getInstance(), sub.isStatic()),
         );
         return polymorphic('FunctionType', {
@@ -516,7 +516,7 @@ const TYPE_SERIALIZERS: TypeSerializerFn[] = [
         const m = type.getNestedMethod();
         const s = m.getMethodSubSignature();
         const sig = new MethodSignature(
-            m.getDeclaringClassSignature(),
+            m.getDeclaringClassSigID(),
             new MethodSubSignature(s.getMethodName(), [], UnknownType.getInstance()),
         );
         return polymorphic('LexicalEnvType', {

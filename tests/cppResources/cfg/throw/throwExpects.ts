@@ -51,7 +51,7 @@ export const THROW_EXPECT_CASE2 = {
         },
         {
             id: 1,
-            stmts: ['z = staticinvoke <@%unk/%unk: .Division()>(x, y)'],
+            stmts: ['z = staticinvoke <@%unk/%unk: %unk.Division()>(x, y)'],
             preds: [0],
             succes: [3],
             exceptionalPreds: [],
@@ -80,11 +80,11 @@ export const THROW_EXPECT_CASE3 = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'before throw\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'before throw\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, endl)',
                 'throw 42',
-                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'after throw\')',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
+                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'after throw\')',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, endl)',
             ],
             preds: [0],
             succes: [3],
@@ -95,9 +95,9 @@ export const THROW_EXPECT_CASE3 = {
             id: 2,
             stmts: [
                 'e = caughtexception: int',
-                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Caught exception: \')',
-                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, e)',
-                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, \'Caught exception: \')',
+                '%3 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, e)',
+                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%3, endl)',
             ],
             preds: [],
             succes: [3],

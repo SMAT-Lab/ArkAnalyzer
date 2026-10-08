@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, it, assert } from 'vitest';
+import { describe, it, assert, beforeAll } from 'vitest';
 import { CallGraph, CallGraphBuilder, Local, Pag, PagNode, PointerAnalysis, PointerAnalysisConfig, Scene, SceneConfig } from '../../../../src';
 import path from 'path';
 import { ContextType, PtaAnalysisScale } from '../../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
@@ -30,21 +30,24 @@ function buildScene(): Scene {
     return projectScene;
 }
 
-let projectScene = buildScene();
-
 describe('SdkTest', () => {
-    let cg = new CallGraph(projectScene);
-    let cgBuilder = new CallGraphBuilder(cg, projectScene);
-    cgBuilder.buildDirectCallGraphForScene();
+    let pag: Pag;
 
-    let pag = new Pag();
-    let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+    beforeAll(() => {
+        let projectScene = buildScene();
+        let cg = new CallGraph(projectScene);
+        let cgBuilder = new CallGraphBuilder(cg, projectScene);
+        cgBuilder.buildDirectCallGraphForScene();
 
-    
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', false, false, false, PtaAnalysisScale.WholeProgram, PtsCollectionType.Set, ContextType.CallSite);
-    let pta = new PointerAnalysis(pag, cg, projectScene, ptaConfig);
-    pta.setEntries(debugfunc);
-    pta.start();
+        pag = new Pag();
+        let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
+
+
+        let ptaConfig = PointerAnalysisConfig.create(2, './out', false, false, false, PtaAnalysisScale.WholeProgram, PtsCollectionType.Set, ContextType.CallSite);
+        let pta = new PointerAnalysis(pag, cg, projectScene, ptaConfig);
+        pta.setEntries(debugfunc);
+        pta.start();
+    });
 
     it('case1: collections.Array.create()', () => {
         let target;

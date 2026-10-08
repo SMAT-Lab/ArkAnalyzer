@@ -14,19 +14,20 @@
  */
 
 import fs from 'fs';
-import { ModuleScene, Scene } from '../../Scene';
+// type-only：消除 core→Scene 的运行时导入边（ArkFile 仅将二者用作类型）。
+import type { ModuleScene, Scene } from '../../Scene';
 import type { ArkModule } from './ArkModule';
 import { ArkExport, ExportInfo } from './ArkExport';
 import { ImportInfo } from './ArkImport';
 import { ArkClass } from './ArkClass';
 import { ArkNamespace } from './ArkNamespace';
-import { AliasClassSignature, ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
+import { ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
-import { NAME_DELIMITER } from '../common/Const';
 import { buildLineStarts, extractSourceTextByFullPosition } from '../common/StringUtils';
 import { FullPosition } from '../base/Position';
 import { ts } from '../../index';
 import { SdkUtils } from '../common/SdkUtils';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFile');
@@ -72,11 +73,21 @@ export class ArkFile {
     /** Cached line-start offsets for {@link sourceCode}; invalidated when code changes. */
     private lineStarts?: number[];
 
-    private defaultClass!: ArkClass;
+    /** @internal Formal FileSigID of this file. 0 = DEFAULT (not yet set). */
+    private fileSigID: number = 0;
 
-    // name to model
-    private namespaces: Map<string, ArkNamespace> = new Map<string, ArkNamespace>(); // don't contain nested namespaces
-    private classes: Map<string, ArkClass> = new Map<string, ArkClass>(); // don't contain class in namespace
+    /** @internal Formal ClassSigID for the default class. -1 = not yet interned. */
+    private defaultClassID: number = -1;
+
+    /** @internal Whether this file belongs to the current project (true) or is external (SDK/BuiltIn/library, false). */
+    private projectFile: boolean = false;
+
+    /** @internal SigIDs of direct (top-level) child classes. undefined = no classes allocated yet. */
+    private topClassSigIDSet?: Set<number>;
+
+    /** @internal SigIDs of direct (top-level) child namespaces. undefined = no namespaces allocated yet. */
+    private topNamespaceSigIDs?: Int32Array;
+    private topNamespaceCount: number = 0;
 
     private importInfoMap: Map<string, ImportInfo> = new Map<string, ImportInfo>();
     private exportInfoMap: Map<string, ExportInfo> = new Map<string, ExportInfo>();
@@ -85,7 +96,10 @@ export class ArkFile {
     private moduleScene?: ModuleScene;
     private arkModule?: ArkModule;
 
-    private fileSignature: FileSignature = FileSignature.DEFAULT;
+    /** @internal Get the Registry singleton. */
+    private get registry(): SignatureCanonicalizerRegistry {
+        return SignatureCanonicalizerRegistry.getInstance();
+    }
 
     private ohPackageJson5Path!: string[];
 
@@ -97,6 +111,39 @@ export class ArkFile {
 
     constructor(language: Language) {
         this.language = language;
+    }
+
+    /**
+     * Returns the file signature of this file. A file signature consists of project's name and file's name.
+     * @returns The file signature of this file.
+     */
+    public getFileSignature(): FileSignature {
+        return this.registry.fileSigCanonicalizer.get(this.fileSigID)!;
+    }
+
+    /** @internal */
+    public setFileSignature(fileSignature: FileSignature): void {
+        // 三态处理（与 ArkClass.setSignature 对齐）：
+        // 新值首建 → 注册；驱逐态恢复 → 补注册；已有别的 model 持有该签名 → 不覆盖（防"后 setFileSignature 者顶替"写穿）。
+        const existing = this.registry.fileSigCanonicalizer.getExistingId(fileSignature);
+        this.fileSigID = existing >= 0 ? existing : this.registry.fileSigCanonicalizer.getOrCreateId(fileSignature);
+        if (existing < 0 || this.registry.fileSigCanonicalizer.getModel(existing) === undefined) {
+            this.registry.registerFile(this);
+        }
+    }
+
+    /** @internal Get the formal FileSigID of this file. */
+    public getFileSigID(): number {
+        return this.fileSigID;
+    }
+
+    /**
+     * Returns the unique ID of this model — the FileSigID in the canonicalizer.
+     * The signature table and the model table share one dense ID space, so this ID
+     * resolves both the signature and the model.
+     */
+    public getId(): number {
+        return this.fileSigID;
     }
 
     /**
@@ -115,7 +162,7 @@ export class ArkFile {
      * @returns The file's name (also means its relative path).
      */
     public getName(): string {
-        return this.fileSignature.getFileName();
+        return this.getFileSignature().getFileName();
     }
 
     public setScene(scene: Scene): void {
@@ -225,44 +272,173 @@ export class ArkFile {
         this.lineStarts = undefined;
     }
 
-    public addArkClass(arkClass: ArkClass, originName?: string): void {
-        const name = originName ?? arkClass.getName();
-        const cls = this.classes.get(name);
-        if (!cls) {
-            this.classes.set(name, arkClass);
+    public addArkClass(arkClass: ArkClass): void {
+        const existing = this.getTopClassByID(arkClass.getClassSigID());
+        if (existing) {
+            SdkUtils.copyMembers(arkClass, existing);
         } else {
-            SdkUtils.copyMembers(arkClass, cls);
-        }
-        if (!originName && !arkClass.isAnonymousClass()) {
-            const index = name.indexOf(NAME_DELIMITER);
-            if (index > 0) {
-                const originName = name.substring(0, index);
-                if (!this.classes.has(originName)) {
-                    this.addArkClass(arkClass, originName);
-                }
+            if (!this.topClassSigIDSet) {
+                this.topClassSigIDSet = new Set<number>();
             }
+            this.topClassSigIDSet.add(arkClass.getClassSigID());
         }
     }
 
     public getDefaultClass(): ArkClass {
-        return this.defaultClass;
+        if (this.defaultClassID !== -1) {
+            return this.registry.classSigCanonicalizer.getModel(this.defaultClassID)!;
+        }
+        return undefined as unknown as ArkClass;
     }
 
     public setDefaultClass(defaultClass: ArkClass): void {
-        this.defaultClass = defaultClass;
+        this.defaultClassID = defaultClass.getClassSigID();
+    }
+
+    /** @internal Get the formal ClassSigID of the default class. Returns -1 if not interned. */
+    public getDefaultClassID(): number {
+        return this.defaultClassID;
+    }
+
+    /** @internal Set the formal ClassSigID of the default class directly. */
+    public setDefaultClassID(classID: number): void {
+        this.defaultClassID = classID;
+    }
+
+    /** @internal Whether this file belongs to the current project. */
+    public isProjectFile(): boolean {
+        return this.projectFile;
+    }
+
+    /** @internal Set whether this file belongs to the current project. */
+    public setProjectFile(isProject: boolean): void {
+        this.projectFile = isProject;
     }
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
-        const namespaceName = namespaceSignature.getNamespaceName();
-        return this.getNamespaceWithName(namespaceName);
+        // O(1) 归属初筛：签名的 declaringFileSigID 直比本 file 的 SigID。
+        if (namespaceSignature.getDeclaringFileSigID() !== this.fileSigID) {
+            return null;
+        }
+        const id = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);
+        if (id !== -1 && this.hasTopNamespaceWithID(id)) {
+            return this.registry.namespaceSigCanonicalizer.getModel(id) ?? null;
+        }
+        return null;
     }
 
     public getNamespaceWithName(namespaceName: string): ArkNamespace | null {
-        return this.namespaces.get(namespaceName) || null;
+        // 精确匹配：拼本文件归属签名直查（复用 canonicalizer 值索引，O(1)，对齐getClassWithName）；
+        // miss 即 null——签名归属是唯一真相，不做线性扫描兜底。
+        if (this.fileSigID >= 0) {
+            return this.getNamespace(new NamespaceSignature(namespaceName, this.fileSigID));
+        }
+        return null;
     }
 
     public getNamespaces(): ArkNamespace[] {
-        return Array.from(this.namespaces.values());
+        const arr = this.topNamespaceSigIDs;
+        if (!arr) {
+            return [];
+        }
+        const reg = this.registry;
+        const result: ArkNamespace[] = [];
+        for (let i = 0; i < this.topNamespaceCount; i++) {
+            const ns = reg.namespaceSigCanonicalizer.getModel(arr[i]);
+            if (ns) {
+                result.push(ns);
+            }
+        }
+        return result;
+    }
+
+    /** @internal Returns the SigIDs of direct child namespaces, or null if no namespaces exist. */
+    public getTopNamespaceSigIDs(): Int32Array | null {
+        return this.topNamespaceSigIDs?.subarray(0, this.topNamespaceCount) ?? null;
+    }
+
+    /** @internal Returns the number of direct child namespaces. */
+    public getTopNamespaceCount(): number {
+        return this.topNamespaceCount;
+    }
+
+    /** @internal Checks whether a namespace with the given SigID is a direct child of this file. */
+    public hasTopNamespaceWithID(id: number): boolean {
+        const arr = this.topNamespaceSigIDs;
+        if (!arr) {
+            return false;
+        }
+        for (let i = 0; i < this.topNamespaceCount; i++) {
+            if (arr[i] === id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal Returns the direct child namespace with the given SigID, or undefined. */
+    public getTopNamespaceByID(id: number): ArkNamespace | undefined {
+        if (this.hasTopNamespaceWithID(id)) {
+            return SignatureCanonicalizerRegistry.getInstance().getNamespaceById(id);
+        }
+        return undefined;
+    }
+
+    /** @internal Ensures the Int32Array has at least minCapacity slots. */
+    private ensureTopNamespaceCapacity(minCapacity: number): void {
+        if (!this.topNamespaceSigIDs) {
+            this.topNamespaceSigIDs = new Int32Array(Math.max(minCapacity, 8));
+            return;
+        }
+        if (this.topNamespaceSigIDs.length < minCapacity) {
+            const newCapacity = Math.max(minCapacity, this.topNamespaceSigIDs.length * 2);
+            const newArray = new Int32Array(newCapacity);
+            newArray.set(this.topNamespaceSigIDs.subarray(0, this.topNamespaceCount));
+            this.topNamespaceSigIDs = newArray;
+        }
+    }
+
+    /** @internal Appends a namespace SigID to the index. */
+    private addTopNamespaceSigID(id: number): void {
+        this.ensureTopNamespaceCapacity(this.topNamespaceCount + 1);
+        this.topNamespaceSigIDs![this.topNamespaceCount++] = id;
+    }
+
+    /** @internal Removes a namespace SigID from the index (swap-remove). */
+    private removeTopNamespaceSigID(id: number): void {
+        const arr = this.topNamespaceSigIDs;
+        if (!arr) {
+            return;
+        }
+        for (let i = 0; i < this.topNamespaceCount; i++) {
+            if (arr[i] === id) {
+                arr[i] = arr[--this.topNamespaceCount];
+                return;
+            }
+        }
+    }
+
+    /** @internal Returns the SigIDs of direct child classes, or null if no classes exist. */
+    public getTopClassSigIDs(): Set<number> | null {
+        return this.topClassSigIDSet ?? null;
+    }
+
+    /** @internal Returns the number of direct child classes (deduplicated by sigID). */
+    public getTopClassCount(): number {
+        return this.topClassSigIDSet?.size ?? 0;
+    }
+
+    /** @internal Checks whether a class with the given SigID is a direct child of this file. */
+    public hasTopClassWithID(id: number): boolean {
+        return this.topClassSigIDSet?.has(id) ?? false;
+    }
+
+    /** @internal Returns the direct child class with the given SigID, or undefined. */
+    public getTopClassByID(id: number): ArkClass | undefined {
+        if (this.hasTopClassWithID(id)) {
+            return SignatureCanonicalizerRegistry.getInstance().getClassById(id);
+        }
+        return undefined;
     }
 
     /**
@@ -271,20 +447,26 @@ export class ArkFile {
      * @returns A class. If there is no class, the return will be a **null**.
      */
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        const className = classSignature instanceof AliasClassSignature ? classSignature.getOriginName() : classSignature.getClassName();
-        return this.getClassWithName(className);
+        // O(1) 归属初筛：签名的 declaringFileSigID 直比本 file 的 SigID。
+        if (classSignature.getDeclaringFileSigID() !== this.fileSigID) {
+            return null;
+        }
+        const id = this.registry.classSigCanonicalizer.getExistingId(classSignature);
+        if (id !== -1 && this.hasTopClassWithID(id)) {
+            return this.registry.classSigCanonicalizer.getModel(id) ?? null;
+        }
+        return null;
     }
 
     public getClassWithName(className: string): ArkClass | null {
-        // First, search for the top-level class
-        let cls: ArkClass | null | undefined = this.classes.get(className);
-        if (cls) {
-            return cls;
+        if (this.fileSigID >= 0) {
+            const top = this.getClass(new ClassSignature(className, this.fileSigID));
+            if (top) {
+                return top;
+            }
         }
-
-        // Recursively search for classes within namespaces
-        for (const ns of this.namespaces.values()) {
-            cls = this.findClassInNamespace(ns, className);
+        for (const ns of this.getNamespaces()) {
+            const cls = this.findClassInNamespace(ns, className);
             if (cls) {
                 return cls;
             }
@@ -308,11 +490,29 @@ export class ArkFile {
     }
 
     public getClasses(): ArkClass[] {
-        return Array.from(new Set(this.classes.values()));
+        const set = this.topClassSigIDSet;
+        if (!set) {
+            return [];
+        }
+        const result: ArkClass[] = [];
+        for (const sigID of set) {
+            const cls = SignatureCanonicalizerRegistry.getInstance().getClassById(sigID);
+            if (cls) {
+                result.push(cls);
+            }
+        }
+        return result;
     }
 
     public addNamespace(namespace: ArkNamespace): void {
-        this.namespaces.set(namespace.getName(), namespace);
+        const existing = this.getNamespace(namespace.getSignature());
+        if (existing) {
+            // Merge content of namespaces with the same name
+            namespace.getClasses().forEach(cls => existing.addArkClass(cls));
+            namespace.getNamespaces().forEach(ns => existing.addNamespace(ns));
+            return;
+        }
+        this.addTopNamespaceSigID(namespace.getNamespaceSigID());
     }
 
     /**
@@ -348,14 +548,22 @@ export class ArkFile {
     }
 
     public removeNamespace(namespace: ArkNamespace): boolean {
-        let rtn = this.namespaces.delete(namespace.getName());
-        rtn &&= this.getScene().removeNamespace(namespace);
+        const id = namespace.getNamespaceSigID();
+        const rtn = this.hasTopNamespaceWithID(id);
+        if (rtn) {
+            this.removeTopNamespaceSigID(id);
+            this.registry.removeNamespace(namespace);
+        }
         return rtn;
     }
 
     public removeArkClass(arkClass: ArkClass): boolean {
-        let rtn = this.classes.delete(arkClass.getName());
-        rtn &&= this.getScene().removeClass(arkClass);
+        const id = arkClass.getClassSigID();
+        const rtn = this.hasTopClassWithID(id);
+        if (rtn) {
+            this.topClassSigIDSet!.delete(id);
+            this.registry.removeClass(arkClass);
+        }
         return rtn;
     }
 
@@ -435,7 +643,7 @@ export class ArkFile {
     }
 
     public getProjectName(): string {
-        return this.fileSignature.getProjectName();
+        return this.getFileSignature().getProjectName();
     }
 
     public getModuleName(): string | undefined {
@@ -450,25 +658,13 @@ export class ArkFile {
         return this.ohPackageJson5Path;
     }
 
-    /**
-     * Returns the file signature of this file. A file signature consists of project's name and file's name.
-     * @returns The file signature of this file.
-     */
-    public getFileSignature(): FileSignature {
-        return this.fileSignature;
-    }
-
-    public setFileSignature(fileSignature: FileSignature): void {
-        this.fileSignature = fileSignature;
-    }
-
     public getAllNamespacesUnderThisFile(): ArkNamespace[] {
-        let namespaces: ArkNamespace[] = [];
-        namespaces.push(...this.namespaces.values());
-        this.namespaces.forEach(ns => {
-            namespaces.push(...ns.getAllNamespacesUnderThisNamespace());
-        });
-        return namespaces;
+        const result: ArkNamespace[] = [];
+        for (const ns of this.getNamespaces()) {
+            result.push(ns);
+            result.push(...ns.getAllNamespacesUnderThisNamespace());
+        }
+        return result;
     }
 
     public getAnonymousClassNumber(): number {
@@ -488,15 +684,24 @@ export class ArkFile {
     }
 
     public clearAllReferences(): void {
-        for (const cls of this.classes.values()) { cls.clearAllReferences(); }
-        for (const ns of this.namespaces.values()) { ns.clearAllReferences(); }
-        for (const exp of this.exportInfoMap.values()) { exp.clearAllReferences(); }
-        for (const imp of this.importInfoMap.values()) { imp.clearAllReferences(); }
-        this.classes.clear();
-        this.namespaces.clear();
+        for (const cls of this.getClasses()) {
+            cls.clearAllReferences();
+        }
+        for (const ns of this.getNamespaces()) {
+            ns.clearAllReferences();
+        }
+        for (const exp of this.exportInfoMap.values()) {
+            exp.clearAllReferences();
+        }
+        for (const imp of this.importInfoMap.values()) {
+            imp.clearAllReferences();
+        }
+        this.topClassSigIDSet = undefined;
+        this.topNamespaceSigIDs = undefined;
+        this.topNamespaceCount = 0;
         this.importInfoMap.clear();
         this.exportInfoMap.clear();
-        this.defaultClass = undefined as unknown as ArkClass;
+        this.defaultClassID = -1;
         this.scene = undefined as unknown as Scene;
         this.moduleScene = undefined;
         this.arkModule = undefined;

@@ -83,6 +83,17 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         return this.genericTypes;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        if (this.getType().isUnclearWithVisited(visited)) {
+            return true;
+        }
+        return this.getGenerateTypes()?.some(t => t.isUnclearWithVisited(visited)) ?? false;
+    }
+
     public addGenericType(gType: Type): void {
         if (!this.genericTypes) {
             this.genericTypes = [];
@@ -156,6 +167,14 @@ export class KeyofTypeExpr extends AbstractTypeExpr {
 
     public setOpType(opType: Type): void {
         this.opType = opType;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        return this.getOpType().isUnclearWithVisited(visited);
     }
 
     public getUses(): Value[] {

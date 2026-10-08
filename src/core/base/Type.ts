@@ -23,6 +23,7 @@ import {
     NEVER_KEYWORD,
     NULL_KEYWORD,
     NUMBER_KEYWORD,
+    PROMISE,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
     UNKNOWN_KEYWORD,
@@ -30,6 +31,10 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
+import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Type');
 
 /**
  * @category core/base/type
@@ -80,6 +85,13 @@ export abstract class Type {
     }
 
     protected abstract getTypeString(visited?: Set<Type>): string;
+
+    public isUnclear(): boolean {
+        return this.isUnclearWithVisited(new Set<Type>());
+    }
+
+    /** @internal */
+    public abstract isUnclearWithVisited(visited: Set<Type>): boolean;
 }
 
 /**
@@ -95,6 +107,10 @@ export class AnyType extends Type {
 
     private constructor() {
         super();
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -115,6 +131,10 @@ export class UnknownType extends Type {
 
     private constructor() {
         super();
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -152,6 +172,10 @@ export class UnclearReferenceType extends Type {
         return this.genericTypes;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.genericTypes.length > 0) {
@@ -175,6 +199,12 @@ export abstract class PrimitiveType extends Type {
 
     public getName(): string {
         return this.name;
+    }
+
+    // Transit implementation: concrete primitives are never unclear;
+    // only the inherently unclear leaves (see NullType/UndefinedType notes) override isUnclearWithVisited.
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -252,6 +282,11 @@ export class NullType extends PrimitiveType {
     private constructor() {
         super(NULL_KEYWORD);
     }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // UNIFY-EXP: null as concrete
+        return false;
+    }
 }
 
 /**
@@ -267,6 +302,11 @@ export class UndefinedType extends PrimitiveType {
 
     private constructor() {
         super(UNDEFINED_KEYWORD);
+    }
+
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // UNIFY-EXP: undefined as concrete
+        return false;
     }
 }
 
@@ -324,6 +364,15 @@ export class UnionType extends Type {
         this.currType = newType;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics: a union is unclear iff any member is unclear.
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const typesString: string[] = [];
         this.getTypes().forEach(t => {
@@ -370,6 +419,15 @@ export class IntersectionType extends Type {
         return this.types;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics (see UnionType).
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const typesString: string[] = [];
         this.getTypes().forEach(t => {
@@ -398,6 +456,10 @@ export class VoidType extends Type {
         super();
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return VOID_KEYWORD;
     }
@@ -418,6 +480,10 @@ export class NeverType extends Type {
         super();
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return NEVER_KEYWORD;
     }
@@ -428,8 +494,10 @@ export class NeverType extends Type {
  * @category core/base/type
  */
 export class FunctionType extends Type {
-    private methodSignature: MethodSignature;
+    private methodSigID: number;
     private realGenericTypes?: Type[];
+
+    private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
         return true;
@@ -437,23 +505,78 @@ export class FunctionType extends Type {
 
     constructor(methodSignature: MethodSignature, realGenericTypes?: Type[]) {
         super();
-        this.methodSignature = methodSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (methodSignature.isUnclear()) {
+            this.methodSigID = -1;
+            this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+        } else {
+            const existingId = reg.methodSigCanonicalizer.getExistingId(methodSignature);
+            if (existingId !== -1) {
+                this.methodSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`FunctionType: clear MethodSignature not interned — routing to temp defensively: ${methodSignature.toString()}`);
+                this.methodSigID = -1;
+                this.tempSigID = reg.tempMethodSigCanonicalizer.register(methodSignature);
+            }
+        }
         this.realGenericTypes = realGenericTypes;
     }
 
     public getMethodSignature(): MethodSignature {
-        return this.methodSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.methodSigID >= 0) {
+            return reg.methodSigCanonicalizer.get(this.methodSigID)!;
+        }
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempMethodSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempMethodSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.methodSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.methodSigID = formalId;
+                    return formalSig;
+                }
+            }
+        }
+        throw new Error('FunctionType has no signature');
+    }
+
+    /** @internal Get the formal MethodSigID. */
+    public getMethodSigID(): number {
+        return this.methodSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getRealGenericTypes(): Type[] | undefined {
         return this.realGenericTypes;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        // 恒为 false，三层理由：
+        // 1. 语义层：FunctionType 表示函数类型本身（结构描述：参数列表+返回类型），不是对函数实体的引用——"引用可解析性"的判定职责由 ClassType 承担。
+        //    "该签名对应哪个真实方法"的解析在消费点有专门机制（canonicalizer 值查找 + fallback 遍历），从不依赖本判定。
+        // 2. 结构层：ClassType 的检查项（%unk stub 文件、PROMISE 无泛型）各对应一种真实残缺形态（temp 兜底、未定型泛型）；
+        //    而 MethodSignature 永远是完整值——即使声明方 unclear，签名作为值（名字+参数+返回类型）仍然完整，构造时总能 intern。函数类型没有"残缺形态"需要暴露。
+        // 3. 实证：泛型实参传播版（Fn<Unclear> 判 true）曾被全量回归否决（keyof-typeof 推导链退化），勿再尝试。
+        //    函数内容的不确定性（参数/返回/泛型实参）由消费点按需处理，类型层传播已被实证会破坏推导链。
+        return false;
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
-        const sig = this.methodSignature.getMethodSubSignature();
-        const classStr = this.methodSignature.getDeclaringClassSignature().toString();
-        const paramStrs = sig.getParameterTypes()
-            .map(t => t ? t.toStringWithVisited(visited) : UnknownType.getInstance().toString())
+        const sig = this.getMethodSignature().getMethodSubSignature();
+        const classStr = this.getMethodSignature().getDeclaringClassSignature().toString();
+        const paramStrs = sig
+            .getParameterTypes()
+            .map(t => (t ? t.toStringWithVisited(visited) : UnknownType.getInstance().toString()))
             .join(', ');
         const methodPart = (sig.isStatic() ? '[static]' : '') + sig.getMethodName() + '(' + paramStrs + ')';
         return classStr + '.' + methodPart;
@@ -486,29 +609,90 @@ export class ClosureType extends FunctionType {
  * @category core/base/type
  */
 export class ClassType extends Type {
-    private classSignature: ClassSignature;
+    private classSigID: number;
     private realGenericTypes?: Type[];
+
+    private tempSigID?: number;
 
     protected canParticipateInCycle(): boolean {
         return true;
     }
 
     protected getDisplayNameForCycle(): string {
-        return this.classSignature.toString();
+        return this.getClassSignature().toString();
     }
 
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
-        this.classSignature = classSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (classSignature.isUnclear()) {
+            this.classSigID = -1;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
+        } else {
+            const existingId = reg.classSigCanonicalizer.getExistingId(classSignature);
+            if (existingId !== -1) {
+                this.classSigID = existingId;
+            } else {
+                logger.error(`ClassType: clear ClassSignature not interned — routing to temp defensively: ${classSignature.toString()}`);
+                this.classSigID = -1;
+                this.tempSigID = reg.tempClassSigCanonicalizer.register(classSignature);
+            }
+        }
         this.realGenericTypes = realGenericTypes;
     }
 
     public getClassSignature(): ClassSignature {
-        return this.classSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.classSigID >= 0) {
+            return reg.classSigCanonicalizer.get(this.classSigID)!;
+        }
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempClassSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移（slot 置空）→ 替换记录直达 formal（"下一处直接使用 formal ID"）；tempSigID 保留作"曾 temp"审计痕迹。
+            const formalId = reg.tempClassSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.classSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.classSigID = formalId;
+                    return formalSig;
+                }
+            }
+        }
+        throw new Error('ClassType has no signature');
     }
 
     public setClassSignature(newClassSignature: ClassSignature): void {
-        this.classSignature = newClassSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (newClassSignature.isUnclear()) {
+            this.classSigID = -1;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
+            return;
+        }
+        const existingId = reg.classSigCanonicalizer.getExistingId(newClassSignature);
+        if (existingId !== -1) {
+            if (this.tempSigID !== undefined) {
+                reg.tempClassSigCanonicalizer.retireWithReplacement(this.tempSigID, existingId);
+            }
+            this.classSigID = existingId;
+            this.tempSigID = undefined;
+        } else {
+            logger.error(`ClassType: clear ClassSignature not interned (setClassSignature) — routing to temp defensively: ${newClassSignature.toString()}`);
+            this.classSigID = -1;
+            this.tempSigID = reg.tempClassSigCanonicalizer.register(newClassSignature);
+        }
+    }
+
+    /** @internal Get the formal ClassSigID. */
+    public getClassSigID(): number {
+        return this.classSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getRealGenericTypes(): Type[] | undefined {
@@ -519,8 +703,16 @@ export class ClassType extends Type {
         this.realGenericTypes = types;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        const classSignature = this.getClassSignature();
+        if (classSignature.getDeclaringFileSigID() === 0) {
+            return true;
+        }
+        return classSignature.getClassName() === PROMISE && !this.getRealGenericTypes();
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
-        let temp = this.classSignature.toString();
+        let temp = this.getClassSignature().toString();
         if (this.realGenericTypes && this.realGenericTypes.length > 0) {
             temp += `<${this.realGenericTypes.map(t => t.toStringWithVisited(visited)).join(',')}>`;
         }
@@ -580,6 +772,15 @@ export class ArrayType extends Type {
         return this.readonlyFlag;
     }
 
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics: the array is unclear iff its base type is unclear.
+        return this.getBaseType().isUnclearWithVisited(visited);
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         const strs: string[] = [];
         if (this.getReadonlyFlag()) {
@@ -635,6 +836,15 @@ export class TupleType extends Type {
 
     public getReadonlyFlag(): boolean | undefined {
         return this.readonlyFlag;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // Unified full semantics (see UnionType).
+        return this.getTypes().some(t => t.isUnclearWithVisited(visited));
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -698,6 +908,15 @@ export class AliasType extends Type implements ArkExport {
 
     public getOriginalType(): Type {
         return this.originalType;
+    }
+
+    public isUnclearWithVisited(visited: Set<Type>): boolean {
+        if (visited.has(this)) {
+            return false;
+        }
+        visited.add(this);
+        // The alias propagates the unclear semantics of its original type.
+        return this.getOriginalType().isUnclearWithVisited(visited);
     }
 
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
@@ -818,6 +1037,10 @@ export class GenericType extends Type {
         return this.index ?? 0;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return true;
+    }
+
     protected getTypeString(visited: Set<Type> = new Set<Type>()): string {
         let str = this.name;
         if (this.constraint) {
@@ -840,6 +1063,11 @@ export abstract class AnnotationType extends Type {
 
     public getOriginType(): string {
         return this.originType;
+    }
+
+    // Transit implementation: annotation types are concrete leaf types
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
     }
 
     protected getTypeString(_visited?: Set<Type>): string {
@@ -880,17 +1108,62 @@ export class AnnotationTypeQueryType extends AnnotationType {
 }
 
 export class LexicalEnvType extends Type {
-    private nestedMethodSignature: MethodSignature;
+    private nestedMethodSigID: number;
     private closures: Local[];
+
+    private tempSigID?: number;
 
     constructor(nestedMethod: MethodSignature, closures?: Local[]) {
         super();
-        this.nestedMethodSignature = nestedMethod;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (nestedMethod.isUnclear()) {
+            this.nestedMethodSigID = -1;
+            this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
+        } else {
+            const existingId = reg.methodSigCanonicalizer.getExistingId(nestedMethod);
+            if (existingId !== -1) {
+                this.nestedMethodSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`LexicalEnvType: clear MethodSignature not interned — routing to temp defensively: ${nestedMethod.toString()}`);
+                this.nestedMethodSigID = -1;
+                this.tempSigID = reg.tempMethodSigCanonicalizer.register(nestedMethod);
+            }
+        }
         this.closures = closures ?? [];
     }
 
     public getNestedMethod(): MethodSignature {
-        return this.nestedMethodSignature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.nestedMethodSigID >= 0) {
+            return reg.methodSigCanonicalizer.get(this.nestedMethodSigID)!;
+        }
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempMethodSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempMethodSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.methodSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.nestedMethodSigID = formalId;
+                    return formalSig;
+                }
+            }
+        }
+        throw new Error('LexicalEnvType has no signature');
+    }
+
+    /** @internal Get the formal MethodSigID. */
+    public getMethodSigID(): number {
+        return this.nestedMethodSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getClosures(): Local[] {
@@ -901,30 +1174,83 @@ export class LexicalEnvType extends Type {
         this.closures.push(closure);
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
         return `[${this.getClosures().join(', ')}]`;
     }
 }
 
 export class EnumValueType extends Type {
-    private signature: FieldSignature;
+    private fieldSigID: number;
     private constant?: Constant;
+
+    private tempSigID?: number;
 
     constructor(signature: FieldSignature, constant?: Constant) {
         super();
-        this.signature = signature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (signature.isUnclear()) {
+            this.fieldSigID = -1;
+            this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
+        } else {
+            const existingId = reg.fieldSigCanonicalizer.getExistingId(signature);
+            if (existingId !== -1) {
+                this.fieldSigID = existingId;
+                this.tempSigID = undefined;
+            } else {
+                logger.error(`EnumValueType: clear FieldSignature not interned — routing to temp defensively: ${signature.toString()}`);
+                this.fieldSigID = -1;
+                this.tempSigID = reg.tempFieldSigCanonicalizer.register(signature);
+            }
+        }
         this.constant = constant;
     }
 
     public getFieldSignature(): FieldSignature {
-        return this.signature;
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        if (this.fieldSigID >= 0) {
+            return reg.fieldSigCanonicalizer.get(this.fieldSigID)!;
+        }
+        if (this.tempSigID !== undefined) {
+            const sig = reg.tempFieldSigCanonicalizer.get(this.tempSigID);
+            if (sig !== undefined) {
+                return sig;
+            }
+            // 惰性物化：已迁移 → 替换记录直达 formal（tempSigID 保留作痕迹）。
+            const formalId = reg.tempFieldSigCanonicalizer.getReplacement(this.tempSigID);
+            if (formalId !== -1) {
+                const formalSig = reg.fieldSigCanonicalizer.get(formalId);
+                if (formalSig !== undefined) {
+                    this.fieldSigID = formalId;
+                    return formalSig;
+                }
+            }
+        }
+        throw new Error('EnumValueType has no signature');
+    }
+
+    /** @internal Get the formal FieldSigID. */
+    public getFieldSigID(): number {
+        return this.fieldSigID;
+    }
+
+    /** @internal Get the temp sigID for the unresolved-signature registration. */
+    public getTempSigID(): number | undefined {
+        return this.tempSigID;
     }
 
     public getConstant(): Constant | undefined {
         return this.constant;
     }
 
+    public isUnclearWithVisited(_visited: Set<Type>): boolean {
+        return false;
+    }
+
     protected getTypeString(_visited?: Set<Type>): string {
-        return this.signature.toString();
+        return this.getFieldSignature().toString();
     }
 }

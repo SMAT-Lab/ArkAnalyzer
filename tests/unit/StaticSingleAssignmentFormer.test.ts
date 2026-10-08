@@ -34,13 +34,13 @@ a#5 = -10`
 ;
 
 describe('StaticSingleAssignmentFormer Test', () => {
-    let config: SceneConfig = new SceneConfig();
-
-    config.buildFromProjectDir(path.join(__dirname, '../resources/ssa'));
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
-
     it('debug case', () => {
+        let config: SceneConfig = new SceneConfig();
+
+        config.buildFromProjectDir(path.join(__dirname, '../resources/ssa'));
+        let projectScene: Scene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+
         let staticSingleAssignmentFormer = new StaticSingleAssignmentFormer();
         for (const arkFile of projectScene.getFiles()) {
             for (const arkClass of arkFile.getClasses()) {

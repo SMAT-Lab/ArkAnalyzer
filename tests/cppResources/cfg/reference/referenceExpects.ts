@@ -83,7 +83,7 @@ export const REFERENCE_EXPECT_CASE5 = {
             stmts: [
                 'arg = parameter0: T&&',
                 'this = this: @reference/reference.cpp: %dflt',
-                'd1 = staticinvoke <@%unk/%unk: .forward()>(arg)',
+                'd1 = staticinvoke <@%unk/%unk: %unk.forward()>(arg)',
                 'return'
             ],
             preds: [],
@@ -99,13 +99,13 @@ export const REFERENCE_EXPECT_CASE6 = {
             stmts: [
                 'this = this: @reference/reference.cpp: %dflt',
                 'temp = 5',
-                'refA = staticinvoke <@%unk/%unk: .move()>(temp)',
+                'refA = staticinvoke <@%unk/%unk: %unk.move()>(temp)',
                 'refA = 6',
                 '%0 = new @%unk/%unk: std::string',
                 'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'Hello\')',
                 'str1 = %0',
                 '%1 = new @%unk/%unk: std::string',
-                '%2 = staticinvoke <@%unk/%unk: .move()>(str1)',
+                '%2 = staticinvoke <@%unk/%unk: %unk.move()>(str1)',
                 'instanceinvoke %1.<@%unk/%unk: std::string.constructor()>(%2)',
                 'str2 = %1',
                 'return',

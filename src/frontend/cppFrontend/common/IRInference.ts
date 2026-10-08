@@ -14,6 +14,7 @@
  */
 import fs from 'fs';
 import path, { normalize } from 'path';
+import { IRInference as CoreIRInference, FieldSigResolution } from '../../../core/common/IRInference';
 
 import { getCxxImplementationFileExtensions } from '../utils/cppUtils';
 import { ArkMethod } from '../../../core/model/ArkMethod';
@@ -35,14 +36,7 @@ import {
 } from '../../../core/base/Type';
 import { Local } from '../../../core/base/Local';
 import { TypeInference } from './TypeInference';
-import {
-    AbstractExpr,
-    AbstractInvokeExpr,
-    AliasTypeExpr,
-    ArkInstanceInvokeExpr,
-    ArkPtrInvokeExpr,
-    ArkStaticInvokeExpr,
-} from '../../../core/base/Expr';
+import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { Scene } from '../../../Scene';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -51,25 +45,18 @@ import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import { CALL_BACK } from '../../../core/common/EtsConst';
 import {
     AliasClassSignature,
-    BaseSignature,
     ClassSignature,
-    FieldSignature,
     FileSignature,
     MethodSignature,
     MethodSubSignature,
+    NamespaceSignature,
+    internAliasMethodSignature,
 } from '../../../core/model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { Builtin } from '../../../core/common/Builtin';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { ArkAssignStmt, ArkInvokeStmt } from '../../../core/base/Stmt';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef,
-} from '../../../core/base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../../../core/base/Ref';
 import { Value } from '../../../core/base/Value';
 import { Constant } from '../../../core/base/Constant';
 import {
@@ -149,8 +136,12 @@ export class IRInference {
     }
 
     public static inferStaticInvokeExpr(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr {
-        const fileSignature = expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature();
-        if (fileSignature !== FileSignature.DEFAULT && fileSignature !== Builtin.BUILT_IN_CLASSES_FILE_SIGNATURE) {
+        // Builtin stubs carry FileSignature.DEFAULT (FileSigID 0), so the ID > 0 check lets
+        // real files through to inference (the old reference comparison against the core
+        // ES2015 virtual signature was always true for CXX/std signatures — dead condition, now removed).
+        // Pure field read: FileSigID 0 = DEFAULT (internDefaults 固化), > 0 = real file.
+        const fileSigID = expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSigID();
+        if (fileSigID > 0) {
             return expr;
         }
         const arkClass = arkMethod.getDeclaringArkClass();
@@ -169,7 +160,7 @@ export class IRInference {
         } else if (methodName === SUPER_NAME) {
             const superClass = arkClass.getSuperClass();
             if (superClass !== null) {
-                const newMethodSignature = new MethodSignature(superClass.getSignature(), expr.getMethodSignature().getMethodSubSignature());
+                const newMethodSignature = new MethodSignature(superClass.getClassSigID(), expr.getMethodSignature().getMethodSubSignature());
                 expr.setMethodSignature(newMethodSignature);
             }
             return expr;
@@ -196,14 +187,19 @@ export class IRInference {
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             CxxModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile(), arkClass) ??
-            arkClass.getDeclaringArkFile().getScene().getSdkGlobal(methodName);
+            SdkUtils.getSdkGlobal(methodName);
         let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
         if (method) {
             signature = method.matchMethodSignature(expr.getArgs());
             // Handle Standard Operator Overloading
-            if ([BuiltinCxx.OPERATOR_ISTREAM, BuiltinCxx.OPERATOR_OSTREAM].includes(methodName) &&
-                !CxxModelUtils.isIOStreamObjectMatched(signature.getMethodSubSignature().getParameters(),
-                    expr.getArgs(), method.getDeclaringArkFile().getScene())) {
+            if (
+                [BuiltinCxx.OPERATOR_ISTREAM, BuiltinCxx.OPERATOR_OSTREAM].includes(methodName) &&
+                !CxxModelUtils.isIOStreamObjectMatched(
+                    signature.getMethodSubSignature().getParameters(),
+                    expr.getArgs(),
+                    method.getDeclaringArkFile().getScene()
+                )
+            ) {
                 signature = undefined;
             }
             if (signature) {
@@ -221,9 +217,10 @@ export class IRInference {
         return expr;
     }
 
-    private static processArkExportForMethodAndSignature(arkExport: ArkExport | null,
-                                                         arkClass: ArkClass,
-    ): { mtd: ArkMethod | undefined | null, sig: MethodSignature | undefined } {
+    private static processArkExportForMethodAndSignature(
+        arkExport: ArkExport | null,
+        arkClass: ArkClass
+    ): { mtd: ArkMethod | undefined | null; sig: MethodSignature | undefined } {
         let method: ArkMethod | undefined | null;
         let signature: MethodSignature | undefined;
         if (arkExport instanceof ArkMethod) {
@@ -310,17 +307,14 @@ export class IRInference {
         this.inferBase(ref, arkMethod);
         const baseType: Type = TypeInference.replaceAliasType(ref.getBase().getType());
         if (baseType instanceof ArrayType && ref.getFieldName() !== 'length') {
+            // 替换埋葬：本 ref 即将被 ArkArrayRef 替换——纯 retire。
+            ref.retireTemp();
             return new ArkArrayRef(ref.getBase(), ValueUtil.createConst(ref.getFieldName()));
         }
 
-        let newFieldSignature = this.generateNewFieldSignature(ref, arkMethod.getDeclaringArkClass(), baseType);
-        if (newFieldSignature) {
-            if (newFieldSignature.isStatic()) {
-                return new ArkStaticFieldRef(newFieldSignature);
-            }
-            ref.setFieldSignature(newFieldSignature);
-        }
-        return ref;
+        // 判别联合消费——终态执行统一走 core 的 applyFieldResolution（formal：graduate/static 转换；params：static probe 转换/就地演进）。
+        const resolution = this.generateNewFieldSignature(ref, arkMethod.getDeclaringArkClass(), baseType);
+        return CoreIRInference.applyFieldResolution(ref, resolution);
     }
 
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
@@ -495,7 +489,7 @@ export class IRInference {
     }
 
     private static inferInvokeExprWithArray(methodName: string, expr: AbstractInvokeExpr, baseType: ArrayType, scene: Scene): AbstractInvokeExpr | null {
-        const arrayInterface = scene.getSdkGlobal(Builtin.ARRAY);
+        const arrayInterface = SdkUtils.getSdkGlobal(Builtin.ARRAY);
         if (arrayInterface instanceof ArkClass) {
             return this.inferInvokeExpr(expr, new ClassType(arrayInterface.getSignature(), [baseType.getBaseType()]), methodName, scene);
         } else if (methodName === Builtin.ITERATOR_FUNCTION) {
@@ -511,7 +505,7 @@ export class IRInference {
             expr.setMethodSignature(baseType.getMethodSignature());
             return expr;
         }
-        const funcInterface = scene.getSdkGlobal(FUNCTION);
+        const funcInterface = SdkUtils.getSdkGlobal(FUNCTION);
         if (funcInterface instanceof ArkClass) {
             const method = ModelUtils.findPropertyInClass(methodName, funcInterface);
             if (method instanceof ArkMethod) {
@@ -527,11 +521,11 @@ export class IRInference {
         expr: AbstractInvokeExpr,
         baseType: ClassType,
         methodName: string,
-        scene: Scene,
+        scene: Scene
     ): AbstractInvokeExpr | null {
         let declaredClass = scene.getClass(baseType.getClassSignature());
         if (!declaredClass) {
-            const globalClass = scene.getSdkGlobal(baseType.getClassSignature().getClassName());
+            const globalClass = SdkUtils.getSdkGlobal(baseType.getClassSignature().getClassName());
             if (globalClass instanceof ArkClass) {
                 declaredClass = globalClass;
             }
@@ -557,13 +551,17 @@ export class IRInference {
                 expr.setRealGenericTypes(IRInference.getRealTypes(expr, declaredClass, baseType, constructor));
             } else {
                 const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
+                // getClassSignature() (not getClassSigID()): the class may still be unclear and live in
+                // the temp canonicalizer; the object overload interns it properly.
                 expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
             }
             return expr;
         } else if (
             methodName === Builtin.ITERATOR_NEXT &&
-            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
+            baseType.getClassSigID() === -1 &&
+            baseType.getClassSignature().getClassName() === Builtin.ITERATOR
         ) {
+            // Fires only on the UNRESOLVED iterator stub (old: virtual 'CXX/std' project check).
             expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_RESULT_CLASS_TYPE);
             expr.setRealGenericTypes(baseType.getRealGenericTypes());
             return expr;
@@ -619,12 +617,20 @@ export class IRInference {
     public static replaceMethodSignature(init: MethodSignature, declared: MethodSignature): MethodSignature {
         const className = init.getDeclaringClassSignature().getClassName();
         let classSignature;
-        if (declared.getDeclaringClassSignature().getClassName().endsWith('Interface')) {
+        // display 归一化：仅当 init 类名有信息量（非 %unk——组件 create/pop 的 init 由组件名直构）时包 alias。普通 interface 解析（init 为 %unk stub，
+        // 如 TestInterface.callf）直接用 declared——alias 会把显示退化为 %unk。
+        if (className !== UNKNOWN_CLASS_NAME && declared.getDeclaringClassSignature().getClassName().endsWith('Interface')) {
             classSignature = new AliasClassSignature(className, declared.getDeclaringClassSignature());
         }
         let newSubSignature;
         if (classSignature || newSubSignature) {
-            return new MethodSignature(classSignature ?? declared.getDeclaringClassSignature(), newSubSignature ?? declared.getMethodSubSignature());
+            const result = new MethodSignature(classSignature ?? declared.getDeclaringClassSignature(), newSubSignature ?? declared.getMethodSubSignature());
+            // display 归一化：alias 产物 intern formal + 双注册 declared 的 ArkMethod model——expr 的 route() formal 命中持 SigID（display 由 formal
+            // canonical 自持，不再依赖 expr 锚定传入实例）。
+            if (classSignature !== undefined) {
+                internAliasMethodSignature(result, declared);
+            }
+            return result;
         }
         return declared;
     }
@@ -673,7 +679,11 @@ export class IRInference {
         }
     }
 
-    public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
+    /**
+     * 判别联合——定义点 canonical（formal 分支，终点确定）与新构造值（params 分支，终点不确定）分流；null = 未解析。
+     * 泛型守卫（泛型字段不走定义点）为 cpp 侧遗留语义，照搬不改。
+     */
+    public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSigResolution {
         if (baseType instanceof AliasType) {
             return this.generateNewFieldSignature(ref, arkClass, baseType.getOriginalType());
         }
@@ -681,7 +691,7 @@ export class IRInference {
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
         let staticFlag: boolean;
-        let signature: BaseSignature;
+        let signature: ClassSignature | NamespaceSignature;
         let typeWithoutPtrOrRef = baseType;
         // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
@@ -690,16 +700,20 @@ export class IRInference {
         if (typeWithoutPtrOrRef instanceof ClassType) {
             const property = propertyAndType?.[0];
             if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER && !(property.getType() instanceof GenericType)) {
-                return property.getSignature();
+                // 定义点 canonical（formalId 直读）。
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
             }
             staticFlag =
                 typeWithoutPtrOrRef.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
+            // Note: getClassSignature() (not getClassSigID()) — the class may still be unclear
+            // and live in the temp canonicalizer; the object overload interns it properly.
             signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : typeWithoutPtrOrRef.getClassSignature();
         } else if (typeWithoutPtrOrRef instanceof ArrayType) {
             const property = propertyAndType?.[0];
             if (property instanceof ArkField) {
-                return property.getSignature();
+                // 定义点 canonical（Array 字段）。
+                return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: property.getType() };
             }
             return null;
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
@@ -708,7 +722,10 @@ export class IRInference {
         } else {
             return null;
         }
-        return new FieldSignature(fieldName, signature, propertyType ?? ref.getType(), staticFlag);
+        // 新构造值（终点不确定）——参数元组。
+        return signature instanceof NamespaceSignature
+            ? { kind: 'params', fieldName, declaringOrID: signature.getNamespaceSigID(), type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: true }
+            : { kind: 'params', fieldName, declaringOrID: signature, type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: false };
     }
 
     private static repairType(propertyType: Type | undefined, fieldName: string, arkClass: ArkClass): Type | undefined {
@@ -751,9 +768,9 @@ export class IRInference {
                     this.assignAnonMethod(scene.getMethod(type.getMethodSignature()), property);
                 }
                 if (type instanceof UnknownType) {
-                    anonField.setSignature(
-                        new FieldSignature(anonField.getName(), property.getDeclaringArkClass().getSignature(), new FunctionType(property.getSignature())),
-                    );
+                    // 类型对齐而非签名过户：同 assignAnonField——只补类型，不把匿名字段
+                    // intern 到声明类名下（防 model 顶替写穿）。
+                    anonField.getSignature().setType(new FunctionType(property.getSignature()));
                 }
             }
         }
@@ -795,10 +812,12 @@ export class IRInference {
             }
             const leftOp = lastStmt.getLeftOp();
             if (leftOp instanceof AbstractFieldRef) {
-                leftOp.setFieldSignature(property.getSignature());
+                // A2 快路径：定义点 canonical 回写（property 为 ArkField，ID 直读）。
+                leftOp.graduateToFormal(property.getFieldSigID());
             }
         }
-        anonField.setSignature(property.getSignature());
+        // 类型对齐而非签名过户（同 core 侧 assignAnonField，防 model 顶替写穿）。
+        anonField.getSignature().setType(property.getSignature().getType());
     }
 
     public static inferAliasTypeExpr(expr: AliasTypeExpr, arkMethod: ArkMethod): AbstractExpr {
@@ -974,8 +993,12 @@ export class IRInference {
      *@ param sortedRefFiles - sorted reference file array
      */
     private static findMtdImpl(mtd: ArkMethod, implClasses: ArkClass[]): void {
-        if (mtd.getImplementationSignature() || mtd.isDefaultArkMethod() ||
-            mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
+        if (
+            mtd.getImplementationSignature() ||
+            mtd.isDefaultArkMethod() ||
+            mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
+            mtd.getName() === STATIC_INIT_METHOD_NAME
+        ) {
             return;
         }
         this.mapHeaderToSource(mtd, implClasses);
@@ -1064,7 +1087,7 @@ export class IRInference {
     private static getClassWithNameAndNamespace(clsName: string, file: ArkFile, namespaceName?: string): ArkClass[] {
         let tgtNamespacesInFile: ArkNamespace[] = [];
         if (namespaceName) {
-            tgtNamespacesInFile = ModelUtils.getAllNamespacesInFile(file).filter(ns => ns.getName() === namespaceName);
+            tgtNamespacesInFile = file.getAllNamespacesUnderThisFile().filter(ns => ns.getName() === namespaceName);
         }
         const searchedClasses: ArkClass[] = [];
         if (tgtNamespacesInFile.length !== 0) {
@@ -1112,7 +1135,9 @@ export class IRInference {
         const declSignature = mtdDecl.getDeclareSignatures();
         const declSignatureInMtdImpl = mtdImpl.getDeclareSignatures();
         if (declSignature) {
-            declSignatureInMtdImpl ? declSignatureInMtdImpl.push(...declSignature) : mtdImpl.setDeclareSignatures(declSignature);
+            // getDeclareSignatures() returns a rebuilt copy — write the merged list back explicitly.
+            const merged = declSignatureInMtdImpl ? [...declSignatureInMtdImpl, ...declSignature] : [...declSignature];
+            mtdImpl.setDeclareSignatures(merged);
         }
         // 3.The function implementation may be missing the existing modifiers (such as static) in the function declaration. Here we add
         mtdImpl.setModifiers(mtdDecl.getModifiers() | mtdImpl.getModifiers());

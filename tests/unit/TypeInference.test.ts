@@ -13,29 +13,26 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it, vi } from 'vitest';
+import { assert, beforeAll, describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import {
-    ArkClass, ArkFile,
-    ClassType,
-    CONSTRUCTOR_NAME,
-    MethodSignature,
-    Printer,
-    Scene,
-    SceneConfig,
-    TypeInference
-} from '../../src';
+import { ArkClass, ArkFile, ClassType, CONSTRUCTOR_NAME, MethodSignature, Printer, Scene, SceneConfig, TypeInference } from '../../src';
 import { OperandOriginalPositions_Expect_IR } from '../resources/inferType/IRChange/OperandOriginalPositionsExpect';
 import { testMethodStmts } from './common';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
-import { sortByDependency } from '../../src/utils/DependenciesSort';
+import { SignatureCanonicalizerRegistry } from '../../src/core/common/SignatureCanonicalizerRegistry';
 
 describe('StaticSingleAssignmentFormer Test', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    let methods = scene.getMethods();
+    let scene: Scene;
+    let methods: ReturnType<Scene['getMethods']>;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/save'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        methods = scene.getMethods();
+    });
 
     it('inferTypeInMethod case', () => {
         let method = methods[0];
@@ -64,11 +61,20 @@ describe('StaticSingleAssignmentFormer Test', () => {
 });
 
 describe('Infer Method Return Type', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/inferType'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    let sampleClass = scene.getFiles().find(file => file.getName() === 'inferSample.ts')?.getClassWithName('Sample');
+    let scene: Scene;
+    let sampleClass: ArkClass | null | undefined;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/inferType'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        sampleClass = scene
+            .getFiles()
+            .find(file => file.getName() === 'inferSample.ts')
+            ?.getClassWithName('Sample');
+    });
 
     it('constructor method return type infer case', () => {
         assert.isDefined(sampleClass);
@@ -111,7 +117,11 @@ describe('Infer Method Return Type', () => {
     });
 
     it('method return with any type infer case', () => {
-        const method = scene.getFiles().find(file => file.getName() === 'inferSample.ts')?.getDefaultClass().getMethodWithName('returnWithAny');
+        const method = scene
+            .getFiles()
+            .find(file => file.getName() === 'inferSample.ts')
+            ?.getDefaultClass()
+            .getMethodWithName('returnWithAny');
         assert.isDefined(method);
         assert.isNotNull(method);
 
@@ -123,17 +133,27 @@ describe('Infer Method Return Type', () => {
 });
 
 describe('infer order', () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/inferType/exportAll'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
+    let scene: Scene;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/inferType/exportAll'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+    });
 
     it('file order case', () => {
-        const filesMap = new Map<string, ArkFile>();
-        scene.getFiles().forEach(file => filesMap.set(file.getFileSignature().toMapKey(), file));
-        const arkFiles = sortByDependency(filesMap, scene.getProjectName());
-        assert.equal(arkFiles.length, filesMap.size);
-        const expectedOrders = ['167090289test2.ets', '1323349145MyComponent.ets', '1947130106Index.ets'];
+        // 新不变量：builtFileOrder（setFile 后序记录）为拓扑序，推断期按其正序遍历——
+        // sortByDependency 已随该不变量删除。
+        const reg = SignatureCanonicalizerRegistry.getInstance();
+        const arkFiles = scene
+            .getBuiltFileOrder()
+            .map(id => reg.fileSigCanonicalizer.getModel(id))
+            .filter((f): f is ArkFile => f !== undefined);
+        assert.equal(arkFiles.length, scene.getFiles().length);
+        // toMapKey is the collision-free identity projection (projectName + fileName).
+        const expectedOrders = ['@exportAll/util/test2.ets: ', '@exportAll/main/MyComponent.ets: ', '@exportAll/main/Index.ets: '];
         arkFiles.forEach((file, index) => {
             assert.equal(file.getFileSignature().toMapKey(), expectedOrders[index]);
         });
@@ -141,25 +161,33 @@ describe('infer order', () => {
 });
 
 describe('IR Changes with Type Inference Test', () => {
-    const config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/inferType/IRChange'));
-    const scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
 
-    it('operand original positions case', () => {
-        testMethodStmts(scene, 'OperandOriginalPositionsTest.ts', OperandOriginalPositions_Expect_IR.stmts, 'Sample',
-            'testOperandOriginalPositions');
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/inferType/IRChange'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
     });
 
+    it('operand original positions case', () => {
+        testMethodStmts(scene, 'OperandOriginalPositionsTest.ts', OperandOriginalPositions_Expect_IR.stmts, 'Sample', 'testOperandOriginalPositions');
+    });
 });
 
 describe('Import Type Inference Test', () => {
-    const config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, '../resources/typeInference/importType'));
-    const scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferTypes();
+    let scene: Scene;
+
+    beforeAll(() => {
+        SignatureCanonicalizerRegistry.dispose();
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, '../resources/typeInference/importType'));
+        scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+    });
 
     const CASE1_EXPECT = `class %dflt {
   %dflt(): void {
@@ -216,7 +244,7 @@ struct MyComponent2 {
   %AM0$build(): void {
     label0:
       this = this: @importType/MyComponent2.ets: MyComponent2
-      instanceinvoke console.<@%unk/%unk: .log()>('cccc')
+      instanceinvoke console.<@%unk/%unk: %unk.log()>('cccc')
       staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello')
       staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello2')
       return
@@ -259,7 +287,7 @@ object %AC1$MyComponent2-build {
 `;
 
     it('case1: ', () => {
-        let arkfile = scene.getFiles().find((value) => {
+        let arkfile = scene.getFiles().find(value => {
             return value.getName().endsWith('MyComponent2.ets');
         });
         assert.isDefined(arkfile);
@@ -267,5 +295,4 @@ object %AC1$MyComponent2-build {
         let ir = printer.dump();
         expect(ir).eq(CASE1_EXPECT);
     });
-
 });

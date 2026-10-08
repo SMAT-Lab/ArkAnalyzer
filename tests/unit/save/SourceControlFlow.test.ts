@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { PrinterBuilder, Scene, SceneConfig, SourceNamespacePrinter } from '../../../src';
-import { describe, expect, it } from 'vitest';
+import { ArkFile, PrinterBuilder, Scene, SceneConfig, SourceNamespacePrinter } from '../../../src';
+import { beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const CASE1_EXPECT = `/*
@@ -113,16 +113,17 @@ const CASE2_EXPECT = `namespace Case2 {
 `;
 
 describe('SourceControlFlowTest', () => {
-    let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    let arkfile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('control_flow.ts');
+    let arkfile: ArkFile | undefined;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({enableLeadingComments: true});
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('control_flow.ts');
+        });
     });
-    if (!arkfile) {
-        return;
-    }
 
     it('case1', () => {
         let ns = arkfile!.getNamespaceWithName('Case1');

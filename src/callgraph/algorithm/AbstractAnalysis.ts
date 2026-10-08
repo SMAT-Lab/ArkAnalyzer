@@ -87,7 +87,7 @@ export abstract class AbstractAnalysis {
         while (head < work.length) {
             const tempClass = work[head++]!;
             out.push(tempClass);
-            for (const base of tempClass.getExtendedClasses().values()) {
+            for (const base of tempClass.getExtendedClassList() ?? []) {
                 if (seen.has(base)) {
                     continue;
                 }
@@ -182,7 +182,7 @@ export abstract class AbstractAnalysis {
 
     protected processMethod(methodID: FuncID, displayGeneratedMethod: boolean, isProject: boolean = false): void {
         let cgNode = this.cg.getNode(methodID) as CallGraphNode;
-        let arkMethod = this.scene.getMethod(cgNode.getMethod(), true);
+        let arkMethod = this.scene.getMethod(cgNode.getMethod());
 
         if (!arkMethod) {
             throw new Error('can not find method');

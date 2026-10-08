@@ -13,21 +13,26 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, beforeAll, describe, it } from 'vitest';
 import path from 'path';
 import { SceneConfig } from '../../src/Config';
 import { Scene } from '../../src/Scene';
 
 describe("Anonymous Test", () => {
-    let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(__dirname, "../resources/anonymous"))
-    let projectScene: Scene = new Scene();
-    projectScene.buildSceneFromProjectDir(config);
+    let projectScene: Scene;
+
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir(path.join(__dirname, "../resources/anonymous"))
+        projectScene = new Scene();
+        projectScene.buildSceneFromProjectDir(config);
+    });
+
     it('class case', () => {
         assert.equal(projectScene.getClasses().length, 2);
-    })
+    });
+
     it('method case', () => {
         assert.equal(projectScene.getMethods().length, 6);
-    })
-
-})
+    });
+});

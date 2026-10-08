@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { PrinterBuilder, Scene, SceneConfig, SourceMethodPrinter } from '../../../src';
-import { assert, describe, expect, it } from 'vitest';
+import { ArkClass, PrinterBuilder, Scene, SceneConfig, SourceMethodPrinter } from '../../../src';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 
 const CASE1_EXPECT = `/*
@@ -123,25 +123,29 @@ const CASE6_EXPECT = `function case6(): void {
 `;
 
 describe('SourceTrapTest', () => {
-    let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
-    config.buildFromProjectDir(path.join(__dirname, '../../resources/model/body/trap'));
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-    scene.inferSimpleTypes();
-    let arkfile = scene.getFiles().find((value) => {
-        return value.getName().endsWith('TrapTest.ts');
-    });
+    let defaultClass: ArkClass | undefined;
 
-    if (!arkfile) {
-        assert.isDefined(arkfile);
-        return;
-    }
+    beforeAll(() => {
+        let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/model/body/trap'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+        let arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('TrapTest.ts');
+        });
 
-    let printerDot = new PrinterBuilder('output');
-    printerDot.dumpToDot(arkfile);
+        if (!arkfile) {
+            assert.isDefined(arkfile);
+            return;
+        }
 
-    let defaultClass = arkfile?.getClasses().find((value) => {
-        return value.isDefaultArkClass();
+        let printerDot = new PrinterBuilder('output');
+        printerDot.dumpToDot(arkfile);
+
+        defaultClass = arkfile?.getClasses().find((value) => {
+            return value.isDefaultArkClass();
+        });
     });
 
     it('case1: TrapTest', () => {

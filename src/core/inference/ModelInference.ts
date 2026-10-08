@@ -22,10 +22,10 @@ import { ArkModel, Inference, InferenceFlow, InferenceManager } from './Inferenc
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ExportInfo } from '../model/ArkExport';
 import { ImportInfo } from '../model/ArkImport';
-import { fileSignatureCompare, NamespaceSignature } from '../model/ArkSignature';
+import { NamespaceSignature } from '../model/ArkSignature';
 import { findArkExport, findExportInfoInfile, ModelUtils } from '../common/ModelUtils';
 import { ArkMethod } from '../model/ArkMethod';
-import { ClassType, FunctionType, GenericType, Type, VoidType } from '../base/Type';
+import { ClassType, FunctionType, GenericType, NullType, Type, UndefinedType, VoidType } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { AbstractFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
 import { CONSTRUCTOR_NAME, GLOBAL_THIS_NAME, PROMISE } from '../common/TSConst';
@@ -108,7 +108,7 @@ export abstract class ImportInfoInference extends ArkModelInference {
             logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
             return null;
         }
-        if (fileSignatureCompare(file.getFileSignature(), fromInfo.getDeclaringArkFile().getFileSignature())) {
+        if (file.getFileSigID() === fromInfo.getDeclaringArkFile().getFileSigID()) {
             for (let exportInfo of file.getExportInfos()) {
                 if (exportInfo.getOriginName() === fromInfo.getOriginName()) {
                     exportInfo.setArkExport(file.getDefaultClass());
@@ -353,7 +353,8 @@ export class StmtInference extends ArkModelInference {
      */
     public infer(stmt: Stmt): Type | undefined {
         const defType = stmt.getDef()?.getType();
-        stmt.getDefAndUses().forEach(value => this.inferValue(value, stmt));
+        const values = stmt.getDefAndUses();
+        values.forEach(value => this.inferValue(value, stmt));
         return defType;
     }
 
@@ -497,7 +498,7 @@ export class StmtInference extends ArkModelInference {
     }
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
-        if (TypeInference.isUnclearType(rightType)) {
+        if (TypeInference.isUnclearType(rightType) || rightType instanceof UndefinedType || rightType instanceof NullType) {
             return undefined;
         }
         return this.updateValueType(leftOp, rightType, method);
@@ -512,7 +513,7 @@ export class StmtInference extends ArkModelInference {
      */
     public updateValueType(target: Value, srcType: Type, method: ArkMethod): Stmt[] | undefined {
         const type = target.getType();
-        if (type !== srcType && TypeInference.isUnclearType(type)) {
+        if (type !== srcType && (TypeInference.isUnclearType(type) || type instanceof UndefinedType || type instanceof NullType)) {
             if (target instanceof Local) {
                 target.setType(srcType);
                 return target.getUsedStmts();

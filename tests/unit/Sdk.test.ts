@@ -14,7 +14,7 @@
  */
 
 import { SdkUtils } from '../../src/core/common/SdkUtils';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import { ArkClass, ArkMethod, MethodSignature, Scene, SceneConfig, } from '../../src';
 import { Sdk } from '../../src/Config';
@@ -36,7 +36,11 @@ describe('SDK Global Map Test', () => {
         path: SDK_DIR,
         moduleName: ''
     };
-    const scene = buildScene([sdk]);
+    let scene: Scene;
+
+    beforeAll(() => {
+        scene = buildScene([sdk]);
+    });
 
     it('test common sdk signature', async () => {
         const sdks = scene.getSdkArkFiles();
@@ -70,7 +74,7 @@ describe('SDK Global Map Test', () => {
         const apiFile = '@internal/component/ets/common.d.ts';
         const apiCls = '%dflt';
         const apiName = 'wrapBuilder';
-        const arkMethod = scene.getSdkGlobal(key);
+        const arkMethod = SdkUtils.getSdkGlobal(key);
         assert.isTrue(arkMethod instanceof ArkMethod);
         assert.isNull((arkMethod as ArkMethod).getImplementationSignature());
 
@@ -81,7 +85,10 @@ describe('SDK Global Map Test', () => {
         expect(declareSignatures?.length).toEqual(1);
         expect((declareSignatures as MethodSignature[])[0].toString())
             .toEqual(`@/api/${apiFile}: ${apiCls}.${apiName}(@/api/${apiFile}: ${apiCls}.%AM2(Args))`);
-        expect((declareSignatures as MethodSignature[])[0].getType().toString()).toEqual(`@/api/${apiFile}: WrappedBuilder<Args extends @ES2015/BuiltinClass: Object[]>`);
+        expect((declareSignatures as MethodSignature[])[0].getType().toString()).toEqual(`@/api/${apiFile}: WrappedBuilder<Args extends @built-in/lib.es5.d.ts: Object[]>`);
+        // The generic constraint `Args extends Object[]` is now fully resolved (the
+        // historical narrow predicate probe missed an Array-of-stub-class constraint and
+        // left it as '%unk: Object[]'; unified full recursion resolves the base class).
         expect(declareLines).toEqual([3503]);
         expect(declareColumns).toEqual([1]);
     });
@@ -90,7 +97,7 @@ describe('SDK Global Map Test', () => {
         const key = 'ColumnInterface';
         const apiFile = '@internal/component/ets/column.d.ts';
         const apiMethod = 'create';
-        const arkClass = scene.getSdkGlobal(key);
+        const arkClass = SdkUtils.getSdkGlobal(key);
         assert.isTrue(arkClass instanceof ArkClass);
 
         const method = (arkClass as ArkClass).getMethodWithName(apiMethod);

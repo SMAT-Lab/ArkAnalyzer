@@ -1,4 +1,4 @@
-[**ArkAnalyzer**](../README.md)
+﻿[**ArkAnalyzer**](../README.md)
 
 ***
 
@@ -167,20 +167,3 @@ Defined in: src/core/base/Ref.ts:36
 
 [`AbstractRef`](AbstractRef.md).[`inferType`](AbstractRef.md#infertype)
 
-***
-
-### setFieldSignature()
-
-> **setFieldSignature**(`newFieldSignature`): `void`
-
-Defined in: src/core/base/Ref.ts:160
-
-#### Parameters
-
-##### newFieldSignature
-
-[`FieldSignature`](FieldSignature.md)
-
-#### Returns
-
-`void`

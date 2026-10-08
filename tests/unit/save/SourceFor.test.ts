@@ -97,23 +97,20 @@ while (--i < list.length) {
 `;
 
 describe('SourceForTest', () => {
-  let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
-  config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
-  let scene = new Scene();
-  scene.buildSceneFromProjectDir(config);
-  let arkfile = scene.getFiles().find((value) => {
-    return value.getName().endsWith('iterators-and-generators.ts');
-  });
+    it('case1: whole file', () => {
+        let config: SceneConfig = new SceneConfig({ enableLeadingComments: true });
+        config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
+        let scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        let arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('iterators-and-generators.ts');
+        });
 
-  it('case1: whole file', () => {
-    if (!arkfile) {
-      return;
-    }
-    let dot = new PrinterBuilder('output');
-    dot.dumpToDot(arkfile);
+        let dot = new PrinterBuilder('output');
+        dot.dumpToDot(arkfile!);
 
-    let printer = new SourceFilePrinter(arkfile);
-    let source = printer.dump();
-    expect(source).eq(CASE1_EXPECT);
-  });
+        let printer = new SourceFilePrinter(arkfile!);
+        let source = printer.dump();
+        expect(source).eq(CASE1_EXPECT);
+    });
 });

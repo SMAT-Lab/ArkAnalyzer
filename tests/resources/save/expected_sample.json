@@ -270,7 +270,7 @@
                         "_": "StaticCallExpr",
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "%unk",
                             "declaringFile": {
                               "projectName": "%unk",
                               "fileName": "%unk"

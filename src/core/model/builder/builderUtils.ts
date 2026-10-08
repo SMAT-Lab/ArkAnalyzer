@@ -60,6 +60,7 @@ import { FullPosition } from '../../base/Position';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
 
 import { cloneText } from '../../common/StringUtils';
+import { FieldSignature } from '../ArkSignature';
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = cloneText((node.right as ts.Identifier).text);
@@ -376,7 +377,10 @@ export function buildGenericType(type: Type, arkInstance: ArkMethod | ArkField |
 
 export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile, method: ArkMethod): Type {
     if (node.kind === ts.SyntaxKind.ThisType) {
-        return new ClassType(method.getDeclaringArkClass().getSignature(), method.getDeclaringArkClass().getGenericsTypes());
+        return new ClassType(
+            method.getDeclaringArkClass().getSignature(),
+            method.getDeclaringArkClass().getGenericsTypes()
+        );
     } else if (node) {
         return tsNode2Type(node, sourceFile, method);
     } else {
@@ -390,78 +394,17 @@ export function tsNode2Type(
     arkInstance: ArkMethod | ArkClass | ArkField
 ): Type {
     if (ts.isTypeReferenceNode(typeNode)) {
-        const genericTypes: Type[] = [];
-        if (typeNode.typeArguments) {
-            for (const typeArgument of typeNode.typeArguments) {
-                genericTypes.push(tsNode2Type(typeArgument, sourceFile, arkInstance));
-            }
-        }
-        let referenceNodeName = typeNode.typeName;
-        if (ts.isQualifiedName(referenceNodeName)) {
-            let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
-            return new UnclearReferenceType(parameterTypeStr, genericTypes);
-        } else {
-            let parameterTypeStr = cloneText(referenceNodeName.text);
-            if (parameterTypeStr === Builtin.OBJECT) {
-                return Builtin.OBJECT_CLASS_TYPE;
-            }
-            return new UnclearReferenceType(parameterTypeStr, genericTypes);
-        }
+        return buildTypeFromTypeReference(typeNode, sourceFile, arkInstance);
     } else if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
-        let multipleTypePara: Type[] = [];
-        typeNode.types.forEach(tmpType => {
-            multipleTypePara.push(tsNode2Type(tmpType, sourceFile, arkInstance));
-        });
-        if (ts.isUnionTypeNode(typeNode)) {
-            return new UnionType(multipleTypePara);
-        } else {
-            return new IntersectionType(multipleTypePara);
-        }
+        return buildTypeFromUnionOrIntersection(typeNode, sourceFile, arkInstance);
     } else if (ts.isLiteralTypeNode(typeNode)) {
         return ArkValueTransformer.resolveLiteralTypeNode(typeNode, sourceFile);
     } else if (ts.isTypeLiteralNode(typeNode)) {
-        let cls: ArkClass = new ArkClass();
-        let declaringClass: ArkClass;
-
-        if (arkInstance instanceof ArkMethod) {
-            declaringClass = arkInstance.getDeclaringArkClass();
-        } else if (arkInstance instanceof ArkField) {
-            declaringClass = arkInstance.getDeclaringArkClass();
-        } else {
-            declaringClass = arkInstance;
-        }
-        if (declaringClass.getDeclaringArkNamespace()) {
-            cls.setDeclaringArkNamespace(declaringClass.getDeclaringArkNamespace());
-            cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
-        } else {
-            cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
-        }
-        buildNormalArkClassFromArkMethod(typeNode, cls, sourceFile);
-
-        return new ClassType(cls.getSignature());
+        return buildTypeFromTypeLiteral(typeNode, sourceFile, arkInstance);
     } else if (ts.isFunctionTypeNode(typeNode)) {
-        let mtd: ArkMethod = new ArkMethod();
-        let cls: ArkClass;
-        if (arkInstance instanceof ArkMethod) {
-            cls = arkInstance.getDeclaringArkClass();
-        } else if (arkInstance instanceof ArkClass) {
-            cls = arkInstance;
-        } else {
-            cls = arkInstance.getDeclaringArkClass();
-        }
-        buildArkMethodFromArkClass(typeNode, cls, mtd, sourceFile);
-        return new FunctionType(mtd.getSignature());
+        return buildTypeFromFunctionType(typeNode, sourceFile, arkInstance);
     } else if (ts.isTypeParameterDeclaration(typeNode)) {
-        const name = cloneText(typeNode.name.text);
-        let defaultType;
-        if (typeNode.default) {
-            defaultType = tsNode2Type(typeNode.default, sourceFile, arkInstance);
-        }
-        let constraint;
-        if (typeNode.constraint) {
-            constraint = tsNode2Type(typeNode.constraint, sourceFile, arkInstance);
-        }
-        return new GenericType(name, defaultType, constraint);
+        return buildTypeFromTypeParameter(typeNode, sourceFile, arkInstance);
     } else if (ts.isTupleTypeNode(typeNode)) {
         const types: Type[] = [];
         typeNode.elements.forEach(element => {
@@ -482,6 +425,85 @@ export function tsNode2Type(
     } else {
         return buildTypeFromPreStr(ts.SyntaxKind[typeNode.kind]);
     }
+}
+
+function buildTypeFromTypeReference(typeNode: ts.TypeReferenceNode, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+    const genericTypes: Type[] = [];
+    if (typeNode.typeArguments) {
+        for (const typeArgument of typeNode.typeArguments) {
+            genericTypes.push(tsNode2Type(typeArgument, sourceFile, arkInstance));
+        }
+    }
+    let referenceNodeName = typeNode.typeName;
+    if (ts.isQualifiedName(referenceNodeName)) {
+        let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+        return new UnclearReferenceType(parameterTypeStr, genericTypes);
+    } else {
+        let parameterTypeStr = cloneText(referenceNodeName.text);
+        if (parameterTypeStr === Builtin.OBJECT) {
+            return Builtin.OBJECT_CLASS_TYPE;
+        }
+        return new UnclearReferenceType(parameterTypeStr, genericTypes);
+    }
+}
+
+function buildTypeFromUnionOrIntersection(
+    typeNode: ts.UnionTypeNode | ts.IntersectionTypeNode,
+    sourceFile: ts.SourceFile,
+    arkInstance: ArkMethod | ArkClass | ArkField
+): Type {
+    let multipleTypePara: Type[] = [];
+    typeNode.types.forEach(tmpType => {
+        multipleTypePara.push(tsNode2Type(tmpType, sourceFile, arkInstance));
+    });
+    if (ts.isUnionTypeNode(typeNode)) {
+        return new UnionType(multipleTypePara);
+    } else {
+        return new IntersectionType(multipleTypePara);
+    }
+}
+
+function buildTypeFromTypeLiteral(typeNode: ts.TypeLiteralNode, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+    let declaringClass: ArkClass;
+
+    if (arkInstance instanceof ArkMethod) {
+        declaringClass = arkInstance.getDeclaringArkClass();
+    } else if (arkInstance instanceof ArkField) {
+        declaringClass = arkInstance.getDeclaringArkClass();
+    } else {
+        declaringClass = arkInstance;
+    }
+    let cls: ArkClass = new ArkClass(declaringClass.getDeclaringFileID(), declaringClass.getDeclaringArkNamespace()?.getNamespaceSigID());
+    buildNormalArkClassFromArkMethod(typeNode, cls, sourceFile);
+
+    return new ClassType(cls.getSignature());
+}
+
+function buildTypeFromFunctionType(typeNode: ts.FunctionTypeNode, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+    let cls: ArkClass;
+    if (arkInstance instanceof ArkMethod) {
+        cls = arkInstance.getDeclaringArkClass();
+    } else if (arkInstance instanceof ArkClass) {
+        cls = arkInstance;
+    } else {
+        cls = arkInstance.getDeclaringArkClass();
+    }
+    let mtd: ArkMethod = new ArkMethod(cls.getClassSigID());
+    buildArkMethodFromArkClass(typeNode, cls, mtd, sourceFile);
+    return new FunctionType(mtd.getSignature());
+}
+
+function buildTypeFromTypeParameter(typeNode: ts.TypeParameterDeclaration, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+    const name = cloneText(typeNode.name.text);
+    let defaultType;
+    if (typeNode.default) {
+        defaultType = tsNode2Type(typeNode.default, sourceFile, arkInstance);
+    }
+    let constraint;
+    if (typeNode.constraint) {
+        constraint = tsNode2Type(typeNode.constraint, sourceFile, arkInstance);
+    }
+    return new GenericType(name, defaultType, constraint);
 }
 
 export function buildTypeFromPreStr(preStr: string): Type {
@@ -561,30 +583,22 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
     if (ts.isQualifiedName(exprNameNode)) {
         if (cloneText(exprNameNode.left.getText(sourceFile)) === THIS_NAME) {
             const fieldName = cloneText(exprNameNode.right.getText(sourceFile));
+            let baseLocal: Local;
+            let fieldSignature: FieldSignature;
             if (arkInstance instanceof ArkMethod) {
-                const fieldSignature =
-                    arkInstance.getDeclaringArkClass().getFieldWithName(fieldName)?.getSignature() ??
-                    ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
-                const baseLocal =
-                    arkInstance.getBody()?.getLocals().get(THIS_NAME) ??
-                    new Local(
-                        THIS_NAME,
-                        new ClassType(arkInstance.getDeclaringArkClass().getSignature(), arkInstance.getDeclaringArkClass().getGenericsTypes())
-                    );
-                opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
+                const declaringClass = arkInstance.getDeclaringArkClass();
+                fieldSignature = declaringClass.getFieldWithName(fieldName)?.getSignature() ?? ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
+                baseLocal = arkInstance.getBody()?.getLocals().get(THIS_NAME) ??
+                    new Local(THIS_NAME, new ClassType(declaringClass.getSignature(), declaringClass.getGenericsTypes()));
             } else if (arkInstance instanceof ArkClass) {
-                const fieldSignature =
-                    arkInstance.getFieldWithName(fieldName)?.getSignature() ?? ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
-                const baseLocal = new Local(THIS_NAME, new ClassType(arkInstance.getSignature(), arkInstance.getGenericsTypes()));
-                opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
+                fieldSignature = arkInstance.getFieldWithName(fieldName)?.getSignature() ?? ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
+                baseLocal = new Local(THIS_NAME, new ClassType(arkInstance.getSignature(), arkInstance.getGenericsTypes()));
             } else {
-                const fieldSignature = arkInstance.getSignature();
-                const baseLocal = new Local(
-                    THIS_NAME,
-                    new ClassType(arkInstance.getDeclaringArkClass().getSignature(), arkInstance.getDeclaringArkClass().getGenericsTypes())
-                );
-                opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
+                fieldSignature = arkInstance.getSignature();
+                const declaringClass = arkInstance.getDeclaringArkClass();
+                baseLocal = new Local(THIS_NAME, new ClassType(declaringClass.getSignature(), declaringClass.getGenericsTypes()));
             }
+            opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
         } else {
             const exprName = cloneText(exprNameNode.getText(sourceFile));
             opValue = new Local(exprName, UnknownType.getInstance());
@@ -601,4 +615,25 @@ function buildTypeFromTypeQuery(typeQueryNode: ts.TypeQueryNode, sourceFile: ts.
         }
     }
     return expr;
+}
+
+/**
+ * 构建期同名载体统一：声明类型为 UnclearReferenceType（未解析标注，类别未知）且初始化器类型为
+ * 同名 ClassType（如 `new SharedArr()` 的 stub——new 语义保证类别是类）时，声明侧统一到初始化器
+ * 的 ClassType 实例。仅限纯名字标注（无泛型实参）——带实参的标注（如 `Set<string>`）有完整的
+ * 推断期名字解析路径（实参树全链解析），构建期统一反而引入实参形态中间态。统一后与 new 表达式/
+ * 构造器 invoke 共享同一 stub 的 temp class 行，目标类后续注册时可一次毕业全链收敛。ArrayType
+ * 按 dimension 一致做元素级递归；其余组合一律声明优先（零行为变化）。统一产物仍是 unclear
+ * （stub declaring 为 %unk），不影响后续推断路径。
+ */
+export function unifyDeclaredTypeWithInitializer(declared: Type, initializer: Type): Type {
+    if (declared instanceof ArrayType && initializer instanceof ArrayType && declared.getDimension() === initializer.getDimension()) {
+        const unified = unifyDeclaredTypeWithInitializer(declared.getBaseType(), initializer.getBaseType());
+        return unified !== declared.getBaseType() ? new ArrayType(unified, declared.getDimension()) : declared;
+    }
+    if (initializer instanceof ClassType && declared instanceof UnclearReferenceType &&
+        declared.getGenericTypes().length === 0 && initializer.getClassSignature().getClassName() === declared.getName()) {
+        return initializer;
+    }
+    return declared;
 }

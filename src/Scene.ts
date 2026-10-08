@@ -16,7 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
+import { SceneConfig, SceneOptions, Sdk } from './Config';
 import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
@@ -32,43 +32,36 @@ import { MemoryMonitor } from './frontend/common/MemoryMonitor';
 import { ModuleCache } from './frontend/common/ModuleCache';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { Local } from './core/base/Local';
-import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
-import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively, getFileSignatureMapKey } from './utils/FileUtils';
-import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
-import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
-import { addInitInConstructor as addCxxInitInConstructor } from './frontend/cppFrontend/model/builder/ArkMethodBuilder';
+import { ArkExport, ExportType } from './core/model/ArkExport';
 import { clearCxxTypeStringCache } from './frontend/cppFrontend/model/builder/builderUtils';
+import { disposeClassMap } from './frontend/cppFrontend/model/builder/ArkFileBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
 import { IRInference as CxxIRInference } from './frontend/cppFrontend/common/IRInference';
-import { ArktsFrontend } from './frontend/arktsFrontend/ArktsFrontend';
-import { FrontendBuilder } from './frontend/FrontendBuilder';
-import { ImportInfo } from './core/model/ArkImport';
-import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
-import { BUILD_PROFILE_JSON5, OH_MODULES, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
+import { SceneBuilder } from './frontend/SceneBuilder';
 import { SdkUtils } from './core/common/SdkUtils';
 import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
 import { ModuleUtils } from './utils/ModuleUtils';
-import { sortByDependency } from './utils/DependenciesSort';
 import { Canonicalizer } from './utils/Canonicalizer';
 import { ModuleDepGraph } from './core/graph/ModuleDepGraph';
+import { SignatureCanonicalizerRegistry } from './core/common/SignatureCanonicalizerRegistry';
+import { CanonicalizerValidator } from './core/common/CanonicalizerValidator';
+import { ArkSignatureBuilder } from './core/model/builder/ArkSignatureBuilder';
+import { StageName, StageStatistics, StageStatisticsData } from './statistics/StageStatistics';
+import { StageStatisticsReporter } from './statistics/StageStatisticsReporter';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
-export enum SceneBuildStage {
-    BUILD_INIT,
-    SDK_INFERRED,
-    CLASS_DONE,
-    METHOD_DONE,
-    CLASS_COLLECTED,
-    METHOD_COLLECTED,
-    TYPE_INFERRED,
-}
+// 枚举与 ModuleScene 已拆至 frontend 独立文件（解 Scene↔frontend 值导入循环），
+// 此处 re-export 保持对外兼容。
+export { SceneBuildStage } from './frontend/SceneBuildStage';
+export { ModuleScene } from './frontend/ModuleScene';
+import { SceneBuildStage } from './frontend/SceneBuildStage';
+import { ModuleScene } from './frontend/ModuleScene';
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -76,7 +69,6 @@ export enum SceneBuildStage {
  */
 export class Scene {
     private projectName: string = '';
-    private projectFiles: string[] = [];
     private realProjectDir: string = '';
     private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private ccjsonPath: string = '';
@@ -91,23 +83,8 @@ export class Scene {
     // values that are visible in curr scope
     private visibleValue: VisibleValue = new VisibleValue();
 
-    // signature string to model
-    private filesMap: Map<string, ArkFile> = new Map();
-    private namespacesMap: Map<string, ArkNamespace> = new Map();
-    private classesMap: Map<string, ArkClass> = new Map();
-    private methodsMap: Map<string, ArkMethod> = new Map();
-    /** Custom @Component name → ClassSignature; written at ArkClass build, kept after module unload for ViewTree stubs. */
-    private customComponentMap: Map<string, ClassSignature> = new Map();
-    // TODO: type of key should be signature object
-    private sdkArkFilesMap: Map<string, ArkFile> = new Map();
-    private sdkGlobalMap: Map<string, ArkExport> = new Map<string, ArkExport>();
-    private ohPkgContentMap: Map<string, { [k: string]: unknown }> = new Map<string, { [k: string]: unknown }>();
-    private ohPkgFilePath: string = '';
-    private ohPkgContent: { [k: string]: unknown } = {};
     private overRides: Map<string, string> = new Map();
     private overRideDependencyMap: Map<string, unknown> = new Map();
-    private globalModule2PathMapping?: { [k: string]: string[] } | undefined;
-    private baseUrl?: string | undefined;
 
     private buildStage: SceneBuildStage = SceneBuildStage.BUILD_INIT;
     private fileLanguages: Map<string, Language> = new Map();
@@ -116,6 +93,13 @@ export class Scene {
 
     /** The SceneConfig used to build this scene, retained for later queries (e.g. SDK list). */
     private sceneConfig?: SceneConfig;
+
+    /**
+     * 构建期一次性上下文：完整构建路径的全部构建机械与工作态都在 {@link SceneBuilder} 上。
+     * 构建入口创建/复用，构建结束由入口方法释放（置undefined，随 GC 回收）——构建工作态不再驻留 Scene。
+     * 模块化增量路径（analyseByModule/loadModule）不经此上下文。
+     */
+    private activeBuilder?: SceneBuilder;
 
     /** Maps ArkModule objects to dense integer ModuleIDs via the objectIdentity strategy. */
     private moduleCanonicalizer: Canonicalizer<ArkModule> = new Canonicalizer<ArkModule>();
@@ -132,10 +116,63 @@ export class Scene {
     /** Persistent memory monitor for cache eviction. */
     private memoryMonitor?: MemoryMonitor;
 
+    /** Stage statistics collector (time + memory); undefined when disabled. */
+    private stageStatistics?: StageStatistics;
+    /** Exit hook handler for auto-output of statistics report. */
+    private statsExitHandler?: () => void;
+    /** Prevents duplicate report output (set by manual API or exit hook). */
+    private statsReportWritten: boolean = false;
+
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() {}
+    /**
+     * project 文件的构建完成序（setFile 时记录的 FileSigID 序列）。
+     *
+     * 构建走 {@link getDependencyFilesDeeply}（DFS）：每个文件在自己的全部 import/export 依赖构建完成之后才 setFile（后序）——因此本序列是严格的拓扑序（被依赖者在前）。
+     * 这是推断期零排序遍历的事实源（见 {@link inferTypes}）。注意 FileSigID 本身的前序 intern 序不具拓扑性质（多入口/菱形场景依赖方可能晚于被依赖方 intern），不可用于排序。
+     */
+    private builtFileOrder: number[] = [];
+
+    // --- Canonicalizers moved to SignatureCanonicalizerRegistry (global singleton) ---
+
+    /** @internal Get the Registry singleton. */
+    private get registry(): SignatureCanonicalizerRegistry {
+        return SignatureCanonicalizerRegistry.getInstance();
+    }
+
+    // --- 构建期上下文（SceneBuilder）生命周期 ---
+
+    /** @internal 惰性创建/复用构建期上下文（幂等：同一构建流程内共享工作态）。 */
+    private getOrCreateSceneBuilder(sceneConfig?: SceneConfig): SceneBuilder {
+        if (!this.activeBuilder) {
+            const config = sceneConfig ?? this.sceneConfig;
+            if (!config) {
+                throw new Error('SceneBuilder requires a SceneConfig (call buildBasicInfo first).');
+            }
+            this.activeBuilder = new SceneBuilder(this, config);
+        }
+        return this.activeBuilder;
+    }
+
+    /** @internal 释放构建期上下文：在构建机械全部完成后调用，工作态随上下文被 GC 回收。*/
+    private releaseSceneBuilder(): void {
+        this.activeBuilder = undefined;
+    }
+
+    /** @internal 当前活跃构建上下文（无则 undefined）。ModuleScene 等构建通道使用。 */
+    public getActiveSceneBuilder(): SceneBuilder | undefined {
+        return this.activeBuilder;
+    }
+
+    /** @internal 模块路径 → 模块名映射（构建产物；SceneBuilder.parseBuildProfile 写入）。 */
+    public getModulePath2NameMap(): Map<string, string> {
+        return this.modulePath2NameMap;
+    }
+
+    constructor() {
+        SignatureCanonicalizerRegistry.dispose();
+    }
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -147,8 +184,49 @@ export class Scene {
         ValueUtil.dispose();
         ModelUtils.dispose();
         clearCxxTypeStringCache();
+        disposeClassMap();
         this.moduleCache = undefined;
         this.memoryMonitor = undefined;
+        this.releaseSceneBuilder();
+        this.builtFileOrder = [];
+        this.moduleScenesMap.clear();
+        this.modulePath2NameMap.clear();
+        this.moduleSdkMap.clear();
+        this.projectSdkMap.clear();
+        if (this.statsExitHandler) {
+            process.removeListener('exit', this.statsExitHandler);
+            this.statsExitHandler = undefined;
+        }
+        this.stageStatistics?.finish();
+        this.stageStatistics = undefined;
+        SignatureCanonicalizerRegistry.dispose();
+        // 组件名 stub 缓存随 Registry 同点清理（缓存实例的 temp symbol 属旧空间）。
+        ArkSignatureBuilder.clearComponentStubCache();
+    }
+
+    /** @internal Get the formal FileSignature canonicalizer. */
+    public getFileSigCanonicalizer() {
+        return this.registry.fileSigCanonicalizer;
+    }
+
+    /** @internal Get the formal ClassSignature canonicalizer. */
+    public getClassSigCanonicalizer() {
+        return this.registry.classSigCanonicalizer;
+    }
+
+    /** @internal Get the formal MethodSignature canonicalizer. */
+    public getMethodSigCanonicalizer() {
+        return this.registry.methodSigCanonicalizer;
+    }
+
+    /** @internal Get the formal NamespaceSignature canonicalizer. */
+    public getNamespaceSigCanonicalizer() {
+        return this.registry.namespaceSigCanonicalizer;
+    }
+
+    /** @internal Get the formal FieldSignature canonicalizer. */
+    public getFieldSigCanonicalizer() {
+        return this.registry.fieldSigCanonicalizer;
     }
 
     public getOptions(): SceneOptions {
@@ -167,26 +245,9 @@ export class Scene {
         return this.overRideDependencyMap;
     }
 
+    /** @deprecated Use {@link dispose} instead. */
     public clear(): void {
-        this.projectFiles = [];
-
-        this.moduleScenesMap.clear();
-        this.modulePath2NameMap.clear();
-
-        this.moduleSdkMap.clear();
-        this.projectSdkMap.clear();
-
-        this.filesMap.clear();
-        this.namespacesMap.clear();
-        this.classesMap.clear();
-        this.methodsMap.clear();
-        this.customComponentMap.clear();
-
-        this.sdkArkFilesMap.clear();
-        this.sdkGlobalMap.clear();
-        this.ohPkgContentMap.clear();
-        this.ohPkgContent = {};
-        this.moduleCache?.clear();
+        this.dispose();
     }
 
     public getStage(): SceneBuildStage {
@@ -223,13 +284,29 @@ export class Scene {
      ```
      */
     public buildSceneFromProjectDir(sceneConfig: SceneConfig): void {
+        this.config(sceneConfig);
+        this.stageStatistics?.start();
+        this.stageStatistics?.startStage(StageName.Builder);
         this.buildBasicInfo(sceneConfig);
         this.genArkFiles();
+        // 完整构建结束：释放构建期上下文（工作态随 GC 回收）。
+        this.releaseSceneBuilder();
+        this.stageStatistics?.endStage(StageName.Builder);
+        // 签名空间快照（时点 1）：构建完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-build');
     }
 
     public buildSceneFromFiles(sceneConfig: SceneConfig): void {
+        this.config(sceneConfig);
+        this.stageStatistics?.start();
+        this.stageStatistics?.startStage(StageName.Builder);
         this.buildBasicInfo(sceneConfig);
-        this.getFilesOrderByDependency();
+        this.genArkFiles();
+        // 完整构建结束：释放构建期上下文（工作态随 GC 回收）。
+        this.releaseSceneBuilder();
+        this.stageStatistics?.endStage(StageName.Builder);
+        // 签名空间快照（时点 1）：构建完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-build');
     }
 
     /**
@@ -242,540 +319,19 @@ export class Scene {
         this.options = sceneConfig.getOptions();
         this.projectName = sceneConfig.getTargetProjectName();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
-        this.projectFiles = sceneConfig.getProjectFiles();
         this.includeDirs = sceneConfig.getIncludeDirs();
         this.ccjsonPath = sceneConfig.getCcjsonPath();
         this.cppAstPath = sceneConfig.getCppAstPath();
 
-        this.parseBuildProfile();
-
-        this.parseOhPackage();
-        let tsConfigFilePath;
-        if (this.options.tsconfig) {
-            tsConfigFilePath = path.join(sceneConfig.getTargetProjectDirectory(), this.options.tsconfig);
-        } else {
-            tsConfigFilePath = path.join(sceneConfig.getTargetProjectDirectory(), TSCONFIG_JSON);
-        }
-        if (fs.existsSync(tsConfigFilePath)) {
-            const tsConfigObj: TsConfig = fetchDependenciesFromFile(tsConfigFilePath);
-            this.findTsConfigInfoDeeply(tsConfigObj, tsConfigFilePath);
-        } else {
-            logger.warn('This project has no tsconfig.json!');
-        }
-        this.buildOhPkgContentMap();
-        ModuleUtils.generateModuleMap(this.ohPkgContentMap);
-
-        // handle sdks
-        if (this.options.enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
-            sceneConfig.getSdksObj().unshift(SdkUtils.getBuiltInSdk());
-        }
-        sceneConfig.getSdksObj()?.forEach(sdk => {
-            if (!sdk.moduleName) {
-                this.buildSdk(sdk.name, path.normalize(sdk.path));
-                this.projectSdkMap.set(sdk.name, sdk);
-            } else {
-                let moduleSdks = this.moduleSdkMap.get(sdk.moduleName);
-                if (moduleSdks) {
-                    moduleSdks.push(sdk);
-                } else {
-                    this.moduleSdkMap.set(sdk.moduleName, [sdk]);
-                }
-            }
-        });
-        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
-            this.sdkArkFilesMap.forEach(file => {
-                // CXXTodo: C++ does not handle SDK files.
-                if (file.getLanguage() === Language.CXX) {
-                    return;
-                }
-                InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
-                SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
-            });
-            this.sdkArkFilesMap.forEach(file => {
-                SdkUtils.postInferredSdk(file, this.sdkGlobalMap);
-            });
-            this.buildStage = SceneBuildStage.SDK_INFERRED;
-        }
-        this.fileLanguages = sceneConfig.getFileLanguages();
-        SdkUtils.extendArkUI(this);
-    }
-
-    private parseBuildProfile(): void {
-        const buildProfile = path.join(this.realProjectDir, BUILD_PROFILE_JSON5);
-        if (fs.existsSync(buildProfile)) {
-            let configurationsText: string;
-            try {
-                configurationsText = fs.readFileSync(buildProfile, 'utf-8');
-            } catch (error) {
-                logger.error(`Error reading file: ${error}`);
-                return;
-            }
-            const buildProfileJson = parseJsonText(configurationsText);
-            SdkUtils.setEsVersion(buildProfileJson);
-            const modules = buildProfileJson.modules;
-            if (modules instanceof Array) {
-                modules.forEach(module => {
-                    this.modulePath2NameMap.set(path.resolve(this.realProjectDir, path.join(module.srcPath)), module.name);
-                });
-            }
-        } else {
-            logger.warn('There is no build-profile.json5 for this project.');
-        }
-    }
-
-    private parseOhPackage(): void {
-        const OhPkgFilePath = path.join(this.realProjectDir, OH_PACKAGE_JSON5);
-        if (fs.existsSync(OhPkgFilePath)) {
-            this.ohPkgFilePath = OhPkgFilePath;
-            this.ohPkgContent = fetchDependenciesFromFile(this.ohPkgFilePath);
-            this.ohPkgContentMap.set(OhPkgFilePath, this.ohPkgContent);
-            if (this.ohPkgContent.overrides) {
-                let overRides = this.ohPkgContent.overrides as { [k: string]: unknown };
-                for (const [key, value] of Object.entries(overRides)) {
-                    this.overRides.set(key, value as string);
-                }
-            }
-            if (this.ohPkgContent.overrideDependencyMap) {
-                let globalOverRideDependencyMap = this.ohPkgContent.overrideDependencyMap as { [k: string]: unknown };
-                for (const [key, value] of Object.entries(globalOverRideDependencyMap)) {
-                    let globalDependency = fetchDependenciesFromFile(value as string);
-                    this.overRideDependencyMap.set(key, globalDependency);
-                }
-            }
-        } else {
-            logger.warn('This project has no oh-package.json5!');
-        }
-    }
-
-    private findTsConfigInfoDeeply(tsConfigObj: TsConfig, tsConfigFilePath: string): void {
-        if (tsConfigObj.extends) {
-            const extTsConfigFilePath = path.join(path.dirname(tsConfigFilePath), tsConfigObj.extends);
-            const extTsConfigObj: TsConfig = fetchDependenciesFromFile(extTsConfigFilePath);
-            this.findTsConfigInfoDeeply(extTsConfigObj, extTsConfigFilePath);
-            if (!this.baseUrl && !this.globalModule2PathMapping) {
-                this.addTsConfigInfo(extTsConfigObj);
-            }
-        }
-        if (!this.baseUrl && !this.globalModule2PathMapping) {
-            this.addTsConfigInfo(tsConfigObj);
-        }
-    }
-
-    private addTsConfigInfo(tsConfigObj: TsConfig): void {
-        if (tsConfigObj.compilerOptions && tsConfigObj.compilerOptions.paths) {
-            const paths = tsConfigObj.compilerOptions.paths;
-            if (paths) {
-                this.globalModule2PathMapping = paths;
-            }
-        }
-        if (tsConfigObj.compilerOptions && tsConfigObj.compilerOptions.baseUrl) {
-            this.baseUrl = tsConfigObj.compilerOptions.baseUrl;
-        }
-    }
-
-    /**
-     * Update or add default constructors for all classes in the scene.
-     *
-     * This function iterates through all files and classes in the scene,
-     * builds default constructors for each class, and processes existing constructors
-     * by replacing super constructor calls and adding initialization logic.
-     *
-     * @returns {void}
-     */
-    private updateOrAddDefaultConstructors(): void {
-        for (const file of this.getFiles()) {
-            // CXXTodo: Select the appropriate initialization function based on file type
-            const initInConstructorFn = file.getLanguage() === Language.CXX ? addCxxInitInConstructor : addInitInConstructor;
-            for (const cls of ModelUtils.getAllClassesInFile(file)) {
-                buildDefaultConstructor(cls);
-                // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
-                const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
-                if (cls.isDefaultArkClass()) {
-                    continue;
-                }
-                constructors.forEach(constructor => {
-                    replaceSuper2Constructor(constructor);
-                    initInConstructorFn(constructor);
-                });
-            }
-        }
-    }
-
-    private collectAllMethods(): ArkMethod[] {
-        const methods: ArkMethod[] = [];
-        for (const file of this.getFiles()) {
-            if (!this.options.enableOhModulesBody && file.getName().includes(OH_MODULES)) {
-                const defaultArkMethod = file.getDefaultClass().getDefaultArkMethod();
-                if (defaultArkMethod) {
-                    methods.push(defaultArkMethod);
-                }
-                continue;
-            }
-            for (const cls of file.getClasses()) {
-                for (const method of cls.getMethods(true)) {
-                    methods.push(method);
-                }
-            }
-        }
-        for (const namespace of this.getNamespacesMap().values()) {
-            if (!this.options.enableOhModulesBody && namespace.getDeclaringArkFile().getName().includes(OH_MODULES)) {
-                const defaultArkMethod = namespace.getDefaultClass().getDefaultArkMethod();
-                if (defaultArkMethod) {
-                    methods.push(defaultArkMethod);
-                }
-                continue;
-            }
-            for (const cls of namespace.getClasses()) {
-                for (const method of cls.getMethods(true)) {
-                    methods.push(method);
-                }
-            }
-        }
-        return methods;
-    }
-
-    private static freeMethodBodyBuilder(method: ArkMethod): void {
-        const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
-        if (isCxxFile) {
-            method.freeCxxBodyBuilder();
-        } else {
-            method.freeBodyBuilder();
-        }
-    }
-
-    private buildAllMethodBody(): void {
-        this.buildStage = SceneBuildStage.CLASS_DONE;
-        const methods = this.collectAllMethods();
-
-        for (const method of methods) {
-            try {
-                method.buildBody();
-            } catch (error) {
-                logger.error('Error building body:', method.getSignature(), error);
-            } finally {
-                Scene.freeMethodBodyBuilder(method);
-            }
-        }
-
-        ModelUtils.dispose();
-        this.buildStage = SceneBuildStage.METHOD_DONE;
-    }
-
-    private freeAllBodyBuilders(): void {
-        const methods = this.collectAllMethods();
-        for (const method of methods) {
-            Scene.freeMethodBodyBuilder(method);
-        }
+        const builder = this.getOrCreateSceneBuilder(sceneConfig);
+        builder.parseProjectConfigs();
+        builder.buildSdkStage();
     }
 
     private genArkFiles(): void {
-        FrontendBuilder.buildFilesIntoArkFiles(this, this.projectFiles);
-        if (this.options.enableMethodBodyBuild ?? true) {
-            this.buildAllMethodBody();
-            this.updateOrAddDefaultConstructors();
-        } else {
-            this.freeAllBodyBuilders();
-            ModelUtils.dispose();
-            this.buildStage = SceneBuildStage.METHOD_DONE;
-        }
-    }
-
-    private getFilesOrderByDependency(): void {
-        for (const projectFile of this.projectFiles) {
-            this.getDependencyFilesDeeply(projectFile);
-        }
-        if (this.options.enableMethodBodyBuild ?? true) {
-            this.buildAllMethodBody();
-            this.updateOrAddDefaultConstructors();
-        } else {
-            this.freeAllBodyBuilders();
-            ModelUtils.dispose();
-            this.buildStage = SceneBuildStage.METHOD_DONE;
-        }
-    }
-
-    public getDependencyFilesDeeply(projectFile: string): void {
-        if (!this.options.supportFileExts!.includes(path.extname(projectFile))) {
-            return;
-        }
-        const fileSignature = new FileSignature(this.getProjectName(), path.relative(this.getRealProjectDir(), projectFile));
-        if (this.filesMap.has(fileSignature.toMapKey()) || this.isRepeatBuildFile(projectFile) || this.unhandledFilePaths.has(projectFile)) {
-            return;
-        }
-        // Here use unhandledFilePaths to temporarily store current file until add it to fileMaps to avoid recursively import issue.
-        this.unhandledFilePaths.add(projectFile);
-        try {
-            const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
-            arkFile.setScene(this);
-            FrontendBuilder.buildProjectFileIntoArkFile(this, projectFile, arkFile);
-            for (const [modulePath, moduleName] of this.modulePath2NameMap) {
-                if (arkFile.getFilePath().startsWith(modulePath)) {
-                    this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);
-                    break;
-                }
-            }
-            const importInfos = arkFile.getImportInfos();
-            const repeatFroms: string[] = [];
-            this.findDependencyFiles(importInfos, arkFile, repeatFroms);
-
-            const exportInfos = arkFile.getExportInfos();
-            this.findDependencyFiles(exportInfos, arkFile, repeatFroms);
-
-            // add currently file to files map after adding all its dependencies, and remove it from unhandledFilePaths
-            this.setFile(arkFile);
-            this.unhandledFilePaths.delete(projectFile);
-        } catch (error) {
-            logger.error('Error parsing file:', projectFile, error);
-            return;
-        }
-    }
-
-    private isRepeatBuildFile(projectFile: string): boolean {
-        const relativePath = path.relative(this.getRealProjectDir(), projectFile);
-        if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
-            const mapKey = getFileSignatureMapKey(this.getProjectName(), relativePath);
-            return this.filesMap.has(mapKey);
-        }
-        return false;
-    }
-
-    private addArkFile2ModuleScene(modulePath: string, moduleName: string, arkFile: ArkFile): void {
-        if (this.moduleScenesMap.has(moduleName)) {
-            let curModuleScene = this.moduleScenesMap.get(moduleName);
-            if (curModuleScene) {
-                curModuleScene.addArkFile(arkFile);
-                arkFile.setModuleScene(curModuleScene);
-            }
-        } else {
-            let moduleScene = new ModuleScene(this);
-            moduleScene.ModuleScenePartiallyBuilder(moduleName, modulePath);
-            moduleScene.addArkFile(arkFile);
-            this.moduleScenesMap.set(moduleName, moduleScene);
-            arkFile.setModuleScene(moduleScene);
-        }
-    }
-
-    private findDependencyFiles(importOrExportInfos: ImportInfo[] | ExportInfo[], arkFile: ArkFile, repeatFroms: string[]): void {
-        for (const importOrExportInfo of importOrExportInfos) {
-            const from = importOrExportInfo.getFrom();
-            if (from && !repeatFroms.includes(from)) {
-                this.parseFrom(from, arkFile);
-                repeatFroms.push(from);
-            }
-        }
-    }
-
-    private parseFrom(from: string, arkFile: ArkFile): void {
-        if (/^@[a-z|\-]+?\/?/.test(from) || /^[a-z][a-z0-9._-]*[a-z0-9]$/.test(from)) {
-            // TODO: if there are more than one modules with the same name e.g. @lib1, here may got the wrong dependency
-            // It is better to loop all oh pkg with priority rather than the map key order. But it should be very complicated.
-            // Currently it is ok because it's with low probability and order error only affects type accuracy but has no other impact.
-            for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
-                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
-            }
-        } else if (/^([^@]*\/)([^\/]*)$/.test(from) || /^[\.\./|\.\.]+$/.test(from)) {
-            this.findRelativeDependenciesByOhPkg(from, arkFile);
-        } else if (/^[@a-zA-Z0-9]+(\/[a-zA-Z0-9]+)*$/.test(from)) {
-            this.findDependenciesByTsConfig(from);
-        }
-    }
-
-    private findDependenciesByTsConfig(from: string): void {
-        if (this.globalModule2PathMapping) {
-            const paths: { [k: string]: string[] } = this.globalModule2PathMapping;
-            Object.keys(paths).forEach(key => this.parseTsConfigParms(paths, key, from));
-        }
-    }
-
-    private parseTsConfigParms(paths: { [k: string]: string[] }, key: string, from: string): void {
-        const module2pathMapping = paths[key];
-        if (key.includes(ALL)) {
-            this.processFuzzyMapping(key, from, module2pathMapping);
-        } else if (from.startsWith(key)) {
-            let tail = from.substring(key.length, from.length);
-            module2pathMapping.forEach(pathMapping => {
-                let originPath = path.join(this.getRealProjectDir(), pathMapping, tail);
-                if (this.baseUrl) {
-                    originPath = path.resolve(this.baseUrl, originPath);
-                }
-                this.findDependenciesByRule(originPath);
-            });
-        }
-    }
-
-    private processFuzzyMapping(key: string, from: string, module2pathMapping: string[]): void {
-        key = key.substring(0, key.indexOf(ALL) - 1);
-        if (from.substring(0, key.indexOf(ALL) - 1) === key) {
-            let tail = from.substring(key.indexOf(ALL) - 1, from.length);
-            module2pathMapping.forEach(pathMapping => {
-                pathMapping = pathMapping.substring(0, pathMapping.indexOf(ALL) - 1);
-                let originPath = path.join(this.getRealProjectDir(), pathMapping, tail);
-                if (this.baseUrl) {
-                    originPath = path.join(this.baseUrl, originPath);
-                }
-                this.findDependenciesByRule(originPath);
-            });
-        }
-    }
-
-    private findDependenciesByRule(originPath: string): void {
-        if (!this.findFilesByPathArray(originPath) && !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)) {
-            logger.trace(originPath + 'module mapperInfo is not found!');
-        }
-    }
-
-    private findFilesByPathArray(originPath: string): boolean {
-        if (!fs.existsSync(originPath)) {
-            return false;
-        }
-        const dirname = path.dirname(originPath);
-        const indexFileName = FileUtils.getIndexFileName(dirname);
-        if (indexFileName === '') {
-            return false;
-        }
-        const curPath = path.join(dirname, indexFileName);
-        if (!this.isRepeatBuildFile(curPath)) {
-            this.addFileNode2DependencyGrap(curPath);
-            return true;
-        }
-        return false;
-    }
-
-    private findFilesByExtNameArray(originPath: string, pathArray: string[]): boolean {
-        for (const pathInfo of pathArray) {
-            const curPath = originPath + pathInfo;
-            if (fs.existsSync(curPath) && !this.isRepeatBuildFile(curPath)) {
-                this.addFileNode2DependencyGrap(curPath);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private findRelativeDependenciesByOhPkg(from: string, arkFile: ArkFile): void {
-        //relative path ../from  ./from
-        //order
-        //1. ../from/oh-package.json5 -> [[name]] -> overRides/overRideDependencyMap? ->
-        //[[main]] -> file path ->dependencies(priority)+devDependencies? dynamicDependencies(not support) ->
-        //key overRides/overRideDependencyMap?
-        //2. ../from/index.ets(ts)
-        //3. ../from/index.d.ets(ts)
-        //4. ../from.ets(ts)
-        //5. ../from.d.ets(ts)
-        //2.3.4.5 random order
-        let originPath = this.getOriginPath(from, arkFile);
-        if (fs.existsSync(path.join(originPath, OH_PACKAGE_JSON5))) {
-            for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
-                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
-            }
-        }
-        this.findDependenciesByRule(originPath);
-    }
-
-    private findDependenciesByOhPkg(
-        ohPkgContentPath: string,
-        ohPkgContentInfo: {
-            [k: string]: unknown;
-        },
-        from: string
-    ): void {
-        //module name @ohos/from
-        const ohPkgContent: { [k: string]: unknown } | undefined = ohPkgContentInfo;
-        //module main name is must be
-        if (ohPkgContent && ohPkgContent.name && from.startsWith(ohPkgContent.name.toString())) {
-            let originPath = ohPkgContentPath.toString().replace(OH_PACKAGE_JSON5, '');
-            if (ohPkgContent.main) {
-                originPath = path.join(ohPkgContentPath.toString().replace(OH_PACKAGE_JSON5, ''), ohPkgContent.main.toString());
-                if (ohPkgContent.dependencies) {
-                    this.getDependenciesMapping(ohPkgContent.dependencies, ohPkgContentPath, from);
-                } else if (ohPkgContent.devDependencies) {
-                    this.getDependenciesMapping(ohPkgContent.devDependencies, ohPkgContentPath, from);
-                } else if (ohPkgContent.dynamicDependencies) {
-                    // dynamicDependencies not support
-                }
-                this.addFileNode2DependencyGrap(originPath);
-            }
-            if (!this.findFilesByPathArray(originPath)) {
-                logger.trace(originPath + 'module mapperInfo is not found!');
-            }
-        }
-    }
-
-    private getDependenciesMapping(dependencies: object, ohPkgContentPath: string, from: string): void {
-        for (let [moduleName, modulePath] of Object.entries(dependencies)) {
-            logger.debug('dependencies:' + moduleName);
-            if (modulePath.startsWith('file:')) {
-                modulePath = modulePath.replace(/^file:/, '');
-            }
-            const innerOhpackagePath = path.join(ohPkgContentPath.replace(OH_PACKAGE_JSON5, ''), modulePath.toString(), OH_PACKAGE_JSON5);
-            if (!this.ohPkgContentMap.has(innerOhpackagePath)) {
-                const innerModuleOhPkgContent = fetchDependenciesFromFile(innerOhpackagePath);
-                this.findDependenciesByOhPkg(innerOhpackagePath, innerModuleOhPkgContent, from);
-            }
-        }
-    }
-
-    private getOriginPath(from: string, arkFile: ArkFile): string {
-        const parentPath = /^\.{1,2}\//.test(from) ? path.dirname(arkFile.getFilePath()) : arkFile.getProjectDir();
-        return path.resolve(parentPath, from);
-    }
-
-    private addFileNode2DependencyGrap(filePath: string): void {
-        this.getDependencyFilesDeeply(filePath);
-    }
-
-    /**
-     * Loads SDK sources into the scene. C++ SDK files are intentionally skipped: they are not parsed or registered
-     * here (only non-C++ SDK sources are processed).
-     */
-    private buildSdk(sdkName: string, sdkPath: string): void {
-        const allFiles = this.collectSdkFiles(sdkName, sdkPath);
-        allFiles.forEach(file => {
-            if (FileUtils.getFileLanguage(file, this.fileLanguages) === Language.CXX) {
-                return;
-            }
-            this.parseAndRegisterSdkFile(file, sdkPath, sdkName);
-        });
-    }
-
-    private collectSdkFiles(sdkName: string, sdkPath: string): string[] {
-        if (sdkName === SdkUtils.BUILT_IN_NAME) {
-            const builtInFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
-            if (builtInFiles.length > 0) {
-                this.getOptions().sdkGlobalFolders?.push(sdkPath);
-            }
-            return builtInFiles;
-        }
-        SdkUtils.loadSystemComponentsFromSdk(sdkPath);
-        return getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
-    }
-
-    private parseAndRegisterSdkFile(file: string, sdkPath: string, sdkName: string): void {
-        logger.trace('=== parse sdk file:', file);
-        try {
-            const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-            arkFile.setScene(this);
-            ArktsFrontend.buildArkFileFromSdkPath(file, sdkPath, arkFile, sdkName);
-            ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
-                cls.getDefaultArkMethod()?.buildBody();
-                cls.getDefaultArkMethod()?.freeBodyBuilder();
-            });
-            // Release all method builders in SDK file to avoid retaining AST/build context in memory.
-            ModelUtils.getAllMethodsInFile(arkFile).forEach(method => {
-                if (method.getDeclaringArkFile()?.getLanguage() === Language.CXX) {
-                    method.freeCxxBodyBuilder();
-                } else {
-                    method.freeBodyBuilder();
-                }
-            });
-            const fileSig = arkFile.getFileSignature().toMapKey();
-            this.sdkArkFilesMap.set(fileSig, arkFile);
-            SdkUtils.buildSdkImportMap(arkFile);
-            SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
-        } catch (error) {
-            logger.error('Error parsing file:', file, error);
-            this.unhandledSdkFilePaths.push(file);
-        }
+        const builder = this.getOrCreateSceneBuilder();
+        builder.buildProjectFiles();
+        builder.buildAllMethodBodies();
     }
 
     /**
@@ -784,85 +340,15 @@ export class Scene {
      * it build bodies of all methods, generate extended classes, and add DefaultConstructors.
      */
     public buildScene4HarmonyProject(): void {
-        this.modulePath2NameMap.forEach((value, key) => {
-            let moduleScene = new ModuleScene(this);
-            moduleScene.ModuleSceneBuilder(value, key, this.options.supportFileExts!);
-            this.moduleScenesMap.set(value, moduleScene);
-        });
-
-        if (this.options.enableMethodBodyBuild ?? true) {
-            this.buildAllMethodBody();
-            this.updateOrAddDefaultConstructors();
-        } else {
-            this.freeAllBodyBuilders();
-            ModelUtils.dispose();
-            this.buildStage = SceneBuildStage.METHOD_DONE;
-        }
+        this.getOrCreateSceneBuilder().buildScene4HarmonyProject();
+        this.releaseSceneBuilder();
     }
 
-    private buildOhPkgContentMap(): void {
-        this.modulePath2NameMap.forEach((value, key) => {
-            const moduleOhPkgFilePath = path.resolve(key, OH_PACKAGE_JSON5);
-            if (fs.existsSync(moduleOhPkgFilePath)) {
-                const moduleOhPkgContent = fetchDependenciesFromFile(moduleOhPkgFilePath);
-                this.ohPkgContentMap.set(moduleOhPkgFilePath, moduleOhPkgContent);
-            }
-        });
-    }
-
+    /**
+     * 单模块构建（增量式入口，可连续调用构建多个模块）：ohpkg 依赖递归 + 模块 DFS + body 构建，全部经构建期上下文。此处不释放上下文（连续构建共享工作态）。
+     */
     public buildModuleScene(moduleName: string, modulePath: string, supportFileExts: string[]): void {
-        if (this.moduleScenesMap.get(moduleName)) {
-            return;
-        }
-
-        // get oh-package.json5
-        const moduleOhPkgFilePath = path.resolve(this.realProjectDir, path.join(modulePath, OH_PACKAGE_JSON5));
-        if (fs.existsSync(moduleOhPkgFilePath)) {
-            const moduleOhPkgContent = fetchDependenciesFromFile(moduleOhPkgFilePath);
-            this.ohPkgContentMap.set(moduleOhPkgFilePath, moduleOhPkgContent);
-        } else {
-            logger.warn('Module: ', moduleName, 'has no oh-package.json5.');
-        }
-
-        // parse moduleOhPkgContent, get dependencies and build dependent module
-        const moduleOhPkgContent = this.ohPkgContentMap.get(moduleOhPkgFilePath);
-        if (moduleOhPkgContent) {
-            if (moduleOhPkgContent.dependencies instanceof Object) {
-                this.processModuleOhPkgContent(moduleOhPkgContent.dependencies, moduleOhPkgFilePath, supportFileExts);
-            }
-        }
-
-        let moduleScene = new ModuleScene(this);
-        moduleScene.ModuleSceneBuilder(moduleName, modulePath, supportFileExts);
-        this.moduleScenesMap.set(moduleName, moduleScene);
-
-        if (this.options.enableMethodBodyBuild ?? true) {
-            this.buildAllMethodBody();
-        } else {
-            this.freeAllBodyBuilders();
-            ModelUtils.dispose();
-            this.buildStage = SceneBuildStage.METHOD_DONE;
-        }
-    }
-
-    private processModuleOhPkgContent(dependencies: Object, moduleOhPkgFilePath: string, supportFileExts: string[]): void {
-        Object.entries(dependencies).forEach(([k, v]) => {
-            const pattern = new RegExp('^(\\.\\.\\/\|\\.\\/)');
-            if (typeof v === 'string') {
-                let dependencyModulePath: string = '';
-                if (pattern.test(v)) {
-                    dependencyModulePath = path.join(moduleOhPkgFilePath, v);
-                } else if (v.startsWith('file:')) {
-                    const dependencyFilePath = path.join(moduleOhPkgFilePath, v.replace(/^file:/, ''));
-                    const dependencyOhPkgPath = getFileRecursively(path.dirname(dependencyFilePath), OH_PACKAGE_JSON5);
-                    dependencyModulePath = path.dirname(dependencyOhPkgPath);
-                }
-                const dependencyModuleName = this.modulePath2NameMap.get(dependencyModulePath);
-                if (dependencyModuleName) {
-                    this.buildModuleScene(dependencyModuleName, dependencyModulePath, supportFileExts);
-                }
-            }
-        });
+        this.getOrCreateSceneBuilder().buildModuleScene(moduleName, modulePath, supportFileExts);
     }
 
     /**
@@ -871,7 +357,7 @@ export class Scene {
      * @example
      * 1. get real project directory, such as:
      ```typescript
-     let projectDir = projectScene.getRealProjectDir(); 
+     let projectDir = projectScene.getRealProjectDir();
      ```
      */
     public getRealProjectDir(): string {
@@ -901,6 +387,15 @@ export class Scene {
             this.realProjectDir = fs.realpathSync(dir);
         }
         this.fileLanguages = sceneConfig.getFileLanguages();
+        if (this.options.enableStatistics && !this.stageStatistics) {
+            this.stageStatistics = new StageStatistics(true);
+            this.registerStatsExitHook();
+        }
+    }
+
+    /** @internal 供构建期上下文（SceneBuilder）打点使用：返回统计收集器，未启用统计时为 undefined（各打点调用自动 no-op）。 */
+    public getStageStatisticsCollector(): StageStatistics | undefined {
+        return this.stageStatistics;
     }
 
     /**
@@ -981,9 +476,9 @@ export class Scene {
      * Perform module-level analysis by iterating modules in topological order and invoking
      * the callback for each module.
      *
-     * Flow: prepareModules → analyzeModuleDependencies → buildSdkModules (SDK files parsed +
-     * inferred first) → resolveTargetModuleIds → computeModuleClosureByIds → iterate topoOrder
-     * → loadModule → callback.
+     * Flow: prepareModules → analyzeModuleDependencies → buildSdkModules (SDK loaded
+     * inferred first) → resolveTargetModuleIds → computeModuleClosureByIds →
+     * getFilteredTopoOrder → loadModule → callback.
      * Each step is idempotent; repeated calls do not repeat preprocessing.
      *
      * - SDK modules are registered and built in one fused step by {@link ModuleBuilder.buildSdkModules}
@@ -1006,7 +501,7 @@ export class Scene {
             builder.analyzeModuleDependencies();
             this.setModulesRegistered(true);
         }
-        // 2. Build SDK modules — fused registration + building (idempotent). SDK loaded FIRST so
+        // 2. Build SDK modules → fused registration + building (idempotent). SDK loaded FIRST so
         //    that global APIs are available when project/oh_modules modules are loaded.
         builder.buildSdkModules();
         // 3. Resolve target modules and compute closure (unified flow, no branching)
@@ -1042,7 +537,7 @@ export class Scene {
             }
             callback(module, this);
         }
-        // 7. No unload, no dispose — modules persist in cache for cross-call reuse
+        // 7. No unload, no dispose → modules persist in cache for cross-call reuse
     }
 
     /**
@@ -1053,16 +548,14 @@ export class Scene {
         return this.projectName;
     }
 
-    public getProjectFiles(): string[] {
-        return this.projectFiles;
-    }
-
+    /** @deprecated Compatibility delegate only — no longer used internally. Use {@link SdkUtils.getSdkGlobal} instead. */
     public getSdkGlobal(globalName: string): ArkExport | null {
-        return this.sdkGlobalMap.get(globalName) || null;
+        return SdkUtils.getSdkGlobal(globalName);
     }
 
-    public getSdkGlobalMap(): Map<string, ArkExport> {
-        return this.sdkGlobalMap;
+    /** @deprecated Compatibility delegate only — no longer used internally. Use `SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap` instead. */
+    public getSdkGlobalMap(): Map<string, ArkExport[]> {
+        return SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap;
     }
 
     /**
@@ -1084,12 +577,13 @@ export class Scene {
      }
      ```
      */
-    public getFile(fileSignature: FileSignature): ArkFile | null {
-        if (this.projectName === fileSignature.getProjectName()) {
-            return this.filesMap.get(fileSignature.toMapKey()) || null;
-        } else {
-            return this.sdkArkFilesMap.get(fileSignature.toMapKey()) || null;
+    public getFile(fileSignature: FileSignature): ArkFile | null;
+    public getFile(fileSigId: number): ArkFile | null;
+    public getFile(fileSigOrId: FileSignature | number): ArkFile | null {
+        if (typeof fileSigOrId === 'number') {
+            return this.registry.fileSigCanonicalizer.getModel(fileSigOrId) ?? null;
         }
+        return this.registry.fileSigCanonicalizer.getModel(this.registry.fileSigCanonicalizer.getExistingId(fileSigOrId)) ?? null;
     }
 
     /*
@@ -1099,8 +593,9 @@ export class Scene {
         return Array.from(this.unhandledFilePaths);
     }
 
-    public addUnhandledFilePath(filePath: string): void {
-        this.unhandledFilePaths.add(filePath);
+    /** @internal 原始引用（Set）：构建期上下文作防环工作集复用（成功 delete、失败残留）。 */
+    public getUnhandledFileSet(): Set<string> {
+        return this.unhandledFilePaths;
     }
 
     /*
@@ -1110,60 +605,84 @@ export class Scene {
         return this.unhandledSdkFilePaths;
     }
 
+    /** @internal 非用户 API。*/
     public setFile(file: ArkFile): void {
-        this.filesMap.set(file.getFileSignature().toMapKey(), file);
+        file.setScene(this);
+        file.setProjectFile(true);
+        // 记录构建完成序（后序 = 拓扑序），见字段注释与 inferTypes。
+        this.builtFileOrder.push(file.getFileSigID());
     }
 
-    /**
-     * Add an SDK ArkFile to the scene's `sdkArkFilesMap`, keyed by its file signature.
-     * Used by {@link ModuleBuilder.parseAndRegisterSdkFile} during SDK file registration.
-     */
+    /** @internal project 文件的构建完成序（拓扑序：被依赖者在前）。推断期遍历事实源。 */
+    public getBuiltFileOrder(): readonly number[] {
+        return this.builtFileOrder;
+    }
+
+    /** @internal 非用户 API。*/
     public addSdkArkFile(arkFile: ArkFile): void {
-        this.sdkArkFilesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
+        // 防御断言：边界已设置后不应再注册 SDK 文件（构建时序破坏，理论不可达）。
+        if (this.registry.getFirstProjectFileSigID() !== -1) {
+            logger.warn(`SDK file registered after the project/SDK ID boundary was marked: ${arkFile.getName()}`);
+        }
+        arkFile.setScene(this);
+
+        arkFile.setProjectFile(false);
     }
 
-    public hasSdkFile(fileSignature: FileSignature): boolean {
-        return this.sdkArkFilesMap.has(fileSignature.toMapKey());
+    public hasSdkFile(fileSignature: FileSignature): boolean;
+    public hasSdkFile(fileSigId: number): boolean;
+    public hasSdkFile(fileSigOrId: FileSignature | number): boolean {
+        let file: ArkFile | undefined;
+        if (typeof fileSigOrId === 'number') {
+            file = this.registry.fileSigCanonicalizer.getModel(fileSigOrId);
+        } else {
+            file = this.registry.fileSigCanonicalizer.getModel(this.registry.fileSigCanonicalizer.getExistingId(fileSigOrId));
+        }
+        return file !== undefined && !file.isProjectFile();
     }
 
     /**
-     * Get files of a {@link Scene}. Generally, a project includes several ets/ts files that define the different
-     * class. We need to generate {@link ArkFile} objects from these ets/ts files.
-     * @returns The array of {@link ArkFile} from `scene.filesMap.values()`.
-     * @example
-     * 1. In inferSimpleTypes() to check arkClass and arkMethod.
-     * ```typescript
-     * public inferSimpleTypes(): void {
-     *   for (let arkFile of this.getFiles()) {
-     *       for (let arkClass of arkFile.getClasses()) {
-     *           for (let arkMethod of arkClass.getMethods()) {
-     *           // ... ...;
-     *           }
-     *       }
-     *   }
-     * }
-     * ```
-     * 2. To iterate each method
-     * ```typescript
-     * for (const file of this.getFiles()) {
-     *     for (const cls of file.getClasses()) {
-     *         for (const method of cls.getMethods()) {
-     *             // ... ...
-     *         }
-     *     }
-     * }
-     *```
+     * 获取全部 project 文件（不含 SDK 文件）。
      */
     public getFiles(): ArkFile[] {
-        return Array.from(this.filesMap.values());
+        const first = this.registry.getFirstProjectFileSigID();
+        if (first === -1) {
+            return [];
+        }
+        const size = this.registry.fileSigCanonicalizer.size();
+        const result: ArkFile[] = [];
+        for (let id = first; id < size; id++) {
+            const model = this.registry.fileSigCanonicalizer.getModel(id);
+            if (model !== undefined) {
+                result.push(model);
+            }
+        }
+        return result;
     }
 
     public getFileLanguages(): Map<string, Language> {
         return this.fileLanguages;
     }
 
+    /** @internal 构建期上下文在 SDK 阶段末尾回填语言表（保持与迁移前一致的赋值时序）。 */
+    public setFileLanguages(fileLanguages: Map<string, Language>): void {
+        this.fileLanguages = fileLanguages;
+    }
+
+    /** 获取全部 SDK 文件。 */
     public getSdkArkFiles(): ArkFile[] {
-        return Array.from(this.sdkArkFilesMap.values());
+        const first = this.registry.getFirstProjectFileSigID();
+        if (first === -1) {
+            return [];
+        }
+        const result: ArkFile[] = [];
+        for (let id = 1; id < first; id++) {
+            const model = this.registry.fileSigCanonicalizer.getModel(id);
+            if (model !== undefined) {
+                result.push(model);
+            }
+        }
+        return result;
     }
 
     public getModuleSdkMap(): Map<string, Sdk[]> {
@@ -1174,167 +693,97 @@ export class Scene {
         return this.projectSdkMap;
     }
 
+    /**
+     * Returns the namespace according to the input namespace signature.
+     * @param namespaceSignature - signature of the namespace to be obtained.
+     * @returns A namespace, or null when the signature was never interned.
+     */
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
-        const isProject = this.projectName === namespaceSignature.getDeclaringFileSignature().getProjectName();
-        let namespace;
-        if (isProject) {
-            namespace = this.namespacesMap.get(namespaceSignature.toMapKey());
+        const id = this.registry.namespaceSigCanonicalizer.getExistingId(namespaceSignature);
+        if (id === -1) {
+            return null;
         }
-        if (namespace) {
-            return namespace;
-        }
-        namespace = this.getNamespaceBySignature(namespaceSignature);
-        if (isProject && namespace) {
-            this.namespacesMap.set(namespaceSignature.toMapKey(), namespace);
-        }
-        return namespace || null;
+        return this.registry.namespaceSigCanonicalizer.getModel(id) ?? null;
     }
 
-    private getNamespaceBySignature(signature: NamespaceSignature): ArkNamespace | null {
-        const parentSignature = signature.getDeclaringNamespaceSignature();
-        if (parentSignature) {
-            const parentNamespace = this.getNamespaceBySignature(parentSignature);
-            return parentNamespace?.getNamespace(signature) || null;
-        } else {
-            const arkFile = this.getFile(signature.getDeclaringFileSignature());
-            return arkFile?.getNamespace(signature) || null;
-        }
-    }
-
-    private getNamespacesMap(): Map<string, ArkNamespace> {
-        if (this.buildStage === SceneBuildStage.CLASS_DONE) {
-            for (const file of this.getFiles()) {
-                ModelUtils.getAllNamespacesInFile(file).forEach(namespace => {
-                    this.namespacesMap.set(namespace.getNamespaceSignature().toMapKey(), namespace);
-                });
-            }
-        }
-        return this.namespacesMap;
-    }
-
+    /** 获取全部 project 文件的 ArkNamespace（不含 SDK，含嵌套层级摊平）。*/
     public getNamespaces(): ArkNamespace[] {
-        return Array.from(this.getNamespacesMap().values());
+        const reg = this.registry;
+        const size = reg.namespaceSigCanonicalizer.size();
+        const result: ArkNamespace[] = [];
+        for (let id = 1; id < size; id++) {
+            const ns = reg.namespaceSigCanonicalizer.getModel(id);
+            if (ns === undefined) {
+                continue;
+            }
+            if (!ns.getDeclaringArkFile().isProjectFile()) {
+                continue;
+            }
+            result.push(ns);
+        }
+        return result;
     }
 
     /**
      * Returns the class according to the input class signature.
      * @param classSignature - signature of the class to be obtained.
-     * @returns A class.
+     * @returns A class, or null when the signature was never interned.
      */
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        const isProject = this.projectName === classSignature.getDeclaringFileSignature().getProjectName();
-        let arkClass;
-        if (isProject) {
-            arkClass = this.classesMap.get(classSignature.toMapKey());
+        const id = this.registry.classSigCanonicalizer.getExistingId(classSignature);
+        if (id === -1) {
+            return null;
         }
-        if (arkClass) {
-            return arkClass;
-        }
-        const namespaceSignature = classSignature.getDeclaringNamespaceSignature();
-        if (namespaceSignature) {
-            arkClass = this.getNamespaceBySignature(namespaceSignature)?.getClass(classSignature) || null;
-        } else {
-            const arkFile = this.getFile(classSignature.getDeclaringFileSignature());
-            arkClass = arkFile?.getClass(classSignature);
-        }
-        if (isProject && arkClass) {
-            this.classesMap.set(classSignature.toMapKey(), arkClass);
-        }
-        return arkClass || null;
-    }
-
-    /**
-     * Register a custom {@code @Component} into {@link customComponentMap}.
-     * Called from ArkClass builders (full Scene build and module load share the same path).
-     * Entries intentionally survive module unload so ViewTree can still resolve signatures.
-     */
-    public registerCustomComponent(cls: ArkClass): void {
-        if (!cls.hasComponentDecorator()) {
-            return;
-        }
-        const name = cls.getName();
-        if (!name || name.startsWith('%')) {
-            return;
-        }
-        this.customComponentMap.set(name, cls.getSignature());
-    }
-
-    /**
-     * Remove a custom component entry. Not called on module unload — the map must outlive IR.
-     * Used when an ArkClass is explicitly removed from a live Scene, or via {@link clear}.
-     */
-    public unregisterCustomComponent(cls: ArkClass): void {
-        const name = cls.getName();
-        if (!name || !cls.hasComponentDecorator()) {
-            return;
-        }
-        const existing = this.customComponentMap.get(name);
-        if (existing && existing.toMapKey() === cls.getSignature().toMapKey()) {
-            this.customComponentMap.delete(name);
-        }
+        return this.registry.classSigCanonicalizer.getModel(id) ?? null;
     }
 
     public getCustomComponent(name: string): ClassSignature | undefined {
-        return name ? this.customComponentMap.get(name) : undefined;
+        return name ? this.registry.customComponentMap.get(name) : undefined;
     }
 
     public getCustomComponentMap(): Map<string, ClassSignature> {
-        return this.customComponentMap;
+        return this.registry.customComponentMap;
     }
 
-    private getClassesMap(refresh?: boolean): Map<string, ArkClass> {
-        if (refresh || this.buildStage === SceneBuildStage.METHOD_DONE) {
-            this.classesMap.clear();
-            for (const file of this.getFiles()) {
-                for (const cls of file.getClasses()) {
-                    this.classesMap.set(cls.getSignature().toMapKey(), cls);
-                }
-            }
-            for (const namespace of this.getNamespacesMap().values()) {
-                for (const cls of namespace.getClasses()) {
-                    this.classesMap.set(cls.getSignature().toMapKey(), cls);
-                }
-            }
-            if (this.buildStage < SceneBuildStage.CLASS_COLLECTED) {
-                this.buildStage = SceneBuildStage.CLASS_COLLECTED;
-            }
-        }
-        return this.classesMap;
-    }
-
+    /** 获取全部 project 文件的 ArkClass（不含 SDK 类）。*/
     public getClasses(): ArkClass[] {
-        return Array.from(this.getClassesMap().values());
+        const reg = this.registry;
+        const size = reg.classSigCanonicalizer.size();
+        const result: ArkClass[] = [];
+        for (let id = 1; id < size; id++) {
+            const cls = reg.classSigCanonicalizer.getModel(id);
+            if (cls === undefined) {
+                continue;
+            }
+            if (!cls.getDeclaringArkFile().isProjectFile()) {
+                continue;
+            }
+            result.push(cls);
+        }
+        return result;
     }
 
-    public getMethod(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
-        const isProject = this.projectName === methodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getProjectName();
-        let arkMethod;
-        if (isProject) {
-            arkMethod = this.methodsMap.get(methodSignature.toMapKey());
-        }
-        if (arkMethod) {
+    /**
+     * Returns the method associated with the method signature (implementation or declaration).
+     * @param methodSignature - the signature of method.
+     * @returns The method associated with the method signature, or null if not found.
+     */
+    public getMethod(methodSignature: MethodSignature): ArkMethod | null;
+    /**
+     * @deprecated The `refresh` parameter has no effect and will be removed in a future release.
+     * Use the single-argument form instead.
+     */
+    public getMethod(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null;
+    public getMethod(methodSignature: MethodSignature, _refresh?: boolean): ArkMethod | null {
+        // Fast path: O(1) model lookup (read-only, never interns the signature).
+        const arkMethod = this.registry.getMethodBySig(methodSignature);
+        if (arkMethod !== undefined) {
             return arkMethod;
         }
-        arkMethod = this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature);
-        if (isProject && arkMethod) {
-            this.methodsMap.set(methodSignature.toMapKey(), arkMethod);
-        }
-        return arkMethod || null;
-    }
-
-    private getMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
-        if (refresh || (this.buildStage >= SceneBuildStage.METHOD_DONE && this.buildStage < SceneBuildStage.METHOD_COLLECTED)) {
-            this.methodsMap.clear();
-            for (const cls of this.getClassesMap(refresh).values()) {
-                for (const method of cls.getMethods(true)) {
-                    this.methodsMap.set(method.getSignature().toMapKey(), method);
-                }
-            }
-            if (this.buildStage < SceneBuildStage.METHOD_COLLECTED) {
-                this.buildStage = SceneBuildStage.METHOD_COLLECTED;
-            }
-        }
-        return this.methodsMap;
+        // Fallback: closure-rebuilt signatures may not be registered as models yet —
+        // resolve via the declaring class's local traversal (isMatch-based). Read-only:
+        // no interning and no model back-fill (query paths must not write).
+        return this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature) ?? null;
     }
 
     /**
@@ -1349,7 +798,6 @@ export class Scene {
      * - View tree: the view tree of the method.
      * - ...
      *
-     * @param methodSignature - the signature of method.
      * @returns The method associated with the method signature.
      * @example
      * 1. get method from getMethod.
@@ -1363,35 +811,20 @@ export class Scene {
      ```
      */
     public getMethods(): ArkMethod[] {
-        return Array.from(this.getMethodsMap().values());
-    }
-
-    public addToMethodsMap(method: ArkMethod): void {
-        this.methodsMap.set(method.getSignature().toMapKey(), method);
-    }
-
-    public removeMethod(method: ArkMethod): boolean {
-        return this.methodsMap.delete(method.getSignature().toMapKey());
-    }
-
-    public removeClass(arkClass: ArkClass): boolean {
-        this.unregisterCustomComponent(arkClass);
-        return this.classesMap.delete(arkClass.getSignature().toMapKey());
-    }
-
-    public removeNamespace(namespace: ArkNamespace): boolean {
-        return this.namespacesMap.delete(namespace.getSignature().toMapKey());
-    }
-
-    public removeFile(file: ArkFile): boolean {
-        return this.filesMap.delete(file.getFileSignature().toMapKey());
+        const methods: ArkMethod[] = [];
+        for (const cls of this.getClasses()) {
+            for (const method of cls.getMethods(true)) {
+                methods.push(method);
+            }
+        }
+        return methods;
     }
 
     /**
      * Dispose a module's data from all global indices.
      *
      * Removes the module's ArkFiles, ArkClasses, ArkMethods, and ArkNamespaces from the Scene's
-     * global maps (filesMap, sdkArkFilesMap, classesMap, methodsMap, namespacesMap) and clears
+     * global canonicalizers and clears
      * the oh-package.json5 content cache. After this call, the module's heavy data is no longer
      * reachable via Scene's global indices and can be garbage-collected.
      *
@@ -1402,32 +835,35 @@ export class Scene {
      */
     public disposeModule(module: ArkModule): void {
         for (const arkFile of module.getFilesMap().values()) {
-            const key = arkFile.getFileSignature().toMapKey();
-            this.filesMap.delete(key);
-            this.sdkArkFilesMap.delete(key);
-            for (const ns of ModelUtils.getAllNamespacesInFile(arkFile)) {
-                this.namespacesMap.delete(ns.getNamespaceSignature().toMapKey());
+            this.registry.removeFile(arkFile);
+            for (const ns of arkFile.getAllNamespacesUnderThisFile()) {
+                this.registry.removeNamespace(ns);
             }
             for (const cls of ModelUtils.getAllClassesInFile(arkFile)) {
-                this.classesMap.delete(cls.getSignature().toMapKey());
-                for (const mtd of cls.getMethods()) {
-                    this.methodsMap.delete(mtd.getSignature().toMapKey());
-                    // Release heavy per-method IR (ArkBody/CFG/Stmt/Locals + ViewTree) so it can
-                    // be GC'd on eviction, even if the ArkMethod/ArkFile skeleton is still referenced
+                this.registry.removeClassModel(cls);
+                for (const fld of cls.getFields()) {
+                    this.registry.removeField(fld);
+                }
+                for (const mtd of cls.getMethods(true)) {
+                    this.registry.removeMethod(mtd);
+                    // Release heavy per-method IR (ArkBody/CFG/Stmt/Locals + ViewTree) so it can be
+                    // GC'd on eviction, even if the ArkMethod/ArkFile skeleton is still referenced
                     // by residual back-edges. Bodies/viewTrees are rebuilt on reload.
                     mtd.clearBodyAndSupplementary();
                 }
-                // Sever back-references: remove this class from its base classes' extendedClasses,
+                // Sever back-references: remove this class from its base classes' extended classes,
                 // otherwise base classes (e.g. SDK) keep evicted project classes alive (memory leak).
                 for (const base of cls.getAllHeritageClasses()) {
-                    base.getExtendedClasses().delete(cls.getName());
+                    base.removeExtendedClass(cls);
                 }
             }
             // Release the TS AST (SourceFile) and cached source text; getCode() re-reads from disk.
             arkFile.setAST(null);
             arkFile.clearSourceCode();
         }
-        this.ohPkgContentMap.delete(module.getOhPkgPath());
+        // 驱逐模块的 oh-package 表项清理：经活跃构建上下文 best-effort（增量路径
+        // 上下文通常已释放，此时无 DFS 消费该表，跳过安全）。
+        this.getActiveSceneBuilder()?.getOhPkgContentMap().delete(module.getOhPkgPath());
     }
 
     public hasMainMethod(): boolean {
@@ -1442,18 +878,6 @@ export class Scene {
     /** get values that is visible in curr scope */
     public getVisibleValue(): VisibleValue {
         return this.visibleValue;
-    }
-
-    public getOhPkgContent(): { [p: string]: unknown } {
-        return this.ohPkgContent;
-    }
-
-    public getOhPkgContentMap(): Map<string, { [p: string]: unknown }> {
-        return this.ohPkgContentMap;
-    }
-
-    public getOhPkgFilePath(): string {
-        return this.ohPkgFilePath;
     }
 
     public makeCallGraphCHA(entryPoints: MethodSignature[]): CallGraph {
@@ -1505,21 +929,47 @@ export class Scene {
         } else if (times > 5) {
             times = 5;
         }
-        const sortedFiles = sortByDependency(this.filesMap, this.projectName);
         while (times > 0) {
-            for (const file of sortedFiles) {
+            this.stageStatistics?.startStage(StageName.InferTypes);
+            for (const fileSigID of this.builtFileOrder) {
+                const file = this.registry.fileSigCanonicalizer.getModel(fileSigID);
+                if (file === undefined) {
+                    continue;
+                }
                 InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
+                this.stageStatistics?.recordMemoryCheckpoint();
             }
+            this.stageStatistics?.endStage(StageName.InferTypes);
             times--;
         }
+        this.stageStatistics?.startStage(StageName.InferTypesFinalize);
         if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
-            this.getMethodsMap(true);
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
+        }
+        this.checkTempSignatureCompleteness();
+        if (this.getOptions().validateCanonicalizers === true) {
+            CanonicalizerValidator.validateAll();
         }
         SdkUtils.dispose();
         ModuleUtils.dispose();
         ValueUtil.dispose();
         clearCxxTypeStringCache();
+        this.stageStatistics?.endStage(StageName.InferTypesFinalize);
+        // 签名空间快照（时点 2）：推导完成后的 formal/temp 数据进报告。
+        this.stageStatistics?.recordSignatureStats('post-infer');
+    }
+
+    private checkTempSignatureCompleteness(): void {
+        const stats = this.registry.getTempSpacesStats();
+        const liveTotal = stats.class.liveCount + stats.method.liveCount + stats.field.liveCount;
+        if (liveTotal > 0) {
+            const brief = {
+                class: { live: stats.class.liveCount, retired: stats.class.retiredCount },
+                method: { live: stats.method.liveCount, retired: stats.method.retiredCount },
+                field: { live: stats.field.liveCount, retired: stats.field.retiredCount },
+            };
+            logger.warn(`Unresolved signatures still alive after type inference (index-table exact stats): ${JSON.stringify(brief)}`);
+        }
     }
 
     /**
@@ -1531,7 +981,7 @@ export class Scene {
     public inferTypesOld(): void {
         // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
         CxxIRInference.mapCxxDeclAndImpl(this);
-        this.filesMap.forEach(file => {
+        this.getFiles().forEach(file => {
             try {
                 // CXXTodo: Distinguish between C++ and TS/ArkTS.
                 file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
@@ -1540,26 +990,12 @@ export class Scene {
             }
         });
         if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
-            this.getMethodsMap(true);
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
     }
 
-    /**
-     * Iterate all assignment statements in methods,
-     * and set the type of left operand based on the type of right operand
-     * if the left operand is a local variable as well as an unknown.
-     * @Deprecated
-     * @example
-     * 1. Infer simple type when scene building.
-
-     ```typescript
-     let scene = new Scene();
-     scene.buildSceneFromProjectDir(config);
-     scene.inferSimpleTypes();
-     ```
-     */
+    /** @deprecated 请改用 {@link inferTypes}（完整类型推断含 simple type 推断能力）。 */
     public inferSimpleTypes(): void {
         for (let arkFile of this.getFiles()) {
             for (let arkClass of arkFile.getClasses()) {
@@ -1667,6 +1103,7 @@ export class Scene {
         }
     }
 
+    /** @deprecated 如需全部 project 类请使用 {@link getClasses}。*/
     public getClassMap(): Map<FileSignature | NamespaceSignature, ArkClass[]> {
         const classMap: Map<FileSignature | NamespaceSignature, ArkClass[]> = new Map();
         for (const file of this.getFiles()) {
@@ -1813,6 +1250,7 @@ export class Scene {
         }
     }
 
+    /** @deprecated 依赖 file→ns→class 结构骨架遍历，与 registry 事实源化的方向不一致。*/
     public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
         const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
         for (const file of this.getFiles()) {
@@ -1850,9 +1288,11 @@ export class Scene {
 
     public getStaticInitMethods(): ArkMethod[] {
         const staticInitMethods: ArkMethod[] = [];
-        for (const method of Array.from(this.getMethodsMap(true).values())) {
-            if (method.getName() === STATIC_INIT_METHOD_NAME) {
-                staticInitMethods.push(method);
+        for (const cls of this.getClasses()) {
+            for (const method of cls.getMethods(true)) {
+                if (method.getName() === STATIC_INIT_METHOD_NAME) {
+                    staticInitMethods.push(method);
+                }
             }
         }
         return staticInitMethods;
@@ -1870,96 +1310,116 @@ export class Scene {
         return this.moduleScenesMap;
     }
 
+    /** tsconfig paths/baseUrl 配置产物快照（SceneBuilder.parseProjectConfigs 结束回填）。 */
+    private tsConfigPathsSnapshot?: { [k: string]: string[] };
+    private baseUrlSnapshot?: string;
+
+    /** @internal 构建期上下文回填配置产物快照（构建后 getGlobalModule2PathMapping/getbaseUrl 可查）。 */
+    public setTsConfigSnapshot(paths?: { [k: string]: string[] }, baseUrl?: string): void {
+        this.tsConfigPathsSnapshot = paths;
+        this.baseUrlSnapshot = baseUrl;
+    }
+
     public getGlobalModule2PathMapping(): { [k: string]: string[] } | undefined {
-        return this.globalModule2PathMapping;
+        return this.tsConfigPathsSnapshot;
     }
 
     public getbaseUrl(): string | undefined {
-        return this.baseUrl;
-    }
-}
-
-export class ModuleScene {
-    private projectScene: Scene;
-    private moduleName: string = '';
-    private modulePath: string = '';
-    private moduleFileMap: Map<string, ArkFile> = new Map();
-
-    private moduleOhPkgFilePath: string = '';
-    private ohPkgContent: { [k: string]: unknown } = {};
-
-    constructor(projectScene: Scene) {
-        this.projectScene = projectScene;
+        return this.baseUrlSnapshot;
     }
 
-    public getProjectScene(): Scene {
-        return this.projectScene;
-    }
+    /** 根 oh-package.json5 内容快照（SceneBuilder.parseOhPackage 结束回填）。 */
+    private ohPkgContentSnapshot: { [k: string]: unknown } = {};
 
-    public ModuleSceneBuilder(moduleName: string, modulePath: string, supportFileExts: string[], recursively: boolean = false): void {
-        this.moduleName = moduleName;
-        this.modulePath = modulePath;
-
-        this.getModuleOhPkgFilePath();
-
-        if (this.moduleOhPkgFilePath) {
-            this.ohPkgContent = fetchDependenciesFromFile(this.moduleOhPkgFilePath);
-        } else {
-            logger.warn('This module has no oh-package.json5!');
-        }
-        this.genArkFiles(supportFileExts);
-    }
-
-    public ModuleScenePartiallyBuilder(moduleName: string, modulePath: string): void {
-        this.moduleName = moduleName;
-        this.modulePath = modulePath;
-        if (this.moduleOhPkgFilePath) {
-            this.ohPkgContent = fetchDependenciesFromFile(this.moduleOhPkgFilePath);
-        } else {
-            logger.warn('This module has no oh-package.json5!');
-        }
+    /** @internal 构建期上下文回填根 oh-package 内容快照（构建后 getOhPkgContent 可查）。 */
+    public setOhPkgContentSnapshot(content: { [k: string]: unknown }): void {
+        this.ohPkgContentSnapshot = content;
     }
 
     /**
-     * get oh-package.json5
+     * Get the parsed content of the project's root `oh-package.json5`.
+     * Returns an empty object when the project has no oh-package.json5 or before the
+     * scene is built.
+     * @returns The oh-package.json5 content.
      */
-    private getModuleOhPkgFilePath(): void {
-        const moduleOhPkgFilePath = path.resolve(this.projectScene.getRealProjectDir(), path.join(this.modulePath, OH_PACKAGE_JSON5));
-        if (fs.existsSync(moduleOhPkgFilePath)) {
-            this.moduleOhPkgFilePath = moduleOhPkgFilePath;
-        }
-    }
-
-    /**
-     * get nodule name
-     * @returns return module name
-     */
-    public getModuleName(): string {
-        return this.moduleName;
-    }
-
-    public getModulePath(): string {
-        return this.modulePath;
-    }
-
-    public getOhPkgFilePath(): string {
-        return this.moduleOhPkgFilePath;
-    }
-
     public getOhPkgContent(): { [p: string]: unknown } {
-        return this.ohPkgContent;
+        return this.ohPkgContentSnapshot;
     }
 
-    public getModuleFilesMap(): Map<string, ArkFile> {
-        return this.moduleFileMap;
+    /**
+     * Get the collected stage statistics data, or undefined if statistics is disabled.
+     * Auto-finalizes the collector if still running.
+     */
+    public getStageStatistics(): StageStatisticsData | undefined {
+        if (!this.stageStatistics) {
+            return undefined;
+        }
+        return this.stageStatistics.getStatistics();
     }
 
-    public addArkFile(arkFile: ArkFile): void {
-        this.moduleFileMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
+    /**
+     * Print stage statistics to the logger.
+     */
+    public printStageStatistics(): void {
+        if (!this.stageStatistics) {
+            return;
+        }
+        const data = this.stageStatistics.getStatistics();
+        const report = StageStatisticsReporter.generateReport(data);
+        logger.info(StageStatisticsReporter.exportToText(report));
+        this.statsReportWritten = true;
     }
 
-    private genArkFiles(supportFileExts: string[]): void {
-        const filePaths = getAllFiles(this.modulePath, supportFileExts, this.projectScene.getOptions().ignoreFileNames);
-        FrontendBuilder.buildModuleFilesIntoArkFiles(this, filePaths);
+    /**
+     * Export stage statistics as a text report to the given file path.
+     * @returns true if the report was written, false if statistics is disabled.
+     */
+    public exportStageStatisticsReport(filePath: string): boolean {
+        if (!this.stageStatistics) {
+            return false;
+        }
+        const data = this.stageStatistics.getStatistics();
+        const report = StageStatisticsReporter.generateReport(data);
+        StageStatisticsReporter.saveReportToFile(report, filePath);
+        this.statsReportWritten = true;
+        return true;
+    }
+
+    /**
+     * Register a process 'exit' hook that auto-writes the statistics report
+     * when the process terminates, so users only need `enableStatistics: true`
+     * without calling any output API manually.
+     */
+    private registerStatsExitHook(): void {
+        if (this.statsExitHandler) {
+            return;
+        }
+        this.statsExitHandler = () => {
+            if (!this.stageStatistics || this.statsReportWritten) {
+                return;
+            }
+            this.statsReportWritten = true;
+            this.stageStatistics.finish();
+            const data = this.stageStatistics.getStatistics();
+            const report = StageStatisticsReporter.generateReport(data);
+            const reportPath = this.getStatisticsReportPath();
+            StageStatisticsReporter.saveReportToFile(report, reportPath);
+            process.stdout.write(`Statistics report auto-saved to: ${reportPath}\n`);
+        };
+        process.on('exit', this.statsExitHandler);
+    }
+
+    /**
+     * Resolve the default statistics report file path.
+     * Uses `SceneOptions.statisticsOutputPath` if provided, otherwise
+     * defaults to `out/<projectName>_statistics.txt` under the current working directory.
+     */
+    private getStatisticsReportPath(): string {
+        const custom = this.options?.statisticsOutputPath;
+        if (custom) {
+            return custom;
+        }
+        const dir = path.join(process.cwd(), 'out');
+        return path.join(dir, `${this.projectName || 'arkanalyzer'}_statistics.txt`);
     }
 }

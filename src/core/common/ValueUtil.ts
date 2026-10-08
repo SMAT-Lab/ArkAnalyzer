@@ -20,7 +20,14 @@ export const EMPTY_STRING = '';
 const STRING_CACHE_MAX_LENGTH = 32;
 
 export class ValueUtil {
-    public static readonly EMPTY_STRING_CONSTANT = new StringConstant(EMPTY_STRING);
+    // lazy 单例（getter 形式，访问点零感知）：ValueUtil 处于 Constant↔Type 的 ESM
+    // 循环链上（Registry→ArkSignature→…→ValueUtil→Constant→Type），模块级 new
+    // StringConstant（构造期调 StringType.getInstance()）会在 Type 未完成加载时炸。
+    private static EMPTY_STRING_CONSTANT_?: StringConstant;
+
+    public static get EMPTY_STRING_CONSTANT(): StringConstant {
+        return (this.EMPTY_STRING_CONSTANT_ ??= new StringConstant(EMPTY_STRING));
+    }
 
     /*
      * Clear LRU caches for number and string constants.

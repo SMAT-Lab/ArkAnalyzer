@@ -192,16 +192,17 @@ inner(): number {
 ```typescript
 // src/core/model/ArkMethod.ts
 export class ArkMethod extends ArkBaseModel implements ArkExport {
-    private code?: string;
-    private declaringArkClass!: ArkClass;
-    private outerMethod?: ArkMethod;                    // 嵌套方法定位外层
+    private declaringClassID: number = -1;              // 所属类 ClassSigID（-1 = 未 intern）
+    private outerMethodSigID?: number;                  // 嵌套方法的外层方法 MethodSigID
     private genericTypes?: GenericType[];
 
-    private declareSignatures?: MethodSignature[];      // 重载的 declare 签名（多个）
+    private declareSigIDs?: number[];                   // 重载的 declare 签名 MethodSigID（多个）
     private declareOriginFullPositions?: FullPosition[];// declare 签名的完整位置（起始/结束行列）
 
-    private implSignature?: MethodSignature;            // implementation 签名（唯一）
+    private implementSigID?: number;                    // implementation 签名的 MethodSigID（唯一）
     private implOriginFullPosition?: FullPosition;      // implementation 的完整位置（起始/结束行列）
+
+    private localClassSigIDs?: Map<string, number>;     // 方法体内局部类（裸名 → ClassSigID 作用域绑定）
 
     private body?: ArkBody;                             // 方法体
     private viewTree?: ViewTree;                        // ArkUI 组件方法的视图树
@@ -213,10 +214,11 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
 | 字段                        | 说明                                                                                     |
 | ------------------------- | -------------------------------------------------------------------------------------- |
-| `declaringArkClass`       | 反向定位所属类。任何方法都属于一个类——独立函数挂在 `ArkFile` 的 `%dflt` 默认类上                                    |
-| `outerMethod`             | 嵌套函数 / 匿名函数的外层方法；用于跨层闭包变量分析                                                            |
-| `methodDeclareSignatures` | TS 重载的 declare 签名列表（如多签名 + 1 实现的形式）                                                    |
-| `methodSignature`         | 真正实现的签名；与所有 declare 签名不冲突。**至少有一个**：纯 declare/接口方法只有 declare 签名，独立函数等只有 implementation |
+| `declaringClassID`        | 反向定位所属类的 ClassSigID（`getDeclaringArkClass()` 经 Registry 反查）。任何方法都属于一个类——独立函数挂在 `ArkFile` 的 `%dflt` 默认类上 |
+| `outerMethodSigID`        | 嵌套函数 / 匿名函数的外层方法 MethodSigID；用于跨层闭包变量分析                                                     |
+| `declareSigIDs`           | TS 重载的 declare 签名 MethodSigID 列表（如多签名 + 1 实现的形式）                                           |
+| `implementSigID`          | 真正实现签名的 MethodSigID；与所有 declare 签名不冲突。**至少有一个**：纯 declare/接口方法只有 declare 签名，独立函数等只有 implementation |
+| `localClassSigIDs`        | 方法体内局部类的裸名 → ClassSigID 绑定，取代旧的文件级 `Local$Outer-m` 组合名模糊前缀匹配                              |
 | `body`                    | 方法体；为空表示抽象/declare/接口方法                                                                |
 | `viewTree`                | ArkUI `build()` / `@Builder` 等方法构建得到的 [ViewTree](../analysis/ViewTree.md)              |
 | `bodyBuilder`             | 延迟构建 `ArkBody` 的器件；构建完成后会被释放                                                           |
@@ -279,9 +281,9 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
 | 方法                                                              | 说明                                                                   |
 | --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `getDeclaringArkClass() / setDeclaringArkClass(c)`              | 反向引用所属类                                                              |
+| `getDeclaringArkClass()` / `setDeclaringClassID(id)` | 反向引用所属类（getter 经 Registry 按 ClassSigID 反查；对象 setter 已废弃，改用 ID 注入构造器） |
 | `getDeclaringArkFile(): ArkFile`                                | 等价 `getDeclaringArkClass().getDeclaringArkFile()`                    |
-| `getOuterMethod() / setOuterMethod(m)`                          | 嵌套关系                                                                 |
+| `getOuterMethod() / setOuterMethod(m)`                          | 嵌套关系（内部存储 outerMethodSigID）                                            |
 | `getLanguage(): Language`                                       | 所属文件的语言种类                                                            |
 | `getCode() / setCode(s)`                                        | 源码片段                                                                 |
 | `getGenericTypes() / setGenericTypes(t)` / `isGenericsMethod()` | 泛型参数                                                                 |

@@ -69,7 +69,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                     blocks: [
                         {
                             id: 0,
-                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', '%0 = this.<@namespace/namespace.cpp: School.Student$University.name>', '%1 = this.<@namespace/namespace.cpp: School.Student$University.id>', 'staticinvoke <@%unk/%unk: .cout()>(\'STUDENT_TEXT\', %0, \', \', \'ID_TEXT\', %1)', 'return'],
+                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', '%0 = this.<@namespace/namespace.cpp: School.Student$University.name>', '%1 = this.<@namespace/namespace.cpp: School.Student$University.id>', 'staticinvoke <@%unk/%unk: %unk.cout()>(\'STUDENT_TEXT\', %0, \', \', \'ID_TEXT\', %1)', 'return'],
                             preds: [],
                             succes: [],
                         },
@@ -109,7 +109,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                     blocks: [
                         {
                             id: 0,
-                            stmts: ['this = this: @namespace/namespace.cpp: School.University', '%0 = this.<@namespace/namespace.cpp: School.University.name>', 'staticinvoke <@%unk/%unk: .cout()>(\'WELCOME_TEXT\', %0)', 'return'],
+                            stmts: ['this = this: @namespace/namespace.cpp: School.University', '%0 = this.<@namespace/namespace.cpp: School.University.name>', 'staticinvoke <@%unk/%unk: %unk.cout()>(\'WELCOME_TEXT\', %0)', 'return'],
                             preds: [],
                             succes: [],
                         },
@@ -163,10 +163,10 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     id: 0,
                                     stmts: [
                                         'this = this: @namespace/namespace.cpp: School.%AN0.%dflt',
-                                        '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, g_logPrefix)',
-                                        '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, \'Current counter value: \')',
-                                        '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, g_localCounter)',
-                                        'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                                        '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, g_logPrefix)',
+                                        '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, \'Current counter value: \')',
+                                        '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, g_localCounter)',
+                                        'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
                                         'return',
                                     ],
                                     preds: [],
@@ -254,10 +254,10 @@ export const NAMESPACE_AN0_EXPECT = {
                             id: 0,
                             stmts: [
                                 'this = this: @namespace/namespace.cpp: %AN0.%dflt',
-                                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, g_logPrefix)',
-                                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, \'Current counter value: \')',
-                                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, g_localCounter)',
-                                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                                '%0 = staticinvoke <@%unk/%unk: %unk.operator<<()>(cout, g_logPrefix)',
+                                '%1 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%0, \'Current counter value: \')',
+                                '%2 = staticinvoke <@%unk/%unk: %unk.operator<<()>(%1, g_localCounter)',
+                                'staticinvoke <@%unk/%unk: %unk.operator<<()>(%2, endl)',
                                 'return',
                             ],
                             preds: [],

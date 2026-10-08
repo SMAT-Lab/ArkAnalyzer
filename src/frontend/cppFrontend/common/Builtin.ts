@@ -13,9 +13,16 @@
  * limitations under the License.
  */
 
-import { ClassSignature, FileSignature } from '../../../core/model/ArkSignature';
+import { ClassSignature } from '../../../core/model/ArkSignature';
 import { ClassType, GenericType } from '../../../core/base/Type';
+import { Builtin } from '../../../core/common/Builtin';
 
+/**
+ * C++ built-in container names, syntax constants, and signature stubs.
+ *
+ * Signatures created here are **unclear stubs** (declaring file = FileSignature.DEFAULT) that
+ * live in the temp canonicalizer and are resolved to real signatures during type inference.
+ */
 export class BuiltinCxx {
     // built-in classes
     public static ARRAY = 'array';
@@ -45,22 +52,7 @@ export class BuiltinCxx {
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 
-    public static DUMMY_PROJECT_NAME = 'CXX/std';
-    public static DUMMY_FILE_NAME = 'BuiltinClass';
-
-    public static BUILT_IN_CLASSES_FILE_SIGNATURE = BuiltinCxx.buildBuiltInClassesFileSignature();
-    public static OBJECT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.OBJECT);
-    public static OBJECT_CLASS_TYPE = new ClassType(this.OBJECT_CLASS_SIGNATURE);
-    public static ARRAY_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ARRAY);
-    public static SET_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.SET);
-    public static MAP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.MAP);
-    public static REGEXP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.REGEXP);
-    public static REGEXP_CLASS_TYPE = new ClassType(this.REGEXP_CLASS_SIGNATURE);
-    public static BUILT_IN_CLASS_SIGNATURE_MAP = this.buildBuiltInClassSignatureMap();
-
-    // signature for built-in class
-
-
+    // iterator constants (C++ range-for lowering)
     public static ITERATOR_FUNCTION = 'iterator';
     public static ITERATOR = 'IterableIterator';
     public static ITERATOR_NEXT = 'iterator++';
@@ -69,10 +61,52 @@ export class BuiltinCxx {
     public static ITERATOR_RESULT_END = 'end';
     public static ITERATOR_VALUE = '*';
 
-    public static ITERATOR_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR);
-    public static ITERATOR_RESULT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR_RESULT);
-    public static ITERATOR_CLASS_TYPE = new ClassType(this.ITERATOR_CLASS_SIGNATURE, [new GenericType('T')]);
-    public static ITERATOR_RESULT_CLASS_TYPE = new ClassType(this.ITERATOR_RESULT_CLASS_SIGNATURE, [new GenericType('T')]);
+    // --- Stable unclear stubs (shared per name, delegate to core Builtin's cache) ---
+
+    /**
+     * Unclear stub signature for a built-in class name (shared instance per name).
+     * Delegates to the core Builtin cache so that core and C++ consumers of the same
+     * name (e.g. 'Object') share one stub instance — and thus one temp SigID.
+     */
+    public static getBuiltinClassSignature(className: string): ClassSignature {
+        return Builtin.getBuiltinClassSignature(className);
+    }
+
+    public static get OBJECT_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.OBJECT);
+    }
+    public static get OBJECT_CLASS_TYPE(): ClassType {
+        return new ClassType(this.OBJECT_CLASS_SIGNATURE);
+    }
+    public static get ARRAY_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ARRAY);
+    }
+    public static get SET_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.SET);
+    }
+    public static get MAP_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.MAP);
+    }
+    public static get REGEXP_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.REGEXP);
+    }
+    public static get REGEXP_CLASS_TYPE(): ClassType {
+        return new ClassType(this.REGEXP_CLASS_SIGNATURE);
+    }
+
+    public static get ITERATOR_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ITERATOR);
+    }
+    public static get ITERATOR_RESULT_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ITERATOR_RESULT);
+    }
+    public static get ITERATOR_CLASS_TYPE(): ClassType {
+        return new ClassType(this.ITERATOR_CLASS_SIGNATURE, [new GenericType('T')]);
+    }
+    public static get ITERATOR_RESULT_CLASS_TYPE(): ClassType {
+        return new ClassType(this.ITERATOR_RESULT_CLASS_SIGNATURE, [new GenericType('T')]);
+    }
+
     private static buildBuiltInClasses(): Set<string> {
         const builtInClasses = new Set<string>();
         builtInClasses.add(this.ARRAY);
@@ -87,26 +121,12 @@ export class BuiltinCxx {
         return builtInClasses;
     }
 
-    private static buildBuiltInClassesFileSignature(): FileSignature {
-        return new FileSignature(this.DUMMY_PROJECT_NAME, this.DUMMY_FILE_NAME);
-    }
-
-    public static buildBuiltInClassSignature(className: string): ClassSignature {
-        return new ClassSignature(className, this.BUILT_IN_CLASSES_FILE_SIGNATURE);
-    }
+    /**
+     * Whether the signature is an unresolved (stub) built-in container class.
+     * The old projectName check is replaced by the unclear check: stubs are unclear,
+     * while real parsed / resolved classes have concrete declaring files.
+     */
     public static isBuiltinClass(classSignature: ClassSignature): boolean {
-        const className = classSignature.getClassName();
-        const projectName = classSignature.getDeclaringFileSignature().getProjectName();
-        return this.BUILT_IN_CLASSES.has(className) && projectName === this.DUMMY_PROJECT_NAME;
-    }
-
-    private static buildBuiltInClassSignatureMap(): Map<string, ClassSignature> {
-        const builtInClassSignatureMap = new Map<string, ClassSignature>();
-        builtInClassSignatureMap.set(this.OBJECT, this.OBJECT_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.ARRAY, this.ARRAY_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.SET, this.SET_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.MAP, this.MAP_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.REGEXP, this.REGEXP_CLASS_SIGNATURE);
-        return builtInClassSignatureMap;
+        return this.BUILT_IN_CLASSES.has(classSignature.getClassName()) && classSignature.isUnclear();
     }
 }

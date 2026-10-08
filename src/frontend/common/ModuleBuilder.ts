@@ -42,9 +42,10 @@ import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
 import type { ArkExport } from '../../core/model/ArkExport';
 import { ModuleUtils, ModulePath } from '../../utils/ModuleUtils';
-import { SceneBuildStage } from '../../Scene';
+import { SceneBuildStage } from '../SceneBuildStage';
 import type { Scene } from '../../Scene';
 import type { SceneOptions } from '../../Config';
+import { SignatureCanonicalizerRegistry } from '../../core/common/SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModuleBuilder');
 
@@ -338,7 +339,7 @@ export class ModuleBuilder {
 
         // SDK type inference + global API merge
         const sdkArkFiles = this.scene.getSdkArkFiles();
-        const sdkGlobalMap = this.scene.getSdkGlobalMap();
+        const sdkGlobalMap = SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap;
         for (const file of sdkArkFiles) {
             if (file.getLanguage() === Language.CXX) {
                 continue;
@@ -417,7 +418,7 @@ export class ModuleBuilder {
             module.addFile(arkFile);
             this.scene.addSdkArkFile(arkFile);
             SdkUtils.buildSdkImportMap(arkFile);
-            SdkUtils.loadGlobalAPI(arkFile, this.scene.getSdkGlobalMap());
+            SdkUtils.loadGlobalAPI(arkFile, SignatureCanonicalizerRegistry.getInstance().sdkGlobalMap);
         } catch (error) {
             logger.error('Error parsing file:', file, error);
             this.scene.getUnhandledSdkFilePaths().push(file);
@@ -908,7 +909,6 @@ export class ModuleBuilder {
         }
     }
 
-
     /**
      * Run type inference on the module's files, following the same pattern as
      * {@link Scene.inferTypes} but scoped to a single module.
@@ -922,8 +922,10 @@ export class ModuleBuilder {
      * types, parameter types, signature return types, import/export resolution). At BODIES level,
      * full type inference runs (including stmt-level propagation and return type aggregation).
      *
-     * Does NOT call {@link Scene.getMethodsMap}(true): rebuilding the global index would clear
-     * caches for other modules. Does NOT set {@link Scene.buildStage} to TYPE_INFERRED: that is a
+     * Does NOT rebuild the global method index (the former Scene.getMethodsMap(true) was
+     * removed with the registry refactor — methodSigCanonicalizer is now the single source
+     * of truth): rebuilding would clear caches for other modules. Does NOT set {@link Scene.buildStage}
+     * to TYPE_INFERRED: that is a
      * whole-scene flag. Does NOT call {@link SdkUtils.dispose} / {@link ModuleUtils.dispose} /
      * {@link ValueUtil.dispose}: the global caches are shared across modules and should be
      * released by the caller after all modules are processed.
@@ -1014,6 +1016,11 @@ export class ModuleBuilder {
         if (module.getLoadState() === ModuleLoadState.INDEX) {
             this.resetModuleIrForRebuild(module);
         }
+
+        // 模块化按需加载 project 模块前锁定 project/SDK FileSigID 边界（幂等：首次为准）。
+        // 覆盖不经 buildBasicInfo 的直用场景（loadModule API）；此时 SDK 段已结束，
+        // 此后将注册的都是 project 文件。
+        SignatureCanonicalizerRegistry.getInstance().markProjectFileBoundary();
 
         // Record heapUsed before actual build (for heapUsed table population)
         const recordHeapUsed = this.monitor?.isEnabled() ?? false;
@@ -1157,7 +1164,9 @@ export class ModuleBuilder {
         heapUsedState: HeapUsedEstimateState
     ): void {
         this.cache?.evict(
-            hardProtected, softProtected, this.monitor!,
+            hardProtected,
+            softProtected,
+            this.monitor!,
             id => this.unload(id),
             depGraph?.getSCCGroups?.(),
             heapUsedState,
@@ -1286,11 +1295,9 @@ export class ModuleBuilder {
             return 0;
         }
         const currentLevel = this.loadStateToDepthLevel(module.getLoadState());
-        const currentHeapUsed = this.cache?.getHeapUsed(moduleId, currentLevel) ??
-            this.estimateLoadCost(module, currentLevel);
+        const currentHeapUsed = this.cache?.getHeapUsed(moduleId, currentLevel) ?? this.estimateLoadCost(module, currentLevel);
         return Math.max(0, Math.floor(currentHeapUsed * ModuleBuilder.DOWNGRADE_RELEASE_RATIO));
     }
-
 
     /**
      * Downgrade a module to the given target level. Used by eviction Phase 2 / 2b.
@@ -1374,11 +1381,7 @@ export class ModuleBuilder {
         return { keepClasses, keepNamespaces };
     }
 
-    private addExportToKeepSets(
-        arkExport: ArkExport | undefined | null,
-        keepClasses: Set<ArkClass>,
-        keepNamespaces: Set<ArkNamespace>
-    ): void {
+    private addExportToKeepSets(arkExport: ArkExport | undefined | null, keepClasses: Set<ArkClass>, keepNamespaces: Set<ArkNamespace>): void {
         if (!arkExport) {
             return;
         }
@@ -1404,11 +1407,7 @@ export class ModuleBuilder {
         }
     }
 
-    private pruneNonExportedIr(
-        module: ArkModule,
-        keepClasses: Set<ArkClass>,
-        keepNamespaces: Set<ArkNamespace>
-    ): void {
+    private pruneNonExportedIr(module: ArkModule, keepClasses: Set<ArkClass>, keepNamespaces: Set<ArkNamespace>): void {
         for (const arkFile of module.getFilesMap().values()) {
             this.pruneNonKeptClasses(arkFile, keepClasses);
             this.pruneNonKeptNamespaces(arkFile, keepClasses, keepNamespaces);
@@ -1421,11 +1420,14 @@ export class ModuleBuilder {
                 continue;
             }
             for (const base of cls.getAllHeritageClasses()) {
-                base.getExtendedClasses().delete(cls.getName());
+                base.removeExtendedClass(cls);
             }
             for (const mtd of cls.getMethods(true)) {
-                this.scene.removeMethod(mtd);
+                SignatureCanonicalizerRegistry.getInstance().removeMethod(mtd);
                 mtd.clearBodyAndSupplementary();
+            }
+            for (const fld of cls.getFields()) {
+                SignatureCanonicalizerRegistry.getInstance().removeField(fld);
             }
             const ns = cls.getDeclaringArkNamespace();
             if (ns) {
@@ -1436,11 +1438,7 @@ export class ModuleBuilder {
         }
     }
 
-    private pruneNonKeptNamespaces(
-        arkFile: ArkFile,
-        keepClasses: Set<ArkClass>,
-        keepNamespaces: Set<ArkNamespace>
-    ): void {
+    private pruneNonKeptNamespaces(arkFile: ArkFile, keepClasses: Set<ArkClass>, keepNamespaces: Set<ArkNamespace>): void {
         for (const ns of [...arkFile.getNamespaces()]) {
             if (keepNamespaces.has(ns) || this.namespaceOwnsKeptClass(ns, keepClasses)) {
                 continue;

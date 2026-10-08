@@ -365,6 +365,32 @@ export const NoOverloadMethodWithBody2_Expect_IR = {
     }
 };
 
+export const NoOverloadMethodWithBody3_Expect_IR = {
+    methodDeclareLines: [68],
+    methodDeclareSignatures: [
+        {
+            toString: '@function/OverloadFunctionTest.ts: %dflt.function8(number)',
+            methodSubSignature: {
+                returnType: 'number'
+            }
+        }
+    ],
+    line: 69,
+    methodSignature: {
+        toString: '@function/OverloadFunctionTest.ts: %dflt.function8(number)',
+        methodSubSignature: {
+            returnType: 'number'
+        }
+    },
+    body: {
+        locals: [
+            {
+                name: 'implX'
+            }
+        ]
+    }
+};
+
 export const BasicNestedMethod_Expect_IR = {
     outerMethod: {
         toString: '@function/ClosureParamsTest.ts: BasicTest.basicMethod()'
@@ -416,7 +442,9 @@ export const BasicOuterMethod_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'staticinvoke <@%unk/%unk: .nestedMethod()>()'
+                        // Scope-precise resolution (B2): the bare callee nestedMethod resolves
+                        // to the composed-name nested method, consistent with the ref type above.
+                        text: 'staticinvoke <@function/ClosureParamsTest.ts: BasicTest.%nestedMethod$basicMethod()>()'
                     }
                 ]
             }
@@ -429,7 +457,7 @@ export const BasicOuterMethod_Expect_IR = {
                 text: 'outer = 2',
             },
             {
-                text: 'staticinvoke <@%unk/%unk: .nestedMethod()>()',
+                text: 'staticinvoke <@function/ClosureParamsTest.ts: BasicTest.%nestedMethod$basicMethod()>()',
             },
             {
                 text: 'return',
@@ -603,7 +631,7 @@ export const BasicNestedMethod2_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(%0)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)'
                     }
                 ]
             }
@@ -714,7 +742,7 @@ export const BasicNestedMethod3_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(output)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(output)'
                     }
                 ]
             }
@@ -1009,7 +1037,7 @@ export const UnClosureFunction_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(%0)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)'
                     }
                 ]
             },
@@ -1167,7 +1195,7 @@ export const ClosureAnonymousFunction_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(outerInput)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(outerInput)'
                     }
                 ]
             }
@@ -1457,7 +1485,7 @@ export const ClosureNamespaceClassMethod_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(error)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(error)'
                     }
                 ]
             }
@@ -1469,7 +1497,7 @@ export const ClosureNamespaceClassMethod_Expect_IR = {
                 instanceof: GlobalRef,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(error)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(error)'
                     }
                 ]
             },
@@ -2262,10 +2290,10 @@ export const MultipleAnonymousMethod2_Expect_IR = {
                 ref: null,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(%0)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)'
                     },
                     {
-                        text: 'instanceinvoke console.<@%unk/%unk: .log()>(%1)'
+                        text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(%1)'
                     }
                 ]
             }
@@ -2495,7 +2523,7 @@ export const MultipleAnonymousMethod4_Expect_IR = {
             ref: null,
             usedStmts: [
                 {
-                    text: 'instanceinvoke console.<@%unk/%unk: .log()>(%0)'
+                    text: 'instanceinvoke console.<@%unk/%unk: %unk.log()>(%0)'
                 }
             ]
         }

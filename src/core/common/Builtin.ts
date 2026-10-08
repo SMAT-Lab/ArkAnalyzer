@@ -13,37 +13,31 @@
  * limitations under the License.
  */
 
-import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
+import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { ClassType, GenericType, StringType, UnknownType } from '../base/Type';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
+import { SdkUtils } from './SdkUtils';
 
+/**
+ * Built-in class name constants and signature stubs.
+ *
+ * Signatures created here are **unclear stubs** (declaring file = FileSignature.DEFAULT) that
+ * live in the temp canonicalizer. During type inference they are resolved to the real SDK
+ * signatures via the built-in library (see TypeInference.inferBaseType →
+ * SdkUtils.getSdkGlobal);
+ * when the SDK is unavailable (enableBuiltIn=false) they remain unresolved in temp space and
+ * are reported by checkTempSignatureCompleteness.
+ */
 export class Builtin {
     // built-in classes
-    // TODO: Automatically obtain from the standard library
     public static OBJECT = 'Object';
     public static ARRAY = 'Array';
-    public static SET = 'Set';
     public static MAP = 'Map';
+    public static SET = 'Set';
     public static REGEXP = 'RegExp';
     public static BIGINT = 'BigInt';
     public static FUNCTION = 'Function';
-
-    public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
-
-    // signature for built-in class
-    public static DUMMY_PROJECT_NAME = 'ES2015';
-    public static DUMMY_FILE_NAME = 'BuiltinClass';
-
-    public static BUILT_IN_CLASSES_FILE_SIGNATURE = Builtin.buildBuiltInClassesFileSignature();
-    public static OBJECT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.OBJECT);
-    public static OBJECT_CLASS_TYPE = new ClassType(this.OBJECT_CLASS_SIGNATURE);
-    public static ARRAY_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ARRAY);
-    public static SET_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.SET);
-    public static MAP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.MAP);
-    public static REGEXP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.REGEXP);
-    public static REGEXP_CLASS_TYPE = new ClassType(this.REGEXP_CLASS_SIGNATURE);
-    public static BUILT_IN_CLASS_SIGNATURE_MAP = this.buildBuiltInClassSignatureMap();
 
     // constants for iterator
     public static ITERATOR_FUNCTION = 'Symbol.iterator';
@@ -53,64 +47,108 @@ export class Builtin {
     public static ITERATOR_RESULT_DONE = 'done';
     public static ITERATOR_RESULT_VALUE = 'value';
 
-    public static ITERATOR_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR);
-    public static ITERATOR_RESULT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR_RESULT);
-    public static ITERATOR_CLASS_TYPE = new ClassType(this.ITERATOR_CLASS_SIGNATURE, [new GenericType('T')]);
-    public static ITERATOR_RESULT_CLASS_TYPE = new ClassType(this.ITERATOR_RESULT_CLASS_SIGNATURE, [new GenericType('T')]);
-
     // constants for string
     public static TO_STRING = 'toString';
-    public static TO_STRING_METHOD_SIGNATURE = new MethodSignature(
-        ClassSignature.DEFAULT,
-        new MethodSubSignature(this.TO_STRING, [], StringType.getInstance(), false)
-    );
 
     // constants for array
     public static SLICE = 'slice';
     public static CONCAT = 'concat';
 
-    private static buildBuiltInClasses(): Set<string> {
-        const builtInClasses = new Set<string>();
-        builtInClasses.add(this.OBJECT);
-        builtInClasses.add(this.ARRAY);
-        builtInClasses.add(this.SET);
-        builtInClasses.add(this.MAP);
-        builtInClasses.add(this.REGEXP);
-        return builtInClasses;
+    // --- Stable unclear stubs (shared per name) ---
+
+    /**
+     * Lazy per-name cache of unclear stub signatures. Stubs hold no registry-dependent state
+     * (the declaring file SigID is the literal 0, rebuilt as DEFAULT in every registry
+     * lifecycle), so the instances are dispose-stable: after dispose(), the rebuilt temp
+     * canonicalizer assigns them fresh IDs via its new objectIdentity symbol (the old symbol
+     * property is cleaned by Canonicalizer.clear()).
+     */
+    private static stubCache: Map<string, ClassSignature> = new Map();
+
+    /** Unclear stub signature for a built-in class name (shared instance per name). */
+    public static getBuiltinClassSignature(className: string): ClassSignature {
+        let stub = this.stubCache.get(className);
+        if (stub === undefined) {
+            stub = new ClassSignature(className, 0, undefined);
+            this.stubCache.set(className, stub);
+        }
+        return stub;
     }
 
-    private static buildBuiltInClassesFileSignature(): FileSignature {
-        return new FileSignature(this.DUMMY_PROJECT_NAME, this.DUMMY_FILE_NAME);
+    /** @internal Snapshot of the cached unclear stubs — the validator's reachability baseline
+     * for the temp class space (stubs are legitimately held by this cache; they are producers,
+     * not holders with a temp registration mark, so they are exempt from anchor checks). */
+    public static getStubCacheEntries(): ClassSignature[] {
+        return Array.from(this.stubCache.values());
     }
 
-    public static buildBuiltInClassSignature(className: string): ClassSignature {
-        return new ClassSignature(className, this.BUILT_IN_CLASSES_FILE_SIGNATURE);
+    public static get OBJECT_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.OBJECT);
+    }
+    public static get OBJECT_CLASS_TYPE(): ClassType {
+        return new ClassType(this.OBJECT_CLASS_SIGNATURE);
+    }
+    public static get ARRAY_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ARRAY);
+    }
+    public static get REGEXP_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.REGEXP);
+    }
+    public static get REGEXP_CLASS_TYPE(): ClassType {
+        return new ClassType(this.REGEXP_CLASS_SIGNATURE);
     }
 
-    private static buildBuiltInClassSignatureMap(): Map<string, ClassSignature> {
-        const builtInClassSignatureMap = new Map<string, ClassSignature>();
-        builtInClassSignatureMap.set(this.OBJECT, this.OBJECT_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.ARRAY, this.ARRAY_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.SET, this.SET_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.MAP, this.MAP_CLASS_SIGNATURE);
-        builtInClassSignatureMap.set(this.REGEXP, this.REGEXP_CLASS_SIGNATURE);
-        return builtInClassSignatureMap;
+    public static get ITERATOR_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ITERATOR);
+    }
+    public static get ITERATOR_RESULT_CLASS_SIGNATURE(): ClassSignature {
+        return this.getBuiltinClassSignature(this.ITERATOR_RESULT);
+    }
+    public static get ITERATOR_CLASS_TYPE(): ClassType {
+        return new ClassType(this.ITERATOR_CLASS_SIGNATURE, [new GenericType('T')]);
+    }
+    public static get ITERATOR_RESULT_CLASS_TYPE(): ClassType {
+        return new ClassType(this.ITERATOR_RESULT_CLASS_SIGNATURE, [new GenericType('T')]);
     }
 
-    public static isBuiltinClass(className: string): boolean {
-        return this.BUILT_IN_CLASSES.has(className);
+    /**
+     * The stub method signature for `toString` on Object. Each access returns a fresh
+     * MethodSignature over the shared Object stub.
+     *
+     * 教训存档，勿再尝试单例化
+     */
+    public static get TO_STRING_METHOD_SIGNATURE(): MethodSignature {
+        return new MethodSignature(this.OBJECT_CLASS_SIGNATURE, new MethodSubSignature(this.TO_STRING, [], StringType.getInstance(), false));
+    }
+
+    private static arrayStubMethodSignatures = new Map<string, MethodSignature>();
+
+    public static clearStubMethodSigCaches(): void {
+        this.arrayStubMethodSignatures.clear();
+    }
+
+    /**
+     * Array stub 方法签名（不查 SDK——`(Array stub, name)` 恒 stub 值）的 per-name 实例缓存
+     */
+    public static getOrCreateArrayStubMethodSignature(methodName: string): MethodSignature {
+        let sig = this.arrayStubMethodSignatures.get(methodName);
+        if (sig === undefined) {
+            sig = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
+            this.arrayStubMethodSignatures.set(methodName, sig);
+        }
+        return sig;
     }
 
     public static buildArrayMethodSignature(methodName: string, scene: Scene): MethodSignature {
         let methodSignature = this.getBuiltInMethodSignature(Builtin.ARRAY, methodName, scene);
         if (!methodSignature) {
-            methodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
+            methodSignature = this.getOrCreateArrayStubMethodSignature(methodName);
         }
         return methodSignature;
     }
 
     public static getBuiltInMethodSignature(className: string, methodName: string, scene: Scene): MethodSignature | undefined {
-        const globalClass = scene.getSdkGlobal(className);
+        const globalClass = SdkUtils.getSdkGlobal(className);
         if (globalClass instanceof ArkClass) {
             return globalClass.getMethodWithName(methodName)?.getSignature();
         }
