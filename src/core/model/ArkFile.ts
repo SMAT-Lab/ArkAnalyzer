@@ -466,16 +466,15 @@ export class ArkFile {
             }
         }
         const nsIds = this.topNamespaceSigIDs;
-        if (nsIds !== null && nsIds !== undefined) {
-            const reg = this.registry;
-            for (let i = 0; i < this.topNamespaceCount; i++) {
-                const ns = reg.namespaceSigCanonicalizer.getModel(nsIds[i]);
-                if (ns) {
-                    const cls = this.findClassInNamespace(ns, className);
-                    if (cls) {
-                        return cls;
-                    }
-                }
+        if (nsIds === undefined || nsIds === null) {
+            return null;
+        }
+        const reg = this.registry;
+        for (let i = 0; i < this.topNamespaceCount; i++) {
+            const ns = reg.namespaceSigCanonicalizer.getModel(nsIds[i]);
+            const cls = ns ? this.findClassInNamespace(ns, className) : undefined;
+            if (cls) {
+                return cls;
             }
         }
         return null;

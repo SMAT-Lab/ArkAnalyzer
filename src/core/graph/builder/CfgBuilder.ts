@@ -1313,36 +1313,41 @@ export class CfgBuilder {
         let blockBuildersContainSwitch: BlockBuilder[] | undefined;
         let valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][] | undefined;
         for (let i = 0; i < this.blocks.length; i++) {
+            const block = this.blocks[i];
             const blockInCfg = new BasicBlock();
-            blockInCfg.setId(this.blocks[i].id);
+            blockInCfg.setId(block.id);
             if (i === 0) {
                 for (const stmt of arkIRTransformer.prebuildStmts()) {
                     blockInCfg.addStmt(stmt);
                 }
             }
-            const stmtsCnt = this.blocks[i].stmts.length;
-            if (this.blocks[i].stmts[stmtsCnt - 1].type === 'tryStatement') {
-                blockBuildersBeforeTry.add(this.blocks[i]);
+            const blockStmts = block.stmts;
+            if (blockStmts[blockStmts.length - 1].type === 'tryStatement') {
+                blockBuildersBeforeTry.add(block);
             }
-            for (const statementBuilder of this.blocks[i].stmts) {
+            for (const statementBuilder of blockStmts) {
                 if (statementBuilder.type === 'loopStatement') {
-                    (blocksContainLoopCondition ??= new Set<BlockBuilder>()).add(this.blocks[i]);
-                } else if (statementBuilder instanceof SwitchStatementBuilder) {
-                    (blockBuildersContainSwitch ??= []).push(this.blocks[i]);
+                    (blocksContainLoopCondition ??= new Set<BlockBuilder>()).add(block);
+                }
+                if (statementBuilder instanceof SwitchStatementBuilder) {
+                    (blockBuildersContainSwitch ??= []).push(block);
                     const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmts(statementBuilder.astNode as ts.SwitchStatement);
                     (valueAndStmtsOfSwitchAndCasesAll ??= []).push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }
-                if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    for (const stmt of arkIRTransformer.tsNodeToStmts(statementBuilder.astNode)) {
-                        blockInCfg.addStmt(stmt);
-                    }
-                } else if (statementBuilder.code.startsWith('return')) {
+                const astNode = statementBuilder.code !== '' ? statementBuilder.astNode : null;
+                if (!astNode && statementBuilder.code.startsWith('return')) {
                     blockInCfg.addStmt(this.generateReturnStmt(arkIRTransformer));
+                }
+                if (!astNode) {
+                    continue;
+                }
+                for (const stmt of arkIRTransformer.tsNodeToStmts(astNode)) {
+                    blockInCfg.addStmt(stmt);
                 }
             }
             basicBlockSet.add(blockInCfg);
-            blockBuilderToCfgBlock.set(this.blocks[i], blockInCfg);
+            blockBuilderToCfgBlock.set(block, blockInCfg);
         }
         return {
             blocksContainLoopCondition,

@@ -14,6 +14,7 @@
  */
 
 import { ModifierType } from '../model/ArkBaseModel';
+import { ArkBody } from '../model/ArkBody';
 import { ArkFile } from '../model/ArkFile';
 import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
@@ -302,20 +303,27 @@ export class ClassInference extends ArkModelInference {
 interface InferStmtResult {
     oldStmt: Stmt;
     replacedStmts?: Stmt[];
-    impactedStmts?: Stmt[];
+    impactedStmts: Stmt[];
 }
+
+/**
+ * Shared read-only empty for the no-change path: the worklist consumer indexes
+ * impactedStmts unconditionally, so the common unchanged statement skips a per-call branch.
+ * Never mutated, never retained.
+ */
+const NO_IMPACTED_STMTS: Stmt[] = [];
 
 /**
  * Shared no-change result. postInfer must keep returning a truthy object even when nothing
  * changed (a falsy result makes the worklist consumer skip the entry), so the common
  * unchanged-stmt case returns this singleton instead of a fresh three-field literal per
- * statement per round. Consumers only read replacedStmts/impactedStmts (both undefined here)
- * and never reach oldStmt on this path; the object is never mutated or retained.
+ * statement per round. Consumers only read replacedStmts/impactedStmts and never reach
+ * oldStmt on this path; the object is never mutated or retained.
  */
 const EMPTY_INFER_STMT_RESULT: InferStmtResult = {
     oldStmt: undefined as unknown as Stmt,
     replacedStmts: undefined,
-    impactedStmts: undefined,
+    impactedStmts: NO_IMPACTED_STMTS,
 };
 
 export class MethodInference extends ArkModelInference {
@@ -356,80 +364,72 @@ export class MethodInference extends ArkModelInference {
      */
     public infer(method: ArkMethod): InferStmtResult[] {
         const modifiedStmts: InferStmtResult[] = [];
-        // timeout
         const startTime = Date.now();
         // Check for cycle prevention
-        if (this.callBackVisited) {
-            if (this.callBackVisited.has(method)) {
+        const visitedMethods = this.callBackVisited;
+        if (visitedMethods !== undefined) {
+            if (visitedMethods.has(method)) {
                 return modifiedStmts;
-            } else {
-                this.callBackVisited.add(method);
             }
+            visitedMethods.add(method);
         }
         const body = method.getBody();
         if (!body) {
             return modifiedStmts;
         }
-        // Process used globals
-        const usedGlobals = body.getUsedGlobals();
-        if (usedGlobals) {
-            for (const key of usedGlobals.keys()) {
-                const value = usedGlobals.get(key);
-                if (value instanceof GlobalRef && !value.getRef()) {
-                    const global = ModelUtils.findGlobalRef(key, method);
-                    if (global instanceof Local) {
-                        mergeGlobalUsedStmts(global, value.getUsedStmts());
-                        value.setRef(global);
-                    }
-                }
-            }
-        }
-
-        const workList: Stmt[] = [];
-        for (const block of body.getCfg().getBlocks()) {
-            const blockStmts = block.getStmts();
-            for (let i = 0; i < blockStmts.length; i++) {
-                workList.push(blockStmts[i]);
-            }
-        }
-        let nextIdx = 0;
+        this.resolveUsedGlobals(body, method);
+        const workList: Stmt[] = body.getCfg().getStmts();
         const tracked = workList.length > 64 ? new Set<Stmt>(workList) : undefined;
-        let timeoutCheck = 0;
+        let nextIdx = 0;
         while (nextIdx < workList.length) {
-            const stmt = workList[nextIdx];
-            if ((timeoutCheck++ & 63) === 0 && Date.now() - startTime > MethodInference.TIMEOUT_MS) {
+            const stmt = workList[nextIdx++];
+            if ((nextIdx & 63) === 1 && Date.now() - startTime > MethodInference.TIMEOUT_MS) {
                 logger.error(`Inference timeout for method: ${method.getName()}`);
                 return modifiedStmts;
             }
-            const result = this.stmtInference.doInfer(stmt);
-            if (!result) {
-                nextIdx++;
+            const inferResult = this.stmtInference.doInfer(stmt) as InferStmtResult;
+            if (!inferResult) {
                 continue;
             }
-            const inferResult = result as InferStmtResult;
-            // collect modified Stmts to update CFG
             if (inferResult.replacedStmts) {
                 modifiedStmts.push(inferResult);
             }
-            // Add impacted statements to work list
             const impactedStmts = inferResult.impactedStmts;
-            if (impactedStmts) {
-                for (const s of impactedStmts) {
-                    if (tracked !== undefined) {
-                        if (!tracked.has(s)) {
-                            tracked.add(s);
-                            workList.push(s);
-                        }
-                    } else if (!workList.includes(s)) {
-                        workList.push(s);
-                    }
+            for (let i = 0; i < impactedStmts.length; i++) {
+                const s = impactedStmts[i];
+                if (tracked !== undefined ? tracked.has(s) : workList.includes(s)) {
+                    continue;
                 }
+                tracked?.add(s);
+                workList.push(s);
             }
             tracked?.delete(stmt);
-            workList[nextIdx] = null as unknown as Stmt;
-            nextIdx++;
+            workList[nextIdx - 1] = null as unknown as Stmt;
         }
         return modifiedStmts;
+    }
+
+    /**
+     * Resolves the body's still-unresolved global references before statement inference: when a
+     * global name resolves to a local of an outer scope, that local takes over the global's
+     * used-statement list and becomes the global's target.
+     */
+    private resolveUsedGlobals(body: ArkBody, method: ArkMethod): void {
+        const usedGlobals = body.getUsedGlobals();
+        if (usedGlobals === undefined) {
+            return;
+        }
+        for (const key of usedGlobals.keys()) {
+            const value = usedGlobals.get(key);
+            if (!(value instanceof GlobalRef) || value.getRef()) {
+                continue;
+            }
+            const global = ModelUtils.findGlobalRef(key, method);
+            if (global instanceof Local) {
+                mergeGlobalUsedStmts(global, value.getUsedStmts());
+                value.setRef(global);
+            }
+        }
     }
 
     /**
@@ -540,7 +540,7 @@ export class StmtInference extends ArkModelInference {
         }
         return {
             oldStmt: stmt,
-            impactedStmts: impactedStmts,
+            impactedStmts: impactedStmts ?? NO_IMPACTED_STMTS,
             replacedStmts: replacedStmts,
         };
     }

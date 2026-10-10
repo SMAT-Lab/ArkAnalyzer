@@ -100,16 +100,12 @@ export class ArkTsStmtInference extends StmtInference {
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
         // An unclear ClassType with fully-resolved real type args still carries information
         // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
+        const realArgs = rightType instanceof ClassType ? rightType.getRealGenericTypes() : undefined;
         let isUnclearWithRealArgs = false;
-        if (rightType instanceof ClassType) {
-            const realArgs = rightType.getRealGenericTypes();
-            if (realArgs !== undefined) {
-                for (let i = 0; i < realArgs.length; i++) {
-                    if (!(realArgs[i] instanceof GenericType)) {
-                        isUnclearWithRealArgs = true;
-                        break;
-                    }
-                }
+        for (let i = 0; realArgs !== undefined && i < realArgs.length; i++) {
+            if (!(realArgs[i] instanceof GenericType)) {
+                isUnclearWithRealArgs = true;
+                break;
             }
         }
         const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;

@@ -1037,10 +1037,9 @@ function findExportInfoInfileVisited(fromInfo: FromInfo, file: ArkFile, visited:
         // expand export *
         const allExports = file.getExportInfos();
         for (let i = 0; i < allExports.length; i++) {
-            const e = allExports[i];
-            if (e.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
-                findExportInfo(e, visited);
-                file.removeExportInfo(e);
+            if (allExports[i].getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
+                findExportInfo(allExports[i], visited);
+                file.removeExportInfo(allExports[i]);
             }
         }
     }
@@ -1064,25 +1063,13 @@ function findExportInfoInfileVisited(fromInfo: FromInfo, file: ArkFile, visited:
     let exportInfo = file.getExportInfoBy(exportName);
     if (exportInfo) {
         // Re-export with target already in visited indicates a cycle; return undefined to avoid stack overflow
-        if (exportInfo.getFrom()) {
-            const targetFile = getArkFile(exportInfo);
-            if (targetFile && visited.has(targetFile)) {
-                return undefined;
-            }
-        }
-        return exportInfo;
+        const targetFile = exportInfo.getFrom() ? getArkFile(exportInfo) : null;
+        return visited.has(targetFile) ? undefined : exportInfo;
     }
 
     if (exportName === DEFAULT) {
-        const defaultCandidates = file.getExportInfos();
-        exportInfo = undefined;
-        for (let i = 0; i < defaultCandidates.length; i++) {
-            if (defaultCandidates[i].isDefault()) {
-                exportInfo = defaultCandidates[i];
-                break;
-            }
-        }
-        if (exportInfo) {
+        exportInfo = file.getExportInfos().find(candidate => candidate.isDefault());
+        if (exportInfo !== undefined) {
             file.addExportInfo(exportInfo, DEFAULT);
             return exportInfo;
         }
@@ -1091,11 +1078,11 @@ function findExportInfoInfileVisited(fromInfo: FromInfo, file: ArkFile, visited:
     if (fromInfo.getOriginName() === ALL) {
         exportInfo = buildDefaultExportInfo(fromInfo, file);
         file.addExportInfo(exportInfo, ALL);
-    } else if (/\.d\.e?ts$/.test(file.getName())) {
-        let declare = exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file, visited) || undefined;
-        exportInfo = buildDefaultExportInfo(fromInfo, file, declare);
+        return exportInfo;
     }
-
+    if (/\.d\.e?ts$/.test(file.getName())) {
+        return buildDefaultExportInfo(fromInfo, file, exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file, visited));
+    }
     return exportInfo;
 }
 

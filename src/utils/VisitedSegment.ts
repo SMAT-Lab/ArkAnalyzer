@@ -35,7 +35,8 @@ export class VisitedSegment<T> {
         return prev;
     }
 
-    public has(item: T): boolean {
+    /** Identity scan over the active segment; `null`/`undefined` never match, so a maybe-absent item can be passed directly. */
+    public has(item: T | null | undefined): boolean {
         for (let i = this.base; i < this.top; i++) {
             if (this.items[i] === item) {
                 return true;

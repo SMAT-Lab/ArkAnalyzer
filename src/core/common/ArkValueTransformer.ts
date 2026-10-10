@@ -1091,7 +1091,7 @@ export class ArkValueTransformer {
         invokeExprPosition: FullPosition,
         currStmts: Stmt[]
     ): ValueAndStmts {
-        // base 转换 + 物化——照搬 propertyAccessExpressionToValue。
+        // base 转换 + 物化——照搬 propertyAccessExpressionToValue。物化后必为 temp Local，故两个物化条件可并。
         const stmts = currStmts;
         const baseInner = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
         for (let i = 0; i < baseInner.stmts.length; i++) {
@@ -1099,12 +1099,7 @@ export class ArkValueTransformer {
         }
         let baseValue = baseInner.value;
         let basePositions = baseInner.valueOriginalPositions;
-        if (IRUtils.moreThanOneAddress(baseValue)) {
-            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
-            baseValue = temp.value;
-            basePositions = temp.positions;
-        }
-        if (!(baseValue instanceof Local)) {
+        if (IRUtils.moreThanOneAddress(baseValue) || !(baseValue instanceof Local)) {
             const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
             baseValue = temp.value;
             basePositions = temp.positions;
@@ -1123,21 +1118,15 @@ export class ArkValueTransformer {
             invokeExprPositions = new Array<FullPosition>(1 + argPositions.length);
             invokeExprPositions[0] = invokeExprPosition;
         } else {
+            methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
             if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
                 const baseType = baseValue.getType() as ClassType;
-                const sameNameMethods =
-                    baseType.getClassSigID() === this.declaringClass.getClassSigID() ? this.declaringClass.getMethodsWithName(methodName) : [];
-                if (
-                    sameNameMethods.length === 1 &&
-                    sameNameMethods[0].getDeclareSigIDs() === undefined &&
-                    sameNameMethods[0].getImplementationSignature() !== null
-                ) {
+                const sameClass = baseType.getClassSigID() === this.declaringClass.getClassSigID();
+                const sameNameMethods = sameClass ? this.declaringClass.getMethodsWithName(methodName) : [];
+                const declared = sameNameMethods.length === 1 && sameNameMethods[0].getDeclareSigIDs() === undefined;
+                if (declared && sameNameMethods[0].getImplementationSignature() !== null) {
                     methodSignature = sameNameMethods[0].getSignature();
-                } else {
-                    methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
                 }
-            } else {
-                methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(methodName));
             }
             invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
             invokeExprPositions = new Array<FullPosition>(1 + basePositions.length + argPositions.length);
@@ -1163,21 +1152,15 @@ export class ArkValueTransformer {
         invokeExprPosition: FullPosition,
         currStmts: Stmt[]
     ): ValueAndStmts {
-        // base 转换 + 物化——照搬 elementAccessExpressionToValueAndStmts。
-        const stmts = currStmts;
+        // base 转换 + 物化——照搬 elementAccessExpressionToValueAndStmts。物化后必为 temp Local，故两个物化条件可并。
         const baseInner = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
         for (let i = 0; i < baseInner.stmts.length; i++) {
-            stmts.push(baseInner.stmts[i]);
+            currStmts.push(baseInner.stmts[i]);
         }
         let baseValue = baseInner.value;
         let basePositions = baseInner.valueOriginalPositions;
-        if (IRUtils.moreThanOneAddress(baseValue)) {
-            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
-            baseValue = temp.value;
-            basePositions = temp.positions;
-        }
-        if (!(baseValue instanceof Local)) {
-            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, stmts);
+        if (IRUtils.moreThanOneAddress(baseValue) || !(baseValue instanceof Local)) {
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(baseValue, basePositions, currStmts);
             baseValue = temp.value;
             basePositions = temp.positions;
         }
@@ -1185,48 +1168,45 @@ export class ArkValueTransformer {
         // argument 转换 + 物化——照搬同函数后半。
         const argInner = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
         for (let i = 0; i < argInner.stmts.length; i++) {
-            stmts.push(argInner.stmts[i]);
+            currStmts.push(argInner.stmts[i]);
         }
         let indexArgValue = argInner.value;
         let indexArgPositions = argInner.valueOriginalPositions;
         if (IRUtils.moreThanOneAddress(indexArgValue)) {
-            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(indexArgValue, indexArgPositions, stmts);
+            const temp = this.arkIRTransformer.generateAssignStmtForValueInto(indexArgValue, indexArgPositions, currStmts);
             indexArgValue = temp.value;
             indexArgPositions = temp.positions;
         }
 
-        const baseType = baseValue.getType();
         let methodSignature: MethodSignature;
         const argPositions = args.argPositions;
         let invokeExprPositions: FullPosition[];
-        let writeIdx = 0;
-        if (baseType instanceof ArrayType || baseType instanceof StringType) {
+        if (baseValue.getType() instanceof ArrayType || baseValue.getType() instanceof StringType) {
             // Array/String 分支——复刻 handleArrayRefInvoke（含 stmts.pop() quirk：
             // 方法名用源码文本，argument 物化 stmt 丢弃）。
-            methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(
-                cloneText(elementAccessExpression.argumentExpression.getText(this.sourceFile))
-            );
-            stmts.pop();
+            const indexText = cloneText(elementAccessExpression.argumentExpression.getText(this.sourceFile));
+            methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(indexText);
+            currStmts.pop();
             invokeExprPositions = new Array<FullPosition>(2 + argPositions.length);
-            invokeExprPositions[writeIdx++] = invokeExprPosition;
-            invokeExprPositions[writeIdx++] = basePositions[0];
+            invokeExprPositions[0] = invokeExprPosition;
+            invokeExprPositions[1] = basePositions[0];
         } else {
             // dynamic 分支——复刻原 handleFieldRefInvoke instance 路径。
             methodSignature = new MethodSignature(0, ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(indexArgValue.toString()));
             invokeExprPositions = new Array<FullPosition>(1 + basePositions.length + indexArgPositions.length + argPositions.length);
-            invokeExprPositions[writeIdx++] = invokeExprPosition;
+            invokeExprPositions[0] = invokeExprPosition;
             for (let i = 0; i < basePositions.length; i++) {
-                invokeExprPositions[writeIdx++] = basePositions[i];
+                invokeExprPositions[1 + i] = basePositions[i];
             }
             for (let i = 0; i < indexArgPositions.length; i++) {
-                invokeExprPositions[writeIdx++] = indexArgPositions[i];
+                invokeExprPositions[1 + basePositions.length + i] = indexArgPositions[i];
             }
         }
         const invokeExpr = new ArkInstanceInvokeExpr(baseValue as Local, methodSignature, args.argValues, args.realGenericTypes, args.spreadFlags);
         for (let i = 0; i < argPositions.length; i++) {
-            invokeExprPositions[writeIdx++] = argPositions[i];
+            invokeExprPositions[invokeExprPositions.length - argPositions.length + i] = argPositions[i];
         }
-        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts };
+        return { value: invokeExpr, valueOriginalPositions: invokeExprPositions, stmts: currStmts };
     }
 
     private handleLocalInvoke(
@@ -1896,63 +1876,57 @@ export class ArkValueTransformer {
 
     private assignmentToValueAndStmts(leftOpNode: ts.Node, rightOpNode: ts.Node | undefined, variableDefFlag: boolean,
         isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
-        let leftResult: ValueAndStmts;
-        if (ts.isIdentifier(leftOpNode)) {
-            leftResult = this.identifierToValueAndStmts(leftOpNode, variableDefFlag);
-        } else if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode)) {
-            // In declaration, it is ArrayBindingPattern. And in assignment, it is ArrayLiteralExpression.
-            leftResult = this.arrayDestructuringToValueAndStmts(leftOpNode, isConst);
-        } else if (ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)) {
-            // In declaration, it is ObjectBindingPattern. And in assignment, it is ObjectLiteralExpression.
-            leftResult = this.objectDestructuringToValueAndStmts(leftOpNode, isConst);
-        } else {
-            leftResult = this.tsNodeToValueAndStmts(leftOpNode);
+        const isArrayDestructuring = ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode);
+        const isObjectDestructuring = ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode);
+        // In declarations the destructuring target is a binding pattern, in assignments an array/object literal.
+        const leftResult = ts.isIdentifier(leftOpNode)
+            ? this.identifierToValueAndStmts(leftOpNode, variableDefFlag)
+            : isArrayDestructuring
+              ? this.arrayDestructuringToValueAndStmts(leftOpNode, isConst)
+              : isObjectDestructuring
+                ? this.objectDestructuringToValueAndStmts(leftOpNode, isConst)
+                : this.tsNodeToValueAndStmts(leftOpNode);
+        if (!needRightOp) {
+            return { value: leftResult.value, valueOriginalPositions: leftResult.valueOriginalPositions, stmts: leftResult.stmts };
         }
 
-        let stmts: Stmt[];
-        if (needRightOp) {
-            const rightResult = this.assignmentRightOpToValueAndStmts(rightOpNode, leftResult.value);
-            stmts = rightResult.stmts;
-            if (leftResult.value instanceof Local) {
-                if (variableDefFlag) {
-                    leftResult.value.setConstFlag(isConst);
-                    leftResult.value.setType(declarationType);
-                }
-                if (leftResult.value.getType() instanceof UnknownType && !(rightResult.value.getType() instanceof UnknownType) &&
-                    !(rightResult.value.getType() instanceof UndefinedType)) {
-                    leftResult.value.setType(rightResult.value.getType());
-                }
-                const unifiedType = unifyDeclaredTypeWithInitializer(leftResult.value.getType(), rightResult.value.getType());
-                if (unifiedType !== leftResult.value.getType()) {
-                    leftResult.value.setType(unifiedType);
-                }
+        const rightResult = this.assignmentRightOpToValueAndStmts(rightOpNode, leftResult.value);
+        if (leftResult.value instanceof Local) {
+            if (variableDefFlag) {
+                leftResult.value.setConstFlag(isConst);
+                leftResult.value.setType(declarationType);
             }
-            const assignStmt = new ArkAssignStmt(leftResult.value, rightResult.value);
-            const operandPositions: FullPosition[] = new Array<FullPosition>(leftResult.valueOriginalPositions.length + rightResult.valueOriginalPositions.length);
-            for (let i = 0; i < leftResult.valueOriginalPositions.length; i++) {
-                operandPositions[i] = leftResult.valueOriginalPositions[i];
+            const rightType = rightResult.value.getType();
+            if (leftResult.value.getType() instanceof UnknownType && !(rightType instanceof UnknownType) && !(rightType instanceof UndefinedType)) {
+                leftResult.value.setType(rightType);
             }
-            for (let i = 0; i < rightResult.valueOriginalPositions.length; i++) {
-                operandPositions[leftResult.valueOriginalPositions.length + i] = rightResult.valueOriginalPositions[i];
+            const unifiedType = unifyDeclaredTypeWithInitializer(leftResult.value.getType(), rightType);
+            if (unifiedType !== leftResult.value.getType()) {
+                leftResult.value.setType(unifiedType);
             }
-            assignStmt.setOperandOriginalPositions(operandPositions);
-            if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode) ||
-                ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)
-            ) {
-                stmts.push(assignStmt);
-                for (let i = 0; i < leftResult.stmts.length; i++) {
-                    stmts.push(leftResult.stmts[i]);
-                }
-            } else {
-                for (let i = 0; i < leftResult.stmts.length; i++) {
-                    stmts.push(leftResult.stmts[i]);
-                }
-                stmts.push(assignStmt);
-            }
-        } else {
-            stmts = leftResult.stmts;
         }
-        return { value: leftResult.value, valueOriginalPositions: leftResult.valueOriginalPositions, stmts: stmts };
+        const assignStmt = new ArkAssignStmt(leftResult.value, rightResult.value);
+        const leftPositions = leftResult.valueOriginalPositions;
+        const operandPositions = new Array<FullPosition>(leftPositions.length + rightResult.valueOriginalPositions.length);
+        for (let i = 0; i < leftPositions.length; i++) {
+            operandPositions[i] = leftPositions[i];
+        }
+        const rightPositions = rightResult.valueOriginalPositions;
+        for (let i = 0; i < rightPositions.length; i++) {
+            operandPositions[leftPositions.length + i] = rightPositions[i];
+        }
+        assignStmt.setOperandOriginalPositions(operandPositions);
+        const destructuring = isArrayDestructuring || isObjectDestructuring;
+        if (destructuring) {
+            rightResult.stmts.push(assignStmt);
+        }
+        for (let i = 0; i < leftResult.stmts.length; i++) {
+            rightResult.stmts.push(leftResult.stmts[i]);
+        }
+        if (!destructuring) {
+            rightResult.stmts.push(assignStmt);
+        }
+        return { value: leftResult.value, valueOriginalPositions: leftResult.valueOriginalPositions, stmts: rightResult.stmts };
     }
 
     private assignmentRightOpToValueAndStmts(rightOpNode: ts.Node | undefined, leftValue: Value): ValueAndStmts {

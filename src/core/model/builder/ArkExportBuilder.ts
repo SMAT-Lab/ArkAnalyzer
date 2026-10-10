@@ -51,7 +51,7 @@ function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, position: Ful
         .build();
 }
 
-export function buildDefaultExportInfo(im: FromInfo, file: ArkFile, arkExport?: ArkExport): ExportInfo {
+export function buildDefaultExportInfo(im: FromInfo, file: ArkFile, arkExport?: ArkExport | null): ExportInfo {
     return new ExportInfo.Builder()
         .exportClauseType(arkExport?.getExportType() ?? ExportType.CLASS)
         .exportClauseName(im.getOriginName())
