@@ -732,7 +732,6 @@ export const TRAP_EXPECT_CASE13 = {
                     stmts: [
                         '%0 = caughtexception: unknown',
                         'return result',
-                        'throw %0',
                     ],
                     preds: [],
                     succes: [],
@@ -1075,10 +1074,9 @@ export const TRAP_EXPECT_CASE16 = {
                     stmts: [
                         '%0 = caughtexception: unknown',
                         'return i',
-                        'throw %0',
                     ],
                     preds: [],
-                    succes: [],
+                    succes: [10],
                     exceptionalPreds: [2],
                     exceptionalSucces: []
                 },
@@ -1102,7 +1100,7 @@ export const TRAP_EXPECT_CASE16 = {
                         'return i',
                     ],
                     preds: [1, 2],
-                    succes: [],
+                    succes: [9],
                     exceptionalPreds: [],
                     exceptionalSucces: [4]
                 },
@@ -1174,7 +1172,6 @@ export const TRAP_EXPECT_CASE17 = {
                     stmts: [
                         '%0 = caughtexception: unknown',
                         'return i',
-                        'throw %0',
                     ],
                     preds: [],
                     succes: [],

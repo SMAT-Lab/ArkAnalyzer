@@ -104,7 +104,20 @@ import {
     IF_BUILDER_EXPECT_CASE5,
 } from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
 
-import { TRY_FINALLY_EXPECT_CASE1 } from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
+import {
+    TRY_FINALLY_EXPECT_CASE1,
+    TRY_FINALLY_EXPECT_CASE10,
+    TRY_FINALLY_EXPECT_CASE11,
+    TRY_FINALLY_EXPECT_CASE12,
+    TRY_FINALLY_EXPECT_CASE2,
+    TRY_FINALLY_EXPECT_CASE3,
+    TRY_FINALLY_EXPECT_CASE4,
+    TRY_FINALLY_EXPECT_CASE5,
+    TRY_FINALLY_EXPECT_CASE6,
+    TRY_FINALLY_EXPECT_CASE7,
+    TRY_FINALLY_EXPECT_CASE8,
+    TRY_FINALLY_EXPECT_CASE9,
+} from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
 import {
     LABEL_FOR_EXPECT,
     LABEL_SWITCH_EXPECT,
@@ -304,6 +317,17 @@ describe('CfgTest', () => {
         const finallyStmts = stmts!.filter(s => s.toString() === 'r = 2');
         assert.isAtLeast(finallyStmts.length, 2);
         finallyStmts.forEach(s => assert.equal(s.getOriginFullPosition()?.getFirstLine(), 21));
+        testBlocks(scene, 'TryFinallySample.ts', 'case2', TRY_FINALLY_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case3', TRY_FINALLY_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case4', TRY_FINALLY_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case5', TRY_FINALLY_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case6', TRY_FINALLY_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case7', TRY_FINALLY_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case8', TRY_FINALLY_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case9', TRY_FINALLY_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case10', TRY_FINALLY_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case11', TRY_FINALLY_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case12', TRY_FINALLY_EXPECT_CASE12.blocks);
     });
 
     it('case12: labeled statements (for, while, do-while, for-of, switch)', () => {

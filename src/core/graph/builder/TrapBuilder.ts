@@ -91,7 +91,7 @@ export class TrapBuilder {
         traps.push(...tryResult.traps);
         const updatedHeadBlock = tryResult.newStartBlockBuilder;
 
-        const catchResult = this.processCatchBlock(tryStmtBuilder);
+        const catchResult = this.processCatchBlock(tryStmtBuilder, finallyBlockBuilder);
         traps.push(...catchResult.traps);
 
         const blockBuilderAfterFinally = this.getAfterFinallyBlock(tryStmtBuilder);
@@ -173,15 +173,16 @@ export class TrapBuilder {
     }
 
     private processCatchBlock(
-        tryStmtBuilder: TryStatementBuilder
+        tryStmtBuilder: TryStatementBuilder,
+        finallyBlockBuilder?: BlockBuilder
     ): { traps: Trap[], bfsBlocks: BasicBlock[], tailBlocks: BasicBlock[] } {
         const catchBlockBuilder = tryStmtBuilder.catchStatement?.block;
         if (!catchBlockBuilder) {
             return { traps: [], bfsBlocks: [], tailBlocks: [] };
         }
 
-        const result = this.buildTrapsRecursively(catchBlockBuilder);
-        const { bfsBlocks, tailBlocks } = this.getAllBlocksBFS(result.newStartBlockBuilder);
+        const result = this.buildTrapsRecursively(catchBlockBuilder, finallyBlockBuilder);
+        const { bfsBlocks, tailBlocks } = this.getAllBlocksBFS(result.newStartBlockBuilder, finallyBlockBuilder);
         return {
             traps: result.traps,
             bfsBlocks,
@@ -342,9 +343,22 @@ export class TrapBuilder {
             return traps;
         }
         const copyFinallyBfsBlocks = this.copyFinallyBlocks(finallyBfsBlocks, finallyTailBlocks);
+        const tryCatchRegion = new Set<BasicBlock>([...tryBfsBlocks, ...catchBfsBlocks]);
+        const abortTails = this.spliceFinallyAfterAbort(
+            tryBfsBlocks,
+            tryTailBlocks,
+            catchBfsBlocks,
+            catchTailBlocks,
+            finallyBfsBlocks,
+            finallyTailBlocks,
+            tryCatchRegion,
+            copyFinallyBfsBlocks,
+        );
         if (catchBfsBlocks.length !== 0) {
             for (const catchTailBlock of catchTailBlocks) {
-                CfgBuilder.linkBasicBlock(catchTailBlock, finallyBfsBlocks[0]);
+                if (!abortTails.has(catchTailBlock)) {
+                    CfgBuilder.linkBasicBlock(catchTailBlock, finallyBfsBlocks[0]);
+                }
             }
 
             // try -> catch trap
@@ -365,6 +379,7 @@ export class TrapBuilder {
             }
             traps.push(new Trap(tryBfsBlocks, copyFinallyBfsBlocks));
         }
+        this.pruneOriginalFinallyIfUnreachable(finallyBfsBlocks);
         return traps;
     }
 
@@ -379,6 +394,7 @@ export class TrapBuilder {
             return { bfsBlocks, tailBlocks };
         }
         const endBlock = endBlockBuilder ? this.blockBuilderToCfgBlock.get(endBlockBuilder) : undefined;
+        const region = endBlockBuilder ? this.collectRegionBasicBlocks(startBlockBuilder, endBlockBuilder) : undefined;
         const queue: BasicBlock[] = [];
         const visitedBlocks = new Set<BasicBlock>();
         queue.push(startBlock);
@@ -392,8 +408,10 @@ export class TrapBuilder {
             const successors = currBlock.getSuccessors();
             if (successors.length !== 0) {
                 for (const successor of successors) {
-                    if (successor === endBlock) {
-                        tailBlocks.push(currBlock);
+                    if (successor === endBlock || (region && !region.has(successor))) {
+                        if (!tailBlocks.includes(currBlock)) {
+                            tailBlocks.push(currBlock);
+                        }
                     } else {
                         // A tail block's successor may be within the traversal range
                         queue.push(successor);
@@ -404,6 +422,168 @@ export class TrapBuilder {
             }
         }
         return { bfsBlocks, tailBlocks };
+    }
+
+    private collectRegionBasicBlocks(startBlockBuilder: BlockBuilder, endBlockBuilder: BlockBuilder): Set<BasicBlock> {
+        const tentative = new Set<BlockBuilder>();
+        const queue: BlockBuilder[] = [startBlockBuilder];
+        while (queue.length !== 0) {
+            const curr = queue.splice(0, 1)[0];
+            if (tentative.has(curr) || curr === endBlockBuilder) {
+                continue;
+            }
+            tentative.add(curr);
+            for (const child of curr.nexts) {
+                if (child !== endBlockBuilder) {
+                    queue.push(child);
+                }
+            }
+        }
+
+        const region = new Set<BasicBlock>();
+        for (const builder of tentative) {
+            const hasExternalPredecessor = builder !== startBlockBuilder && builder.lasts.some(predecessor => !tentative.has(predecessor));
+            if (hasExternalPredecessor) {
+                continue;
+            }
+            const basicBlock = this.blockBuilderToCfgBlock.get(builder);
+            if (basicBlock) {
+                region.add(basicBlock);
+            }
+        }
+        return region;
+    }
+
+    private spliceFinallyAfterAbort(
+        tryBfsBlocks: BasicBlock[],
+        tryTailBlocks: BasicBlock[],
+        catchBfsBlocks: BasicBlock[],
+        catchTailBlocks: BasicBlock[],
+        finallyBfsBlocks: BasicBlock[],
+        finallyTailBlocks: BasicBlock[],
+        tryCatchRegion: Set<BasicBlock>,
+        exceptionalFinallyCopies: BasicBlock[]
+    ): Set<BasicBlock> {
+        const abortTails = new Set<BasicBlock>();
+        const finallyHead = finallyBfsBlocks[0];
+        for (const tail of [...tryTailBlocks, ...catchTailBlocks]) {
+            if (!this.isAbortTail(tail, finallyHead, tryCatchRegion)) {
+                continue;
+            }
+            abortTails.add(tail);
+            this.linkFinallyCopyAfter(tail, finallyBfsBlocks, finallyTailBlocks);
+        }
+        const excluded = new Set<BasicBlock>([...finallyBfsBlocks, ...exceptionalFinallyCopies, ...abortTails]);
+        for (const tail of this.exceptionalReturnExits([...tryTailBlocks, ...catchTailBlocks, ...tryBfsBlocks, ...catchBfsBlocks], tryCatchRegion, excluded)) {
+            abortTails.add(tail);
+            this.linkFinallyCopyAfter(tail, finallyBfsBlocks, finallyTailBlocks);
+        }
+        return abortTails;
+    }
+
+    private isAbortTail(block: BasicBlock, finallyHead: BasicBlock, tryCatchRegion: Set<BasicBlock>): boolean {
+        const successors = block.getSuccessors();
+        if (successors.includes(finallyHead)) {
+            return false;
+        }
+        if (this.isReturnTerminator(block) && successors.length === 0) {
+            return true;
+        }
+        if (successors.length === 0) {
+            return false;
+        }
+        return successors.every(successor => successor !== finallyHead && !tryCatchRegion.has(successor));
+    }
+
+    private exceptionalReturnExits(roots: BasicBlock[], tryCatchRegion: Set<BasicBlock>, excluded: Set<BasicBlock>): BasicBlock[] {
+        const found: BasicBlock[] = [];
+        const visited = new Set<BasicBlock>();
+        const queue = [...roots];
+        while (queue.length !== 0) {
+            const block = queue.shift()!;
+            if (visited.has(block) || excluded.has(block)) {
+                continue;
+            }
+            visited.add(block);
+            if (this.isReturnTerminator(block) && block.getSuccessors().length === 0) {
+                found.push(block);
+            }
+            for (const successor of block.getSuccessors()) {
+                if (tryCatchRegion.has(successor)) {
+                    queue.push(successor);
+                }
+            }
+            for (const exceptionalSuccessor of block.getExceptionalSuccessorBlocks() ?? []) {
+                if (!excluded.has(exceptionalSuccessor)) {
+                    queue.push(exceptionalSuccessor);
+                }
+            }
+        }
+        return found;
+    }
+
+    private isReturnTerminator(block: BasicBlock): boolean {
+        const stmts = block.getStmts();
+        if (stmts.length === 0) {
+            return false;
+        }
+        const last = stmts[stmts.length - 1];
+        return last instanceof ArkReturnStmt || last instanceof ArkReturnVoidStmt;
+    }
+
+    private linkFinallyCopyAfter(abortTail: BasicBlock, finallyBfsBlocks: BasicBlock[], finallyTailBlocks: BasicBlock[]): void {
+        const originalSuccessors = [...abortTail.getSuccessors()];
+        for (const successor of originalSuccessors) {
+            CfgBuilder.unlinkBasicBlock(abortTail, successor);
+        }
+        const copiedBlocks = this.copyBlocks(finallyBfsBlocks);
+        copiedBlocks.forEach(block => this.basicBlockSet.add(block));
+        const copiedTails = this.getCopiedTails(copiedBlocks, finallyBfsBlocks, finallyTailBlocks);
+        CfgBuilder.linkBasicBlock(abortTail, copiedBlocks[0]);
+        if (this.isReturnTerminator(abortTail)) {
+            return;
+        }
+        for (const tail of copiedTails) {
+            if (this.isReturnTerminator(tail)) {
+                continue;
+            }
+            for (const successor of originalSuccessors) {
+                CfgBuilder.linkBasicBlock(tail, successor);
+            }
+        }
+    }
+
+    private getCopiedTails(copiedBlocks: BasicBlock[], sourceBlocks: BasicBlock[], sourceTails: BasicBlock[]): BasicBlock[] {
+        const indexBySource = new Map<BasicBlock, number>();
+        sourceBlocks.forEach((block, index) => indexBySource.set(block, index));
+        return sourceTails.map(tail => copiedBlocks[indexBySource.get(tail)!]);
+    }
+
+    private pruneOriginalFinallyIfUnreachable(finallyBfsBlocks: BasicBlock[]): void {
+        if (finallyBfsBlocks.length === 0) {
+            return;
+        }
+        const head = finallyBfsBlocks[0];
+        if (head.getPredecessors().length > 0) {
+            return;
+        }
+        const finallySet = new Set(finallyBfsBlocks);
+        const outgoing: BasicBlock[] = [];
+        for (const block of finallyBfsBlocks) {
+            for (const successor of block.getSuccessors()) {
+                if (!finallySet.has(successor)) {
+                    outgoing.push(successor);
+                }
+            }
+            CfgBuilder.unlinkPredecessorsAndSuccessorsOfBasicBlock(block);
+            this.basicBlockSet.delete(block);
+        }
+        for (const successor of outgoing) {
+            if (successor.getPredecessors().length === 0 && (successor.getExceptionalPredecessorBlocks()?.length ?? 0) === 0) {
+                CfgBuilder.unlinkPredecessorsAndSuccessorsOfBasicBlock(successor);
+                this.basicBlockSet.delete(successor);
+            }
+        }
     }
 
     private copyFinallyBlocks(finallyBfsBlocks: BasicBlock[], finallyTailBlocks: BasicBlock[]): BasicBlock[] {
@@ -424,7 +604,9 @@ export class TrapBuilder {
             copyFinallyBfsBlocks.push(...copyFinallyTailBlocks);
             copyFinallyTailBlocks = [newCopyFinallyTailBlock];
         }
-        copyFinallyTailBlocks[0].addStmt(throwStmt);
+        if (!this.isReturnTerminator(copyFinallyTailBlocks[0])) {
+            copyFinallyTailBlocks[0].addStmt(throwStmt);
+        }
         copyFinallyBfsBlocks.push(...copyFinallyTailBlocks);
         copyFinallyBfsBlocks.forEach((copyFinallyBfsBlock: BasicBlock) => {
             this.basicBlockSet.add(copyFinallyBfsBlock);
