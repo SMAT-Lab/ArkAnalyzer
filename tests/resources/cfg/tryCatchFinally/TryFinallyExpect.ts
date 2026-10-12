@@ -671,3 +671,99 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
         },
     ],
 };
+
+export const TRY_FINALLY_EXPECT_CASE13 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'r = 0',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i < 1',
+            ],
+            preds: [7, 0],
+            succes: [2, 6],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%0 = new @%unk/%unk: Error',
+                '%0 = instanceinvoke %0.<@%unk/%unk: Error.constructor()>()',
+                'throw %0',
+            ],
+            preds: [1],
+            succes: [4],
+            exceptionalSucces: [3],
+        },
+        {
+            id: 3,
+            stmts: [
+                'e = caughtexception: unknown',
+                'r = 1',
+            ],
+            preds: [],
+            succes: [9],
+            exceptionalPreds: [2],
+            exceptionalSucces: [8],
+        },
+        {
+            id: 4,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [2],
+            succes: [5],
+        },
+        {
+            id: 5,
+            stmts: [
+                'r = 3',
+            ],
+            preds: [4],
+            succes: [7],
+        },
+        {
+            id: 6,
+            stmts: [
+                'return r',
+            ],
+            preds: [1],
+            succes: [],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = i + 1',
+            ],
+            preds: [5, 9],
+            succes: [1],
+        },
+        {
+            id: 8,
+            stmts: [
+                '%1 = caughtexception: unknown',
+                'r = 2',
+                'throw %1',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [3],
+        },
+        {
+            id: 9,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [3],
+            succes: [7],
+        },
+    ],
+};

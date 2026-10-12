@@ -109,6 +109,7 @@ import {
     TRY_FINALLY_EXPECT_CASE10,
     TRY_FINALLY_EXPECT_CASE11,
     TRY_FINALLY_EXPECT_CASE12,
+    TRY_FINALLY_EXPECT_CASE13,
     TRY_FINALLY_EXPECT_CASE2,
     TRY_FINALLY_EXPECT_CASE3,
     TRY_FINALLY_EXPECT_CASE4,
@@ -328,6 +329,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'TryFinallySample.ts', 'case10', TRY_FINALLY_EXPECT_CASE10.blocks);
         testBlocks(scene, 'TryFinallySample.ts', 'case11', TRY_FINALLY_EXPECT_CASE11.blocks);
         testBlocks(scene, 'TryFinallySample.ts', 'case12', TRY_FINALLY_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case13', TRY_FINALLY_EXPECT_CASE13.blocks);
     });
 
     it('case12: labeled statements (for, while, do-while, for-of, switch)', () => {

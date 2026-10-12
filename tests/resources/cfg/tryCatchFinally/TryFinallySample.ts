@@ -148,3 +148,19 @@ function case12(): number {
     }
     return i;
 }
+
+function case13(): number {
+    let r = 0;
+    for (let i = 0; i < 1; i++) {
+        try {
+            throw new Error();
+        } catch (e) {
+            r = 1;
+            continue;
+        } finally {
+            r = 2;
+        }
+        r = 3;
+    }
+    return r;
+}
