@@ -525,7 +525,9 @@ export class BodyBuilder {
         nestedMethodSignature: MethodSignature,
         closuresLocal: Local
     ): void {
-        for (const usedStmt of value.getUsedStmts()) {
+        const usedStmts = value.getUsedStmts();
+        for (let i = 0; i < usedStmts.length; i++) {
+            const usedStmt = usedStmts[i];
             if (usedStmt instanceof ArkInvokeStmt) {
                 this.updateSignatureAndArgsInArkInvokeExpr(usedStmt, nestedMethodSignature, closuresLocal);
             } else if (usedStmt instanceof ArkAssignStmt) {

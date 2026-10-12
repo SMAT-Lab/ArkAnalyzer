@@ -17,7 +17,7 @@ import { StmtUseReplacer } from '../common/StmtUseReplacer';
 import { Cfg } from '../graph/Cfg';
 import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } from './Expr';
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
-import { Value } from './Value';
+import { EMPTY_USES, Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
@@ -26,7 +26,6 @@ import { AliasType, ArrayType, IntersectionType, TupleType, Type, UnionType } fr
 import { ModifierType } from '../model/ArkBaseModel';
 import { AbstractTypeExpr } from './TypeExpr';
 
-const EMPTY_USES: Value[] = [];
 const usesScratch: Value[] = [null as unknown as Value];
 const POSITION_HOLE = -1;
 
@@ -193,8 +192,10 @@ export abstract class Stmt {
      ```
      */
     public getExprs(): AbstractExpr[] {
-        let exprs: AbstractExpr[] = [];
-        for (const use of this.getUses()) {
+        const uses = this.getUses();
+        const exprs: AbstractExpr[] = [];
+        for (let i = 0; i < uses.length; i++) {
+            const use = uses[i];
             if (use instanceof AbstractExpr) {
                 exprs.push(use);
             }

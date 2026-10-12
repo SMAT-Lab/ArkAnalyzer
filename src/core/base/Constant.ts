@@ -14,10 +14,8 @@
  */
 
 import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
-import { Value } from './Value';
+import { EMPTY_USES, Value } from './Value';
 import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
-
-const EMPTY_USES: Value[] = [];
 
 /**
  * @category core/base

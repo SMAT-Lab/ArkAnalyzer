@@ -13,7 +13,21 @@
  * limitations under the License.
  */
 
+import type { Stmt } from './Stmt';
 import { Type } from './Type';
+
+/**
+ * The one shared read-only empty array documented at {@link Value.getUses}. Every implementation
+ * hands back this same instance when it has nothing to report, so callers must never append to it.
+ */
+export const EMPTY_USES: Value[] = [];
+
+/**
+ * The one shared read-only empty array handed back when no using-statement has been recorded, e.g.
+ * by `Local.getUsedStmts` and `GlobalRef.getUsedStmts`. Every value shares this instance, so
+ * callers must never append to it.
+ */
+export const EMPTY_USED_STMTS: Stmt[] = [];
 
 /**
  * @category core/base
@@ -25,7 +39,10 @@ export interface Value {
      * @param acc - Optional accumulator to append into instead of allocating a fresh array. Threading
      *              one accumulator through a traversal avoids the transient array per node that a
      *              recursive concat allocates.
-     * @returns An **array** of values used by this value.
+     * @returns An **array** of values used by this value. When called without `acc` on a value that
+     *          has no uses, implementations hand back one shared process-wide instance so the hot
+     *          accessor stays allocation-free. Treat that array as read-only - appending to it would
+     *          add the element to every other value's uses - and pass your own `acc` to append.
      */
     getUses(acc?: Value[]): Value[];
 

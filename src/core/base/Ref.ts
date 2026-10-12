@@ -18,14 +18,11 @@ import { BaseSignature, ClassSignature, FieldSignature } from '../model/ArkSigna
 import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizerRegistry';
 import { Local } from './Local';
 import { AnyType, ArrayType, ClassType, GenericType, LexicalEnvType, StringType, Type, UnknownType } from './Type';
-import { Value } from './Value';
+import { EMPTY_USED_STMTS, EMPTY_USES, Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../model/ArkMethod';
 import { Stmt } from './Stmt';
 import { IRInference } from '../common/IRInference';
-
-const EMPTY_USES: Value[] = [];
-const EMPTY_USED_STMTS: Stmt[] = [];
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Ref');
 
@@ -520,7 +517,7 @@ export class ArkCaughtExceptionRef extends AbstractRef {
 export class GlobalRef extends AbstractRef {
     private name: string;
     private ref: Value | null;
-    private usedStmts?: Stmt[];
+    private _usedStmts?: Stmt[];
 
     constructor(name: string, ref?: Value) {
         super();
@@ -549,16 +546,24 @@ export class GlobalRef extends AbstractRef {
         this.ref = value;
     }
 
+    /**
+     * The statements using this global, exposed as a property so that consumers reading the field
+     * directly keep seeing an array; same value and same lazy backing list as {@link getUsedStmts}.
+     */
+    public get usedStmts(): Stmt[] {
+        return this._usedStmts ?? EMPTY_USED_STMTS;
+    }
+
     public getUsedStmts(): Stmt[] {
-        return this.usedStmts ?? EMPTY_USED_STMTS;
+        return this._usedStmts ?? EMPTY_USED_STMTS;
     }
 
     public addUsedStmts(usedStmts: Stmt | Stmt[]): void {
         if (usedStmts instanceof Stmt) {
-            (this.usedStmts ??= []).push(usedStmts);
+            (this._usedStmts ??= []).push(usedStmts);
         } else {
             for (const stmt of usedStmts) {
-                (this.usedStmts ??= []).push(stmt);
+                (this._usedStmts ??= []).push(stmt);
             }
         }
     }

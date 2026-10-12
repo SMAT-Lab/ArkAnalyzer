@@ -38,7 +38,7 @@ import {
     UnionType,
     UnknownType,
 } from './Type';
-import { Value } from './Value';
+import { EMPTY_USES, Value } from './Value';
 import { AbstractFieldRef, AbstractRef, ArkInstanceFieldRef, ArkStaticFieldRef } from './Ref';
 import { EMPTY_STRING, ValueUtil } from '../common/ValueUtil';
 import { ArkMethod } from '../model/ArkMethod';
@@ -53,8 +53,6 @@ import { getCxxSourceFileExtensionSet } from '../../frontend/cppFrontend/utils/c
 import { ArkAssignStmt } from './Stmt';
 import { FullPosition } from './Position';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-
-const EMPTY_USES: Value[] = [];
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Expr');
 

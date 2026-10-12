@@ -15,7 +15,7 @@
 
 import { Stmt } from './Stmt';
 import { ClassType, FunctionType, Type, UnknownType } from './Type';
-import { Value } from './Value';
+import { EMPTY_USED_STMTS, EMPTY_USES, Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkExport, ExportType } from '../model/ArkExport';
 import { LocalSignature, MethodSignature } from '../model/ArkSignature';
@@ -24,9 +24,6 @@ import { ModifierType } from '../model/ArkBaseModel';
 import { ArkMethod } from '../model/ArkMethod';
 import { ModelUtils } from '../common/ModelUtils';
 import { THIS_NAME } from '../common/TSConst';
-
-const EMPTY_USES: Value[] = [];
-const EMPTY_USED_STMTS: Stmt[] = [];
 
 /**
  * @category core/base
@@ -38,7 +35,7 @@ export class Local implements Value, ArkExport {
     private originalValue: Value | null;
 
     private declaringStmt: Stmt | null;
-    private usedStmts?: Stmt[];
+    private _usedStmts?: Stmt[];
     private signature?: LocalSignature;
     private constFlag?: boolean;
 
@@ -135,7 +132,15 @@ export class Local implements Value, ArkExport {
     }
 
     public addUsedStmt(usedStmt: Stmt): void {
-        (this.usedStmts ??= []).push(usedStmt);
+        (this._usedStmts ??= []).push(usedStmt);
+    }
+
+    /**
+     * The statements using this local, exposed as a property so that consumers reading the field
+     * directly keep seeing an array; same value as {@link getUsedStmts}.
+     */
+    public get usedStmts(): Stmt[] {
+        return this._usedStmts ?? EMPTY_USED_STMTS;
     }
 
     /**
@@ -143,10 +148,12 @@ export class Local implements Value, ArkExport {
      * For example, if the code snippet is `let dd = cc + 5;` where `cc` is a local and `cc` only appears once,
      * then the length of **array** returned is 1 and `Stmts[0]` will be same as the example described
      * in the `Local.getDeclaringStmt()`.
+     * The backing list is allocated on the first {@link addUsedStmt}, so a local nobody uses yields
+     * the shared read-only empty array instead of allocating one.
      * @returns An array of statements used by the local.
      */
     public getUsedStmts(): Stmt[] {
-        return this.usedStmts ?? EMPTY_USED_STMTS;
+        return this._usedStmts ?? EMPTY_USED_STMTS;
     }
 
     /**
