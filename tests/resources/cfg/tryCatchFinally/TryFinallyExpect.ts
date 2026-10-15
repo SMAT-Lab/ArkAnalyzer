@@ -76,11 +76,19 @@ export const TRY_FINALLY_EXPECT_CASE2 = {
         {
             id: 1,
             stmts: [
-                'return 1',
+                '%1 = 1',
             ],
             preds: [0],
             succes: [3],
             exceptionalSucces: [2],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return 2',
+            ],
+            preds: [1],
+            succes: [],
         },
         {
             id: 2,
@@ -91,14 +99,6 @@ export const TRY_FINALLY_EXPECT_CASE2 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-        },
-        {
-            id: 3,
-            stmts: [
-                'return 2',
-            ],
-            preds: [1],
-            succes: [],
         },
     ],
 };
@@ -117,11 +117,27 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
         {
             id: 1,
             stmts: [
-                'return 1',
+                '%1 = 1',
             ],
             preds: [0],
             succes: [3],
             exceptionalSucces: [2],
+        },
+        {
+            id: 3,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [1],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return %1',
+            ],
+            preds: [3],
+            succes: [],
         },
         {
             id: 2,
@@ -133,14 +149,6 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-        },
-        {
-            id: 3,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [1],
-            succes: [],
         },
     ],
 };
@@ -159,11 +167,19 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
             id: 1,
             stmts: [
                 '%0 = staticinvoke <@%unk/%unk: %unk.produce()>(1)',
-                'return %0',
             ],
             preds: [0],
             succes: [3],
             exceptionalSucces: [2],
+        },
+        {
+            id: 3,
+            stmts: [
+                '%1 = staticinvoke <@%unk/%unk: %unk.produce()>(2)',
+                'return %1',
+            ],
+            preds: [1],
+            succes: [],
         },
         {
             id: 2,
@@ -175,15 +191,6 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-        },
-        {
-            id: 3,
-            stmts: [
-                '%1 = staticinvoke <@%unk/%unk: %unk.produce()>(2)',
-                'return %1',
-            ],
-            preds: [1],
-            succes: [],
         },
     ],
 };
@@ -210,10 +217,18 @@ export const TRY_FINALLY_EXPECT_CASE5 = {
             exceptionalSucces: [2],
         },
         {
+            id: 3,
+            stmts: [
+                'return 2',
+            ],
+            preds: [1],
+            succes: [],
+        },
+        {
             id: 2,
             stmts: [
                 'e = caughtexception: unknown',
-                'return 1',
+                '%2 = 1',
             ],
             preds: [],
             succes: [5],
@@ -221,11 +236,11 @@ export const TRY_FINALLY_EXPECT_CASE5 = {
             exceptionalSucces: [4],
         },
         {
-            id: 3,
+            id: 5,
             stmts: [
                 'return 2',
             ],
-            preds: [1],
+            preds: [2],
             succes: [],
         },
         {
@@ -237,14 +252,6 @@ export const TRY_FINALLY_EXPECT_CASE5 = {
             preds: [],
             succes: [],
             exceptionalPreds: [2],
-        },
-        {
-            id: 5,
-            stmts: [
-                'return 2',
-            ],
-            preds: [2],
-            succes: [],
         },
     ],
 };
@@ -382,7 +389,7 @@ export const TRY_FINALLY_EXPECT_CASE8 = {
             id: 1,
             stmts: [
                 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'try\')',
-                'return',
+                '%1 = undefined',
             ],
             preds: [0],
             succes: [6],
@@ -433,6 +440,14 @@ export const TRY_FINALLY_EXPECT_CASE8 = {
                 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
             ],
             preds: [1],
+            succes: [7],
+        },
+        {
+            id: 7,
+            stmts: [
+                'return %1',
+            ],
+            preds: [6],
             succes: [],
         },
     ],
@@ -452,7 +467,7 @@ export const TRY_FINALLY_EXPECT_CASE9 = {
             id: 1,
             stmts: [
                 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'try\')',
-                'return',
+                '%1 = undefined',
             ],
             preds: [0],
             succes: [4],
@@ -463,7 +478,7 @@ export const TRY_FINALLY_EXPECT_CASE9 = {
             stmts: [
                 'e = caughtexception: unknown',
                 'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'catch\')',
-                'return',
+                '%2 = undefined',
             ],
             preds: [],
             succes: [5],
@@ -515,7 +530,7 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
         {
             id: 1,
             stmts: [
-                'return 1',
+                '%1 = 1',
             ],
             preds: [0],
             succes: [4],
@@ -525,7 +540,7 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
             id: 2,
             stmts: [
                 'e = caughtexception: unknown',
-                'return 3',
+                '%2 = 3',
             ],
             preds: [],
             succes: [5],
@@ -626,7 +641,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
         {
             id: 2,
             stmts: [
-                'return i',
+                '%2 = i',
             ],
             preds: [1],
             succes: [5],
@@ -636,10 +651,10 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 3,
             stmts: [
                 '%0 = caughtexception: unknown',
-                'return i',
+                '%3 = i',
             ],
             preds: [],
-            succes: [6],
+            succes: [7],
             exceptionalPreds: [1],
         },
         {
@@ -659,14 +674,30 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
                 'i = 4',
             ],
             preds: [2],
-            succes: [],
+            succes: [6],
         },
         {
             id: 6,
             stmts: [
+                'return %2',
+            ],
+            preds: [5],
+            succes: [],
+        },
+        {
+            id: 7,
+            stmts: [
                 'i = 4',
             ],
             preds: [3],
+            succes: [8],
+        },
+        {
+            id: 8,
+            stmts: [
+                'return %3',
+            ],
+            preds: [7],
             succes: [],
         },
     ],
@@ -790,7 +821,7 @@ export const TRY_FINALLY_EXPECT_CASE14 = {
         {
             id: 2,
             stmts: [
-                'return i',
+                '%2 = i',
             ],
             preds: [1],
             succes: [7],
@@ -802,6 +833,14 @@ export const TRY_FINALLY_EXPECT_CASE14 = {
                 'i = i + 1',
             ],
             preds: [2],
+            succes: [8],
+        },
+        {
+            id: 8,
+            stmts: [
+                'return %2',
+            ],
+            preds: [7],
             succes: [],
         },
         {

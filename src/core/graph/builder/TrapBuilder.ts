@@ -17,8 +17,12 @@ import { BasicBlock } from '../BasicBlock';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { Trap } from '../../base/Trap';
 import { ArkCaughtExceptionRef } from '../../base/Ref';
+import { Local } from '../../base/Local';
 import { UnknownType } from '../../base/Type';
 import { FullPosition } from '../../base/Position';
+import { TEMP_LOCAL_PREFIX } from '../../common/Const';
+import { ValueUtil } from '../../common/ValueUtil';
+import { Value } from '../../base/Value';
 import {
     ArkAliasTypeDefineStmt,
     ArkAssignStmt,
@@ -539,8 +543,11 @@ export class TrapBuilder {
         const copiedBlocks = this.copyBlocks(finallyBfsBlocks);
         copiedBlocks.forEach(block => this.basicBlockSet.add(block));
         const copiedTails = this.getCopiedTails(copiedBlocks, finallyBfsBlocks, finallyTailBlocks);
+        const sourceReturn = this.takeReturnStmt(abortTail);
         CfgBuilder.linkBasicBlock(abortTail, copiedBlocks[0]);
-        if (this.isReturnTerminator(abortTail)) {
+        if (sourceReturn) {
+            const slot = this.returnValueSlot(abortTail, sourceReturn);
+            this.placeReturnAfterFinally(copiedTails, slot, sourceReturn);
             return;
         }
         for (const tail of copiedTails) {
@@ -551,6 +558,78 @@ export class TrapBuilder {
                 CfgBuilder.linkBasicBlock(tail, successor);
             }
         }
+    }
+
+    private takeReturnStmt(block: BasicBlock): ArkReturnStmt | ArkReturnVoidStmt | null {
+        const stmts = block.getStmts();
+        if (stmts.length === 0) {
+            return null;
+        }
+        const last = stmts[stmts.length - 1];
+        if (!(last instanceof ArkReturnStmt || last instanceof ArkReturnVoidStmt)) {
+            return null;
+        }
+        block.remove(last);
+        return last;
+    }
+
+    private returnValueSlot(block: BasicBlock, sourceReturn: ArkReturnStmt | ArkReturnVoidStmt): Local {
+        if (sourceReturn instanceof ArkReturnStmt) {
+            const operand = sourceReturn.getOp();
+            if (operand instanceof Local && operand.getName().startsWith(TEMP_LOCAL_PREFIX)) {
+                return operand;
+            }
+            return this.assignReturnSlot(block, operand, sourceReturn);
+        }
+        return this.assignReturnSlot(block, ValueUtil.getUndefinedConst(), sourceReturn);
+    }
+
+    private assignReturnSlot(block: BasicBlock, value: Value, sourceReturn: Stmt): Local {
+        const { value: slot, stmts } = this.arkIRTransformer.generateAssignStmtForValue(value, this.returnPositions(sourceReturn));
+        for (const stmt of stmts) {
+            this.copyOriginPosition(sourceReturn, stmt);
+            block.addStmt(stmt);
+        }
+        return slot as Local;
+    }
+
+    private placeReturnAfterFinally(copiedTails: BasicBlock[], slot: Local, sourceReturn: Stmt): void {
+        const aliveTails = copiedTails.filter(tail => !this.isReturnTerminator(tail) && !this.isThrowTerminator(tail));
+        if (aliveTails.length === 0) {
+            return;
+        }
+        const returnBlock = new BasicBlock();
+        const returnStmt = new ArkReturnStmt(slot);
+        this.copyOriginPosition(sourceReturn, returnStmt);
+        const operandPositions = sourceReturn.getOperandOriginalPositions();
+        if (operandPositions) {
+            returnStmt.setOperandOriginalPositions(operandPositions);
+        }
+        returnBlock.addStmt(returnStmt);
+        this.basicBlockSet.add(returnBlock);
+        for (const tail of aliveTails) {
+            CfgBuilder.linkBasicBlock(tail, returnBlock);
+        }
+    }
+
+    private isThrowTerminator(block: BasicBlock): boolean {
+        const stmts = block.getStmts();
+        if (stmts.length === 0) {
+            return false;
+        }
+        return stmts[stmts.length - 1] instanceof ArkThrowStmt;
+    }
+
+    private returnPositions(stmt: Stmt): FullPosition[] {
+        const operandPositions = stmt.getOperandOriginalPositions();
+        if (operandPositions && operandPositions.length > 0) {
+            return operandPositions;
+        }
+        const origin = stmt.getOriginFullPosition();
+        if (origin) {
+            return [origin];
+        }
+        return [FullPosition.DEFAULT];
     }
 
     private getCopiedTails(copiedBlocks: BasicBlock[], sourceBlocks: BasicBlock[], sourceTails: BasicBlock[]): BasicBlock[] {
