@@ -164,3 +164,17 @@ function case13(): number {
     }
     return r;
 }
+
+function case14(): number {
+    let i = 0;
+    try {
+        if (i === 0) {
+            return i;
+        } else {
+            i = 1;
+        }
+    } finally {
+        i = i + 1;
+    }
+    return i + 2;
+}

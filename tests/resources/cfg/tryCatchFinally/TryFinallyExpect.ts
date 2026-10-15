@@ -767,3 +767,79 @@ export const TRY_FINALLY_EXPECT_CASE13 = {
         },
     ],
 };
+
+export const TRY_FINALLY_EXPECT_CASE14 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i === 0',
+            ],
+            preds: [0],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                'return i',
+            ],
+            preds: [1],
+            succes: [7],
+            exceptionalSucces: [6],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = i + 1',
+            ],
+            preds: [2],
+            succes: [],
+        },
+        {
+            id: 3,
+            stmts: [
+                'i = 1',
+            ],
+            preds: [1],
+            succes: [4],
+            exceptionalSucces: [6],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = i + 1',
+            ],
+            preds: [3],
+            succes: [5],
+        },
+        {
+            id: 5,
+            stmts: [
+                '%0 = i + 2',
+                'return %0',
+            ],
+            preds: [4],
+            succes: [],
+        },
+        {
+            id: 6,
+            stmts: [
+                '%1 = caughtexception: unknown',
+                'i = i + 1',
+                'throw %1',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [2, 3],
+        },
+    ],
+};
