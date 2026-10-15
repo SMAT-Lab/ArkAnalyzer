@@ -349,9 +349,7 @@ export class TrapBuilder {
         const copyFinallyBfsBlocks = this.copyFinallyBlocks(finallyBfsBlocks, finallyTailBlocks);
         const tryCatchRegion = new Set<BasicBlock>([...tryBfsBlocks, ...catchBfsBlocks]);
         const abortTails = this.spliceFinallyAfterAbort(
-            tryBfsBlocks,
             tryTailBlocks,
-            catchBfsBlocks,
             catchTailBlocks,
             finallyBfsBlocks,
             finallyTailBlocks,
@@ -459,9 +457,7 @@ export class TrapBuilder {
     }
 
     private spliceFinallyAfterAbort(
-        tryBfsBlocks: BasicBlock[],
         tryTailBlocks: BasicBlock[],
-        catchBfsBlocks: BasicBlock[],
         catchTailBlocks: BasicBlock[],
         finallyBfsBlocks: BasicBlock[],
         finallyTailBlocks: BasicBlock[],
@@ -478,7 +474,7 @@ export class TrapBuilder {
             this.linkFinallyCopyAfter(tail, finallyBfsBlocks, finallyTailBlocks);
         }
         const excluded = new Set<BasicBlock>([...finallyBfsBlocks, ...exceptionalFinallyCopies, ...abortTails]);
-        for (const tail of this.exceptionalReturnExits([...tryTailBlocks, ...catchTailBlocks, ...tryBfsBlocks, ...catchBfsBlocks], tryCatchRegion, excluded)) {
+        for (const tail of this.exceptionalReturnExits(tryCatchRegion, excluded)) {
             abortTails.add(tail);
             this.linkFinallyCopyAfter(tail, finallyBfsBlocks, finallyTailBlocks);
         }
@@ -499,10 +495,10 @@ export class TrapBuilder {
         return successors.every(successor => successor !== finallyHead && !tryCatchRegion.has(successor));
     }
 
-    private exceptionalReturnExits(roots: BasicBlock[], tryCatchRegion: Set<BasicBlock>, excluded: Set<BasicBlock>): BasicBlock[] {
+    private exceptionalReturnExits(tryCatchRegion: Set<BasicBlock>, excluded: Set<BasicBlock>): BasicBlock[] {
         const found: BasicBlock[] = [];
         const visited = new Set<BasicBlock>();
-        const queue = [...roots];
+        const queue = [...tryCatchRegion];
         while (queue.length !== 0) {
             const block = queue.shift()!;
             if (visited.has(block) || excluded.has(block)) {
@@ -511,11 +507,6 @@ export class TrapBuilder {
             visited.add(block);
             if (this.isReturnTerminator(block) && block.getSuccessors().length === 0) {
                 found.push(block);
-            }
-            for (const successor of block.getSuccessors()) {
-                if (tryCatchRegion.has(successor)) {
-                    queue.push(successor);
-                }
             }
             for (const exceptionalSuccessor of block.getExceptionalSuccessorBlocks() ?? []) {
                 if (!excluded.has(exceptionalSuccessor)) {
