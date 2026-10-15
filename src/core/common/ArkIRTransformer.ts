@@ -327,31 +327,29 @@ export class ArkIRTransformer {
 
     private returnStatementToStmts(returnStatement: ts.ReturnStatement): Stmt[] {
         const stmts: Stmt[] = [];
+        let returnType;
         if (returnStatement.expression) {
             let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(returnStatement.expression);
             exprStmts.forEach(stmt => stmts.push(stmt));
-
             const { value: processedValue, positions: processedPositions } = this.handleExpressionValueWithTempVarIfNeeded(exprValue, exprPositions, stmts);
-
             const returnStmt = new ArkReturnStmt(processedValue);
             returnStmt.setOperandOriginalPositions(processedPositions);
             stmts.push(returnStmt);
-            if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
-                this.declaringMethod.getSubSignature().setReturnType(processedValue.getType());
-            }
-            return stmts;
+            returnType = processedValue.getType();
+        } else {
+            stmts.push(new ArkReturnVoidStmt());
+            returnType = VoidType.getInstance();
         }
-        stmts.push(new ArkReturnVoidStmt());
-        if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
+        if (!(returnType instanceof UnknownType) && this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
                 const promise = SdkUtils.getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
-                    this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
+                    this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature(), [returnType]));
                 } else {
-                    this.declaringMethod.getSubSignature().setReturnType(new UnclearReferenceType(PROMISE, [VoidType.getInstance()]));
+                    this.declaringMethod.getSubSignature().setReturnType(new UnclearReferenceType(PROMISE, [returnType]));
                 }
             } else {
-                this.declaringMethod.getSubSignature().setReturnType(VoidType.getInstance());
+                this.declaringMethod.getSubSignature().setReturnType(returnType);
             }
         }
         return stmts;
