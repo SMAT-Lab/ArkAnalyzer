@@ -50,4 +50,8 @@ namespace MethodReturnType {
     async function zoo() {
         return foo();
     }
+
+    async function woo() {
+        return 'wow';
+    }
 }
