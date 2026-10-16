@@ -300,7 +300,7 @@ export class ArkIRTransformer {
         stmts: Stmt[]
     ): { value: Value; positions: FullPosition[] } {
         if (IRUtils.moreThanOneAddress(value)) {
-            const { value: tempValue, valueOriginalPositions: tempPositions, stmts: tempStmts } = 
+            const { value: tempValue, valueOriginalPositions: tempPositions, stmts: tempStmts } =
                 this.generateAssignStmtForValue(value, positions);
             tempStmts.forEach(stmt => stmts.push(stmt));
             return { value: tempValue, positions: tempPositions };
@@ -310,33 +310,31 @@ export class ArkIRTransformer {
 
     private returnStatementToStmts(returnStatement: ts.ReturnStatement): Stmt[] {
         const stmts: Stmt[] = [];
+        let returnType;
         if (returnStatement.expression) {
-            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = 
+            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } =
                 this.tsNodeToValueAndStmts(returnStatement.expression);
             exprStmts.forEach(stmt => stmts.push(stmt));
-            
-            const { value: processedValue, positions: processedPositions } = 
+            const { value: processedValue, positions: processedPositions } =
                 this.handleExpressionValueWithTempVarIfNeeded(exprValue, exprPositions, stmts);
-            
             const returnStmt = new ArkReturnStmt(processedValue);
             returnStmt.setOperandOriginalPositions(processedPositions);
             stmts.push(returnStmt);
-            if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
-                this.declaringMethod.getSubSignature().setReturnType(processedValue.getType());
-            }
-            return stmts;
+            returnType = processedValue.getType();
+        } else {
+            stmts.push(new ArkReturnVoidStmt());
+            returnType = VoidType.getInstance();
         }
-        stmts.push(new ArkReturnVoidStmt());
-        if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
+        if (!(returnType instanceof UnknownType) && this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
             if (this.declaringMethod.containsModifier(ModifierType.ASYNC)) {
                 const promise = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
                 if (promise instanceof ArkClass) {
-                    this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature()));
+                    this.declaringMethod.getSubSignature().setReturnType(new ClassType(promise.getSignature(), [returnType]));
                 } else {
-                    this.declaringMethod.getSubSignature().setReturnType(new UnclearReferenceType(PROMISE, [VoidType.getInstance()]));
+                    this.declaringMethod.getSubSignature().setReturnType(new UnclearReferenceType(PROMISE, [returnType]));
                 }
             } else {
-                this.declaringMethod.getSubSignature().setReturnType(VoidType.getInstance());
+                this.declaringMethod.getSubSignature().setReturnType(returnType);
             }
         }
         return stmts;
@@ -788,13 +786,13 @@ export class ArkIRTransformer {
 
     private throwStatementToStmts(throwStatement: ts.ThrowStatement): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = 
+        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } =
             this.tsNodeToValueAndStmts(throwStatement.expression);
         throwStmts.forEach(stmt => stmts.push(stmt));
-        
-        const { value: processedValue, positions: processedPositions } = 
+
+        const { value: processedValue, positions: processedPositions } =
             this.handleExpressionValueWithTempVarIfNeeded(throwValue, throwValuePositions, stmts);
-        
+
         const throwStmt = new ArkThrowStmt(processedValue);
         throwStmt.setOperandOriginalPositions(processedPositions);
         stmts.push(throwStmt);
