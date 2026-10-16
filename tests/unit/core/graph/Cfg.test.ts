@@ -106,12 +106,6 @@ import {
 
 import {
     TRY_FINALLY_EXPECT_CASE1,
-    TRY_FINALLY_EXPECT_CASE10,
-    TRY_FINALLY_EXPECT_CASE11,
-    TRY_FINALLY_EXPECT_CASE12,
-    TRY_FINALLY_EXPECT_CASE13,
-    TRY_FINALLY_EXPECT_CASE14,
-    TRY_FINALLY_EXPECT_CASE15,
     TRY_FINALLY_EXPECT_CASE2,
     TRY_FINALLY_EXPECT_CASE3,
     TRY_FINALLY_EXPECT_CASE4,
@@ -120,6 +114,16 @@ import {
     TRY_FINALLY_EXPECT_CASE7,
     TRY_FINALLY_EXPECT_CASE8,
     TRY_FINALLY_EXPECT_CASE9,
+    TRY_FINALLY_EXPECT_CASE10,
+    TRY_FINALLY_EXPECT_CASE11,
+    TRY_FINALLY_EXPECT_CASE12,
+    TRY_FINALLY_EXPECT_CASE13,
+    TRY_FINALLY_EXPECT_CASE14,
+    TRY_FINALLY_EXPECT_CASE15,
+    TRY_FINALLY_EXPECT_CASE16,
+    TRY_FINALLY_EXPECT_CASE17,
+    TRY_FINALLY_EXPECT_CASE18,
+    TRY_FINALLY_EXPECT_CASE19,
 } from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
 import {
     LABEL_FOR_EXPECT,
@@ -334,6 +338,10 @@ describe('CfgTest', () => {
         testBlocks(scene, 'TryFinallySample.ts', 'case13', TRY_FINALLY_EXPECT_CASE13.blocks);
         testBlocks(scene, 'TryFinallySample.ts', 'case14', TRY_FINALLY_EXPECT_CASE14.blocks);
         testBlocks(scene, 'TryFinallySample.ts', 'case15', TRY_FINALLY_EXPECT_CASE15.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case16', TRY_FINALLY_EXPECT_CASE16.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case17', TRY_FINALLY_EXPECT_CASE17.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case18', TRY_FINALLY_EXPECT_CASE18.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case19', TRY_FINALLY_EXPECT_CASE19.blocks);
     });
 
     it('case12: labeled statements (for, while, do-while, for-of, switch)', () => {

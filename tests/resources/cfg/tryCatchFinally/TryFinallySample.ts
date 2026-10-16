@@ -36,15 +36,6 @@ function case2(): number {
 }
 
 function case3(): number {
-    let r = 0;
-    try {
-        return 1;
-    } finally {
-        r = 2;
-    }
-}
-
-function case4(): number {
     try {
         return produce(1);
     } finally {
@@ -52,7 +43,7 @@ function case4(): number {
     }
 }
 
-function case5(): number {
+function case4(): number {
     try {
         throw new Error();
     } catch (e) {
@@ -62,7 +53,7 @@ function case5(): number {
     }
 }
 
-function case6(): number {
+function case5(): number {
     let r = 0;
     let i = 0;
     while (i < 1) {
@@ -77,47 +68,19 @@ function case6(): number {
     return r;
 }
 
+function case6(): void {
+    try {
+        console.log('try');
+        return;
+    } catch (e) {
+        console.log('catch');
+    } finally {
+        console.log('finally');
+    }
+    console.log('last');
+}
+
 function case7(): number {
-    let r = 0;
-    for (let i = 0; i < 1; i++) {
-        try {
-            r = 1;
-            continue;
-        } finally {
-            r = 2;
-        }
-        r = 3;
-    }
-    return r;
-}
-
-function case8(): void {
-    try {
-        console.log('try');
-        return;
-    } catch (e) {
-        console.log('catch');
-    } finally {
-        console.log('finally');
-    }
-    console.log('last');
-}
-
-function case9(): void {
-    try {
-        console.log('try');
-        return;
-    } catch (e) {
-        console.log('catch');
-        return;
-    } finally {
-        console.log('finally');
-        return;
-    }
-    console.log('last');
-}
-
-function case10(): number {
     try {
         return 1;
     } catch (e) {
@@ -127,7 +90,7 @@ function case10(): number {
     }
 }
 
-function case11(): number {
+function case8(): number {
     try {
         throw new Error();
     } finally {
@@ -135,7 +98,7 @@ function case11(): number {
     }
 }
 
-function case12(): number {
+function case9(): number {
     let i = 0;
     try {
         try {
@@ -149,7 +112,7 @@ function case12(): number {
     return i;
 }
 
-function case13(): number {
+function case10(): number {
     let r = 0;
     for (let i = 0; i < 1; i++) {
         try {
@@ -165,7 +128,7 @@ function case13(): number {
     return r;
 }
 
-function case14(): number {
+function case11(): number {
     let i = 0;
     try {
         if (i === 0) {
@@ -179,7 +142,7 @@ function case14(): number {
     return i + 2;
 }
 
-function case15(): number {
+function case12(): number {
     let i = 0;
     try {
         try {
@@ -201,4 +164,85 @@ function case15(): number {
         console.log('out finally', i);
     }
     return 4;
+}
+
+function case13(): number {
+    let i = 0;
+    try {
+        if (i === 0) {
+            return 1;
+        } else {
+            return 2;
+        }
+    } finally {
+        i = i + 10;
+    }
+}
+
+function case14(): number {
+    let i = 0;
+    try {
+        return 1;
+    } finally {
+        if (i === 0) {
+            i = 2;
+        } else {
+            i = 3;
+        }
+    }
+}
+
+function case15(): number {
+    let i = 0;
+    try {
+        return i++;
+    } finally {
+        i = i + 10;
+    }
+}
+
+function case16(): number {
+    let r = 0;
+    try {
+        r = 1;
+    } catch (e) {
+        return 3;
+    } finally {
+        r = 2;
+    }
+    return r;
+}
+
+function case17(): number {
+    let i = 0;
+    try {
+        return 1;
+    } finally {
+        if (i === 0) {
+            return 2;
+        } else {
+            i = 3;
+        }
+    }
+}
+
+function case18(): number {
+    let r = 0;
+    try {
+        r = 1;
+        throw new Error();
+    } catch (e) {
+        throw e;
+    } finally {
+        r = 2;
+    }
+    return r;
+}
+
+function case19(): number {
+    try {
+        return 1;
+    } finally {
+        throw new Error();
+    }
 }

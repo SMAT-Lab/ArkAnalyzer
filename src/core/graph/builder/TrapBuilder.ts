@@ -510,13 +510,10 @@ export class TrapBuilder {
         if (successors.includes(finallyHead)) {
             return false;
         }
-        if (this.isReturnTerminator(block) && successors.length === 0) {
-            return true;
-        }
         if (successors.length === 0) {
-            return false;
+            return this.isReturnTerminator(block);
         }
-        return successors.every(successor => successor !== finallyHead && !tryCatchRegion.has(successor));
+        return successors.every(successor => !tryCatchRegion.has(successor));
     }
 
     private exceptionalReturnExits(tryCatchRegion: Set<BasicBlock>, excluded: Set<BasicBlock>): BasicBlock[] {
@@ -542,11 +539,7 @@ export class TrapBuilder {
     }
 
     private isReturnTerminator(block: BasicBlock): boolean {
-        const stmts = block.getStmts();
-        if (stmts.length === 0) {
-            return false;
-        }
-        const last = stmts[stmts.length - 1];
+        const last = this.lastStmt(block);
         return last instanceof ArkReturnStmt || last instanceof ArkReturnVoidStmt;
     }
 
@@ -561,16 +554,11 @@ export class TrapBuilder {
         const sourceReturn = this.takeReturnStmt(abortTail);
         if (sourceReturn) {
             const slot = this.returnValueSlot(abortTail, sourceReturn);
-            if (abortTail.getStmts().length === 0) {
-                this.relinkPredecessors(abortTail, copiedBlocks[0]);
-                this.basicBlockSet.delete(abortTail);
-            } else {
-                CfgBuilder.linkBasicBlock(abortTail, copiedBlocks[0]);
-            }
+            this.attachFinallyCopy(abortTail, copiedBlocks[0]);
             this.placeReturnAfterFinally(copiedTails, slot, sourceReturn);
             return;
         }
-        CfgBuilder.linkBasicBlock(abortTail, copiedBlocks[0]);
+        this.attachFinallyCopy(abortTail, copiedBlocks[0]);
         for (const tail of copiedTails) {
             if (this.isReturnTerminator(tail)) {
                 continue;
@@ -581,20 +569,28 @@ export class TrapBuilder {
         }
     }
 
-    private relinkPredecessors(block: BasicBlock, successor: BasicBlock): void {
-        const predecessors = [...block.getPredecessors()];
-        for (const predecessor of predecessors) {
-            CfgBuilder.unlinkBasicBlock(predecessor, block);
-            CfgBuilder.linkBasicBlock(predecessor, successor);
+    private attachFinallyCopy(abortTail: BasicBlock, copyHead: BasicBlock): void {
+        if (abortTail.getStmts().length !== 0) {
+            CfgBuilder.linkBasicBlock(abortTail, copyHead);
+            return;
         }
+        for (const predecessor of [...abortTail.getPredecessors()]) {
+            CfgBuilder.unlinkBasicBlock(predecessor, abortTail);
+            CfgBuilder.linkBasicBlock(predecessor, copyHead);
+        }
+        this.basicBlockSet.delete(abortTail);
+    }
+
+    private lastStmt(block: BasicBlock): Stmt | undefined {
+        const stmts = block.getStmts();
+        if (stmts.length === 0) {
+            return undefined;
+        }
+        return stmts[stmts.length - 1];
     }
 
     private takeReturnStmt(block: BasicBlock): ArkReturnStmt | ArkReturnVoidStmt | null {
-        const stmts = block.getStmts();
-        if (stmts.length === 0) {
-            return null;
-        }
-        const last = stmts[stmts.length - 1];
+        const last = this.lastStmt(block);
         if (!(last instanceof ArkReturnStmt || last instanceof ArkReturnVoidStmt)) {
             return null;
         }
@@ -642,11 +638,7 @@ export class TrapBuilder {
     }
 
     private isThrowTerminator(block: BasicBlock): boolean {
-        const stmts = block.getStmts();
-        if (stmts.length === 0) {
-            return false;
-        }
-        return stmts[stmts.length - 1] instanceof ArkThrowStmt;
+        return this.lastStmt(block) instanceof ArkThrowStmt;
     }
 
     private returnPositions(stmt: Stmt): FullPosition[] {
@@ -702,20 +694,18 @@ export class TrapBuilder {
         } = this.arkIRTransformer.generateAssignStmtForValue(caughtExceptionRef, [FullPosition.DEFAULT]);
         copyFinallyBfsBlocks[0].addHead(exceptionAssignStmts);
         CfgBuilder.unlinkPredecessorsOfBasicBlock(copyFinallyBfsBlocks[0]);
-        const throwStmt = new ArkThrowStmt(exceptionValue);
-        let copyFinallyTailBlocks = copyFinallyBfsBlocks.splice(copyFinallyBfsBlocks.length - finallyTailBlocks.length, finallyTailBlocks.length);
-        if (copyFinallyTailBlocks.length > 1) {
-            const newCopyFinallyTailBlock = new BasicBlock();
-            copyFinallyTailBlocks.forEach((copyFinallyTailBlock: BasicBlock) => {
-                CfgBuilder.linkBasicBlock(copyFinallyTailBlock, newCopyFinallyTailBlock);
-            });
-            copyFinallyBfsBlocks.push(...copyFinallyTailBlocks);
-            copyFinallyTailBlocks = [newCopyFinallyTailBlock];
+        const copiedTails = this.getCopiedTails(copyFinallyBfsBlocks, finallyBfsBlocks, finallyTailBlocks);
+        const fallThroughTails = copiedTails.filter(tail => !this.isReturnTerminator(tail) && !this.isThrowTerminator(tail));
+        if (fallThroughTails.length === 1) {
+            fallThroughTails[0].addStmt(new ArkThrowStmt(exceptionValue));
+        } else if (fallThroughTails.length > 1) {
+            const join = new BasicBlock();
+            for (const tail of fallThroughTails) {
+                CfgBuilder.linkBasicBlock(tail, join);
+            }
+            join.addStmt(new ArkThrowStmt(exceptionValue));
+            copyFinallyBfsBlocks.push(join);
         }
-        if (!this.isReturnTerminator(copyFinallyTailBlocks[0])) {
-            copyFinallyTailBlocks[0].addStmt(throwStmt);
-        }
-        copyFinallyBfsBlocks.push(...copyFinallyTailBlocks);
         copyFinallyBfsBlocks.forEach((copyFinallyBfsBlock: BasicBlock) => {
             this.basicBlockSet.add(copyFinallyBfsBlock);
         });

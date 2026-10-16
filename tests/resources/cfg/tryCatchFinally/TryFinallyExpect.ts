@@ -109,56 +109,6 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
-                'r = 0',
-            ],
-            preds: [],
-            succes: [1],
-        },
-        {
-            id: 1,
-            stmts: [
-                '%1 = 1',
-            ],
-            preds: [0],
-            succes: [3],
-            exceptionalSucces: [2],
-        },
-        {
-            id: 3,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [1],
-            succes: [4],
-        },
-        {
-            id: 4,
-            stmts: [
-                'return %1',
-            ],
-            preds: [3],
-            succes: [],
-        },
-        {
-            id: 2,
-            stmts: [
-                '%0 = caughtexception: unknown',
-                'r = 2',
-                'throw %0',
-            ],
-            preds: [],
-            succes: [],
-            exceptionalPreds: [1],
-        },
-    ],
-};
-
-export const TRY_FINALLY_EXPECT_CASE4 = {
-    blocks: [
-        {
-            id: 0,
-            stmts: [
-                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
             ],
             preds: [],
             succes: [1],
@@ -195,7 +145,7 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE5 = {
+export const TRY_FINALLY_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
@@ -256,7 +206,7 @@ export const TRY_FINALLY_EXPECT_CASE5 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE6 = {
+export const TRY_FINALLY_EXPECT_CASE5 = {
     blocks: [
         {
             id: 0,
@@ -315,67 +265,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE7 = {
-    blocks: [
-        {
-            id: 0,
-            stmts: [
-                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
-                'r = 0',
-                'i = 0',
-            ],
-            preds: [],
-            succes: [1],
-        },
-        {
-            id: 1,
-            stmts: [
-                'if i < 1',
-            ],
-            preds: [0, 5],
-            succes: [2, 3],
-        },
-        {
-            id: 2,
-            stmts: [
-                'r = 1',
-            ],
-            preds: [1],
-            succes: [5],
-            exceptionalSucces: [4],
-        },
-        {
-            id: 3,
-            stmts: [
-                'return r',
-            ],
-            preds: [1],
-            succes: [],
-        },
-        {
-            id: 4,
-            stmts: [
-                '%0 = caughtexception: unknown',
-                'r = 2',
-                'throw %0',
-            ],
-            preds: [],
-            succes: [],
-            exceptionalPreds: [2],
-        },
-        {
-            id: 5,
-            stmts: [
-                'r = 2',
-                'i = i + 1',
-            ],
-            preds: [2],
-            succes: [1],
-        },
-    ],
-};
-
-export const TRY_FINALLY_EXPECT_CASE8 = {
+export const TRY_FINALLY_EXPECT_CASE6 = {
     blocks: [
         {
             id: 0,
@@ -453,71 +343,7 @@ export const TRY_FINALLY_EXPECT_CASE8 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE9 = {
-    blocks: [
-        {
-            id: 0,
-            stmts: [
-                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
-            ],
-            preds: [],
-            succes: [1],
-        },
-        {
-            id: 1,
-            stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'try\')',
-                '%1 = undefined',
-            ],
-            preds: [0],
-            succes: [4],
-            exceptionalSucces: [2],
-        },
-        {
-            id: 2,
-            stmts: [
-                'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'catch\')',
-                '%2 = undefined',
-            ],
-            preds: [],
-            succes: [5],
-            exceptionalPreds: [1],
-            exceptionalSucces: [3],
-        },
-        {
-            id: 3,
-            stmts: [
-                '%0 = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
-                'return',
-            ],
-            preds: [],
-            succes: [],
-            exceptionalPreds: [2],
-        },
-        {
-            id: 4,
-            stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
-                'return',
-            ],
-            preds: [1],
-            succes: [],
-        },
-        {
-            id: 5,
-            stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
-                'return',
-            ],
-            preds: [2],
-            succes: [],
-        },
-    ],
-};
-
-export const TRY_FINALLY_EXPECT_CASE10 = {
+export const TRY_FINALLY_EXPECT_CASE7 = {
     blocks: [
         {
             id: 0,
@@ -576,7 +402,7 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE11 = {
+export const TRY_FINALLY_EXPECT_CASE8 = {
     blocks: [
         {
             id: 0,
@@ -618,7 +444,7 @@ export const TRY_FINALLY_EXPECT_CASE11 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE12 = {
+export const TRY_FINALLY_EXPECT_CASE9 = {
     blocks: [
         {
             id: 0,
@@ -703,7 +529,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE13 = {
+export const TRY_FINALLY_EXPECT_CASE10 = {
     blocks: [
         {
             id: 0,
@@ -799,7 +625,7 @@ export const TRY_FINALLY_EXPECT_CASE13 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE14 = {
+export const TRY_FINALLY_EXPECT_CASE11 = {
     blocks: [
         {
             id: 0,
@@ -883,7 +709,7 @@ export const TRY_FINALLY_EXPECT_CASE14 = {
     ],
 };
 
-export const TRY_FINALLY_EXPECT_CASE15 = {
+export const TRY_FINALLY_EXPECT_CASE12 = {
     blocks: [
         {
             id: 0,
@@ -1010,3 +836,494 @@ export const TRY_FINALLY_EXPECT_CASE15 = {
         },
     ],
 };
+
+export const TRY_FINALLY_EXPECT_CASE13 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i === 0',
+            ],
+            preds: [0],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%1 = 1',
+            ],
+            preds: [1],
+            succes: [5],
+            exceptionalSucces: [4],
+        },
+        {
+            id: 3,
+            stmts: [
+                '%2 = 2',
+            ],
+            preds: [1],
+            succes: [7],
+            exceptionalSucces: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'i = i + 10',
+                'throw %0',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [2, 3],
+        },
+        {
+            id: 5,
+            stmts: [
+                'i = i + 10',
+            ],
+            preds: [2],
+            succes: [6],
+        },
+        {
+            id: 6,
+            stmts: [
+                'return %1',
+            ],
+            preds: [5],
+            succes: [],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = i + 10',
+            ],
+            preds: [3],
+            succes: [8],
+        },
+        {
+            id: 8,
+            stmts: [
+                'return %2',
+            ],
+            preds: [7],
+            succes: [],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE14 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                '%1 = 1',
+            ],
+            preds: [0],
+            succes: [6],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'if i === 0',
+            ],
+            preds: [],
+            succes: [3, 4],
+            exceptionalPreds: [1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [2],
+            succes: [5],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = 3',
+            ],
+            preds: [2],
+            succes: [5],
+        },
+        {
+            id: 5,
+            stmts: [
+                'throw %0',
+            ],
+            preds: [3, 4],
+            succes: [],
+        },
+        {
+            id: 6,
+            stmts: [
+                'if i === 0',
+            ],
+            preds: [1],
+            succes: [7, 8],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [6],
+            succes: [9],
+        },
+        {
+            id: 8,
+            stmts: [
+                'i = 3',
+            ],
+            preds: [6],
+            succes: [9],
+        },
+        {
+            id: 9,
+            stmts: [
+                'return %1',
+            ],
+            preds: [7, 8],
+            succes: [],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE15 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                '%0 = i',
+                'i = i + 1',
+            ],
+            preds: [0],
+            succes: [3],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%1 = caughtexception: unknown',
+                'i = i + 10',
+                'throw %1',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'i = i + 10',
+            ],
+            preds: [1],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return %0',
+            ],
+            preds: [3],
+            succes: [],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE16 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'r = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'r = 1',
+            ],
+            preds: [0],
+            succes: [3],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                'e = caughtexception: unknown',
+                '%1 = 3',
+            ],
+            preds: [],
+            succes: [6],
+            exceptionalPreds: [1],
+            exceptionalSucces: [5],
+        },
+        {
+            id: 3,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [1],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return r',
+            ],
+            preds: [3],
+            succes: [],
+        },
+        {
+            id: 5,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'r = 2',
+                'throw %0',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [2],
+        },
+        {
+            id: 6,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [2],
+            succes: [7],
+        },
+        {
+            id: 7,
+            stmts: [
+                'return %1',
+            ],
+            preds: [6],
+            succes: [],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE17 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                '%1 = 1',
+            ],
+            preds: [0],
+            succes: [5],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'if i === 0',
+            ],
+            preds: [],
+            succes: [3, 4],
+            exceptionalPreds: [1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return 2',
+            ],
+            preds: [2],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = 3',
+                'throw %0',
+            ],
+            preds: [2],
+            succes: [],
+        },
+        {
+            id: 5,
+            stmts: [
+                'if i === 0',
+            ],
+            preds: [1],
+            succes: [6, 7],
+        },
+        {
+            id: 6,
+            stmts: [
+                'return 2',
+            ],
+            preds: [5],
+            succes: [],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = 3',
+            ],
+            preds: [5],
+            succes: [8],
+        },
+        {
+            id: 8,
+            stmts: [
+                'return %1',
+            ],
+            preds: [7],
+            succes: [],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE18 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'r = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'r = 1',
+                '%0 = new @%unk/%unk: Error',
+                '%0 = instanceinvoke %0.<@%unk/%unk: Error.constructor()>()',
+                'throw %0',
+            ],
+            preds: [0],
+            succes: [3],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                'e = caughtexception: unknown',
+                'throw e',
+            ],
+            preds: [],
+            succes: [3],
+            exceptionalPreds: [1],
+            exceptionalSucces: [5],
+        },
+        {
+            id: 3,
+            stmts: [
+                'r = 2',
+            ],
+            preds: [1, 2],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return r',
+            ],
+            preds: [3],
+            succes: [],
+        },
+        {
+            id: 5,
+            stmts: [
+                '%1 = caughtexception: unknown',
+                'r = 2',
+                'throw %1',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [2],
+        },
+    ],
+};
+
+export const TRY_FINALLY_EXPECT_CASE19 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                '%2 = 1',
+            ],
+            preds: [0],
+            succes: [3],
+            exceptionalSucces: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%1 = caughtexception: unknown',
+                '%0 = new @%unk/%unk: Error',
+                '%0 = instanceinvoke %0.<@%unk/%unk: Error.constructor()>()',
+                'throw %0',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [1],
+        },
+        {
+            id: 3,
+            stmts: [
+                '%0 = new @%unk/%unk: Error',
+                '%0 = instanceinvoke %0.<@%unk/%unk: Error.constructor()>()',
+                'throw %0',
+            ],
+            preds: [1],
+            succes: [],
+        },
+    ],
+};
+
