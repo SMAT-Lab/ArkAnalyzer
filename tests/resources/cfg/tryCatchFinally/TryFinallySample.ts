@@ -178,3 +178,27 @@ function case14(): number {
     }
     return i + 2;
 }
+
+function case15(): number {
+    let i = 0;
+    try {
+        try {
+            if (i === 0) {
+                console.log('inner try if', i);
+                return 1;
+            } else {
+                i = 2;
+                console.log('inner try else', i);
+            }
+        } finally {
+            i = i + 10;
+            console.log('inner finally', i);
+        }
+        console.log('out try', i);
+        return 3;
+    } finally {
+        i = i + 100;
+        console.log('out finally', i);
+    }
+    return 4;
+}

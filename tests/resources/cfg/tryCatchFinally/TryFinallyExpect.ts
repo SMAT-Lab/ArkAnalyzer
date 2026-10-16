@@ -882,3 +882,131 @@ export const TRY_FINALLY_EXPECT_CASE14 = {
         },
     ],
 };
+
+export const TRY_FINALLY_EXPECT_CASE15 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatchFinally/TryFinallySample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i === 0',
+            ],
+            preds: [0],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner try if\', i)',
+                '%1 = 1',
+            ],
+            preds: [1],
+            succes: [7],
+            exceptionalSucces: [6],
+        },
+        {
+            id: 3,
+            stmts: [
+                'i = 2',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner try else\', i)',
+            ],
+            preds: [1],
+            succes: [4],
+            exceptionalSucces: [6],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = i + 10',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+            ],
+            preds: [3],
+            succes: [5],
+        },
+        {
+            id: 5,
+            stmts: [
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out try\', i)',
+                '%3 = 3',
+            ],
+            preds: [4],
+            succes: [11],
+            exceptionalSucces: [8],
+        },
+        {
+            id: 6,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'i = i + 10',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+                'throw %0',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [2, 3],
+        },
+        {
+            id: 7,
+            stmts: [
+                'i = i + 10',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+            ],
+            preds: [2],
+            succes: [9],
+        },
+        {
+            id: 8,
+            stmts: [
+                '%2 = caughtexception: unknown',
+                'i = i + 100',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+                'throw %2',
+            ],
+            preds: [],
+            succes: [],
+            exceptionalPreds: [5],
+        },
+        {
+            id: 9,
+            stmts: [
+                'i = i + 100',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+            ],
+            preds: [7],
+            succes: [10],
+        },
+        {
+            id: 10,
+            stmts: [
+                'return %1',
+            ],
+            preds: [9],
+            succes: [],
+        },
+        {
+            id: 11,
+            stmts: [
+                'i = i + 100',
+                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+            ],
+            preds: [5],
+            succes: [12],
+        },
+        {
+            id: 12,
+            stmts: [
+                'return %3',
+            ],
+            preds: [11],
+            succes: [],
+        },
+    ],
+};
