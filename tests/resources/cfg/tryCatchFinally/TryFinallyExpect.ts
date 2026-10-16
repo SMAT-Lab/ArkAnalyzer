@@ -116,7 +116,7 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
         {
             id: 1,
             stmts: [
-                '%0 = staticinvoke <@%unk/%unk: %unk.produce()>(1)',
+                '%0 = staticinvoke <@%unk/%unk: .produce()>(1)',
             ],
             preds: [0],
             succes: [3],
@@ -125,7 +125,7 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
         {
             id: 3,
             stmts: [
-                '%1 = staticinvoke <@%unk/%unk: %unk.produce()>(2)',
+                '%1 = staticinvoke <@%unk/%unk: .produce()>(2)',
                 'return %1',
             ],
             preds: [1],
@@ -135,7 +135,7 @@ export const TRY_FINALLY_EXPECT_CASE3 = {
             id: 2,
             stmts: [
                 '%2 = caughtexception: unknown',
-                '%1 = staticinvoke <@%unk/%unk: %unk.produce()>(2)',
+                '%1 = staticinvoke <@%unk/%unk: .produce()>(2)',
                 'return %1',
             ],
             preds: [],
@@ -278,7 +278,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
         {
             id: 1,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'try\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'try\')',
                 '%1 = undefined',
             ],
             preds: [0],
@@ -289,7 +289,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
             id: 2,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'catch\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'catch\')',
             ],
             preds: [],
             succes: [3],
@@ -299,7 +299,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
         {
             id: 3,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'finally\')',
             ],
             preds: [2],
             succes: [4],
@@ -307,7 +307,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
         {
             id: 4,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'last\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'last\')',
                 'return',
             ],
             preds: [3],
@@ -317,7 +317,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
             id: 5,
             stmts: [
                 '%0 = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'finally\')',
                 'throw %0',
             ],
             preds: [],
@@ -327,7 +327,7 @@ export const TRY_FINALLY_EXPECT_CASE6 = {
         {
             id: 6,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'finally\')',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'finally\')',
             ],
             preds: [1],
             succes: [7],
@@ -731,7 +731,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
         {
             id: 2,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner try if\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner try if\', i)',
                 '%1 = 1',
             ],
             preds: [1],
@@ -742,7 +742,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 3,
             stmts: [
                 'i = 2',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner try else\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner try else\', i)',
             ],
             preds: [1],
             succes: [4],
@@ -752,7 +752,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 4,
             stmts: [
                 'i = i + 10',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner finally\', i)',
             ],
             preds: [3],
             succes: [5],
@@ -760,7 +760,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
         {
             id: 5,
             stmts: [
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out try\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'out try\', i)',
                 '%3 = 3',
             ],
             preds: [4],
@@ -772,7 +772,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             stmts: [
                 '%0 = caughtexception: unknown',
                 'i = i + 10',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner finally\', i)',
                 'throw %0',
             ],
             preds: [],
@@ -783,7 +783,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 7,
             stmts: [
                 'i = i + 10',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner finally\', i)',
             ],
             preds: [2],
             succes: [9],
@@ -793,7 +793,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             stmts: [
                 '%2 = caughtexception: unknown',
                 'i = i + 100',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'out finally\', i)',
                 'throw %2',
             ],
             preds: [],
@@ -804,7 +804,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 9,
             stmts: [
                 'i = i + 100',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'out finally\', i)',
             ],
             preds: [7],
             succes: [10],
@@ -821,7 +821,7 @@ export const TRY_FINALLY_EXPECT_CASE12 = {
             id: 11,
             stmts: [
                 'i = i + 100',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'out finally\', i)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'out finally\', i)',
             ],
             preds: [5],
             succes: [12],
