@@ -300,18 +300,33 @@ export class CfgBuilder {
         while (p && p !== this.astRoot) {
             if (ts.isWhileStatement(p) || ts.isDoStatement(p) || ts.isForStatement(p) || ts.isForInStatement(p) || ts.isForOfStatement(p)) {
                 const lastLoopNextF = this.loopStack[this.loopStack.length - 1].nextF!;
-                this.judgeLastType(lastLoopNextF, lastStatement);
-                lastLoopNextF.lasts.add(lastStatement);
+                this.linkAbruptCompletion(lastStatement, lastLoopNextF, 'breakStatement', c);
                 return;
             }
             if (ts.isCaseClause(p) || ts.isDefaultClause(p)) {
                 const lastSwitchExit = this.switchExitStack[this.switchExitStack.length - 1];
-                this.judgeLastType(lastSwitchExit, lastStatement);
-                lastSwitchExit.lasts.add(lastStatement);
+                this.linkAbruptCompletion(lastStatement, lastSwitchExit, 'breakStatement', c);
                 return;
             }
             p = p.parent;
         }
+    }
+
+    private linkAbruptCompletion(
+        lastStatement: StatementBuilder,
+        target: StatementBuilder,
+        kind: 'breakStatement' | 'continueStatement',
+        node: ts.Node
+    ): void {
+        if (!(lastStatement instanceof TryStatementBuilder) && lastStatement.type !== 'catchOrNot') {
+            this.judgeLastType(target, lastStatement);
+            target.lasts.add(lastStatement);
+            return;
+        }
+        const abrupt = new StatementBuilder(kind, kind === 'breakStatement' ? 'break' : 'continue', node, lastStatement.scopeID);
+        this.judgeLastType(abrupt, lastStatement);
+        abrupt.next = target;
+        target.lasts.add(abrupt);
     }
 
     ASTNodeIfStatement(c: ts.IfStatement, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
@@ -574,8 +589,7 @@ export class CfgBuilder {
                 return;
             } else if (ts.isContinueStatement(c)) {
                 const lastLoop = this.loopStack[this.loopStack.length - 1];
-                this.judgeLastType(lastLoop, lastStatement);
-                lastLoop.lasts.add(lastStatement);
+                this.linkAbruptCompletion(lastStatement, lastLoop, 'continueStatement', c);
                 return;
             } else if (ts.isIfStatement(c)) {
                 lastStatement = this.ASTNodeIfStatement(c, lastStatement, scope.id);
