@@ -348,7 +348,33 @@ export class TrapBuilder {
             return traps;
         }
         const finallyEnd = endBlock ? this.blockBuilderToCfgBlock.get(endBlock) : undefined;
-        const copyFinallyBfsBlocks = this.copyFinallyBlocks(finallyBfsBlocks, finallyTailBlocks, finallyEnd);
+        const exceptionalFinally = this.copyFinallyBlocks(finallyBfsBlocks, finallyTailBlocks, finallyEnd);
+        traps.push(
+            ...this.connectExits(
+                tryBfsBlocks,
+                tryTailBlocks,
+                catchBfsBlocks,
+                catchTailBlocks,
+                finallyBfsBlocks,
+                finallyTailBlocks,
+                finallyEnd,
+                exceptionalFinally,
+            ),
+        );
+        this.pendingFinallyPrunes.push(finallyBfsBlocks);
+        return traps;
+    }
+
+    private connectExits(
+        tryBfsBlocks: BasicBlock[],
+        tryTailBlocks: BasicBlock[],
+        catchBfsBlocks: BasicBlock[],
+        catchTailBlocks: BasicBlock[],
+        finallyBfsBlocks: BasicBlock[],
+        finallyTailBlocks: BasicBlock[],
+        finallyEnd: BasicBlock | undefined,
+        exceptionalFinally: BasicBlock[],
+    ): Trap[] {
         const abortTails = this.spliceFinallyAfterAbort(
             tryTailBlocks,
             catchTailBlocks,
@@ -357,29 +383,27 @@ export class TrapBuilder {
             new Set<BasicBlock>([...tryBfsBlocks, ...catchBfsBlocks]),
             finallyEnd,
         );
-        tryBfsBlocks = this.liveBlocks(tryBfsBlocks);
-        tryTailBlocks = this.liveBlocks(tryTailBlocks);
-        catchBfsBlocks = this.liveBlocks(catchBfsBlocks);
-        catchTailBlocks = this.liveBlocks(catchTailBlocks);
-        if (catchBfsBlocks.length !== 0) {
+        const tryBlocks = this.liveBlocks(tryBfsBlocks);
+        const tryTails = this.liveBlocks(tryTailBlocks);
+        const catchBlocks = this.liveBlocks(catchBfsBlocks);
+        const catchTails = this.liveBlocks(catchTailBlocks);
+        const sharedFinally = finallyBfsBlocks[0];
+        const exceptionalHandler = exceptionalFinally[0];
+        const traps: Trap[] = [];
+        if (catchBlocks.length !== 0) {
             CfgBuilder.linkPredecessorsOfBasicBlock(
-                finallyBfsBlocks[0],
-                catchTailBlocks.filter(tail => !abortTails.has(tail)),
+                sharedFinally,
+                catchTails.filter(tail => !abortTails.has(tail)),
             );
-
-            // try -> catch trap
-            this.linkUnprotectedTails(tryTailBlocks, catchBfsBlocks[0]);
-            traps.push(new Trap(tryBfsBlocks, catchBfsBlocks));
-
-            // catch -> finally trap
-            this.linkUnprotectedTails(catchTailBlocks, copyFinallyBfsBlocks[0]);
-            traps.push(new Trap(catchBfsBlocks, copyFinallyBfsBlocks));
-        } else {
-            // try -> finally trap
-            this.linkUnprotectedTails(tryTailBlocks, copyFinallyBfsBlocks[0]);
-            traps.push(new Trap(tryBfsBlocks, copyFinallyBfsBlocks));
         }
-        this.pendingFinallyPrunes.push(finallyBfsBlocks);
+        const tryHandler = catchBlocks.length !== 0 ? catchBlocks[0] : exceptionalHandler;
+        const tryHandlerBlocks = catchBlocks.length !== 0 ? catchBlocks : exceptionalFinally;
+        this.linkUnprotectedTails(tryTails, tryHandler);
+        traps.push(new Trap(tryBlocks, tryHandlerBlocks));
+        if (catchBlocks.length !== 0) {
+            this.linkUnprotectedTails(catchTails, exceptionalHandler);
+            traps.push(new Trap(catchBlocks, exceptionalFinally));
+        }
         return traps;
     }
 
@@ -534,13 +558,12 @@ export class TrapBuilder {
         CfgBuilder.unlinkSuccessorsOfBasicBlock(abortTail);
         const { blocks: copiedBlocks, tails: copiedTails } = this.duplicateFinally(finallyBfsBlocks, finallyTailBlocks, finallyEnd);
         const sourceReturn = this.takeReturnStmt(abortTail);
-        if (sourceReturn) {
-            const slot = this.returnValueSlot(abortTail, sourceReturn);
-            this.attachFinallyCopy(abortTail, copiedBlocks[0]);
+        const slot = sourceReturn ? this.returnValueSlot(abortTail, sourceReturn) : undefined;
+        this.attachFinallyCopy(abortTail, copiedBlocks[0]);
+        if (sourceReturn && slot) {
             this.placeReturnAfterFinally(copiedTails, copiedBlocks, slot, sourceReturn);
             return;
         }
-        this.attachFinallyCopy(abortTail, copiedBlocks[0]);
         this.linkFallThrough(this.fallThroughCopies(copiedTails, copiedBlocks), originalSuccessors);
     }
 
@@ -609,7 +632,7 @@ export class TrapBuilder {
     private fallThroughCopies(tails: BasicBlock[], copiedBlocks: BasicBlock[]): BasicBlock[] {
         const copied = new Set(copiedBlocks);
         return tails.filter(tail => {
-            if (this.isReturnTerminator(tail) || this.isThrowTerminator(tail)) {
+            if (this.isReturnTerminator(tail) || tail.getTail() instanceof ArkThrowStmt) {
                 return false;
             }
             return tail.getSuccessors().every(successor => copied.has(successor));
@@ -637,10 +660,6 @@ export class TrapBuilder {
         returnBlock.addStmt(returnStmt);
         this.basicBlockSet.add(returnBlock);
         this.linkFallThrough(aliveTails, [returnBlock]);
-    }
-
-    private isThrowTerminator(block: BasicBlock): boolean {
-        return block.getTail() instanceof ArkThrowStmt;
     }
 
     private returnPositions(stmt: Stmt): FullPosition[] {
