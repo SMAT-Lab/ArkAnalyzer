@@ -336,20 +336,8 @@ export class TrapBuilder {
         CfgBuilder.pruneBasicBlock(dummyFinallyBlock);
         this.basicBlockSet.delete(dummyFinallyBlock);
         const blockBuilderAfterFinally = dummyFinallyBlockBuilder.nexts[0];
-        let blockAfterFinally: BasicBlock | undefined = blockBuilderAfterFinally ? this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally) : undefined;
-        if (!blockAfterFinally) {
-            const targets = new Set<BasicBlock>();
-            for (const catchTailBlock of catchTailBlocks) {
-                if (!this.isReturnTerminator(catchTailBlock) && !this.endsWithThrow(catchTailBlock)) {
-                    for (const successor of catchTailBlock.getSuccessors()) {
-                        targets.add(successor);
-                    }
-                }
-            }
-            if (targets.size === 1) {
-                blockAfterFinally = [...targets][0];
-            }
-        }
+        const mappedAfterFinally = blockBuilderAfterFinally ? this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally) : undefined;
+        const blockAfterFinally = mappedAfterFinally ?? this.findUniqueCatchTailTarget(catchTailBlocks);
         if (!this.blockBuilderToCfgBlock.has(dummyFinallyBlockBuilder)) {
             logger.error(`can't find basicBlock corresponding to the blockBuilder.`);
             return [];
@@ -376,6 +364,22 @@ export class TrapBuilder {
         }
         this.linkUnprotectedTails(tryTailBlocks, catchBfsBlocks[0]);
         return [new Trap(tryBfsBlocks, catchBfsBlocks)];
+    }
+
+    private findUniqueCatchTailTarget(catchTailBlocks: BasicBlock[]): BasicBlock | undefined {
+        const targets = new Set<BasicBlock>();
+        for (const catchTailBlock of catchTailBlocks) {
+            if (this.isReturnTerminator(catchTailBlock) || this.endsWithThrow(catchTailBlock)) {
+                continue;
+            }
+            for (const successor of catchTailBlock.getSuccessors()) {
+                targets.add(successor);
+            }
+        }
+        if (targets.size !== 1) {
+            return undefined;
+        }
+        return [...targets][0];
     }
 
     private buildTrapsIfFinallyExist(
