@@ -226,7 +226,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             id: 9,
             stmts: [
                 'e = caughtexception: unknown',
-                'instanceinvoke console.<@%unk/%unk: %unk.log()>(\'inner catch\', e)',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner catch\', e)',
             ],
             preds: [],
             succes: [10],
