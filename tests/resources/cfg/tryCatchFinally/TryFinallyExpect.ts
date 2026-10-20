@@ -163,7 +163,7 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -173,20 +173,12 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
                 '%2 = 1',
             ],
             preds: [],
-            succes: [5],
+            succes: [4],
             exceptionalPreds: [1],
-            exceptionalSucces: [4],
+            exceptionalSucces: [3],
         },
         {
             id: 3,
-            stmts: [
-                'return 2',
-            ],
-            preds: [1],
-            succes: [],
-        },
-        {
-            id: 4,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'return 2',
@@ -196,7 +188,7 @@ export const TRY_FINALLY_EXPECT_CASE4 = {
             exceptionalPreds: [2],
         },
         {
-            id: 5,
+            id: 4,
             stmts: [
                 'return 2',
             ],
@@ -420,19 +412,11 @@ export const TRY_FINALLY_EXPECT_CASE8 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [2],
-            exceptionalSucces: [3],
+            succes: [],
+            exceptionalSucces: [2],
         },
         {
             id: 2,
-            stmts: [
-                'return 2',
-            ],
-            preds: [1],
-            succes: [],
-        },
-        {
-            id: 3,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'return 2',
@@ -547,8 +531,8 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
             stmts: [
                 'if i < 1',
             ],
-            preds: [7, 0],
-            succes: [2, 6],
+            preds: [0, 6],
+            succes: [2, 4],
         },
         {
             id: 2,
@@ -558,7 +542,7 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
                 'throw %0',
             ],
             preds: [1],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [3],
         },
         {
@@ -568,28 +552,12 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
                 'r = 1',
             ],
             preds: [],
-            succes: [9],
+            succes: [6],
             exceptionalPreds: [2],
-            exceptionalSucces: [8],
+            exceptionalSucces: [5],
         },
         {
             id: 4,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [2],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [4],
-            succes: [7],
-        },
-        {
-            id: 6,
             stmts: [
                 'return r',
             ],
@@ -597,15 +565,7 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
             succes: [],
         },
         {
-            id: 7,
-            stmts: [
-                'i = i + 1',
-            ],
-            preds: [5, 9],
-            succes: [1],
-        },
-        {
-            id: 8,
+            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -616,12 +576,13 @@ export const TRY_FINALLY_EXPECT_CASE10 = {
             exceptionalPreds: [3],
         },
         {
-            id: 9,
+            id: 6,
             stmts: [
                 'r = 2',
+                'i = i + 1',
             ],
             preds: [3],
-            succes: [7],
+            succes: [1],
         },
     ],
 };
@@ -1241,7 +1202,7 @@ export const TRY_FINALLY_EXPECT_CASE18 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -1253,26 +1214,10 @@ export const TRY_FINALLY_EXPECT_CASE18 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-            exceptionalSucces: [5],
+            exceptionalSucces: [3],
         },
         {
             id: 3,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [1],
-            succes: [4],
-        },
-        {
-            id: 4,
-            stmts: [
-                'return r',
-            ],
-            preds: [3],
-            succes: [],
-        },
-        {
-            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -1732,47 +1677,38 @@ export const TRY_FINALLY_EXPECT_CASE25 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [2],
-            exceptionalSucces: [6],
+            succes: [],
+            exceptionalSucces: [5],
         },
         {
             id: 2,
-            stmts: [
-                'r = 1',
-            ],
-            preds: [1],
-            succes: [4],
-            exceptionalSucces: [3],
-        },
-        {
-            id: 3,
             stmts: [
                 'e = caughtexception: unknown',
                 'r = 2',
             ],
             preds: [],
+            succes: [3],
+            exceptionalPreds: [5],
+            exceptionalSucces: [6],
+        },
+        {
+            id: 3,
+            stmts: [
+                'r = 3',
+            ],
+            preds: [2],
             succes: [4],
-            exceptionalPreds: [2, 6],
-            exceptionalSucces: [7],
         },
         {
             id: 4,
             stmts: [
-                'r = 3',
-            ],
-            preds: [2, 3],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
                 'return r',
             ],
-            preds: [4],
+            preds: [3],
             succes: [],
         },
         {
-            id: 6,
+            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -1781,10 +1717,10 @@ export const TRY_FINALLY_EXPECT_CASE25 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-            exceptionalSucces: [3],
+            exceptionalSucces: [2],
         },
         {
-            id: 7,
+            id: 6,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 3',
@@ -1792,7 +1728,7 @@ export const TRY_FINALLY_EXPECT_CASE25 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [3],
+            exceptionalPreds: [2],
         },
     ],
 };
@@ -1816,7 +1752,7 @@ export const TRY_FINALLY_EXPECT_CASE26 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -1835,7 +1771,7 @@ export const TRY_FINALLY_EXPECT_CASE26 = {
             stmts: [
                 'r = 2',
             ],
-            preds: [1, 2],
+            preds: [2],
             succes: [4],
         },
         {
@@ -1868,7 +1804,7 @@ export const TRY_FINALLY_EXPECT_CASE26 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [4, 5],
+            exceptionalPreds: [5, 4],
         },
         {
             id: 7,
@@ -1908,7 +1844,7 @@ export const TRY_FINALLY_EXPECT_CASE27 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -1918,37 +1854,20 @@ export const TRY_FINALLY_EXPECT_CASE27 = {
                 '%2 = 1',
             ],
             preds: [],
-            succes: [7],
+            succes: [5],
             exceptionalPreds: [1],
-            exceptionalSucces: [6],
+            exceptionalSucces: [4],
         },
         {
             id: 3,
             stmts: [
-                'r = 2',
-            ],
-            preds: [1],
-            succes: [4],
-            exceptionalSucces: [8],
-        },
-        {
-            id: 4,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [3],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
                 'return',
             ],
-            preds: [4],
+            preds: [],
             succes: [],
         },
         {
-            id: 6,
+            id: 4,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -1957,18 +1876,18 @@ export const TRY_FINALLY_EXPECT_CASE27 = {
             preds: [],
             succes: [],
             exceptionalPreds: [2],
-            exceptionalSucces: [8],
+            exceptionalSucces: [6],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 'r = 2',
             ],
             preds: [2],
-            succes: [9],
+            succes: [7],
         },
         {
-            id: 8,
+            id: 6,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 3',
@@ -1976,22 +1895,22 @@ export const TRY_FINALLY_EXPECT_CASE27 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [3, 6],
+            exceptionalPreds: [4],
         },
         {
-            id: 9,
+            id: 7,
             stmts: [
                 'r = 3',
             ],
-            preds: [7],
-            succes: [10],
+            preds: [5],
+            succes: [8],
         },
         {
-            id: 10,
+            id: 8,
             stmts: [
                 'return %2',
             ],
-            preds: [9],
+            preds: [7],
             succes: [],
         },
     ],
@@ -2016,7 +1935,7 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -2028,46 +1947,37 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-            exceptionalSucces: [7],
+            exceptionalSucces: [6],
         },
         {
             id: 3,
-            stmts: [
-                'r = 1',
-            ],
-            preds: [1],
-            succes: [5],
-            exceptionalSucces: [4],
-        },
-        {
-            id: 4,
             stmts: [
                 'e2 = caughtexception: unknown',
                 'r = 2',
             ],
             preds: [],
+            succes: [4],
+            exceptionalPreds: [6],
+            exceptionalSucces: [7],
+        },
+        {
+            id: 4,
+            stmts: [
+                'r = 3',
+            ],
+            preds: [3],
             succes: [5],
-            exceptionalPreds: [3, 7],
-            exceptionalSucces: [8],
         },
         {
             id: 5,
             stmts: [
-                'r = 3',
-            ],
-            preds: [3, 4],
-            succes: [6],
-        },
-        {
-            id: 6,
-            stmts: [
                 'return r',
             ],
-            preds: [5],
+            preds: [4],
             succes: [],
         },
         {
-            id: 7,
+            id: 6,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -2076,10 +1986,10 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
             preds: [],
             succes: [],
             exceptionalPreds: [2],
-            exceptionalSucces: [4],
+            exceptionalSucces: [3],
         },
         {
-            id: 8,
+            id: 7,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 3',
@@ -2087,7 +1997,7 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [4],
+            exceptionalPreds: [3],
         },
     ],
 };
@@ -2111,7 +2021,7 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -2123,35 +2033,18 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
             preds: [],
             succes: [],
             exceptionalPreds: [1],
-            exceptionalSucces: [6],
+            exceptionalSucces: [4],
         },
         {
             id: 3,
             stmts: [
-                'r = 1',
-            ],
-            preds: [1],
-            succes: [4],
-            exceptionalSucces: [7],
-        },
-        {
-            id: 4,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [3],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
                 'return r',
             ],
-            preds: [4],
+            preds: [],
             succes: [],
         },
         {
-            id: 6,
+            id: 4,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -2160,10 +2053,10 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
             preds: [],
             succes: [],
             exceptionalPreds: [2],
-            exceptionalSucces: [7],
+            exceptionalSucces: [5],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 2',
@@ -2171,7 +2064,7 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [3, 6],
+            exceptionalPreds: [4],
         },
     ],
 };
@@ -2696,7 +2589,7 @@ export const TRY_FINALLY_EXPECT_CASE35 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [3],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -2714,7 +2607,7 @@ export const TRY_FINALLY_EXPECT_CASE35 = {
             stmts: [
                 '%2 = 2',
             ],
-            preds: [1, 2],
+            preds: [2],
             succes: [5],
             exceptionalSucces: [4],
         },
@@ -2975,8 +2868,8 @@ export const TRY_FINALLY_EXPECT_CASE39 = {
             stmts: [
                 'if i < 1',
             ],
-            preds: [0, 5],
-            succes: [2, 6],
+            preds: [0],
+            succes: [2, 4],
         },
         {
             id: 2,
@@ -2986,7 +2879,7 @@ export const TRY_FINALLY_EXPECT_CASE39 = {
                 'throw %0',
             ],
             preds: [1],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [3],
         },
         {
@@ -2995,37 +2888,20 @@ export const TRY_FINALLY_EXPECT_CASE39 = {
                 'e = caughtexception: unknown',
             ],
             preds: [],
-            succes: [8],
+            succes: [6],
             exceptionalPreds: [2],
-            exceptionalSucces: [7],
+            exceptionalSucces: [5],
         },
         {
             id: 4,
             stmts: [
-                'r = 1',
-            ],
-            preds: [2],
-            succes: [5],
-            exceptionalSucces: [9],
-        },
-        {
-            id: 5,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [4],
-            succes: [1],
-        },
-        {
-            id: 6,
-            stmts: [
                 'return r',
             ],
-            preds: [1, 10],
+            preds: [1, 8],
             succes: [],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -3034,19 +2910,19 @@ export const TRY_FINALLY_EXPECT_CASE39 = {
             preds: [],
             succes: [],
             exceptionalPreds: [3],
-            exceptionalSucces: [9],
+            exceptionalSucces: [7],
         },
         {
-            id: 8,
+            id: 6,
             stmts: [
                 'r = 1',
             ],
             preds: [3],
-            succes: [10],
-            exceptionalSucces: [9],
+            succes: [8],
+            exceptionalSucces: [7],
         },
         {
-            id: 9,
+            id: 7,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 2',
@@ -3054,15 +2930,15 @@ export const TRY_FINALLY_EXPECT_CASE39 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [4, 8, 7],
+            exceptionalPreds: [6, 5],
         },
         {
-            id: 10,
+            id: 8,
             stmts: [
                 'r = 2',
             ],
-            preds: [8],
-            succes: [6],
+            preds: [6],
+            succes: [4],
         },
     ],
 };
@@ -3250,7 +3126,7 @@ export const TRY_FINALLY_EXPECT_CASE42 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [5],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -3285,7 +3161,7 @@ export const TRY_FINALLY_EXPECT_CASE42 = {
             stmts: [
                 'r = 3',
             ],
-            preds: [1, 4],
+            preds: [4],
             succes: [6],
         },
         {
@@ -3341,7 +3217,7 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -3359,27 +3235,11 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
                 '%2 = 1',
             ],
             preds: [2],
-            succes: [7],
-            exceptionalSucces: [6],
+            succes: [5],
+            exceptionalSucces: [4],
         },
         {
             id: 4,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [1],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
-                'return',
-            ],
-            preds: [4],
-            succes: [],
-        },
-        {
-            id: 6,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -3388,18 +3248,18 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
             preds: [],
             succes: [],
             exceptionalPreds: [3],
-            exceptionalSucces: [8],
+            exceptionalSucces: [6],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 'r = 2',
             ],
             preds: [3],
-            succes: [9],
+            succes: [7],
         },
         {
-            id: 8,
+            id: 6,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 3',
@@ -3407,22 +3267,22 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [6],
+            exceptionalPreds: [4],
         },
         {
-            id: 9,
+            id: 7,
             stmts: [
                 'r = 3',
             ],
-            preds: [7],
-            succes: [10],
+            preds: [5],
+            succes: [8],
         },
         {
-            id: 10,
+            id: 8,
             stmts: [
                 'return %2',
             ],
-            preds: [9],
+            preds: [7],
             succes: [],
         },
     ],
@@ -3447,7 +3307,7 @@ export const TRY_FINALLY_EXPECT_CASE44 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -3465,47 +3325,31 @@ export const TRY_FINALLY_EXPECT_CASE44 = {
                 '%2 = 1',
             ],
             preds: [2],
-            succes: [7],
-            exceptionalSucces: [6],
+            succes: [5],
+            exceptionalSucces: [4],
         },
         {
             id: 4,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [1],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
-                'return r',
-            ],
-            preds: [4],
-            succes: [],
-        },
-        {
-            id: 6,
             stmts: [
                 '%1 = caughtexception: unknown',
                 '%5 = 2',
             ],
             preds: [],
-            succes: [11],
+            succes: [9],
             exceptionalPreds: [3],
-            exceptionalSucces: [8],
+            exceptionalSucces: [6],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 '%4 = 2',
             ],
             preds: [3],
-            succes: [9],
-            exceptionalSucces: [8],
+            succes: [7],
+            exceptionalSucces: [6],
         },
         {
-            id: 8,
+            id: 6,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 3',
@@ -3513,38 +3357,38 @@ export const TRY_FINALLY_EXPECT_CASE44 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [7, 6],
+            exceptionalPreds: [5, 4],
+        },
+        {
+            id: 7,
+            stmts: [
+                'r = 3',
+            ],
+            preds: [5],
+            succes: [8],
+        },
+        {
+            id: 8,
+            stmts: [
+                'return %4',
+            ],
+            preds: [7],
+            succes: [],
         },
         {
             id: 9,
             stmts: [
                 'r = 3',
             ],
-            preds: [7],
+            preds: [4],
             succes: [10],
         },
         {
             id: 10,
             stmts: [
-                'return %4',
-            ],
-            preds: [9],
-            succes: [],
-        },
-        {
-            id: 11,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [6],
-            succes: [12],
-        },
-        {
-            id: 12,
-            stmts: [
                 'return %5',
             ],
-            preds: [11],
+            preds: [9],
             succes: [],
         },
     ],
@@ -3569,7 +3413,7 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [5],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -3587,36 +3431,11 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
                 'throw e',
             ],
             preds: [2],
-            succes: [4],
-            exceptionalSucces: [7],
+            succes: [],
+            exceptionalSucces: [4],
         },
         {
             id: 4,
-            stmts: [
-                'r = 1',
-            ],
-            preds: [3],
-            succes: [5],
-            exceptionalSucces: [8],
-        },
-        {
-            id: 5,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [1, 4],
-            succes: [6],
-        },
-        {
-            id: 6,
-            stmts: [
-                'return r',
-            ],
-            preds: [5],
-            succes: [],
-        },
-        {
-            id: 7,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -3625,10 +3444,10 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
             preds: [],
             succes: [],
             exceptionalPreds: [3],
-            exceptionalSucces: [8],
+            exceptionalSucces: [5],
         },
         {
-            id: 8,
+            id: 5,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 2',
@@ -3636,7 +3455,7 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [4, 7],
+            exceptionalPreds: [4],
         },
     ],
 };
@@ -3658,8 +3477,8 @@ export const TRY_FINALLY_EXPECT_CASE46 = {
             stmts: [
                 'if i < 1',
             ],
-            preds: [0, 4],
-            succes: [2, 5],
+            preds: [0],
+            succes: [2, 4],
         },
         {
             id: 2,
@@ -3669,7 +3488,7 @@ export const TRY_FINALLY_EXPECT_CASE46 = {
                 'throw %0',
             ],
             preds: [1],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [3],
         },
         {
@@ -3678,27 +3497,19 @@ export const TRY_FINALLY_EXPECT_CASE46 = {
                 'e = caughtexception: unknown',
             ],
             preds: [],
-            succes: [7],
+            succes: [6],
             exceptionalPreds: [2],
         },
         {
             id: 4,
             stmts: [
-                'r = 2',
-            ],
-            preds: [2],
-            succes: [1],
-        },
-        {
-            id: 5,
-            stmts: [
                 'return r',
             ],
-            preds: [1, 9],
+            preds: [1, 8],
             succes: [],
         },
         {
-            id: 6,
+            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 1',
@@ -3708,16 +3519,16 @@ export const TRY_FINALLY_EXPECT_CASE46 = {
             succes: [],
         },
         {
-            id: 7,
+            id: 6,
             stmts: [
                 'r = 1',
             ],
             preds: [3],
-            succes: [9],
-            exceptionalSucces: [8],
+            succes: [8],
+            exceptionalSucces: [7],
         },
         {
-            id: 8,
+            id: 7,
             stmts: [
                 '%2 = caughtexception: unknown',
                 'r = 2',
@@ -3725,15 +3536,15 @@ export const TRY_FINALLY_EXPECT_CASE46 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [7],
+            exceptionalPreds: [6],
         },
         {
-            id: 9,
+            id: 8,
             stmts: [
                 'r = 2',
             ],
-            preds: [7],
-            succes: [5],
+            preds: [6],
+            succes: [4],
         },
     ],
 };
@@ -4018,7 +3829,7 @@ export const TRY_FINALLY_EXPECT_CASE50 = {
                 '%3 = 1',
             ],
             preds: [0],
-            succes: [5],
+            succes: [4],
             exceptionalSucces: [2],
         },
         {
@@ -4030,21 +3841,12 @@ export const TRY_FINALLY_EXPECT_CASE50 = {
                 'throw %0',
             ],
             preds: [],
-            succes: [3],
+            succes: [],
             exceptionalPreds: [1],
-            exceptionalSucces: [4],
+            exceptionalSucces: [3],
         },
         {
             id: 3,
-            stmts: [
-                'r = 2',
-                'throw %2',
-            ],
-            preds: [2],
-            succes: [],
-        },
-        {
-            id: 4,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -4055,26 +3857,18 @@ export const TRY_FINALLY_EXPECT_CASE50 = {
             exceptionalPreds: [2],
         },
         {
-            id: 5,
+            id: 4,
             stmts: [
                 '%0 = new @%unk/%unk: Error',
                 '%0 = instanceinvoke %0.<@%unk/%unk: Error.constructor()>()',
                 'throw %0',
             ],
             preds: [1],
-            succes: [6],
-            exceptionalSucces: [7],
+            succes: [],
+            exceptionalSucces: [5],
         },
         {
-            id: 6,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [5],
-            succes: [8],
-        },
-        {
-            id: 7,
+            id: 5,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -4082,15 +3876,7 @@ export const TRY_FINALLY_EXPECT_CASE50 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [5],
-        },
-        {
-            id: 8,
-            stmts: [
-                'return %3',
-            ],
-            preds: [6],
-            succes: [],
+            exceptionalPreds: [4],
         },
     ],
 };
@@ -4114,7 +3900,7 @@ export const TRY_FINALLY_EXPECT_CASE51 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [5],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -4149,7 +3935,7 @@ export const TRY_FINALLY_EXPECT_CASE51 = {
             stmts: [
                 'r = 3',
             ],
-            preds: [1, 4],
+            preds: [4],
             succes: [6],
             exceptionalSucces: [9],
         },
@@ -4252,8 +4038,8 @@ export const TRY_FINALLY_EXPECT_CASE52 = {
                 '%2 = 1',
             ],
             preds: [1],
-            succes: [9],
-            exceptionalSucces: [8],
+            succes: [8],
+            exceptionalSucces: [7],
         },
         {
             id: 3,
@@ -4263,47 +4049,38 @@ export const TRY_FINALLY_EXPECT_CASE52 = {
                 'throw %0',
             ],
             preds: [1],
-            succes: [4],
-            exceptionalSucces: [10],
+            succes: [],
+            exceptionalSucces: [9],
         },
         {
             id: 4,
-            stmts: [
-                'r = 3',
-            ],
-            preds: [3],
-            succes: [6],
-            exceptionalSucces: [5],
-        },
-        {
-            id: 5,
             stmts: [
                 'e = caughtexception: unknown',
                 'r = 4',
             ],
             preds: [],
+            succes: [5],
+            exceptionalPreds: [7, 9],
+            exceptionalSucces: [10],
+        },
+        {
+            id: 5,
+            stmts: [
+                'r = 5',
+            ],
+            preds: [4],
             succes: [6],
-            exceptionalPreds: [8, 4, 10],
-            exceptionalSucces: [11],
         },
         {
             id: 6,
             stmts: [
-                'r = 5',
-            ],
-            preds: [4, 5],
-            succes: [7],
-        },
-        {
-            id: 7,
-            stmts: [
                 'return r',
             ],
-            preds: [6],
+            preds: [5],
             succes: [],
         },
         {
-            id: 8,
+            id: 7,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -4312,18 +4089,18 @@ export const TRY_FINALLY_EXPECT_CASE52 = {
             preds: [],
             succes: [],
             exceptionalPreds: [2],
-            exceptionalSucces: [5],
+            exceptionalSucces: [4],
         },
         {
-            id: 9,
+            id: 8,
             stmts: [
                 'r = 2',
             ],
             preds: [2],
-            succes: [12],
+            succes: [11],
         },
         {
-            id: 10,
+            id: 9,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 3',
@@ -4332,10 +4109,10 @@ export const TRY_FINALLY_EXPECT_CASE52 = {
             preds: [],
             succes: [],
             exceptionalPreds: [3],
-            exceptionalSucces: [5],
+            exceptionalSucces: [4],
         },
         {
-            id: 11,
+            id: 10,
             stmts: [
                 '%4 = caughtexception: unknown',
                 'r = 5',
@@ -4343,22 +4120,22 @@ export const TRY_FINALLY_EXPECT_CASE52 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [5],
+            exceptionalPreds: [4],
+        },
+        {
+            id: 11,
+            stmts: [
+                'r = 5',
+            ],
+            preds: [8],
+            succes: [12],
         },
         {
             id: 12,
             stmts: [
-                'r = 5',
-            ],
-            preds: [9],
-            succes: [13],
-        },
-        {
-            id: 13,
-            stmts: [
                 'return %2',
             ],
-            preds: [12],
+            preds: [11],
             succes: [],
         },
     ],
@@ -4511,7 +4288,7 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [4],
+            succes: [],
             exceptionalSucces: [2],
         },
         {
@@ -4529,27 +4306,11 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
                 '%2 = 1',
             ],
             preds: [2],
-            succes: [7],
-            exceptionalSucces: [6],
+            succes: [5],
+            exceptionalSucces: [4],
         },
         {
             id: 4,
-            stmts: [
-                'r = 4',
-            ],
-            preds: [1],
-            succes: [5],
-        },
-        {
-            id: 5,
-            stmts: [
-                'return',
-            ],
-            preds: [4],
-            succes: [],
-        },
-        {
-            id: 6,
             stmts: [
                 '%1 = caughtexception: unknown',
                 'r = 2',
@@ -4558,18 +4319,18 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
             preds: [],
             succes: [],
             exceptionalPreds: [3],
-            exceptionalSucces: [8],
+            exceptionalSucces: [6],
         },
         {
-            id: 7,
+            id: 5,
             stmts: [
                 'r = 2',
             ],
             preds: [3],
-            succes: [9],
+            succes: [7],
         },
         {
-            id: 8,
+            id: 6,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 3',
@@ -4577,19 +4338,19 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [6],
-            exceptionalSucces: [10],
+            exceptionalPreds: [4],
+            exceptionalSucces: [8],
         },
         {
-            id: 9,
+            id: 7,
             stmts: [
                 'r = 3',
             ],
-            preds: [7],
-            succes: [11],
+            preds: [5],
+            succes: [9],
         },
         {
-            id: 10,
+            id: 8,
             stmts: [
                 '%4 = caughtexception: unknown',
                 'r = 4',
@@ -4597,22 +4358,22 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [8],
+            exceptionalPreds: [6],
         },
         {
-            id: 11,
+            id: 9,
             stmts: [
                 'r = 4',
             ],
-            preds: [9],
-            succes: [12],
+            preds: [7],
+            succes: [10],
         },
         {
-            id: 12,
+            id: 10,
             stmts: [
                 'return %2',
             ],
-            preds: [11],
+            preds: [9],
             succes: [],
         },
     ],
@@ -4757,53 +4518,56 @@ export const TRY_FINALLY_EXPECT_CASE57 = {
                 'throw %0',
             ],
             preds: [0],
-            succes: [2],
-            exceptionalSucces: [8],
+            succes: [],
+            exceptionalSucces: [5],
         },
         {
             id: 2,
-            stmts: [
-                'r = 1',
-            ],
-            preds: [1],
-            succes: [3],
-            exceptionalSucces: [7],
-        },
-        {
-            id: 3,
-            stmts: [
-                'r = 2',
-            ],
-            preds: [2],
-            succes: [5],
-            exceptionalSucces: [4],
-        },
-        {
-            id: 4,
             stmts: [
                 'e = caughtexception: unknown',
                 'r = 3',
             ],
             preds: [],
-            succes: [5],
-            exceptionalPreds: [3, 7, 9, 10],
-            exceptionalSucces: [11],
+            succes: [3],
+            exceptionalPreds: [6, 7],
+            exceptionalSucces: [8],
+        },
+        {
+            id: 3,
+            stmts: [
+                'r = 4',
+            ],
+            preds: [2],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return r',
+            ],
+            preds: [3],
+            succes: [],
         },
         {
             id: 5,
             stmts: [
-                'r = 4',
+                '%2 = caughtexception: unknown',
+                'r = 1',
             ],
-            preds: [3, 4],
+            preds: [],
             succes: [6],
+            exceptionalPreds: [1],
+            exceptionalSucces: [7],
         },
         {
             id: 6,
             stmts: [
-                'return r',
+                'r = 2',
+                'throw %2',
             ],
             preds: [5],
             succes: [],
+            exceptionalSucces: [2],
         },
         {
             id: 7,
@@ -4814,44 +4578,11 @@ export const TRY_FINALLY_EXPECT_CASE57 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [2],
-            exceptionalSucces: [4],
+            exceptionalPreds: [5],
+            exceptionalSucces: [2],
         },
         {
             id: 8,
-            stmts: [
-                '%2 = caughtexception: unknown',
-                'r = 1',
-            ],
-            preds: [],
-            succes: [9],
-            exceptionalPreds: [1],
-            exceptionalSucces: [10],
-        },
-        {
-            id: 9,
-            stmts: [
-                'r = 2',
-                'throw %2',
-            ],
-            preds: [8],
-            succes: [],
-            exceptionalSucces: [4],
-        },
-        {
-            id: 10,
-            stmts: [
-                '%1 = caughtexception: unknown',
-                'r = 2',
-                'throw %1',
-            ],
-            preds: [],
-            succes: [],
-            exceptionalPreds: [8],
-            exceptionalSucces: [4],
-        },
-        {
-            id: 11,
             stmts: [
                 '%3 = caughtexception: unknown',
                 'r = 4',
@@ -4859,7 +4590,7 @@ export const TRY_FINALLY_EXPECT_CASE57 = {
             ],
             preds: [],
             succes: [],
-            exceptionalPreds: [4],
+            exceptionalPreds: [2],
         },
     ],
 };
@@ -5121,7 +4852,7 @@ export const TRY_FINALLY_EXPECT_CASE60 = {
                 'throw %0',
             ],
             preds: [2],
-            succes: [5],
+            succes: [],
             exceptionalSucces: [4],
         },
         {
@@ -5140,7 +4871,7 @@ export const TRY_FINALLY_EXPECT_CASE60 = {
             stmts: [
                 'r = 4',
             ],
-            preds: [3, 4],
+            preds: [4],
             succes: [6],
         },
         {

@@ -437,6 +437,7 @@ export class TrapBuilder {
         finallyEnd: BasicBlock | undefined,
         exceptionalFinally: BasicBlock[],
     ): Trap[] {
+        this.unlinkTryThrowFallThrough(tryBfsBlocks);
         const abortTails = this.spliceFinallyAfterAbort(
             tryTailBlocks,
             catchTailBlocks,
@@ -594,6 +595,15 @@ export class TrapBuilder {
             }
         }
         return false;
+    }
+
+    private unlinkTryThrowFallThrough(tryBlocks: BasicBlock[]): void {
+        for (const block of tryBlocks) {
+            if (!this.basicBlockSet.has(block) || !this.endsWithThrow(block) || block.getSuccessors().length === 0) {
+                continue;
+            }
+            CfgBuilder.unlinkSuccessorsOfBasicBlock(block);
+        }
     }
 
     private spliceFinallyAfterAbort(
