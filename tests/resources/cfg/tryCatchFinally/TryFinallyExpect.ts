@@ -1251,7 +1251,7 @@ export const TRY_FINALLY_EXPECT_CASE18 = {
                 'throw e',
             ],
             preds: [],
-            succes: [3],
+            succes: [],
             exceptionalPreds: [1],
             exceptionalSucces: [5],
         },
@@ -1260,7 +1260,7 @@ export const TRY_FINALLY_EXPECT_CASE18 = {
             stmts: [
                 'r = 2',
             ],
-            preds: [1, 2],
+            preds: [1],
             succes: [4],
         },
         {
@@ -2026,7 +2026,7 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
                 'throw e',
             ],
             preds: [],
-            succes: [3],
+            succes: [],
             exceptionalPreds: [1],
             exceptionalSucces: [7],
         },
@@ -2035,7 +2035,7 @@ export const TRY_FINALLY_EXPECT_CASE28 = {
             stmts: [
                 'r = 1',
             ],
-            preds: [1, 2],
+            preds: [1],
             succes: [5],
             exceptionalSucces: [4],
         },
@@ -2121,7 +2121,7 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
                 'throw e',
             ],
             preds: [],
-            succes: [3],
+            succes: [],
             exceptionalPreds: [1],
             exceptionalSucces: [6],
         },
@@ -2130,7 +2130,7 @@ export const TRY_FINALLY_EXPECT_CASE29 = {
             stmts: [
                 'r = 1',
             ],
-            preds: [1, 2],
+            preds: [1],
             succes: [4],
             exceptionalSucces: [7],
         },
@@ -2827,7 +2827,7 @@ export const TRY_FINALLY_EXPECT_CASE37 = {
                 'if i < 1',
             ],
             preds: [0],
-            succes: [2, 4],
+            succes: [4, 2],
         },
         {
             id: 2,
@@ -3172,7 +3172,7 @@ export const TRY_FINALLY_EXPECT_CASE41 = {
                 'if i < 1',
             ],
             preds: [0],
-            succes: [2, 6],
+            succes: [6, 2],
         },
         {
             id: 2,
@@ -3285,7 +3285,7 @@ export const TRY_FINALLY_EXPECT_CASE42 = {
             stmts: [
                 'r = 3',
             ],
-            preds: [1, 4, 7],
+            preds: [1, 4],
             succes: [6],
         },
         {
@@ -3304,7 +3304,7 @@ export const TRY_FINALLY_EXPECT_CASE42 = {
                 'throw %1',
             ],
             preds: [],
-            succes: [5],
+            succes: [],
             exceptionalPreds: [3],
             exceptionalSucces: [8],
         },
@@ -3367,7 +3367,7 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
             stmts: [
                 'r = 3',
             ],
-            preds: [1, 6],
+            preds: [1],
             succes: [5],
         },
         {
@@ -3386,7 +3386,7 @@ export const TRY_FINALLY_EXPECT_CASE43 = {
                 'throw %1',
             ],
             preds: [],
-            succes: [4],
+            succes: [],
             exceptionalPreds: [3],
             exceptionalSucces: [8],
         },
@@ -3604,7 +3604,7 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
             stmts: [
                 'r = 2',
             ],
-            preds: [1, 4, 7],
+            preds: [1, 4],
             succes: [6],
         },
         {
@@ -3623,7 +3623,7 @@ export const TRY_FINALLY_EXPECT_CASE45 = {
                 'throw %1',
             ],
             preds: [],
-            succes: [5],
+            succes: [],
             exceptionalPreds: [3],
             exceptionalSucces: [8],
         },
@@ -4149,7 +4149,7 @@ export const TRY_FINALLY_EXPECT_CASE51 = {
             stmts: [
                 'r = 3',
             ],
-            preds: [1, 4, 8],
+            preds: [1, 4],
             succes: [6],
             exceptionalSucces: [9],
         },
@@ -4177,7 +4177,7 @@ export const TRY_FINALLY_EXPECT_CASE51 = {
                 'throw %1',
             ],
             preds: [],
-            succes: [5],
+            succes: [],
             exceptionalPreds: [3],
             exceptionalSucces: [10],
         },
@@ -4537,7 +4537,7 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
             stmts: [
                 'r = 4',
             ],
-            preds: [1, 8],
+            preds: [1],
             succes: [5],
         },
         {
@@ -4576,7 +4576,7 @@ export const TRY_FINALLY_EXPECT_CASE55 = {
                 'throw %3',
             ],
             preds: [],
-            succes: [4],
+            succes: [],
             exceptionalPreds: [6],
             exceptionalSucces: [10],
         },
@@ -5027,7 +5027,7 @@ export const TRY_FINALLY_EXPECT_CASE59 = {
                 'if i < 1',
             ],
             preds: [3, 0],
-            succes: [2, 5],
+            succes: [5, 2],
         },
         {
             id: 2,

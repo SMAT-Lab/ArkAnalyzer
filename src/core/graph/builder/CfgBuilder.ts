@@ -1199,10 +1199,11 @@ export class CfgBuilder {
         );
 
         const trapBuilder = new TrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, arkIRTransformer, basicBlockSet);
-        const traps = trapBuilder.buildTraps();
+        const builtTraps = trapBuilder.buildTraps();
 
         this.mergeLoopInitialBlocks(basicBlockSet);
         this.removeEmptyBlocks(basicBlockSet);
+        const traps = trapBuilder.retainLiveTraps(builtTraps);
 
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet);
         return {
