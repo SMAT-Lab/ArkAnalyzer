@@ -340,11 +340,10 @@ export class TrapBuilder {
         if (!blockAfterFinally) {
             const targets = new Set<BasicBlock>();
             for (const catchTailBlock of catchTailBlocks) {
-                if (this.isReturnTerminator(catchTailBlock) || this.endsWithThrow(catchTailBlock)) {
-                    continue;
-                }
-                for (const successor of catchTailBlock.getSuccessors()) {
-                    targets.add(successor);
+                if (!this.isReturnTerminator(catchTailBlock) && !this.endsWithThrow(catchTailBlock)) {
+                    for (const successor of catchTailBlock.getSuccessors()) {
+                        targets.add(successor);
+                    }
                 }
             }
             if (targets.size === 1) {
@@ -363,17 +362,13 @@ export class TrapBuilder {
                 CfgBuilder.linkBasicBlock(source, blockAfterFinally);
             }
             for (const catchTailBlock of catchTailBlocks) {
-                if (this.endsWithThrow(catchTailBlock) || catchTailBlock.getSuccessors().includes(blockAfterFinally)) {
-                    continue;
+                if (!this.endsWithThrow(catchTailBlock) && !catchTailBlock.getSuccessors().includes(blockAfterFinally)) {
+                    CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
                 }
-                CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
             }
             for (const catchBlock of catchBfsBlocks) {
-                if (!this.basicBlockSet.has(catchBlock) || 
-                    catchBlock.getSuccessors().length !== 0 || 
-                    this.isReturnTerminator(catchBlock) || 
-                    this.endsWithThrow(catchBlock) ||
-                    catchBlock.getExceptionalSuccessorBlocks()?.length !== 0) {
+                if (!this.basicBlockSet.has(catchBlock) || catchBlock.getSuccessors().length !== 0 || 
+                    this.isReturnTerminator(catchBlock) || this.endsWithThrow(catchBlock)) {
                     continue;
                 }
                 CfgBuilder.linkBasicBlock(catchBlock, blockAfterFinally);
