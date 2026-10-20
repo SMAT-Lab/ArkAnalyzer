@@ -331,12 +331,10 @@ export class TrapBuilder {
             logger.error(`catch block expected.`);
             return [];
         }
-
         const dummyFinallyBlock = this.blockBuilderToCfgBlock.get(dummyFinallyBlockBuilder)!;
         const fallThroughSources = [...dummyFinallyBlock.getPredecessors()];
         CfgBuilder.pruneBasicBlock(dummyFinallyBlock);
         this.basicBlockSet.delete(dummyFinallyBlock);
-
         const blockBuilderAfterFinally = dummyFinallyBlockBuilder.nexts[0];
         let blockAfterFinally: BasicBlock | undefined = blockBuilderAfterFinally ? this.blockBuilderToCfgBlock.get(blockBuilderAfterFinally) : undefined;
         if (!blockAfterFinally) {
@@ -371,7 +369,11 @@ export class TrapBuilder {
                 CfgBuilder.linkBasicBlock(catchTailBlock, blockAfterFinally);
             }
             for (const catchBlock of catchBfsBlocks) {
-                if (!this.basicBlockSet.has(catchBlock) || catchBlock.getSuccessors().length !== 0 || this.isReturnTerminator(catchBlock) || this.endsWithThrow(catchBlock)) {
+                if (!this.basicBlockSet.has(catchBlock) || 
+                    catchBlock.getSuccessors().length !== 0 || 
+                    this.isReturnTerminator(catchBlock) || 
+                    this.endsWithThrow(catchBlock) ||
+                    catchBlock.getExceptionalSuccessorBlocks()?.length !== 0) {
                     continue;
                 }
                 CfgBuilder.linkBasicBlock(catchBlock, blockAfterFinally);
