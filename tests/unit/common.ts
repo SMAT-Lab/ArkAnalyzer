@@ -199,23 +199,17 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
         });
         expect(succes).toEqual(expectBlocks[i].succes);
 
-        const exceptionPreds = block.getExceptionalPredecessorBlocks();
-        if (exceptionPreds !== undefined) {
-            const exceptionalPreds: number[] = [];
-            exceptionPreds.forEach(exceptionalPredBlock => {
-                exceptionalPreds.push(exceptionalPredBlock.getId());
-            });
-            expect(exceptionalPreds).toEqual(expectBlocks[i].exceptionalPreds);
-        }
+        const exceptionalPreds: number[] = [];
+        (block.getExceptionalPredecessorBlocks() ?? []).forEach(exceptionalPredBlock => {
+            exceptionalPreds.push(exceptionalPredBlock.getId());
+        });
+        expect(exceptionalPreds).toEqual(expectBlocks[i].exceptionalPreds ?? []);
 
-        const exceptionSucces = block.getExceptionalSuccessorBlocks();
-        if (exceptionSucces !== undefined) {
-            const exceptionalSucces: number[] = [];
-            exceptionSucces.forEach(exceptionalSucceBlock => {
-                exceptionalSucces.push(exceptionalSucceBlock.getId());
-            });
-            expect(exceptionalSucces).toEqual(expectBlocks[i].exceptionalSucces);
-        }
+        const exceptionalSucces: number[] = [];
+        (block.getExceptionalSuccessorBlocks() ?? []).forEach(exceptionalSucceBlock => {
+            exceptionalSucces.push(exceptionalSucceBlock.getId());
+        });
+        expect(exceptionalSucces).toEqual(expectBlocks[i].exceptionalSucces ?? []);
     }
 }
 

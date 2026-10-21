@@ -104,7 +104,70 @@ import {
     IF_BUILDER_EXPECT_CASE5,
 } from '../../../resources/cfg/ifBuilder/IfBuilderExpect';
 
-import { TRY_FINALLY_EXPECT_CASE1 } from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
+import {
+    TRY_FINALLY_EXPECT_CASE1,
+    TRY_FINALLY_EXPECT_CASE2,
+    TRY_FINALLY_EXPECT_CASE3,
+    TRY_FINALLY_EXPECT_CASE4,
+    TRY_FINALLY_EXPECT_CASE5,
+    TRY_FINALLY_EXPECT_CASE6,
+    TRY_FINALLY_EXPECT_CASE7,
+    TRY_FINALLY_EXPECT_CASE8,
+    TRY_FINALLY_EXPECT_CASE9,
+    TRY_FINALLY_EXPECT_CASE10,
+    TRY_FINALLY_EXPECT_CASE11,
+    TRY_FINALLY_EXPECT_CASE12,
+    TRY_FINALLY_EXPECT_CASE13,
+    TRY_FINALLY_EXPECT_CASE14,
+    TRY_FINALLY_EXPECT_CASE15,
+    TRY_FINALLY_EXPECT_CASE16,
+    TRY_FINALLY_EXPECT_CASE17,
+    TRY_FINALLY_EXPECT_CASE18,
+    TRY_FINALLY_EXPECT_CASE19,
+    TRY_FINALLY_EXPECT_CASE20,
+    TRY_FINALLY_EXPECT_CASE21,
+    TRY_FINALLY_EXPECT_CASE22,
+    TRY_FINALLY_EXPECT_CASE23,
+    TRY_FINALLY_EXPECT_CASE24,
+    TRY_FINALLY_EXPECT_CASE25,
+    TRY_FINALLY_EXPECT_CASE26,
+    TRY_FINALLY_EXPECT_CASE27,
+    TRY_FINALLY_EXPECT_CASE28,
+    TRY_FINALLY_EXPECT_CASE29,
+    TRY_FINALLY_EXPECT_CASE30,
+    TRY_FINALLY_EXPECT_CASE31,
+    TRY_FINALLY_EXPECT_CASE32,
+    TRY_FINALLY_EXPECT_CASE33,
+    TRY_FINALLY_EXPECT_CASE34,
+    TRY_FINALLY_EXPECT_CASE35,
+    TRY_FINALLY_EXPECT_CASE36,
+    TRY_FINALLY_EXPECT_CASE37,
+    TRY_FINALLY_EXPECT_CASE38,
+    TRY_FINALLY_EXPECT_CASE39,
+    TRY_FINALLY_EXPECT_CASE40,
+    TRY_FINALLY_EXPECT_CASE41,
+    TRY_FINALLY_EXPECT_CASE42,
+    TRY_FINALLY_EXPECT_CASE43,
+    TRY_FINALLY_EXPECT_CASE44,
+    TRY_FINALLY_EXPECT_CASE45,
+    TRY_FINALLY_EXPECT_CASE46,
+    TRY_FINALLY_EXPECT_CASE47,
+    TRY_FINALLY_EXPECT_CASE48,
+    TRY_FINALLY_EXPECT_CASE49,
+    TRY_FINALLY_EXPECT_CASE50,
+    TRY_FINALLY_EXPECT_CASE51,
+    TRY_FINALLY_EXPECT_CASE52,
+    TRY_FINALLY_EXPECT_CASE53,
+    TRY_FINALLY_EXPECT_CASE54,
+    TRY_FINALLY_EXPECT_CASE55,
+    TRY_FINALLY_EXPECT_CASE56,
+    TRY_FINALLY_EXPECT_CASE57,
+    TRY_FINALLY_EXPECT_CASE58,
+    TRY_FINALLY_EXPECT_CASE59,
+    TRY_FINALLY_EXPECT_CASE60,
+    TRY_FINALLY_EXPECT_CASE61,
+    TRY_FINALLY_EXPECT_CASE62,
+} from '../../../resources/cfg/tryCatchFinally/TryFinallyExpect';
 import {
     LABEL_FOR_EXPECT,
     LABEL_SWITCH_EXPECT,
@@ -304,6 +367,67 @@ describe('CfgTest', () => {
         const finallyStmts = stmts!.filter(s => s.toString() === 'r = 2');
         assert.isAtLeast(finallyStmts.length, 2);
         finallyStmts.forEach(s => assert.equal(s.getOriginFullPosition()?.getFirstLine(), 21));
+        testBlocks(scene, 'TryFinallySample.ts', 'case2', TRY_FINALLY_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case3', TRY_FINALLY_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case4', TRY_FINALLY_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case5', TRY_FINALLY_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case6', TRY_FINALLY_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case7', TRY_FINALLY_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case8', TRY_FINALLY_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case9', TRY_FINALLY_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case10', TRY_FINALLY_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case11', TRY_FINALLY_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case12', TRY_FINALLY_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case13', TRY_FINALLY_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case14', TRY_FINALLY_EXPECT_CASE14.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case15', TRY_FINALLY_EXPECT_CASE15.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case16', TRY_FINALLY_EXPECT_CASE16.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case17', TRY_FINALLY_EXPECT_CASE17.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case18', TRY_FINALLY_EXPECT_CASE18.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case19', TRY_FINALLY_EXPECT_CASE19.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case20', TRY_FINALLY_EXPECT_CASE20.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case21', TRY_FINALLY_EXPECT_CASE21.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case22', TRY_FINALLY_EXPECT_CASE22.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case23', TRY_FINALLY_EXPECT_CASE23.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case24', TRY_FINALLY_EXPECT_CASE24.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case25', TRY_FINALLY_EXPECT_CASE25.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case26', TRY_FINALLY_EXPECT_CASE26.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case27', TRY_FINALLY_EXPECT_CASE27.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case28', TRY_FINALLY_EXPECT_CASE28.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case29', TRY_FINALLY_EXPECT_CASE29.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case30', TRY_FINALLY_EXPECT_CASE30.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case31', TRY_FINALLY_EXPECT_CASE31.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case32', TRY_FINALLY_EXPECT_CASE32.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case33', TRY_FINALLY_EXPECT_CASE33.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case34', TRY_FINALLY_EXPECT_CASE34.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case35', TRY_FINALLY_EXPECT_CASE35.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case36', TRY_FINALLY_EXPECT_CASE36.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case37', TRY_FINALLY_EXPECT_CASE37.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case38', TRY_FINALLY_EXPECT_CASE38.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case39', TRY_FINALLY_EXPECT_CASE39.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case40', TRY_FINALLY_EXPECT_CASE40.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case41', TRY_FINALLY_EXPECT_CASE41.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case42', TRY_FINALLY_EXPECT_CASE42.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case43', TRY_FINALLY_EXPECT_CASE43.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case44', TRY_FINALLY_EXPECT_CASE44.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case45', TRY_FINALLY_EXPECT_CASE45.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case46', TRY_FINALLY_EXPECT_CASE46.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case47', TRY_FINALLY_EXPECT_CASE47.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case48', TRY_FINALLY_EXPECT_CASE48.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case49', TRY_FINALLY_EXPECT_CASE49.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case50', TRY_FINALLY_EXPECT_CASE50.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case51', TRY_FINALLY_EXPECT_CASE51.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case52', TRY_FINALLY_EXPECT_CASE52.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case53', TRY_FINALLY_EXPECT_CASE53.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case54', TRY_FINALLY_EXPECT_CASE54.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case55', TRY_FINALLY_EXPECT_CASE55.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case56', TRY_FINALLY_EXPECT_CASE56.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case57', TRY_FINALLY_EXPECT_CASE57.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case58', TRY_FINALLY_EXPECT_CASE58.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case59', TRY_FINALLY_EXPECT_CASE59.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case60', TRY_FINALLY_EXPECT_CASE60.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case61', TRY_FINALLY_EXPECT_CASE61.blocks);
+        testBlocks(scene, 'TryFinallySample.ts', 'case62', TRY_FINALLY_EXPECT_CASE62.blocks);
     });
 
     it('case12: labeled statements (for, while, do-while, for-of, switch)', () => {

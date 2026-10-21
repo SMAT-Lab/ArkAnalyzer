@@ -208,7 +208,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
                 'if i === 1',
             ],
             preds: [],
-            succes: [8, 9],
+            succes: [8, 10],
             exceptionalPreds: [2],
             exceptionalSucces: []
         },
@@ -218,14 +218,27 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
                 'i = 2',
             ],
             preds: [7],
-            succes: [9],
+            succes: [10],
+            exceptionalPreds: [],
+            exceptionalSucces: [9]
         },
         {
             id: 9,
             stmts: [
+                'e = caughtexception: unknown',
+                'instanceinvoke console.<@%unk/%unk: .log()>(\'inner catch\', e)',
+            ],
+            preds: [],
+            succes: [10],
+            exceptionalPreds: [8],
+            exceptionalSucces: []
+        },
+        {
+            id: 10,
+            stmts: [
                 'throw %0',
             ],
-            preds: [7, 8],
+            preds: [7, 8, 9],
             succes: [],
         },
     ],
@@ -259,6 +272,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [1],
             succes: [6, 3],
+            exceptionalSucces: [4],
         },
         {
             id: 3,
@@ -278,7 +292,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [],
             succes: [6],
-            exceptionalPreds: [3, 5],
+            exceptionalPreds: [2, 3],
             exceptionalSucces: []
         },
         {
@@ -288,8 +302,6 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [1],
             succes: [],
-            exceptionalPreds: [],
-            exceptionalSucces: [4]
         },
         {
             id: 6,
