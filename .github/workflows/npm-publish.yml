@@ -333,16 +333,24 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Compute npm dist-tag
+        id: disttag
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "tag=beta" >> "$GITHUB_OUTPUT" ;;
+            *) echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - name: Publish platform C++ packages to npm
         run: |
           set -euo pipefail
           for tarball in .artifacts/cxx-tarballs/*.tgz; do
-            npm publish "$tarball" --access public
+            npm publish "$tarball" --access public --tag ${{ steps.disttag.outputs.tag }}
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish arkanalyzer main package to npm
-        run: npm publish ./arkanalyzer-*.tgz --access public
+        run: npm publish ./arkanalyzer-*.tgz --access public --tag ${{ steps.disttag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
