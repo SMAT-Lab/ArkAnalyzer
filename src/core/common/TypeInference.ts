@@ -23,6 +23,7 @@ import {
     AnnotationNamespaceType,
     AnyType,
     ArrayType,
+    ArrayUnclearVisited,
     BigIntType,
     BooleanType,
     ClassType,
@@ -38,6 +39,7 @@ import {
     TupleType,
     Type,
     UnclearReferenceType,
+    UnclearVisited,
     UndefinedType,
     UnionType,
     UnknownType,
@@ -91,9 +93,24 @@ import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry
 import { signatureEquals } from './SignatureCanonicalizer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
+const resolveUsesScratch: Value[] = [null as unknown as Value];
+const inferVisited = new ArrayUnclearVisited();
 // Builtin stub signatures carry FileSignature.DEFAULT whose fileName is UNKNOWN_FILE_NAME,
 // so a single entry covers both unresolved references and builtin stubs.
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME];
+
+const IS_ANY = (t: Type): boolean => t instanceof AnyType;
+const IS_UNCLEAR_REF_OR_GENERIC = (t: Type): boolean => t instanceof UnclearReferenceType || t instanceof GenericType;
+const CAN_RECURSE = (t: Type): boolean =>
+    t instanceof ClassType ||
+    t instanceof FunctionType ||
+    t instanceof UnionType ||
+    t instanceof IntersectionType ||
+    t instanceof TupleType ||
+    t instanceof ArrayType ||
+    t instanceof AliasType ||
+    t instanceof KeyofTypeExpr ||
+    t instanceof TypeQueryExpr;
 
 export class TypeInference {
     public static inferTypeInArkField(arkField: ArkField): void {
@@ -146,10 +163,22 @@ export class TypeInference {
      *        inside the method scope chain resolve deterministically (local-class lookup).
      * @returns
      */
-    public static inferUnclearedType(
+    public static inferUnclearedType(leftOpType: Type, declaringArkClass: ArkClass, visited?: UnclearVisited, arkMethod?: ArkMethod): Type | null | undefined {
+        if (visited !== undefined) {
+            return this.inferUnclearedTypeWithVisited(leftOpType, declaringArkClass, visited, arkMethod);
+        }
+        const prevBase = inferVisited.enter();
+        try {
+            return this.inferUnclearedTypeWithVisited(leftOpType, declaringArkClass, inferVisited, arkMethod);
+        } finally {
+            inferVisited.leave(prevBase);
+        }
+    }
+
+    private static inferUnclearedTypeWithVisited(
         leftOpType: Type,
         declaringArkClass: ArkClass,
-        visited: Set<Type> = new Set(),
+        visited: UnclearVisited,
         arkMethod?: ArkMethod
     ): Type | null | undefined {
         if (visited.has(leftOpType)) {
@@ -183,7 +212,7 @@ export class TypeInference {
         return TypeInference.inferUnclearComplexType(leftOpType, declaringArkClass, visited, arkMethod);
     }
 
-    private static inferUnclearComplexType(leftOpType: Type, declaringArkClass: ArkClass, visited: Set<Type>, arkMethod?: ArkMethod): Type | undefined {
+    private static inferUnclearComplexType(leftOpType: Type, declaringArkClass: ArkClass, visited: UnclearVisited, arkMethod?: ArkMethod): Type | undefined {
         const registry = SignatureCanonicalizerRegistry.getInstance();
         let type;
         if (leftOpType instanceof UnionType || leftOpType instanceof IntersectionType || leftOpType instanceof TupleType) {
@@ -244,7 +273,10 @@ export class TypeInference {
             if (value instanceof GlobalRef && !value.getRef()) {
                 const arkExport = ModelUtils.findGlobalRef(key, arkMethod);
                 if (arkExport instanceof Local) {
-                    arkExport.getUsedStmts().push(...value.getUsedStmts());
+                    const usedStmts = value.getUsedStmts();
+                    for (let i = 0; i < usedStmts.length; i++) {
+                        arkExport.addUsedStmt(usedStmts[i]);
+                    }
                     value.setRef(arkExport);
                 }
             }
@@ -266,7 +298,9 @@ export class TypeInference {
             this.resolveArkAssignStmt(stmt, arkMethod);
             this.resolveArkReturnStmt(stmt, arkMethod);
         } catch (e) {
-            logger.warn('stmt is not correct: ' + stmt.toString());
+            if (Logger.isWarnEnabled(logger)) {
+                logger.warn('stmt is not correct: ' + stmt.toString());
+            }
         }
     }
 
@@ -324,7 +358,12 @@ export class TypeInference {
      * infer type for fieldRefs in stmt.
      */
     private static resolveFieldRefsInStmt(stmt: Stmt, arkMethod: ArkMethod): void {
-        for (const use of stmt.getUses()) {
+        while (resolveUsesScratch.length > 1) {
+            resolveUsesScratch.pop();
+        }
+        stmt.getUses(resolveUsesScratch);
+        for (let i = 1; i < resolveUsesScratch.length; i++) {
+            const use = resolveUsesScratch[i];
             if (use instanceof AbstractRef) {
                 this.processRef(use, stmt, arkMethod);
             }
@@ -495,18 +534,49 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
-        if (visited.has(type)) {
-            return false;
-        } else {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited?: UnclearVisited): boolean {
+        if (visited !== undefined) {
+            if (visited.has(type)) {
+                return false;
+            }
             visited.add(type);
+        } else if (!CAN_RECURSE(type)) {
+            return check(type);
         }
         if (check(type)) {
             return true;
-        } else if (type instanceof ClassType || type instanceof FunctionType) {
-            return !!type.getRealGenericTypes()?.find(t => this.checkType(t, check, visited));
+        }
+        if (visited !== undefined) {
+            return this.checkTypeRecursion(type, check, visited);
+        }
+        const prevBase = inferVisited.enter();
+        inferVisited.add(type);
+        try {
+            return this.checkTypeRecursion(type, check, inferVisited);
+        } finally {
+            inferVisited.leave(prevBase);
+        }
+    }
+
+    private static checkTypeRecursion(type: Type, check: (t: Type) => boolean, visited: UnclearVisited): boolean {
+        if (type instanceof ClassType || type instanceof FunctionType) {
+            const realGenericTypes = type.getRealGenericTypes();
+            if (realGenericTypes !== undefined) {
+                for (let i = 0; i < realGenericTypes.length; i++) {
+                    if (this.checkType(realGenericTypes[i], check, visited)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.checkType(t, check, visited));
+            const types = type.getTypes();
+            for (let i = 0; i < types.length; i++) {
+                if (this.checkType(types[i], check, visited)) {
+                    return true;
+                }
+            }
+            return false;
         } else if (type instanceof ArrayType) {
             return this.checkType(type.getBaseType(), check, visited);
         } else if (type instanceof AliasType) {
@@ -699,15 +769,24 @@ export class TypeInference {
         if (!refName) {
             return null;
         }
+        if (refName.indexOf('.') < 0 && refName.indexOf(':') < 0 && refName.indexOf('-') < 0 && refName.indexOf('<') < 0) {
+            return this.inferFirstNameType(refName, false, arkClass, arkMethod);
+        }
         //split and iterate to infer each type. In C++, the operators used to access members also include :: and ->
-        const singleNames = refName.split(/\.|::|->/);
+        const singleNames = refName.indexOf(':') < 0 && refName.indexOf('-') < 0 ? refName.split('.') : refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
+            const singleName = singleNames[i];
             let genericName: string = EMPTY_STRING;
-            const name = singleNames[i].replace(/<(.+)>/, (match, group1) => {
-                genericName = group1;
-                return EMPTY_STRING;
-            });
+            let name: string;
+            const openIdx = singleName.indexOf('<');
+            const closeIdx = singleName.lastIndexOf('>');
+            if (openIdx >= 0 && closeIdx - openIdx >= 2) {
+                name = singleName.slice(0, openIdx) + singleName.slice(closeIdx + 1);
+                genericName = singleName.slice(openIdx + 1, closeIdx);
+            } else {
+                name = singleName;
+            }
             if (i === 0) {
                 type = this.inferFirstNameType(name, singleNames.length > 1, arkClass, arkMethod);
             } else if (type) {
@@ -788,7 +867,9 @@ export class TypeInference {
                 }
             }
         } else {
-            logger.warn('infer unclear reference type fail: ' + fieldName);
+            if (Logger.isWarnEnabled(logger)) {
+                logger.warn('infer unclear reference type fail: ' + fieldName);
+            }
         }
         return propertyAndType;
     }
@@ -998,10 +1079,11 @@ export class TypeInference {
         return TypeInference.parseArkExport2Type(importInfo.getLazyExportInfo()?.getArkExport());
     }
 
-    public static replaceTypeWithReal(type: Type, realTypes?: Type[], visited: Set<Type> = new Set()): Type {
-        if (visited.has(type)) {
-            return type;
-        } else {
+    public static replaceTypeWithReal(type: Type, realTypes?: Type[], visited?: Set<Type>): Type {
+        if (visited !== undefined) {
+            if (visited.has(type)) {
+                return type;
+            }
             visited.add(type);
         }
         if (type instanceof GenericType) {
@@ -1011,7 +1093,9 @@ export class TypeInference {
             const realType = realTypes?.[0];
             return realType ?? type;
         }
-        return this.replaceRecursiveType(type, visited, realTypes);
+        const childVisited = visited ?? new Set<Type>();
+        childVisited.add(type);
+        return this.replaceRecursiveType(type, childVisited, realTypes);
     }
 
     public static replaceRecursiveType(type: Type, visited: Set<Type>, realTypes?: Type[]): Type {
@@ -1127,7 +1211,7 @@ export class TypeInference {
         } else if (type instanceof AliasType) {
             return this.isTypeCanBeOverride(type.getOriginalType()) || !!type.getRealGenericTypes()?.find(r => this.isTypeCanBeOverride(r));
         } else if (type instanceof ArrayType) {
-            return TypeInference.checkType(type.getBaseType(), t => t instanceof UnclearReferenceType || t instanceof GenericType);
+            return TypeInference.checkType(type.getBaseType(), IS_UNCLEAR_REF_OR_GENERIC);
         }
         return false;
     }
@@ -1186,7 +1270,7 @@ export class TypeInference {
             return rightType;
         }
         let leftType = value.getType();
-        if (rightType && this.checkType(leftType, t => t instanceof AnyType)) {
+        if (rightType && this.checkType(leftType, IS_ANY)) {
             return rightType;
         }
         if (!rightType || this.isAnonType(rightType, scene.getProjectName())) {

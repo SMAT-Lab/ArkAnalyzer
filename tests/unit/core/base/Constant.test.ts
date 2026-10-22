@@ -14,23 +14,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-    BigIntConstant,
-    BooleanConstant,
-    Constant,
-    NullConstant,
-    NumberConstant,
-    StringConstant,
-    UndefinedConstant,
-} from '../../../../src/core/base/Constant';
-import {
-    BigIntType,
-    BooleanType,
-    NullType,
-    NumberType,
-    StringType,
-    UndefinedType,
-} from '../../../../src/core/base/Type';
+import { BigIntConstant, BooleanConstant, Constant, NullConstant, NumberConstant, StringConstant, UndefinedConstant } from '../../../../src/core/base/Constant';
+import { BigIntType, BooleanType, NullType, NumberType, StringType, UndefinedType } from '../../../../src/core/base/Type';
+import { Value } from '../../../../src/core/base/Value';
 
 describe('Constant (base)', () => {
     it('stores the value/type passed via the constructor', () => {
@@ -43,6 +29,14 @@ describe('Constant (base)', () => {
         const c = new Constant('1', NumberType.getInstance());
         expect(c.getUses()).toEqual([]);
         expect(Array.isArray(c.getUses())).toBe(true);
+    });
+
+    it('getUses() without acc returns a shared empty array and acc passes through', () => {
+        const c = new Constant('1', NumberType.getInstance());
+        expect(c.getUses().length).toBe(0);
+        expect(c.getUses()).toBe(c.getUses());
+        const acc: Value[] = [];
+        expect(c.getUses(acc)).toBe(acc);
     });
 
     it('toString quotes string-typed values with single quotes', () => {

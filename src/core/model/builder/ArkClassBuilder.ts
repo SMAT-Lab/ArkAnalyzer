@@ -234,7 +234,7 @@ function buildStruct2ArkClass(clsNode: ts.StructDeclaration, cls: ArkClass, sour
         });
     }
 
-    initHeritage(buildHeritageClauses(clsNode.heritageClauses), cls);
+    initHeritage(buildHeritageClauses(clsNode.heritageClauses, sourceFile), cls);
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
@@ -259,7 +259,7 @@ function buildClass2ArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression, 
         });
     }
 
-    initHeritage(buildHeritageClauses(clsNode.heritageClauses), cls);
+    initHeritage(buildHeritageClauses(clsNode.heritageClauses, sourceFile), cls);
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
@@ -301,7 +301,7 @@ function buildInterface2ArkClass(clsNode: ts.InterfaceDeclaration, cls: ArkClass
         });
     }
 
-    initHeritage(buildHeritageClauses(clsNode.heritageClauses), cls);
+    initHeritage(buildHeritageClauses(clsNode.heritageClauses, sourceFile), cls);
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
@@ -325,14 +325,29 @@ function buildEnum2ArkClass(clsNode: ts.EnumDeclaration, cls: ArkClass, sourceFi
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
+/**
+ * The type alias a type literal is the direct type of, recorded where the declaration is met.
+ * Signature building parses without parent pointers, so the relation cannot be read back off the
+ * tree there; the body build keeps its pointers and falls back to `parent` below.
+ */
+const typeAliasOfTypeLiteral = new WeakMap<ts.TypeLiteralNode, ts.TypeAliasDeclaration>();
+
+export function registerTypeAliasTypeLiteral(node: ts.TypeAliasDeclaration): void {
+    if (ts.isTypeLiteralNode(node.type)) {
+        typeAliasOfTypeLiteral.set(node.type, node);
+    }
+}
+
 function buildTypeLiteralNode2ArkClass(clsNode: ts.TypeLiteralNode, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
     const className = genClassName('', cls, declaringMethod);
     const classSignature = new ClassSignature(className, cls.getDeclaringFileID(), cls.getDeclaringArkNamespaceID());
     cls.setSignature(classSignature);
 
     cls.setCategory(ClassCategory.TYPE_LITERAL);
-    if (ts.isTypeAliasDeclaration(clsNode.parent) && clsNode.parent.typeParameters) {
-        buildTypeParameters(clsNode.parent.typeParameters, sourceFile, cls).forEach(typeParameter => {
+    const enclosingAlias =
+        typeAliasOfTypeLiteral.get(clsNode) ?? (clsNode.parent !== undefined && ts.isTypeAliasDeclaration(clsNode.parent) ? clsNode.parent : undefined);
+    if (enclosingAlias?.typeParameters) {
+        buildTypeParameters(enclosingAlias.typeParameters, sourceFile, cls).forEach(typeParameter => {
             cls.addGenericType(typeParameter);
         });
     }
@@ -446,7 +461,9 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
         } else if (ts.isSemicolonClassElement(member)) {
             logger.trace('Skip these members.');
         } else {
-            logger.warn(`Please contact developers to support new member in class: ${cls.getSignature().toString()}, member: ${cloneText(member.getText())}!`);
+            logger.warn(
+                `Please contact developers to support new member in class: ${cls.getSignature().toString()}, member: ${cloneText(member.getText(sourceFile))}!`
+            );
         }
     });
     if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {

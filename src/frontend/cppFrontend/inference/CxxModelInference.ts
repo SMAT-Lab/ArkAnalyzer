@@ -91,7 +91,7 @@ export class CxxStmtInference extends StmtInference {
         super(valueInferences);
     }
 
-    public typeSpread(stmt: Stmt, method: ArkMethod): Set<Stmt> {
+    public typeSpread(stmt: Stmt, method: ArkMethod): Stmt[] | undefined {
         if (stmt instanceof ArkAliasTypeDefineStmt && CxxTypeInference.isUnclearType(stmt.getAliasType().getOriginalType())) {
             const originalType = stmt.getAliasTypeExpr().getOriginalType();
             if (originalType) {

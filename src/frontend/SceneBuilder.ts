@@ -25,6 +25,7 @@ import { ExportInfo } from '../core/model/ArkExport';
 import { ModuleScene } from './ModuleScene';
 import { FrontendBuilder } from './FrontendBuilder';
 import { ArktsFrontend } from './arktsFrontend/ArktsFrontend';
+import { buildFileBodies } from './arktsFrontend/FileBodyRemount';
 import { ModuleUtils } from '../utils/ModuleUtils';
 import { fetchDependenciesFromFile, parseJsonText } from '../utils/json5parser';
 import { getAllFiles } from '../utils/getAllFiles';
@@ -278,6 +279,14 @@ export class SceneBuilder {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.scene.getFileLanguages()));
             arkFile.setScene(this.scene);
             FrontendBuilder.buildProjectFileIntoArkFile(this.scene, projectFile, arkFile);
+            if (arkFile.getLanguage() !== Language.CXX) {
+                // %dflt's builder is mounted on a node a re-parse cannot address by position, so
+                // build it now; the remaining builders are rebuilt per file in the body phase.
+                if (this.scene.getOptions().enableMethodBodyBuild ?? true) {
+                    FrontendBuilder.buildDefaultMethodBodies(arkFile);
+                }
+                FrontendBuilder.freeBodyBuildersInFile(arkFile);
+            }
             for (const [modulePath, moduleName] of this.scene.getModulePath2NameMap()) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
                     this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);
@@ -750,7 +759,11 @@ export class SceneBuilder {
 
     private buildAllMethodBody(): void {
         this.scene.setBuildStage(SceneBuildStage.CLASS_DONE);
+        // C++ has no re-parse body path and keeps building from the signature round's builders.
         this.forEachProjectMethod(method => {
+            if (method.getDeclaringArkFile().getLanguage() !== Language.CXX) {
+                return;
+            }
             try {
                 method.buildBody();
                 this.scene.getStageStatisticsCollector()?.recordMemoryCheckpoint();
@@ -760,6 +773,19 @@ export class SceneBuilder {
                 SceneBuilder.freeMethodBodyBuilder(method);
             }
         });
+        // ArkTS/TS: rebuild each file's builders from a fresh parse so no file's AST outlives its
+        // own body build (the signature round released every builder it mounted).
+        for (const arkFile of this.scene.getFiles()) {
+            if (!arkFile.isProjectFile() || arkFile.getLanguage() === Language.CXX) {
+                continue;
+            }
+            if (!this.scene.getOptions().enableOhModulesBody && arkFile.getName().includes(OH_MODULES)) {
+                // OH module files contribute only their %dflt body, built with the signatures.
+                continue;
+            }
+            buildFileBodies(arkFile);
+            this.scene.getStageStatisticsCollector()?.recordMemoryCheckpoint();
+        }
 
         ModelUtils.dispose();
         this.scene.setBuildStage(SceneBuildStage.METHOD_DONE);

@@ -17,7 +17,7 @@ import { StmtUseReplacer } from '../common/StmtUseReplacer';
 import { Cfg } from '../graph/Cfg';
 import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkConditionExpr } from './Expr';
 import { AbstractFieldRef, ArkArrayRef } from './Ref';
-import { Value } from './Value';
+import { EMPTY_USES, Value } from './Value';
 import { FullPosition, LineColPosition } from './Position';
 import { ArkMetadata, ArkMetadataKind, ArkMetadataType } from '../model/ArkMetadata';
 import { StmtDefReplacer } from '../common/StmtDefReplacer';
@@ -25,6 +25,9 @@ import { IRUtils } from '../common/IRUtils';
 import { AliasType, ArrayType, IntersectionType, TupleType, Type, UnionType } from './Type';
 import { ModifierType } from '../model/ArkBaseModel';
 import { AbstractTypeExpr } from './TypeExpr';
+
+const usesScratch: Value[] = [null as unknown as Value];
+const POSITION_HOLE = -1;
 
 /**
  * @category core/base/stmt
@@ -37,8 +40,8 @@ export abstract class Stmt {
      *  Undefined when this statement is automatically generated during IR construction. */
     protected originFullPosition?: FullPosition;
     protected cfg!: Cfg;
-    protected operandOriginalPositions?: FullPosition[]; // operandOriginalPositions correspond with
-    // def and uses one by one
+    protected operandPositionsPacked?: number[]; // interleaved [first, last] packed LineCol words,
+    // corresponding with def and uses one by one
     metadata?: ArkMetadata;
 
     public getMetadata(kind: ArkMetadataKind): ArkMetadataType | undefined {
@@ -53,8 +56,8 @@ export abstract class Stmt {
     }
 
     /** Return a list of values which are uesd in this statement */
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public replaceUse(oldUse: Value, newUse: Value): void {
@@ -87,13 +90,13 @@ export abstract class Stmt {
         stmtDefReplacer.caseStmt(this);
     }
 
-    public getDefAndUses(): Value[] {
-        const defAndUses: Value[] = [];
+    public getDefAndUses(acc?: Value[]): Value[] {
+        const defAndUses = acc ?? [];
         const def = this.getDef();
         if (def) {
             defAndUses.push(def);
         }
-        defAndUses.push(...this.getUses());
+        this.getUses(defAndUses);
         return defAndUses;
     }
 
@@ -138,7 +141,12 @@ export abstract class Stmt {
     }
 
     public containsInvokeExpr(): boolean {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractInvokeExpr) {
                 return true;
             }
@@ -158,7 +166,12 @@ export abstract class Stmt {
      ```
      */
     public getInvokeExpr(): AbstractInvokeExpr | undefined {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractInvokeExpr) {
                 return use as AbstractInvokeExpr;
             }
@@ -179,8 +192,10 @@ export abstract class Stmt {
      ```
      */
     public getExprs(): AbstractExpr[] {
-        let exprs: AbstractExpr[] = [];
-        for (const use of this.getUses()) {
+        const uses = this.getUses();
+        const exprs: AbstractExpr[] = [];
+        for (let i = 0; i < uses.length; i++) {
+            const use = uses[i];
             if (use instanceof AbstractExpr) {
                 exprs.push(use);
             }
@@ -200,7 +215,12 @@ export abstract class Stmt {
     }
 
     public containsArrayRef(): boolean {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof ArkArrayRef) {
                 return true;
             }
@@ -212,7 +232,12 @@ export abstract class Stmt {
     }
 
     public getArrayRef(): ArkArrayRef | undefined {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof ArkArrayRef) {
                 return use as ArkArrayRef;
             }
@@ -226,7 +251,12 @@ export abstract class Stmt {
     }
 
     public containsFieldRef(): boolean {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractFieldRef) {
                 return true;
             }
@@ -239,7 +269,12 @@ export abstract class Stmt {
     }
 
     public getFieldRef(): AbstractFieldRef | undefined {
-        for (const use of this.getUses()) {
+        while (usesScratch.length > 1) {
+            usesScratch.pop();
+        }
+        this.getUses(usesScratch);
+        for (let usesIdx = 1; usesIdx < usesScratch.length; usesIdx++) {
+            const use = usesScratch[usesIdx];
             if (use instanceof AbstractFieldRef) {
                 return use as AbstractFieldRef;
             }
@@ -317,9 +352,7 @@ export abstract class Stmt {
      * @deprecated Source text is now stored on ArkFile only. This method has no effect.
      * @param originalText - The source text (ignored).
      */
-    public setOriginalText(originalText: string): void {
-        
-    }
+    public setOriginalText(originalText: string): void {}
     /**
      * Returns the source text of this statement extracted from the declaring ArkFile
      * using the statement's origin position. Implements lazy loading with caching.
@@ -371,11 +404,36 @@ export abstract class Stmt {
     }
 
     public setOperandOriginalPositions(operandOriginalPositions: FullPosition[]): void {
-        this.operandOriginalPositions = operandOriginalPositions;
+        const packed = new Array<number>(operandOriginalPositions.length * 2);
+        for (let i = 0; i < operandOriginalPositions.length; i++) {
+            const position = operandOriginalPositions[i];
+            if (position === undefined || position === null) {
+                packed[2 * i] = POSITION_HOLE;
+                packed[2 * i + 1] = POSITION_HOLE;
+            } else {
+                packed[2 * i] = position.getFirstPacked();
+                packed[2 * i + 1] = position.getLastPacked();
+            }
+        }
+        this.operandPositionsPacked = packed;
     }
 
     public getOperandOriginalPositions(): FullPosition[] | undefined {
-        return this.operandOriginalPositions;
+        const packed = this.operandPositionsPacked;
+        if (packed === undefined) {
+            return undefined;
+        }
+        const positions = new Array<FullPosition>(packed.length >> 1);
+        for (let i = 0; i < positions.length; i++) {
+            const first = packed[2 * i];
+            positions[i] = first < 0 ? (undefined as unknown as FullPosition) : FullPosition.fromPacked(first, packed[2 * i + 1]);
+        }
+        return positions;
+    }
+
+    /** @internal Compact interleaved [first, last] storage; splice in pairs. */
+    public getOperandPositionsPacked(): number[] | undefined {
+        return this.operandPositionsPacked;
     }
 
     public getOperandOriginalPosition(indexOrOperand: number | Value): FullPosition | null {
@@ -386,10 +444,15 @@ export abstract class Stmt {
             index = indexOrOperand;
         }
 
-        if (!this.operandOriginalPositions || index < 0 || index > this.operandOriginalPositions.length) {
+        const packed = this.operandPositionsPacked;
+        if (!packed || index < 0 || index > packed.length >> 1) {
             return null;
         }
-        return this.operandOriginalPositions[index];
+        if (index === packed.length >> 1) {
+            return undefined as unknown as FullPosition;
+        }
+        const first = packed[2 * index];
+        return first < 0 ? (undefined as unknown as FullPosition) : FullPosition.fromPacked(first, packed[2 * index + 1]);
     }
 }
 
@@ -446,12 +509,11 @@ export class ArkAssignStmt extends Stmt {
         return this.leftOp;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(...this.leftOp.getUses());
-        uses.push(this.rightOp);
-        uses.push(...this.rightOp.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        this.leftOp.getUses(acc);
+        acc.push(this.rightOp);
+        this.rightOp.getUses(acc);
+        return acc;
     }
 }
 
@@ -476,11 +538,10 @@ export class ArkInvokeStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.invokeExpr);
-        uses.push(...this.invokeExpr.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.invokeExpr);
+        this.invokeExpr.getUses(acc);
+        return acc;
     }
 }
 
@@ -526,11 +587,10 @@ export class ArkIfStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.conditionExpr);
-        uses.push(...this.conditionExpr.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.conditionExpr);
+        this.conditionExpr.getUses(acc);
+        return acc;
     }
 }
 
@@ -559,11 +619,10 @@ export class ArkReturnStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 }
 
@@ -603,11 +662,10 @@ export class ArkThrowStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
-        return uses;
+    public getUses(acc: Value[] = []): Value[] {
+        acc.push(this.op);
+        this.op.getUses(acc);
+        return acc;
     }
 }
 
@@ -657,11 +715,12 @@ export class ArkAliasTypeDefineStmt extends Stmt {
         return str;
     }
 
-    public getUses(): Value[] {
-        const values: Value[] = [];
-        this.getTypeExprs().forEach(e => e.getUses().forEach(use => values.push(use)));
-        values.push(this.aliasTypeExpr);
-        return values;
+    public getUses(acc: Value[] = []): Value[] {
+        for (const e of this.getTypeExprs()) {
+            e.getUses(acc);
+        }
+        acc.push(this.aliasTypeExpr);
+        return acc;
     }
 
     public getTypeExprs(): AbstractTypeExpr[] {

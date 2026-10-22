@@ -33,12 +33,15 @@ export enum LOG_MODULE_TYPE {
 }
 
 export default class ConsoleLogger {
+    private static readonly levelGate = new Map<string, { debug: boolean; warn: boolean }>();
+
     public static configure(
         logFilePath: string,
         arkanalyzer_level: LOG_LEVEL = LOG_LEVEL.ERROR,
         tool_level: LOG_LEVEL = LOG_LEVEL.INFO,
         use_console: boolean = false
     ): void {
+        ConsoleLogger.levelGate.clear();
         let appendersTypes: string[] = [];
         if (logFilePath) {
             appendersTypes.push('file');
@@ -98,5 +101,22 @@ export default class ConsoleLogger {
         logger.addContext('module', log_type);
         logger.addContext('tag', tag);
         return logger;
+    }
+
+    public static isDebugEnabled(logger: Logger): boolean {
+        return ConsoleLogger.gate(logger).debug;
+    }
+
+    public static isWarnEnabled(logger: Logger): boolean {
+        return ConsoleLogger.gate(logger).warn;
+    }
+
+    private static gate(logger: Logger): { debug: boolean; warn: boolean } {
+        let gate = ConsoleLogger.levelGate.get(logger.category);
+        if (gate === undefined) {
+            gate = { debug: logger.isDebugEnabled(), warn: logger.isWarnEnabled() };
+            ConsoleLogger.levelGate.set(logger.category, gate);
+        }
+        return gate;
     }
 }

@@ -243,15 +243,24 @@ export class TypeInference {
             signatures.forEach(s => this.inferSignatureReturnType(s, arkMethod));
             return;
         }
-        body.getUsedGlobals()?.forEach((value, key) => {
-            if (value instanceof GlobalRef && !value.getRef()) {
-                const arkExport = ModelUtils.findGlobalRef(key, arkMethod);
-                if (arkExport instanceof Local) {
-                    arkExport.getUsedStmts().push(...value.getUsedStmts());
-                    value.setRef(arkExport);
+        const usedGlobals = body.getUsedGlobals();
+        if (usedGlobals !== undefined) {
+            for (const key of usedGlobals.keys()) {
+                const value = usedGlobals.get(key);
+                if (!(value instanceof GlobalRef) || value.getRef()) {
+                    continue;
                 }
+                const arkExport = ModelUtils.findGlobalRef(key, arkMethod);
+                if (!(arkExport instanceof Local)) {
+                    continue;
+                }
+                const usedStmts = value.getUsedStmts();
+                for (let i = 0; i < usedStmts.length; i++) {
+                    arkExport.addUsedStmt(usedStmts[i]);
+                }
+                value.setRef(arkExport);
             }
-        });
+        }
         const cfg = body.getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {

@@ -23,7 +23,7 @@ import { ClassSignature, FieldSignature, FileSignature, MethodSignature, Namespa
 import { Local } from '../base/Local';
 import { ArkExport, ExportType } from './ArkExport';
 import { TypeInference } from '../common/TypeInference';
-import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../common/Const';
+import { ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME, NAME_DELIMITER, NAME_PREFIX } from '../common/Const';
 import { FullPosition, INVALID_LINE } from '../base/Position';
 import { ArkBaseModel, CLASS_SPECIFIC_TAG_SHIFT } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
@@ -32,6 +32,38 @@ import { SignatureCanonicalizerRegistry } from '../common/SignatureCanonicalizer
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
+const forEachMethodSeenScratch: ArkMethod[] = [];
+let forEachMethodSeenTop = 0;
+const forEachMethodOverflow: Array<Set<ArkMethod> | undefined> = [];
+let forEachMethodDepth = 0;
+const SEEN_LINEAR_LIMIT = 32;
+
+function markSeen(base: number, depth: number, method: ArkMethod): boolean {
+    const overflow = forEachMethodOverflow[depth];
+    if (overflow !== undefined) {
+        if (overflow.has(method)) {
+            return true;
+        }
+        overflow.add(method);
+        return false;
+    }
+    for (let i = base; i < forEachMethodSeenTop; i++) {
+        if (forEachMethodSeenScratch[i] === method) {
+            return true;
+        }
+    }
+    if (forEachMethodSeenTop - base >= SEEN_LINEAR_LIMIT) {
+        const promoted = new Set<ArkMethod>();
+        for (let i = base; i < forEachMethodSeenTop; i++) {
+            promoted.add(forEachMethodSeenScratch[i]);
+        }
+        promoted.add(method);
+        forEachMethodOverflow[depth] = promoted;
+        return false;
+    }
+    forEachMethodSeenScratch[forEachMethodSeenTop++] = method;
+    return false;
+}
 
 export enum ClassCategory {
     CLASS = 0,
@@ -548,7 +580,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getFieldWithName(fieldName: string): ArkField | null {
-        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), false));
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(FieldSignature.probe(fieldName, this.classSigID, UnknownType.getInstance(), false));
         if (id !== -1) {
             return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
         }
@@ -557,7 +589,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public getStaticFieldWithName(fieldName: string): ArkField | null {
         // 同 getFieldWithName，staticFlag = true。
-        const id = this.registry.fieldSigCanonicalizer.getExistingId(new FieldSignature(fieldName, this.classSigID, UnknownType.getInstance(), true));
+        const id = this.registry.fieldSigCanonicalizer.getExistingId(FieldSignature.probe(fieldName, this.classSigID, UnknownType.getInstance(), true));
         if (id !== -1) {
             return this.registry.fieldSigCanonicalizer.getModel(id) ?? null;
         }
@@ -668,6 +700,119 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return result;
     }
 
+    /**
+     * @internal Iterates the class methods in {@link getMethods} order without building the
+     * result array. Dedup uses a module-level scratch segment with base/top discipline instead
+     * of a per-call Set: each invocation appends its yielded methods above the current top and
+     * pops (nulling) its segment on exit, which keeps the walk reentrant - a callback may call
+     * forEachMethod again without disturbing the outer dedup - and allocation-free per call.
+     * Return false from the callback to stop early. Use getMethods when the caller needs the
+     * array itself (e.g. to sort it).
+     */
+    public forEachMethod(callback: (method: ArkMethod) => boolean, generated?: boolean): void {
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        const base = forEachMethodSeenTop;
+        const depth = forEachMethodDepth++;
+        try {
+            let earlyExit = false;
+            const index = this.methodNameIndex;
+            if (index !== undefined) {
+                for (const entry of index.values()) {
+                    for (let i = 0; i < entry.length; i++) {
+                        const m = canonicalizer.getModel(entry[i]);
+                        if (m !== undefined && (generated || !m.isGenerated()) && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                earlyExit = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (earlyExit) {
+                        break;
+                    }
+                }
+            }
+            const staticIndex = this.staticMethodNameIndex;
+            if (!earlyExit && staticIndex !== undefined) {
+                for (const entry of staticIndex.values()) {
+                    for (let i = 0; i < entry.length; i++) {
+                        const m = canonicalizer.getModel(entry[i]);
+                        if (m !== undefined && (generated || !m.isGenerated()) && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                earlyExit = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (earlyExit) {
+                        break;
+                    }
+                }
+            }
+        } finally {
+            forEachMethodDepth = depth;
+            if (forEachMethodOverflow[depth] !== undefined) {
+                forEachMethodOverflow[depth] = undefined;
+            }
+            const nullMethod = null as unknown as ArkMethod;
+            for (let i = base; i < forEachMethodSeenTop; i++) {
+                forEachMethodSeenScratch[i] = nullMethod;
+            }
+            forEachMethodSeenTop = base;
+        }
+    }
+
+    /**
+     * @internal Iterates the methods whose names mark them as nested inside `outerMethodName`
+     * (NAME_PREFIX ... NAME_DELIMITER + outerMethodName), in the same order and with the same
+     * dedup as an equivalent filtered {@link forEachMethod} walk, but scanning the name-index
+     * keys as strings and resolving models only for hits - no per-call Set and no O(class)
+     * model resolution, which mattered for large SDK classes walked once per outer method.
+     */
+    public forEachNestedMethodOf(outerMethodName: string, callback: (method: ArkMethod) => boolean): void {
+        const suffix = NAME_DELIMITER + outerMethodName;
+        const canonicalizer = this.registry.methodSigCanonicalizer;
+        const base = forEachMethodSeenTop;
+        const depth = forEachMethodDepth++;
+        try {
+            let stop = false;
+            for (let pass = 0; pass < 2 && !stop; pass++) {
+                const index = pass === 0 ? this.methodNameIndex : this.staticMethodNameIndex;
+                if (index === undefined) {
+                    continue;
+                }
+                for (const name of index.keys()) {
+                    if (!name.startsWith(NAME_PREFIX) || !name.endsWith(suffix)) {
+                        continue;
+                    }
+                    const ids = index.get(name)!;
+                    for (let i = 0; i < ids.length; i++) {
+                        const m = canonicalizer.getModel(ids[i]);
+                        if (m !== undefined && !m.isGenerated() && !markSeen(base, depth, m)) {
+                            if (!callback(m)) {
+                                stop = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (stop) {
+                        break;
+                    }
+                }
+            }
+        } finally {
+            forEachMethodDepth = depth;
+            if (forEachMethodOverflow[depth] !== undefined) {
+                forEachMethodOverflow[depth] = undefined;
+            }
+            const nullMethod = null as unknown as ArkMethod;
+            for (let i = base; i < forEachMethodSeenTop; i++) {
+                forEachMethodSeenScratch[i] = nullMethod;
+            }
+            forEachMethodSeenTop = base;
+        }
+    }
+
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         const canonicalizer = this.registry.methodSigCanonicalizer;
         const id = canonicalizer.getExistingId(methodSignature);
@@ -722,31 +867,59 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameMethods = this.getMethodsWithName(methodName);
-        if (sameNameMethods.length === 0) {
+        const ids = this.methodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return null;
         }
-        if (sameNameMethods.length > 1) {
+        const reg = this.registry;
+        let first: ArkMethod | null = null;
+        let resolved = 0;
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                resolved++;
+                if (first === null) {
+                    first = m;
+                } else {
+                    break;
+                }
+            }
+        }
+        if (resolved > 1) {
             logger.warn(
                 "There are multiple non-static methods with the same name, and the interface 'getMethodWithName' only returns one of them. " +
                     "If you want to obtain all non-static methods with the same name, please use the interface 'getMethodsWithName'."
             );
         }
-        return sameNameMethods[0];
+        return first;
     }
 
     public getStaticMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameStaticMethods = this.getStaticMethodsWithName(methodName);
-        if (sameNameStaticMethods.length === 0) {
+        const ids = this.staticMethodNameIndex?.get(methodName);
+        if (ids === undefined || ids.length === 0) {
             return null;
         }
-        if (sameNameStaticMethods.length > 1) {
+        const reg = this.registry;
+        let first: ArkMethod | null = null;
+        let resolved = 0;
+        for (let i = 0; i < ids.length; i++) {
+            const m = reg.methodSigCanonicalizer.getModel(ids[i]);
+            if (m) {
+                resolved++;
+                if (first === null) {
+                    first = m;
+                } else {
+                    break;
+                }
+            }
+        }
+        if (resolved > 1) {
             logger.warn(
                 "There are multiple static methods with the same name, and the interface 'getStaticMethodWithName' only returns one of them. " +
                     "If you want to obtain all static methods with the same name, please use the interface 'getStaticMethodsWithName'."
             );
         }
-        return sameNameStaticMethods[0];
+        return first;
     }
 
     /**

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { VisitedSegment } from '../../utils/VisitedSegment';
 import { Local } from '../base/Local';
 import { ArkClass } from '../model/ArkClass';
 import { ArkFile, Language } from '../model/ArkFile';
@@ -252,7 +253,10 @@ export class ModelUtils {
     public static getAllMethodsInFile(arkFile: ArkFile): ArkMethod[] {
         const allMethods: ArkMethod[] = [];
         this.getAllClassesInFile(arkFile).forEach(cls => {
-            allMethods.push(...cls.getMethods());
+            cls.forEachMethod(method => {
+                allMethods.push(method);
+                return true;
+            });
         });
         return allMethods;
     }
@@ -381,9 +385,11 @@ export class ModelUtils {
         if (name === THIS_NAME || name.startsWith(TEMP_LOCAL_PREFIX)) {
             return null;
         }
-        const parameter = arkMethod.getParameters().find(p => p.getName() === name);
-        if (parameter) {
-            return new Local(parameter.getName(), parameter.getType());
+        const parameters = arkMethod.getParameters();
+        for (let i = 0; i < parameters.length; i++) {
+            if (parameters[i].getName() === name) {
+                return new Local(parameters[i].getName(), parameters[i].getType());
+            }
         }
         if (times > 0) {
             const declaredLocal = arkMethod.getBody()?.getLocals().get(name);
@@ -408,6 +414,43 @@ export class ModelUtils {
             return this.findDeclaredLocal(local, invokeMethod, ++times);
         }
         return null;
+    }
+
+    /**
+     * @internal Same walk as {@link findDeclaredLocal} for callers that only read the resolved
+     * type: matches `findDeclaredLocal(...)?.getType()` exactly (undefined when not found) but
+     * neither wraps the name into a throwaway Local nor allocates a parameter Local on hits.
+     */
+    public static findDeclaredLocalType(name: string, arkMethod: ArkMethod, times: number = 0): Type | undefined {
+        if (name === THIS_NAME || name.startsWith(TEMP_LOCAL_PREFIX)) {
+            return undefined;
+        }
+        const parameters = arkMethod.getParameters();
+        for (let i = 0; i < parameters.length; i++) {
+            if (parameters[i].getName() === name) {
+                return parameters[i].getType();
+            }
+        }
+        if (times > 0) {
+            const declaredLocal = arkMethod.getBody()?.getLocals().get(name);
+            if (
+                declaredLocal &&
+                declaredLocal.getDeclaringStmt() instanceof ArkAssignStmt &&
+                !((declaredLocal.getDeclaringStmt() as ArkAssignStmt).getRightOp() instanceof ClosureFieldRef)
+            ) {
+                return declaredLocal.getType();
+            }
+        }
+        let parentName = arkMethod.getName();
+        if (parentName === DEFAULT_ARK_METHOD_NAME) {
+            return undefined;
+        }
+        let invokeMethod: ArkMethod | null | undefined = arkMethod.getOuterMethod();
+        if (!invokeMethod) {
+            const symbol = this.findSymbolInFileWithName(name, arkMethod.getDeclaringArkClass(), true);
+            return symbol instanceof Local ? symbol.getType() : undefined;
+        }
+        return this.findDeclaredLocalType(name, invokeMethod, times + 1);
     }
 
     /**
@@ -647,7 +690,13 @@ export class ModelUtils {
         if (noMatchedField) {
             return false;
         }
-        const mustMethods = paramClass.getMethods().filter(f => !f.isStatic() && !f.getQuestionToken());
+        const mustMethods: ArkMethod[] = [];
+        paramClass.forEachMethod(f => {
+            if (!f.isStatic() && !f.getQuestionToken()) {
+                mustMethods.push(f);
+            }
+            return true;
+        });
         const noMatchedMethod = mustMethods.find(f => !argClass.getMethodWithName(f.getName()));
         if (noMatchedMethod) {
             return false;
@@ -657,7 +706,14 @@ export class ModelUtils {
             if (excessField) {
                 return false;
             }
-            const excessMethod = argClass.getMethods().find(f => !paramClass.getMethodWithName(f.getName()));
+            let excessMethod: ArkMethod | undefined;
+            argClass.forEachMethod(f => {
+                if (!paramClass.getMethodWithName(f.getName())) {
+                    excessMethod = f;
+                    return false;
+                }
+                return true;
+            });
             if (excessMethod) {
                 return false;
             }
@@ -688,13 +744,55 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
  * import xx from '@ohos.xx'
  * @param im importInfo or exportInfo
  */
+/**
+ * Resolutions of a from-info's target file, memoized by the from-info object. Hits live here, misses
+ * in {@link unresolvedArkFile} - each miss carrying the table state it was decided under.
+ */
+const resolvedArkFile = new WeakMap<FromInfo, ArkFile>();
+
+/**
+ * Monotonic sum of the registration tables this resolution reads: registered file signatures, the SDK
+ * global map, the module map and the SDK import map. A miss is stored with the sum it saw and
+ * re-resolved once the sum changes, so a "no file" answer given before a later registration - the
+ * window the resolution contract cares about - answers again afterwards. Every part only grows, so
+ * equal sums mean equal parts and a change in one of them cannot hide behind another.
+ */
+function resolutionTableState(): number {
+    const registry = SignatureCanonicalizerRegistry.getInstance();
+    return registry.fileSigCanonicalizer.size() + registry.sdkGlobalMap.size + ModuleUtils.MODULES.size + SdkUtils.getSdkImportMapSize();
+}
+
+/** From-infos whose resolution found no file, with the {@link resolutionTableState} they saw. */
+const unresolvedArkFile = new WeakMap<FromInfo, number>();
+
 export function getArkFile(im: FromInfo): ArkFile | null {
+    const memoized = resolvedArkFile.get(im);
+    if (memoized !== undefined) {
+        return memoized;
+    }
+    const missedAt = unresolvedArkFile.get(im);
+    if (missedAt !== undefined && missedAt === resolutionTableState()) {
+        return null;
+    }
+    const tableState = resolutionTableState();
+    const resolved = resolveArkFile(im);
+    if (resolved !== null) {
+        resolvedArkFile.set(im, resolved);
+    } else {
+        unresolvedArkFile.set(im, tableState);
+    }
+    return resolved;
+}
+
+const RELATIVE_PATH_PATTERN = /^\.\.?\/|^\.$/;
+
+function resolveArkFile(im: FromInfo): ArkFile | null {
     // TODO: 这个方法的性能很差，需要结合id化后的架构进行重构。
     const from = im.getFrom();
     if (!from) {
         return null;
     }
-    if (/^\.\.?\/|^\.$/.test(from)) {
+    if (RELATIVE_PATH_PATTERN.test(from)) {
         //relative path
         return getArkFileFromScene(im, path.resolve(path.dirname(im.getDeclaringArkFile().getFilePath()), from));
     } else if (from.startsWith(ETS_CODE_PATH)) {
@@ -715,10 +813,13 @@ export function getArkFile(im: FromInfo): ArkFile | null {
         return module.getDeclaringArkFile();
     }
     // custom sdk
-    let sdks = Array.from(scene.getProjectSdkMap().values());
-    const len = sdks.length > DEFAULT_SDK_NUMS ? DEFAULT_SDK_NUMS : sdks.length - 1;
-    sdks = sdks.slice(len);
-    for (const sdk of sdks) {
+    const sdkMap = scene.getProjectSdkMap();
+    const skip = sdkMap.size > DEFAULT_SDK_NUMS ? DEFAULT_SDK_NUMS : sdkMap.size - 1;
+    let seen = 0;
+    for (const sdk of sdkMap.values()) {
+        if (seen++ < skip) {
+            continue;
+        }
         const arkFile = getArkFileFormSDK(sdk, from, scene);
         if (arkFile) {
             return arkFile;
@@ -732,10 +833,25 @@ export function getArkFile(im: FromInfo): ArkFile | null {
  * @param fromInfo importInfo or exportInfo
  * @param visited
  */
-export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | null {
+export function findExportInfo(fromInfo: FromInfo, visited?: VisitedSegment<ArkFile>): ExportInfo | null {
+    if (visited !== undefined) {
+        return findExportInfoVisited(fromInfo, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(fromInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findExportInfoVisited(fromInfo, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findExportInfoVisited(fromInfo: FromInfo, visited: VisitedSegment<ArkFile>): ExportInfo | null {
     let file = getArkFile(fromInfo);
     if (!file) {
-        logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+        if (Logger.isWarnEnabled(logger)) {
+            logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+        }
         return null;
     }
     if (fromInfo.getOriginName() === ALL) {
@@ -760,7 +876,23 @@ export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new S
     return exportInfo;
 }
 
-export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<ArkFile> = new Set()): ArkExport | null {
+export function findArkExport(exportInfo: ExportInfo | undefined, visited?: VisitedSegment<ArkFile>): ArkExport | null {
+    if (visited !== undefined && !visited.isEmpty()) {
+        return findArkExportVisited(exportInfo, visited);
+    }
+    if (!exportInfo) {
+        return null;
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(exportInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findArkExportVisited(exportInfo, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findArkExportVisited(exportInfo: ExportInfo | undefined, visited: VisitedSegment<ArkFile>): ArkExport | null {
     if (!exportInfo) {
         return null;
     }
@@ -769,7 +901,6 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
         return arkExport;
     }
     const declaringFile = exportInfo.getDeclaringArkFile();
-    const effectiveVisited = visited.size > 0 ? visited : new Set([declaringFile]);
     if (!exportInfo.getFrom()) {
         const name = exportInfo.getOriginName();
         const defaultClass = exportInfo.getDeclaringArkNamespace()?.getDefaultClass() ?? declaringFile.getDefaultClass();
@@ -778,10 +909,10 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
         } else if (exportInfo.getExportClauseType() === ExportType.TYPE) {
             arkExport = defaultClass.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name);
         } else {
-            arkExport = findArkExportInFile(name, declaringFile, effectiveVisited);
+            arkExport = findArkExportInFile(name, declaringFile, visited);
         }
     } else if (exportInfo.getExportClauseType() === ExportType.UNKNOWN) {
-        const result = findExportInfo(exportInfo, effectiveVisited);
+        const result = findExportInfo(exportInfo, visited);
         if (result) {
             arkExport = result.getArkExport() || null;
         }
@@ -789,13 +920,28 @@ export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<A
     if (arkExport) {
         exportInfo.setArkExport(arkExport);
     } else {
-        const file = exportInfo.getDeclaringArkFile().getFileSignature().toString();
-        logger.warn(`${exportInfo.getExportClauseName()} get arkExport fail from ${exportInfo.getFrom()} at ${file}`);
+        if (Logger.isWarnEnabled(logger)) {
+            const file = exportInfo.getDeclaringArkFile().getFileSignature().toString();
+            logger.warn(`${exportInfo.getExportClauseName()} get arkExport fail from ${exportInfo.getFrom()} at ${file}`);
+        }
     }
     return arkExport || null;
 }
 
-export function findArkExportInFile(name: string, declaringArkFile: ArkFile, visited: Set<ArkFile> = new Set([declaringArkFile])): ArkExport | null {
+export function findArkExportInFile(name: string, declaringArkFile: ArkFile, visited?: VisitedSegment<ArkFile>): ArkExport | null {
+    if (visited !== undefined) {
+        return findArkExportInFileVisited(name, declaringArkFile, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(declaringArkFile);
+    try {
+        return findArkExportInFileVisited(name, declaringArkFile, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findArkExportInFileVisited(name: string, declaringArkFile: ArkFile, visited: VisitedSegment<ArkFile>): ArkExport | null {
     let arkExport: ArkExport | undefined | null =
         declaringArkFile.getNamespaceWithName(name) ??
         declaringArkFile.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name) ??
@@ -815,49 +961,101 @@ export function findArkExportInFile(name: string, declaringArkFile: ArkFile, vis
     return arkExport || null;
 }
 
-function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
-    const realPath = ModuleUtils.getFileRealPath(originPath);
-    const fileName = path.relative(im.getDeclaringArkFile().getProjectDir(), realPath);
-    const fromSignature = new FileSignature(im.getDeclaringArkFile().getProjectName(), fileName);
-    const scene = im.getDeclaringArkFile().getScene();
-    return scene.getFile(fromSignature);
+/**
+ * Scene-lifetime memo of resolved target files, keyed by declaring project dir + origin path.
+ *
+ * The resolution is a pure function of those two inputs within a scene: the file table is fixed
+ * once the shells exist (project files and SDK files are registered before signature loading), so
+ * the memo caches misses as well as hits - a specifier that names no file names none for the rest
+ * of the build. Keyed by scene so a disposed scene's entries die with it.
+ */
+const resolvedSceneFiles = new WeakMap<object, Map<string, ArkFile | null>>();
+
+const fileVisitedSeg = new VisitedSegment<ArkFile>();
+
+function sceneFileMemo(scene: object, store: WeakMap<object, Map<string, ArkFile | null>> = resolvedSceneFiles): Map<string, ArkFile | null> {
+    let memo = store.get(scene);
+    if (memo === undefined) {
+        memo = new Map<string, ArkFile | null>();
+        store.set(scene, memo);
+    }
+    return memo;
 }
+
+function getArkFileFromScene(im: FromInfo, originPath: string): ArkFile | null {
+    const declaringFile = im.getDeclaringArkFile();
+    const scene = declaringFile.getScene();
+    const memo = sceneFileMemo(scene);
+    const key = declaringFile.getProjectDir() + '\u0000' + originPath;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
+    }
+    const realPath = ModuleUtils.getFileRealPath(originPath);
+    const fileName = path.relative(declaringFile.getProjectDir(), realPath);
+    const fromSignature = new FileSignature(declaringFile.getProjectName(), fileName);
+    const file = scene.getFile(fromSignature) ?? null;
+    memo.set(key, file);
+    return file;
+}
+
+/** Same scene-lifetime memo, for the custom-SDK lookup: its inputs are (sdk, from) and nothing else. */
+const resolvedSdkFiles = new WeakMap<object, Map<string, ArkFile | null>>();
 
 function getArkFileFormSDK(sdk: Sdk, from: string, scene: Scene): ArkFile | null {
-    const realPath = ModuleUtils.getFileRealPath(path.resolve(sdk.path, from));
-    if (!realPath) {
-        return null;
+    const memo = sceneFileMemo(scene, resolvedSdkFiles);
+    const key = sdk.name + '\u0000' + sdk.path + '\u0000' + from;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
     }
-    const fromSignature = new FileSignature(sdk.name, path.relative(sdk.path, realPath));
-    return scene.getFile(fromSignature);
+    const realPath = ModuleUtils.getFileRealPath(path.resolve(sdk.path, from));
+    let file: ArkFile | null = null;
+    if (realPath) {
+        const fromSignature = new FileSignature(sdk.name, path.relative(sdk.path, realPath));
+        file = scene.getFile(fromSignature) ?? null;
+    }
+    memo.set(key, file);
+    return file;
 }
 
-export function findExportInfoInfile(
-    fromInfo: FromInfo,
-    file: ArkFile,
-    visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])
-): ExportInfo | undefined {
+export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile, visited?: VisitedSegment<ArkFile>): ExportInfo | undefined {
+    if (visited !== undefined) {
+        return findExportInfoInfileVisited(fromInfo, file, visited);
+    }
+    const prevBase = fileVisitedSeg.enter();
+    fileVisitedSeg.add(fromInfo.getDeclaringArkFile() as ArkFile);
+    try {
+        return findExportInfoInfileVisited(fromInfo, file, fileVisitedSeg);
+    } finally {
+        fileVisitedSeg.leave(prevBase);
+    }
+}
+
+function findExportInfoInfileVisited(fromInfo: FromInfo, file: ArkFile, visited: VisitedSegment<ArkFile>): ExportInfo | undefined {
     //check cycle
     if (!visited.has(file)) {
         visited.add(file);
         // expand export *
-        file.getExportInfos()
-            .filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-            .forEach(e => {
-                findExportInfo(e, visited);
-                file.removeExportInfo(e);
-            });
+        const allExports = file.getExportInfos();
+        for (let i = 0; i < allExports.length; i++) {
+            if (allExports[i].getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
+                findExportInfo(allExports[i], visited);
+                file.removeExportInfo(allExports[i]);
+            }
+        }
     }
     if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
         const declaringArkFile = fromInfo.getDeclaringArkFile();
-        file.getExportInfos()
-            .filter(f => !f.isDefault() && !f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-            .forEach(exportInfo => {
-                const existing = declaringArkFile.getExportInfoBy(exportInfo.getExportClauseName());
-                if (!existing || existing.getFrom()) {
-                    declaringArkFile.addExportInfo(exportInfo);
-                }
-            });
+        const expandableExports = file.getExportInfos();
+        for (let i = 0; i < expandableExports.length; i++) {
+            const exportInfo = expandableExports[i];
+            if (exportInfo.isDefault() || exportInfo.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
+                continue;
+            }
+            const existing = declaringArkFile.getExportInfoBy(exportInfo.getExportClauseName());
+            if (!existing || existing.getFrom()) {
+                declaringArkFile.addExportInfo(exportInfo);
+            }
+        }
         declaringArkFile.removeExportInfo(fromInfo);
         return undefined;
     }
@@ -865,18 +1063,13 @@ export function findExportInfoInfile(
     let exportInfo = file.getExportInfoBy(exportName);
     if (exportInfo) {
         // Re-export with target already in visited indicates a cycle; return undefined to avoid stack overflow
-        if (exportInfo.getFrom()) {
-            const targetFile = getArkFile(exportInfo);
-            if (targetFile && visited.has(targetFile)) {
-                return undefined;
-            }
-        }
-        return exportInfo;
+        const targetFile = exportInfo.getFrom() ? getArkFile(exportInfo) : null;
+        return visited.has(targetFile) ? undefined : exportInfo;
     }
 
     if (exportName === DEFAULT) {
-        exportInfo = file.getExportInfos().find(p => p.isDefault());
-        if (exportInfo) {
+        exportInfo = file.getExportInfos().find(candidate => candidate.isDefault());
+        if (exportInfo !== undefined) {
             file.addExportInfo(exportInfo, DEFAULT);
             return exportInfo;
         }
@@ -885,11 +1078,11 @@ export function findExportInfoInfile(
     if (fromInfo.getOriginName() === ALL) {
         exportInfo = buildDefaultExportInfo(fromInfo, file);
         file.addExportInfo(exportInfo, ALL);
-    } else if (/\.d\.e?ts$/.test(file.getName())) {
-        let declare = exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file, visited) || undefined;
-        exportInfo = buildDefaultExportInfo(fromInfo, file, declare);
+        return exportInfo;
     }
-
+    if (/\.d\.e?ts$/.test(file.getName())) {
+        return buildDefaultExportInfo(fromInfo, file, exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file, visited));
+    }
     return exportInfo;
 }
 
@@ -898,9 +1091,21 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     if (!from || ModuleUtils.MODULES.size === 0) {
         return null;
     }
+    const declaringFile = fromInfo.getDeclaringArkFile();
+    const memo = sceneFileMemo(declaringFile.getScene());
+    const key = declaringFile.getProjectDir() + '\u0000' + from;
+    if (memo.has(key)) {
+        return memo.get(key) ?? null;
+    }
     //find file by given from like '@ohos/module/src/xxx' 'module/src/xxx'
-    const parts = from.split(PATH_DELIMITER);
-    const candidate = from.startsWith(SCOPE_PREFIX) ? parts.slice(0, 2).join(PATH_DELIMITER) : parts[0];
+    const firstDelimiter = from.indexOf(PATH_DELIMITER);
+    let candidate: string;
+    if (from.startsWith(SCOPE_PREFIX) && firstDelimiter >= 0) {
+        const secondDelimiter = from.indexOf(PATH_DELIMITER, firstDelimiter + 1);
+        candidate = secondDelimiter < 0 ? from : from.substring(0, secondDelimiter);
+    } else {
+        candidate = firstDelimiter < 0 ? from : from.substring(0, firstDelimiter);
+    }
     const modulePath = ModuleUtils.MODULES.get(candidate);
     if (!modulePath) {
         return null;
@@ -908,5 +1113,7 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | null {
     const suffix = from.substring(candidate.length + 1).trim();
     const middle = suffix.startsWith(ETS_CODE_PATH) ? PATH_BE_OMITTED : '';
     const filePath = suffix.length > 1 ? path.join(modulePath.path, middle, suffix) : modulePath.main;
-    return getArkFileFromScene(fromInfo, filePath);
+    const file = getArkFileFromScene(fromInfo, filePath);
+    memo.set(key, file);
+    return file;
 }

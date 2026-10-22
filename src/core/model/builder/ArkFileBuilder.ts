@@ -19,7 +19,7 @@ import ts from 'ohos-typescript';
 import { ArkFile, Language } from '../ArkFile';
 import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile, ClassLikeNode } from './ArkClassBuilder';
+import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile, ClassLikeNode, registerTypeAliasTypeLiteral } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass, MethodLikeNode } from './ArkMethodBuilder';
 import { buildImportInfo } from './ArkImportBuilder';
 import {
@@ -35,6 +35,7 @@ import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { FullPosition } from '../../base/Position';
 import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
+import { parseArkSourceFile } from '../../../utils/parseArkSourceFile';
 import { FileSignature } from '../ArkSignature';
 import { ARKTS_STATIC_MARK } from '../../common/Const';
 import { cloneText } from '../../common/StringUtils';
@@ -86,7 +87,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setCode(sourceText);
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     // save ast source file, if enabled ast and file is from the project (not from sdk)
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
@@ -107,6 +108,9 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
  */
 function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile, skipImportExport: boolean = false): void {
     for (const child of astRoot.statements) {
+        if (ts.isTypeAliasDeclaration(child)) {
+            registerTypeAliasTypeLiteral(child);
+        }
         if (ts.isModuleDeclaration(child)) {
             buildAndCollectNamespace(child, arkFile, astRoot);
         } else if (ts.isClassDeclaration(child) || ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child) || ts.isStructDeclaration(child)) {
@@ -211,8 +215,11 @@ export function buildImportExportInfoFromFile(arkFile: ArkFile): void {
         logger.error(`Failed to read file: ${error}`);
         return;
     }
-    arkFile.setCode(sourceText);
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const eagerLoad = arkFile.getScene().getOptions().saveSourceCodeByDefault ?? false;
+    if (eagerLoad && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
+        arkFile.setCode(sourceText);
+    }
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     buildImportExportInfo(arkFile, sourceFile);
 }
 
@@ -265,7 +272,7 @@ export function buildArkFileSignaturesFromFile(arkFile: ArkFile): void {
         logger.error(`Failed to read file: ${error}`);
         return;
     }
-    const sourceFile = ts.createSourceFile(arkFile.getName(), sourceText, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
+    const sourceFile = parseArkSourceFile(arkFile.getName(), sourceText, true, ETS_COMPILER_OPTIONS);
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {
         arkFile.setAST(sourceFile);
     }

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 import { ArkAssignStmt, Stmt } from '../base/Stmt';
 import { SdkUtils } from '../common/SdkUtils';
 import { Value } from '../base/Value';
@@ -76,7 +75,7 @@ export enum InferLanguage {
     ARK_TS1_2 = 2,
     JAVA_SCRIPT = 3,
     CXX = 21,
-    ABC = 51
+    ABC = 51,
 }
 
 export const valueCtors: Map<Function, InferLanguage> = new Map<Function, InferLanguage>();
@@ -218,7 +217,10 @@ export class ClosureFieldRefInference extends ValueInference<ClosureFieldRef> {
     public infer(value: ClosureFieldRef): Value | undefined {
         const type = value.getBase().getType();
         if (type instanceof LexicalEnvType) {
-            let newType = type.getClosures().find(c => c.getName() === value.getFieldName())?.getType();
+            let newType = type
+                .getClosures()
+                .find(c => c.getName() === value.getFieldName())
+                ?.getType();
             if (newType && !TypeInference.isUnclearType(newType)) {
                 value.setType(newType);
             }
@@ -241,8 +243,11 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
      * @returns {boolean} True if pre-inference should be performed, false otherwise
      */
     public preInfer(value: ArkInstanceFieldRef, stmt?: Stmt): boolean {
-        return IRInference.needInfer(value.getFieldSignature().getDeclaringSignature().getDeclaringFileSignature()) ||
-            TypeInference.isUnclearType(value.getType()) || value.getFieldSignature().isStatic();
+        return (
+            IRInference.needInfer(value.getFieldSignature().getDeclaringSignature().getDeclaringFileSignature()) ||
+            TypeInference.isUnclearType(value.getType()) ||
+            value.getFieldSignature().isStatic()
+        );
     }
 
     /**
@@ -260,8 +265,6 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
         return !result || result === value ? undefined : result;
     }
-
-
 }
 
 @Bind()
@@ -278,8 +281,9 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
      * @returns {boolean} True if pre-inference should be performed, false otherwise
      */
     public preInfer(value: ArkStaticFieldRef, stmt?: Stmt): boolean {
-        return IRInference.needInfer(value.getFieldSignature().getDeclaringSignature().getDeclaringFileSignature()) ||
-            TypeInference.isUnclearType(value.getType());
+        return (
+            IRInference.needInfer(value.getFieldSignature().getDeclaringSignature().getDeclaringFileSignature()) || TypeInference.isUnclearType(value.getType())
+        );
     }
 
     /**
@@ -306,7 +310,6 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
 
 @Bind()
 export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvokeExpr> {
-
     public getValueName(): string {
         return 'ArkInstanceInvokeExpr';
     }
@@ -319,8 +322,10 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
      * @returns {boolean} True if pre-inference should be performed, false otherwise
      */
     public preInfer(value: ArkInstanceInvokeExpr, stmt: Stmt | undefined): boolean {
-        return IRInference.needInfer(value.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature()) ||
-            TypeInference.isUnclearType(value.getType());
+        return (
+            IRInference.needInfer(value.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature()) ||
+            TypeInference.isUnclearType(value.getType())
+        );
     }
 
     /**
@@ -398,7 +403,6 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
 
 @Bind()
 export class StaticInvokeExprInference extends InstanceInvokeExprInference {
-
     public getValueName(): string {
         return 'ArkStaticInvokeExpr';
     }
@@ -494,8 +498,6 @@ export class ArkPtrInvokeExprInference extends StaticInvokeExprInference {
     }
 }
 
-
-
 @Bind()
 export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
     public getValueName(): string {
@@ -509,7 +511,7 @@ export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
     public infer(value: ArkNewExpr, stmt: Stmt): Value | undefined {
         const className = value.getClassType().getClassSignature().getClassName();
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        let type: Type | undefined | null = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
+        let type: Type | undefined | null = ModelUtils.findDeclaredLocalType(className, arkMethod, 1);
         if (TypeInference.isUnclearType(type)) {
             // Deterministic local-class resolution along the method scope chain before
             // the file-level fuzzy name search.
@@ -540,8 +542,8 @@ export class ArkNewExprInference extends ValueInference<ArkNewExpr> {
         let instanceType: ClassType = type;
         const typeClass = scene.getClass(type.getClassSignature());
         if (typeClass) {
-            const ctorReturn = typeClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType() ??
-                typeClass.getMethodWithName(CALL_SIGNATURE_NAME)?.getReturnType();
+            const ctorReturn =
+                typeClass.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType() ?? typeClass.getMethodWithName(CALL_SIGNATURE_NAME)?.getReturnType();
             if (ctorReturn) {
                 const replaced = TypeInference.replaceAliasType(ctorReturn);
                 if (replaced instanceof ClassType) {
@@ -573,7 +575,6 @@ export class ArkNewArrayExprInference extends ValueInference<ArkNewArrayExpr> {
         return undefined;
     }
 }
-
 
 @Bind()
 export class ArkNormalBinOpExprInference extends ValueInference<ArkNormalBinopExpr> {
@@ -668,8 +669,6 @@ export class ArkConditionExprInference extends ArkNormalBinOpExprInference {
     }
 }
 
-
-
 @Bind()
 export class ArkInstanceOfExprInference extends ValueInference<ArkInstanceOfExpr> {
     public getValueName(): string {
@@ -712,7 +711,6 @@ export class ArkCastExprInference extends ValueInference<ArkCastExpr> {
     }
 }
 
-
 @Bind()
 export class LocalInference extends ValueInference<Local> {
     public getValueName(): string {
@@ -726,7 +724,8 @@ export class LocalInference extends ValueInference<Local> {
 
     public infer(value: Local, stmt: Stmt): Value | undefined {
         const name = value.getName();
-        const arkClass = stmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const arkClass = arkMethod.getDeclaringArkClass();
         // Special handling for 'this' reference - set to current class type
         if (name === THIS_NAME) {
             value.setType(new ClassType(arkClass.getSignature(), arkClass.getRealTypes()));
@@ -735,8 +734,7 @@ export class LocalInference extends ValueInference<Local> {
         let newType;
         // Skip temporary variables (those with name prefix) and look for declared locals
         if (!name.startsWith(NAME_PREFIX)) {
-            newType = ModelUtils.findDeclaredLocal(value, stmt.getCfg().getDeclaringMethod(), 1)?.getType() ??
-                TypeInference.inferBaseType(name, arkClass);
+            newType = ModelUtils.findDeclaredLocalType(name, arkMethod, 1) ?? TypeInference.inferBaseType(name, arkClass);
         }
         if (newType) {
             value.setType(newType);

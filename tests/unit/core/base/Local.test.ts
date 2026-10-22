@@ -14,14 +14,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-    ArkReturnVoidStmt,
-    Local,
-    NumberType,
-    StringType,
-    UnknownType,
-} from '../../../../src';
+import { ArkReturnVoidStmt, Local, NumberType, StringType, UnknownType } from '../../../../src';
 import { NumberConstant } from '../../../../src/core/base/Constant';
+import { Value } from '../../../../src/core/base/Value';
 import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 import { ExportType } from '../../../../src/core/model/ArkExport';
 import { LocalSignature } from '../../../../src/core/model/ArkSignature';
@@ -67,6 +62,19 @@ describe('Local Test', () => {
         expect(a.getUses()).toEqual([]);
     });
 
+    it('getUses() without acc returns a shared empty array', () => {
+        const a = new Local('a');
+        expect(a.getUses().length).toBe(0);
+        expect(a.getUses()).toBe(a.getUses());
+    });
+
+    it('getUses(acc) returns the caller-provided accumulator', () => {
+        const a = new Local('a');
+        const acc: Value[] = [];
+        expect(a.getUses(acc)).toBe(acc);
+        expect(acc).toEqual([]);
+    });
+
     it('addUsedStmt appends to getUsedStmts and preserves order', () => {
         const a = new Local('a');
         const s1 = new ArkReturnVoidStmt();
@@ -82,6 +90,19 @@ describe('Local Test', () => {
         expect(used[0]).toBe(s1);
         expect(used[1]).toBe(s2);
         expect(used[2]).toBe(s3);
+    });
+
+    it('getUsedStmts without any add returns a shared empty array and materializes on add', () => {
+        const a = new Local('a');
+        const b = new Local('b');
+        expect(a.getUsedStmts().length).toBe(0);
+        expect(a.getUsedStmts()).toBe(b.getUsedStmts());
+        const stmt = new ArkReturnVoidStmt();
+        a.addUsedStmt(stmt);
+        const used = a.getUsedStmts();
+        expect(used).toHaveLength(1);
+        expect(used[0]).toBe(stmt);
+        expect(b.getUsedStmts().length).toBe(0);
     });
 
     it('toString returns the local name', () => {

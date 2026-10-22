@@ -90,13 +90,13 @@ export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression
 
 export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<Decorator> {
     let decorators: Set<Decorator> = new Set();
-    ts.getAllDecorators(node).forEach(decoratorNode => {
+    for (const decoratorNode of ts.getAllDecorators(node)) {
         let decorator = parseDecorator(decoratorNode);
         if (decorator) {
             decorator.setContent(cloneText(decoratorNode.expression.getText(sourceFile)));
             decorators.add(decorator);
         }
-    });
+    }
     return decorators;
 }
 
@@ -129,27 +129,30 @@ export function buildModifiers(node: ts.Node): number {
     let modifiers: number = 0;
 
     if (ts.canHaveModifiers(node)) {
-        ts.getModifiers(node)?.forEach(modifier => {
-            modifiers |= modifierKind2Enum(modifier.kind);
-        });
+        const nodeModifiers = ts.getModifiers(node);
+        if (nodeModifiers) {
+            for (const modifier of nodeModifiers) {
+                modifiers |= modifierKind2Enum(modifier.kind);
+            }
+        }
     }
 
     return modifiers;
 }
 
-export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClause>): Map<string, string> {
+export function buildHeritageClauses(heritageClauses: ts.NodeArray<HeritageClause> | undefined, sourceFile: ts.SourceFile): Map<string, string> {
     let heritageClausesMap: Map<string, string> = new Map<string, string>();
     heritageClauses?.forEach(heritageClause => {
         heritageClause.types.forEach(type => {
             let heritageClauseName: string = '';
             if (type.typeArguments) {
-                heritageClauseName = cloneText(type.getText());
+                heritageClauseName = cloneText(type.getText(sourceFile));
             } else if (ts.isIdentifier(type.expression)) {
                 heritageClauseName = cloneText((type.expression as ts.Identifier).text);
             } else if (ts.isPropertyAccessExpression(type.expression)) {
                 heritageClauseName = handlePropertyAccessExpression(type.expression);
             } else {
-                heritageClauseName = cloneText(type.getText());
+                heritageClauseName = cloneText(type.getText(sourceFile));
             }
             heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
         });

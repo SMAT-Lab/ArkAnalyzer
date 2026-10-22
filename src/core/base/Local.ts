@@ -15,7 +15,7 @@
 
 import { Stmt } from './Stmt';
 import { ClassType, FunctionType, Type, UnknownType } from './Type';
-import { Value } from './Value';
+import { EMPTY_USED_STMTS, EMPTY_USES, Value } from './Value';
 import { TypeInference } from '../common/TypeInference';
 import { ArkExport, ExportType } from '../model/ArkExport';
 import { LocalSignature, MethodSignature } from '../model/ArkSignature';
@@ -35,7 +35,7 @@ export class Local implements Value, ArkExport {
     private originalValue: Value | null;
 
     private declaringStmt: Stmt | null;
-    private usedStmts: Stmt[];
+    private _usedStmts?: Stmt[];
     private signature?: LocalSignature;
     private constFlag?: boolean;
 
@@ -45,7 +45,6 @@ export class Local implements Value, ArkExport {
 
         this.originalValue = null;
         this.declaringStmt = null;
-        this.usedStmts = [];
     }
 
     public inferType(arkMethod: ArkMethod): Local {
@@ -53,14 +52,16 @@ export class Local implements Value, ArkExport {
             const declaringArkClass = arkMethod.getDeclaringArkClass();
             this.type = new ClassType(declaringArkClass.getSignature(), declaringArkClass.getRealTypes());
         } else if (!this.name.startsWith(NAME_PREFIX) && TypeInference.isUnclearType(this.type)) {
-            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ??
-                ModelUtils.findDeclaredLocal(this, arkMethod)?.getType();
+            const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ?? ModelUtils.findDeclaredLocalType(this.name, arkMethod);
             if (type) {
                 this.type = type;
             }
         }
         if (this.type instanceof FunctionType) {
-            this.type.getMethodSignature().getMethodSubSignature().getParameters()
+            this.type
+                .getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
                 .forEach(p => TypeInference.inferParameterType(p, arkMethod));
             TypeInference.inferSignatureReturnType(this.type.getMethodSignature(), arkMethod);
         }
@@ -126,12 +127,20 @@ export class Local implements Value, ArkExport {
      * Returns an **array** of values which are contained in this local.
      * @returns An **array** of values used by this local.
      */
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     public addUsedStmt(usedStmt: Stmt): void {
-        this.usedStmts.push(usedStmt);
+        (this._usedStmts ??= []).push(usedStmt);
+    }
+
+    /**
+     * The statements using this local, exposed as a property so that consumers reading the field
+     * directly keep seeing an array; same value as {@link getUsedStmts}.
+     */
+    public get usedStmts(): Stmt[] {
+        return this._usedStmts ?? EMPTY_USED_STMTS;
     }
 
     /**
@@ -139,10 +148,12 @@ export class Local implements Value, ArkExport {
      * For example, if the code snippet is `let dd = cc + 5;` where `cc` is a local and `cc` only appears once,
      * then the length of **array** returned is 1 and `Stmts[0]` will be same as the example described
      * in the `Local.getDeclaringStmt()`.
+     * The backing list is allocated on the first {@link addUsedStmt}, so a local nobody uses yields
+     * the shared read-only empty array instead of allocating one.
      * @returns An array of statements used by the local.
      */
     public getUsedStmts(): Stmt[] {
-        return this.usedStmts;
+        return this._usedStmts ?? EMPTY_USED_STMTS;
     }
 
     /**
@@ -178,13 +189,7 @@ export class Local implements Value, ArkExport {
     }
 
     public getSignature(): LocalSignature {
-        return (
-            this.signature ??
-            new LocalSignature(
-                this.name,
-                MethodSignature.DEFAULT
-            )
-        );
+        return this.signature ?? new LocalSignature(this.name, MethodSignature.DEFAULT);
     }
 
     public setSignature(signature: LocalSignature): void {

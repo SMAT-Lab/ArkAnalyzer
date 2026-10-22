@@ -247,6 +247,17 @@ describe('GlobalRef', () => {
         expect(g.getUsedStmts()).toEqual([s1, s2, s3]);
     });
 
+    it('getUsedStmts without any add returns a shared empty array and materializes on add', () => {
+        const g = new GlobalRef('g');
+        const other = new GlobalRef('h');
+        expect(g.getUsedStmts().length).toBe(0);
+        expect(g.getUsedStmts()).toBe(other.getUsedStmts());
+        const stmt = new ArkReturnVoidStmt();
+        g.addUsedStmts(stmt);
+        expect(g.getUsedStmts()).toEqual([stmt]);
+        expect(other.getUsedStmts().length).toBe(0);
+    });
+
     it('toString returns the global name', () => {
         expect(new GlobalRef('foo').toString()).toBe('foo');
     });

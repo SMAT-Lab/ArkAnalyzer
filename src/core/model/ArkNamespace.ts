@@ -504,7 +504,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     public getClassWithName(className: string): ArkClass | null {
         // 精确匹配：拼本容器归属签名直查（复用 canonicalizer 的值索引，O(1)）
         if (this.namespaceSigID >= 0 && this.declaringFileID >= 0) {
-            return this.getClass(new ClassSignature(className, this.declaringFileID, this.namespaceSigID));
+            return this.getClass(ClassSignature.probe(className, this.declaringFileID, this.namespaceSigID));
         }
         return null;
     }

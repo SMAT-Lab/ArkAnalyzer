@@ -80,12 +80,14 @@ class ArkTsMethodInference extends MethodInference {
     }
 }
 
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+
 export class ArkTsStmtInference extends StmtInference {
     constructor(valueInferences: ValueInference<Value>[]) {
         super(valueInferences);
     }
 
-    public typeSpread(stmt: Stmt, method: ArkMethod): Set<Stmt> {
+    public typeSpread(stmt: Stmt, method: ArkMethod): Stmt[] | undefined {
         if (stmt instanceof ArkAliasTypeDefineStmt && TypeInference.isUnclearType(stmt.getAliasType().getOriginalType())) {
             const originalType = stmt.getAliasTypeExpr().getOriginalType();
             if (originalType) {
@@ -96,14 +98,20 @@ export class ArkTsStmtInference extends StmtInference {
     }
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
-        const projectName = method.getDeclaringArkFile().getProjectName();
         // An unclear ClassType with fully-resolved real type args still carries information
         // (e.g. IterableIterator<number> stubs) and should propagate to the left operand.
-        const isUnclearWithRealArgs = rightType instanceof ClassType && !!rightType.getRealGenericTypes()?.find(t => !(t instanceof GenericType));
+        const realArgs = rightType instanceof ClassType ? rightType.getRealGenericTypes() : undefined;
+        let isUnclearWithRealArgs = false;
+        for (let i = 0; realArgs !== undefined && i < realArgs.length; i++) {
+            if (!(realArgs[i] instanceof GenericType)) {
+                isUnclearWithRealArgs = true;
+                break;
+            }
+        }
         const isPlaceholderRight = rightType instanceof NullType || rightType instanceof UndefinedType;
         if ((!TypeInference.isUnclearType(rightType) && !isPlaceholderRight) || rightType instanceof GenericType || isUnclearWithRealArgs) {
             let leftType = leftOp.getType();
-            if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
+            if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, method.getDeclaringArkFile().getProjectName())) {
                 leftType = rightType;
             }
             if (leftOp.getType() !== leftType) {
@@ -290,7 +298,7 @@ export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
         }
         if (type) {
             const realGenericTypes = value.getRealGenericTypes();
-            if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && realGenericTypes && realGenericTypes.length > 0) {
+            if (TypeInference.checkType(type, IS_GENERIC_OR_ANY) && realGenericTypes && realGenericTypes.length > 0) {
                 TypeInference.inferRealGenericTypes(realGenericTypes, arkMethod.getDeclaringArkClass());
                 type = TypeInference.replaceTypeWithReal(type, realGenericTypes);
             }
@@ -347,10 +355,10 @@ export class ArkTSLocalInference extends LocalInference {
             return undefined;
         } else if (type instanceof FunctionType) {
             const methodSignature = type.getMethodSignature();
-            methodSignature
-                .getMethodSubSignature()
-                .getParameters()
-                .forEach(p => TypeInference.inferParameterType(p, arkMethod));
+            const parameters = methodSignature.getMethodSubSignature().getParameters();
+            for (let i = 0; i < parameters.length; i++) {
+                TypeInference.inferParameterType(parameters[i], arkMethod);
+            }
             TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
             return undefined;
         } else {

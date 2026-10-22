@@ -14,7 +14,7 @@
  */
 
 import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
-import { Value } from './Value';
+import { EMPTY_USES, Value } from './Value';
 import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
 
 /**
@@ -37,8 +37,8 @@ export class Constant implements Value {
         return this.value;
     }
 
-    public getUses(): Value[] {
-        return [];
+    public getUses(acc?: Value[]): Value[] {
+        return acc ?? EMPTY_USES;
     }
 
     /**

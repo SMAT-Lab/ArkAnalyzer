@@ -272,7 +272,11 @@ export class ClassSignature {
     private declaringFileSigID: number;
     /** @internal Formal NamespaceSigID for the declaring namespace. undefined = none (top-level). */
     private declaringNamespaceSigID?: number;
-    private readonly hashCode: number;
+    /**
+     * @internal Mutable for the shared lookup probe; kept consistent via recomputeHashCode.
+     * The constructor assigns through {@link recomputeHashCode} (TS cannot verify, hence `!`).
+     */
+    private hashCode!: number;
 
     private static readonly logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ClassSignature');
 
@@ -295,19 +299,11 @@ export class ClassSignature {
      */
     constructor(className: string, declaringFileSigID: number, declaringNamespaceSigID?: number);
     constructor(className: string, declaringFileOrID: FileSignature | number, declaringNSOrID?: NamespaceSignature | null | number) {
-        function computeHashCode(fileId: number, className: string, namespaceId?: number): number {
-            let h = 0xdeadbeef;
-            h = hashCombineU32(h, fileId);
-            h = hashCombineU32(h, hashString32(className));
-            h = hashCombineU32(h, namespaceId ?? 0);
-            return h >>> 0;
-        }
-
         this.className = className;
         if (typeof declaringFileOrID === 'number') {
             this.declaringFileSigID = declaringFileOrID;
             this.declaringNamespaceSigID = typeof declaringNSOrID === 'number' ? declaringNSOrID : undefined;
-            this.hashCode = computeHashCode(this.declaringFileSigID, this.className, this.declaringNamespaceSigID);
+            this.recomputeHashCode();
             return;
         }
         let fileSigID: number;
@@ -337,7 +333,7 @@ export class ClassSignature {
         }
         this.declaringFileSigID = fileSigID;
         this.declaringNamespaceSigID = nsSigID;
-        this.hashCode = computeHashCode(this.declaringFileSigID, this.className, this.declaringNamespaceSigID);
+        this.recomputeHashCode();
     }
 
     /**
@@ -389,6 +385,37 @@ export class ClassSignature {
      */
     public getClassName(): string {
         return this.className;
+    }
+
+    /** @internal Recompute the cached hash from the current parts (constructor and probe). */
+    private recomputeHashCode(): void {
+        let h = 0xdeadbeef;
+        h = hashCombineU32(h, this.declaringFileSigID);
+        h = hashCombineU32(h, hashString32(this.className));
+        h = hashCombineU32(h, this.declaringNamespaceSigID ?? 0);
+        this.hashCode = h >>> 0;
+    }
+
+    private static probeInstance: ClassSignature | undefined;
+
+    /**
+     * @internal Shared mutable probe for existence-check lookups (getClassWithName and
+     * friends), which built a throwaway ClassSignature - object plus string hash - on every
+     * probe (~1.5GB per full build). Consume the result in a single expression: the next
+     * probe call rewrites the parts. Never store or intern the returned instance.
+     */
+    public static probe(className: string, declaringFileSigID: number, declaringNamespaceSigID?: number): ClassSignature {
+        let p = ClassSignature.probeInstance;
+        if (p === undefined) {
+            p = new ClassSignature(className, declaringFileSigID, declaringNamespaceSigID);
+            ClassSignature.probeInstance = p;
+            return p;
+        }
+        p.className = className;
+        p.declaringFileSigID = declaringFileSigID;
+        p.declaringNamespaceSigID = declaringNamespaceSigID;
+        p.recomputeHashCode();
+        return p;
     }
 
     /**
@@ -675,6 +702,23 @@ export class FieldSignature {
                 }
             }
         }
+    }
+
+    private static probeInstance: FieldSignature | undefined;
+
+    /**
+     * @internal Shared mutable probe for existence-check lookups (getFieldWithName and
+     * friends). Consume the result in a single expression; never store or intern it.
+     */
+    public static probe(fieldName: string, declaringClassSigID: number, type: Type, staticFlag: boolean): FieldSignature {
+        let p = FieldSignature.probeInstance;
+        if (p === undefined) {
+            p = new FieldSignature(fieldName, declaringClassSigID, type, staticFlag);
+            FieldSignature.probeInstance = p;
+            return p;
+        }
+        p.applyFields(fieldName, declaringClassSigID, type, staticFlag, false);
+        return p;
     }
 
     /** @internal 按当前字段值重算 hash（applyFields 就地演进后调用，值与 hash 保持一致）。 */

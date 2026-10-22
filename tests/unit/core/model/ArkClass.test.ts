@@ -94,6 +94,36 @@ describe('ArkClass Test', () => {
         scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
     });
 
+    it('forEachMethod yields getMethods order and contents and supports early exit', async () => {
+        const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
+        const arkClass = arkFile?.getClassWithName('TestClass');
+        assert.isDefined(arkClass);
+
+        const expectedAll = arkClass!.getMethods(true).map(m => m.getName());
+        const visitedAll: string[] = [];
+        arkClass!.forEachMethod(m => {
+            visitedAll.push(m.getName());
+            return true;
+        }, true);
+        expect(visitedAll).toEqual(expectedAll);
+
+        const expectedDefault = arkClass!.getMethods().map(m => m.getName());
+        const visitedDefault: string[] = [];
+        arkClass!.forEachMethod(m => {
+            visitedDefault.push(m.getName());
+            return true;
+        });
+        expect(visitedDefault).toEqual(expectedDefault);
+
+        const expectedTwo = expectedDefault.slice(0, 2);
+        const visitedTwo: string[] = [];
+        arkClass!.forEachMethod(m => {
+            visitedTwo.push(m.getName());
+            return visitedTwo.length < 2;
+        });
+        expect(visitedTwo).toEqual(expectedTwo);
+    });
+
     it('get method with matched signature', async () => {
         const arkFile = scene.getFiles().find(file => file.getName() === 'class.ts');
         const arkClass = arkFile?.getClassWithName('TestClass');
@@ -673,9 +703,7 @@ describe('Object Literal Generated ArkClass Test', () => {
         expect(incrementInvokes.length).toEqual(2);
         for (const invoke of incrementInvokes) {
             expect(invoke.getMethodSigID()).toBeGreaterThan(0);
-            expect(invoke.getMethodSignature().toString()).toEqual(
-                `@expression/ObjectLiteralMethodTest.ts: ${objClassName}.increment()`
-            );
+            expect(invoke.getMethodSignature().toString()).toEqual(`@expression/ObjectLiteralMethodTest.ts: ${objClassName}.increment()`);
         }
     });
 });

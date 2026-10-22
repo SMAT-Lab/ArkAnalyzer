@@ -569,7 +569,9 @@ class ViewTreeNodeImpl implements ViewTreeNode {
             }
             return;
         }
-        for (const v of stmt.getUses()) {
+        const stmtUses = stmt.getUses();
+        for (let i = 0; i < stmtUses.length; i++) {
+            const v = stmtUses[i];
             if (v instanceof Constant) {
                 relationValues.push(v);
             } else if (v instanceof ArkInstanceFieldRef) {
@@ -1129,7 +1131,9 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
     private viewComponentCreationParser(name: string, stmt: Stmt, expr: AbstractInvokeExpr): ViewTreeNodeImpl | undefined {
         let temp = expr.getArg(0) as Local;
         let arg: Value | undefined;
-        for (const usedStmt of temp.getUsedStmts()) {
+        const tempUsedStmts = temp.getUsedStmts();
+        for (let i = 0; i < tempUsedStmts.length; i++) {
+            const usedStmt = tempUsedStmts[i];
             if (usedStmt instanceof ArkAssignStmt && usedStmt.getRightOp() instanceof ArkInstanceInvokeExpr) {
                 const rightOp: ArkInstanceInvokeExpr = usedStmt.getRightOp() as ArkInstanceInvokeExpr;
                 const methodName = rightOp.getMethodSignature().getMethodSubSignature().getMethodName();

@@ -36,9 +36,9 @@ import { AbstractFieldRef } from '../base/Ref';
 import { ArkNamespace } from '../model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Sdk } from '../../Config';
-import ts from 'ohos-typescript';
 import fs from 'fs';
 import { Scene } from '../../Scene';
+import { parseArkSourceFile } from '../../utils/parseArkSourceFile';
 import { SignatureCanonicalizerRegistry } from './SignatureCanonicalizerRegistry';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
@@ -110,7 +110,7 @@ export class SdkUtils {
     }
 
     private static dfsFiles(filePath: string, files: Set<string>): void {
-        const sourceFile = ts.createSourceFile(filePath, fs.readFileSync(filePath, 'utf8'), ts.ScriptTarget.Latest);
+        const sourceFile = parseArkSourceFile(filePath, fs.readFileSync(filePath, 'utf8'), false);
         const references = sourceFile.libReferenceDirectives;
         references.forEach(ref => {
             this.dfsFiles(path.join(path.dirname(filePath), `lib.${ref.fileName}.d.ts`), files);
@@ -134,6 +134,14 @@ export class SdkUtils {
         } else if (file.getName().startsWith('api')) {
             this.sdkImportMap.set(file.getName().replace(/^api[/\\]|\.d\.e?ts$/g, ''), fileSigID);
         }
+    }
+
+    /**
+     * Entry count of the SDK import map, read as part of the resolution table state that decides
+     * whether a cached "no file" answer is still valid.
+     */
+    public static getSdkImportMapSize(): number {
+        return this.sdkImportMap.size;
     }
 
     public static getImportSdkFile(from: string): ArkFile | undefined {

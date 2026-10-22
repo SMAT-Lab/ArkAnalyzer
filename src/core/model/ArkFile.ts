@@ -460,13 +460,19 @@ export class ArkFile {
 
     public getClassWithName(className: string): ArkClass | null {
         if (this.fileSigID >= 0) {
-            const top = this.getClass(new ClassSignature(className, this.fileSigID));
+            const top = this.getClass(ClassSignature.probe(className, this.fileSigID));
             if (top) {
                 return top;
             }
         }
-        for (const ns of this.getNamespaces()) {
-            const cls = this.findClassInNamespace(ns, className);
+        const nsIds = this.topNamespaceSigIDs;
+        if (nsIds === undefined || nsIds === null) {
+            return null;
+        }
+        const reg = this.registry;
+        for (let i = 0; i < this.topNamespaceCount; i++) {
+            const ns = reg.namespaceSigCanonicalizer.getModel(nsIds[i]);
+            const cls = ns ? this.findClassInNamespace(ns, className) : undefined;
             if (cls) {
                 return cls;
             }
@@ -568,12 +574,16 @@ export class ArkFile {
     }
 
     public getExportInfos(): ExportInfo[] {
-        const exportInfos: ExportInfo[] = [];
+        const exportInfos: ExportInfo[] = new Array<ExportInfo>(this.exportInfoMap.size);
+        let writeIdx = 0;
         this.exportInfoMap.forEach((value, key) => {
             if (key !== ALL || value.getFrom()) {
-                exportInfos.push(value);
+                exportInfos[writeIdx++] = value;
             }
         });
+        if (writeIdx < exportInfos.length) {
+            exportInfos.length = writeIdx;
+        }
         return exportInfos;
     }
 

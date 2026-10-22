@@ -38,14 +38,7 @@ import {
 } from '../base/Type';
 import { Local } from '../base/Local';
 import { TypeInference } from './TypeInference';
-import {
-    AbstractExpr,
-    AbstractInvokeExpr,
-    AliasTypeExpr,
-    ArkInstanceInvokeExpr,
-    ArkPtrInvokeExpr,
-    ArkStaticInvokeExpr
-} from '../base/Expr';
+import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
@@ -66,14 +59,7 @@ import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from 
 import { Builtin } from './Builtin';
 import { ArkBody } from '../model/ArkBody';
 import { ArkAssignStmt } from '../base/Stmt';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef
-} from '../base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../base/Ref';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import {
@@ -122,6 +108,9 @@ export interface ParamsFieldResolution {
 export type FieldSigResolution = FormalFieldResolution | ParamsFieldResolution | null;
 
 export type FieldPropertyResolution = GetterFieldResolution | FormalFieldResolution | ParamsFieldResolution | null;
+
+const IS_GENERIC_OR_ANY = (t: Type): boolean => t instanceof GenericType || t instanceof AnyType;
+const IS_GENERIC = (t: Type): boolean => t instanceof GenericType;
 
 export class IRInference {
     public static inferExportInfos(file: ArkFile): void {
@@ -384,8 +373,8 @@ export class IRInference {
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
         const base = instance.getBase();
         if (base.getName() === THIS_NAME) {
-            const name = instance instanceof ArkInstanceFieldRef ? instance.getFieldName() :
-                instance.getMethodSignature().getMethodSubSignature().getMethodName();
+            const name =
+                instance instanceof ArkInstanceFieldRef ? instance.getFieldName() : instance.getMethodSignature().getMethodSubSignature().getMethodName();
             if (name.includes('.')) {
                 return;
             }
@@ -434,7 +423,7 @@ export class IRInference {
     public static inferArgs(expr: AbstractInvokeExpr, arkMethod: ArkMethod): void {
         const scene = arkMethod.getDeclaringArkFile().getScene();
         const parameters = expr.getMethodSignature().getMethodSubSignature().getParameters();
-        let realTypes: Type[] = [];
+        let realTypes: Type[] | undefined;
         const len = expr.getArgs().length;
         for (let index = 0; index < len; index++) {
             const arg = expr.getArg(index);
@@ -443,44 +432,57 @@ export class IRInference {
             }
             const argType = arg.getType();
             const paramType = parameters[index].getType();
-            this.inferArg(expr, argType, paramType, scene, realTypes);
+            realTypes = this.inferArg(expr, argType, paramType, scene, realTypes);
         }
-        if (realTypes.length > 0 && !expr.getRealGenericTypes()) {
+        if (realTypes !== undefined && realTypes.length > 0 && !expr.getRealGenericTypes()) {
             expr.setRealGenericTypes(realTypes);
         }
     }
 
-    public static inferArg(expr: AbstractInvokeExpr, argType: Type, paramType: Type, scene: Scene, realTypes: Type[]): void {
+    public static inferArg(expr: AbstractInvokeExpr, argType: Type, paramType: Type, scene: Scene, realTypes?: Type[]): Type[] | undefined {
         if (paramType instanceof UnionType) {
-            paramType.getTypes().forEach(t => this.inferArg(expr, argType, t, scene, realTypes));
+            const unionTypes = paramType.getTypes();
+            for (let i = 0; i < unionTypes.length; i++) {
+                realTypes = this.inferArg(expr, argType, unionTypes[i], scene, realTypes);
+            }
         } else if (paramType instanceof AliasType) {
-            this.inferArg(expr, argType, paramType.getOriginalType(), scene, realTypes);
+            realTypes = this.inferArg(expr, argType, paramType.getOriginalType(), scene, realTypes);
         } else if (paramType instanceof ArrayType && argType instanceof ArrayType) {
-            this.inferArg(expr, argType.getBaseType(), paramType.getBaseType(), scene, realTypes);
+            realTypes = this.inferArg(expr, argType.getBaseType(), paramType.getBaseType(), scene, realTypes);
         } else if (expr instanceof ArkInstanceInvokeExpr && expr.getBase().getType() instanceof ArrayType) {
             if (paramType instanceof ArrayType && paramType.getBaseType() instanceof GenericType) {
-                this.inferArg(expr, argType, (expr.getBase().getType() as ArrayType).getBaseType(), scene, realTypes);
+                realTypes = this.inferArg(expr, argType, (expr.getBase().getType() as ArrayType).getBaseType(), scene, realTypes);
             }
         }
 
         if (paramType instanceof ClassType && scene.getProjectSdkMap().has(paramType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
             this.inferArgTypeWithSdk(paramType, scene, argType);
         } else if (paramType instanceof GenericType) {
+            if (realTypes === undefined) {
+                realTypes = [];
+            }
             if (!realTypes[paramType.getIndex()]) {
                 realTypes[paramType.getIndex()] = argType;
             }
         } else if (paramType instanceof AnyType) {
+            if (realTypes === undefined) {
+                realTypes = [];
+            }
             realTypes.push(argType);
         } else if (paramType instanceof FunctionType && argType instanceof FunctionType) {
             TypeInference.inferFunctionType(argType, paramType.getMethodSignature().getMethodSubSignature(), expr.getRealGenericTypes());
         }
+        return realTypes;
     }
 
     public static inferRightWithSdkType(leftType: Type, rightType: Type, ackClass: ArkClass): void {
         if (leftType instanceof AliasType) {
             this.inferRightWithSdkType(TypeInference.replaceAliasType(leftType), rightType, ackClass);
         } else if (leftType instanceof UnionType) {
-            leftType.getTypes().forEach(t => this.inferRightWithSdkType(t, rightType, ackClass));
+            const unionTypes = leftType.getTypes();
+            for (let i = 0; i < unionTypes.length; i++) {
+                this.inferRightWithSdkType(unionTypes[i], rightType, ackClass);
+            }
         } else if (leftType instanceof ClassType) {
             IRInference.inferArgTypeWithSdk(leftType, ackClass.getDeclaringArkFile().getScene(), rightType);
         } else if (rightType instanceof ArrayType && leftType instanceof ArrayType) {
@@ -706,7 +708,7 @@ export class IRInference {
 
     private static changePtrInvokeExpr(method: ArkField | Local, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
         let type: Type | undefined = method.getType();
-        if (expr.getRealGenericTypes() && TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType)) {
+        if (expr.getRealGenericTypes() && TypeInference.checkType(type, IS_GENERIC_OR_ANY)) {
             type = TypeInference.replaceTypeWithReal(type, expr.getRealGenericTypes());
         }
         if (type instanceof UnionType) {
@@ -728,10 +730,12 @@ export class IRInference {
             }
         }
         if (methodSignature) {
-            const ptr = method instanceof Local ? method :
-                expr instanceof ArkInstanceInvokeExpr
-                    ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
-                    : new ArkStaticFieldRef(method.getSignature());
+            const ptr =
+                method instanceof Local
+                    ? method
+                    : expr instanceof ArkInstanceInvokeExpr
+                      ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
+                      : new ArkStaticFieldRef(method.getSignature());
             return new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
         }
         return null;
@@ -741,10 +745,12 @@ export class IRInference {
         let realTypes;
         const tmp: Type[] = [];
         if (method?.getGenericTypes()) {
-            expr.getMethodSignature().getMethodSubSignature().getParameters()
+            expr.getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
-                    if (TypeInference.checkType(p.getType(), t => t instanceof GenericType)) {
+                    if (TypeInference.checkType(p.getType(), IS_GENERIC)) {
                         tmp.push(expr.getArg(i).getType());
                     }
                 });
@@ -810,7 +816,7 @@ export class IRInference {
         } else if (TypeInference.isUnclearType(baseType)) {
             const declaringStmt = base.getDeclaringStmt();
             if (!declaringStmt) {
-                baseType = ModelUtils.findDeclaredLocal(base, arkMethod)?.getType() ?? TypeInference.inferBaseType(base.getName(), arkClass);
+                baseType = ModelUtils.findDeclaredLocalType(base.getName(), arkMethod) ?? TypeInference.inferBaseType(base.getName(), arkClass);
             }
         }
         if (baseType instanceof UnionType || (baseType && !TypeInference.isUnclearType(baseType))) {
@@ -818,8 +824,12 @@ export class IRInference {
         }
     }
 
-    public static inferInstanceMember<T extends U, U extends Value>(baseType: Type, value: T, arkMethod: ArkMethod,
-                                                                    inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null): U | null {
+    public static inferInstanceMember<T extends U, U extends Value>(
+        baseType: Type,
+        value: T,
+        arkMethod: ArkMethod,
+        inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null
+    ): U | null {
         if (baseType instanceof PrimitiveType) {
             // Convert primitive types to their wrapper class types
             const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
@@ -999,7 +1009,8 @@ export class IRInference {
                 // 定义点 canonical——formalId 直读（终点确定）。
                 return { kind: 'formal', formalId: property.getFieldSigID(), staticFlag: property.isStatic(), type: fieldType };
             }
-            staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
+            staticFlag =
+                baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             // Note: baseType.getClassSignature() (not getClassSigID()) — the class may still be
             // unclear and live in the temp canonicalizer (classSigID === -1); the object overload
@@ -1020,7 +1031,14 @@ export class IRInference {
         }
         // 新构造值（终点不确定）——参数元组。
         return signature instanceof NamespaceSignature
-            ? { kind: 'params', fieldName, declaringOrID: signature.getNamespaceSigID(), type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: true }
+            ? {
+                  kind: 'params',
+                  fieldName,
+                  declaringOrID: signature.getNamespaceSigID(),
+                  type: propertyType ?? ref.getType(),
+                  staticFlag,
+                  namespaceDeclared: true,
+              }
             : { kind: 'params', fieldName, declaringOrID: signature, type: propertyType ?? ref.getType(), staticFlag, namespaceDeclared: false };
     }
 

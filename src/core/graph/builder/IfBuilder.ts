@@ -71,7 +71,9 @@ export class IfBuilder {
         const trueBlock = successors[0];
         const falseBlock = successors.length >= 2 ? successors[1] : successors[0];
 
-        block.getSuccessors().length = 0;
+        while (successors.length > 0) {
+            successors.pop();
+        }
         falseBlock.removePredecessorBlock(block);
         if (trueBlock !== falseBlock) {
             trueBlock.removePredecessorBlock(block);
@@ -105,7 +107,9 @@ export class IfBuilder {
         const trueBlock = successors[0];
         const falseBlock = successors.length >= 2 ? successors[1] : successors[0];
 
-        block.getSuccessors().length = 0;
+        while (successors.length > 0) {
+            successors.pop();
+        }
         trueBlock.removePredecessorBlock(block);
         if (trueBlock !== falseBlock) {
             falseBlock.removePredecessorBlock(block);

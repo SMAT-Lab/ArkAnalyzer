@@ -34,7 +34,10 @@ export function getAllFiles(
     filenameArr: string[] = [],
     visited: Set<string> = new Set<string>()
 ): string[] {
-    let ignoreFiles: Set<string> = new Set(ignore);
+    return collectFiles(srcPath, exts, new Set(ignore), filenameArr, visited);
+}
+
+function collectFiles(srcPath: string, exts: string[], ignoreFiles: Set<string>, filenameArr: string[], visited: Set<string>): string[] {
     // 如果源目录不存在，直接结束程序
     if (!fs.existsSync(srcPath)) {
         logger.error(`Input directory ${srcPath} is not exist, please check!`);
@@ -49,24 +52,25 @@ export function getAllFiles(
     visited.add(realSrc);
 
     // 遍历src，判断文件类型
-    fs.readdirSync(realSrc).forEach(filename => {
+    for (const entry of fs.readdirSync(realSrc, { withFileTypes: true })) {
+        const filename = entry.name;
         if (ignoreFiles.has(filename)) {
-            return;
+            continue;
         }
         // 拼接文件的绝对路径
         const realFile = path.resolve(realSrc, filename);
 
         //TODO: 增加排除文件后缀和目录
 
-        // 如果是目录，递归提取
-        if (FileUtils.isDirectory(realFile)) {
-            getAllFiles(realFile, exts, ignore, filenameArr, visited);
+        // 如果是目录，递归提取（符号链接仍需 stat，保持跟随链接的语义）
+        if (entry.isDirectory() || (entry.isSymbolicLink() && FileUtils.isDirectory(realFile))) {
+            collectFiles(realFile, exts, ignoreFiles, filenameArr, visited);
         } else {
             // 如果是文件，则判断其扩展名是否在给定的扩展名数组中
             if (exts.includes(path.extname(filename))) {
                 filenameArr.push(realFile);
             }
         }
-    });
+    }
     return filenameArr;
 }

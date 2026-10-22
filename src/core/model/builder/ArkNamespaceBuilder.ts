@@ -14,7 +14,7 @@
  */
 
 import { FullPosition } from '../../base/Position';
-import { buildClassSignature, buildDefaultArkClass, buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
+import { buildClassSignature, buildDefaultArkClass, buildNormalArkClassFromArkNamespace, registerTypeAliasTypeLiteral } from './ArkClassBuilder';
 import { ArkFile } from '../ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
@@ -85,6 +85,9 @@ export function buildArkNamespace(node: ts.ModuleDeclaration, ns: ArkNamespace, 
 function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, sourceFile: ts.SourceFile): void {
     const statements = node.statements;
     statements.forEach(child => {
+        if (ts.isTypeAliasDeclaration(child)) {
+            registerTypeAliasTypeLiteral(child);
+        }
         if (ts.isModuleDeclaration(child)) {
             const childNsSig = buildNamespaceSignature(child, namespace);
             let childNs = SignatureCanonicalizerRegistry.getInstance().getNamespaceBySig(childNsSig);

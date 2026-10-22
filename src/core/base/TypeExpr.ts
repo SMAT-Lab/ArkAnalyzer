@@ -15,7 +15,7 @@
 
 import { Value } from './Value';
 import { ArkMethod } from '../model/ArkMethod';
-import { IntersectionType, Type, UnionType, UnknownType } from './Type';
+import { IntersectionType, Type, UnclearVisited, UnionType, UnknownType } from './Type';
 import { IRInference } from '../common/IRInference';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ModelUtils } from '../common/ModelUtils';
@@ -36,7 +36,7 @@ import { TypeInference } from '../common/TypeInference';
  *  ```
  */
 export abstract class AbstractTypeExpr extends Type {
-    abstract getUses(): Value[];
+    abstract getUses(acc?: Value[]): Value[];
 
     abstract getType(): Type;
 
@@ -83,7 +83,7 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         return this.genericTypes;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
@@ -91,7 +91,16 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         if (this.getType().isUnclearWithVisited(visited)) {
             return true;
         }
-        return this.getGenerateTypes()?.some(t => t.isUnclearWithVisited(visited)) ?? false;
+        const generateTypes = this.getGenerateTypes();
+        if (generateTypes === undefined || generateTypes === null) {
+            return false;
+        }
+        for (let i = 0; i < generateTypes.length; i++) {
+            if (generateTypes[i].isUnclearWithVisited(visited)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public addGenericType(gType: Type): void {
@@ -101,15 +110,14 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         this.genericTypes.push(gType);
     }
 
-    public getUses(): Value[] {
+    public getUses(acc: Value[] = []): Value[] {
         const opValue = this.getOpValue();
         if (opValue instanceof ArkBaseModel) {
-            return [];
+            return acc;
         }
-        let uses: Value[] = [];
-        uses.push(opValue);
-        uses.push(...opValue.getUses());
-        return uses;
+        acc.push(opValue);
+        opValue.getUses(acc);
+        return acc;
     }
 
     public getType(): Type {
@@ -169,7 +177,7 @@ export class KeyofTypeExpr extends AbstractTypeExpr {
         this.opType = opType;
     }
 
-    public isUnclearWithVisited(visited: Set<Type>): boolean {
+    public isUnclearWithVisited(visited: UnclearVisited): boolean {
         if (visited.has(this)) {
             return false;
         }
@@ -177,12 +185,11 @@ export class KeyofTypeExpr extends AbstractTypeExpr {
         return this.getOpType().isUnclearWithVisited(visited);
     }
 
-    public getUses(): Value[] {
-        let uses: Value[] = [];
+    public getUses(acc: Value[] = []): Value[] {
         if (this.getOpType() instanceof TypeQueryExpr) {
-            uses.push(...(this.getOpType() as TypeQueryExpr).getUses());
+            (this.getOpType() as TypeQueryExpr).getUses(acc);
         }
-        return uses;
+        return acc;
     }
 
     public getType(): Type {

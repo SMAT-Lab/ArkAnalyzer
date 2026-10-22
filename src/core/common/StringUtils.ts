@@ -15,12 +15,19 @@
 
 import { FullPosition } from '../base/Position';
 
+const MIN_SLICED_STRING_LENGTH = 13;
+
 /**
  * Deep copy a string to avoid sharing the original text reference from TypeScript AST nodes.
  * This ensures that model objects do not implicitly depend on AST node lifecycles.
+ * Strings shorter than V8's kMinSlicedStringLength can never be sliced strings,
+ * so they cannot retain a larger parent and are returned as-is.
  */
 export function cloneText(text: string): string {
-    return text.length > 0 ? Buffer.from(text, 'utf8').toString('utf8') : '';
+    if (text.length < MIN_SLICED_STRING_LENGTH) {
+        return text;
+    }
+    return Buffer.from(text, 'utf8').toString('utf8');
 }
 
 /**
