@@ -1,6 +1,6 @@
 {
   "name": "arkanalyzer",
-  "version": "1.0.91",
+  "version": "2.0.0-beta1",
   "files": [
     "lib",
     "config"
